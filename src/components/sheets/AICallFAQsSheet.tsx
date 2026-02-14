@@ -3,6 +3,7 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { VoicePreview } from "@/components/shared/VoicePreview";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { defaultAiCallData } from "@/lib/template-data";
 import type { ColumnDef, AiCallData, AiCallFaqRow } from "@/lib/types";
@@ -118,6 +119,8 @@ export function AICallFAQsSheet() {
         data={aiCallData as unknown as Record<string, string | boolean>}
         onChange={handleConfigChange}
       />
+
+      <VoicePreview selectedGender={aiCallData.gender} />
 
       <div className="mt-8">
         <SectionHeader
