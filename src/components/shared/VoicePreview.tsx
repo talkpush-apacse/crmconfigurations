@@ -11,7 +11,6 @@ interface VoiceFile {
 
 const VOICE_FILES: VoiceFile[] = [
   // Female voices
-  { gender: "Female", name: "Aly – English (Filipino Voice)", file: "/voices/Female - Aly English (Filipino Voice).mp4" },
   { gender: "Female", name: "Aly", file: "/voices/Female - Aly.mp3" },
   { gender: "Female", name: "Hope – English (American Voice)", file: "/voices/Female - Hope English American Voice.mp4" },
   { gender: "Female", name: "Maya – English (American)", file: "/voices/Female - Maya English American.mp4" },
