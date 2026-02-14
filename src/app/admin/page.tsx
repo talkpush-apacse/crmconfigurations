@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState("");
+
   const fetchChecklists = async () => {
     try {
       const res = await fetch("/api/checklists");
@@ -36,9 +38,20 @@ export default function AdminDashboard() {
         return;
       }
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to load checklists");
+        setChecklists([]);
+        return;
+      }
+      if (!Array.isArray(data)) {
+        setError("Unexpected response from server");
+        setChecklists([]);
+        return;
+      }
+      setError("");
       setChecklists(data);
     } catch {
-      console.error("Failed to fetch checklists");
+      setError("Failed to connect to server");
     } finally {
       setLoading(false);
     }
@@ -94,6 +107,11 @@ export default function AdminDashboard() {
             <CardTitle className="text-base">All Checklists ({checklists.length})</CardTitle>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
             {loading ? (
               <p className="py-8 text-center text-muted-foreground">Loading...</p>
             ) : checklists.length === 0 ? (
