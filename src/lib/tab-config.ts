@@ -1,0 +1,28 @@
+export interface TabConfig {
+  slug: string;
+  label: string;
+  dataKey: string | null;
+  icon: string;
+}
+
+export const TAB_CONFIG: TabConfig[] = [
+  { slug: "welcome", label: "Welcome", dataKey: null, icon: "Home" },
+  { slug: "read-me", label: "Read Me - How To Use", dataKey: null, icon: "BookOpen" },
+  { slug: "company-info", label: "Company Information", dataKey: "companyInfo", icon: "Building2" },
+  { slug: "users", label: "User List", dataKey: "users", icon: "Users" },
+  { slug: "campaigns", label: "Campaigns List", dataKey: "campaigns", icon: "Megaphone" },
+  { slug: "sites", label: "Sites", dataKey: "sites", icon: "MapPin" },
+  { slug: "prescreening", label: "Pre-screening & Follow-up", dataKey: "prescreening", icon: "HelpCircle" },
+  { slug: "messaging", label: "Messaging Templates", dataKey: "messaging", icon: "MessageSquare" },
+  { slug: "sources", label: "Sources", dataKey: "sources", icon: "Link" },
+  { slug: "folders", label: "Folders", dataKey: "folders", icon: "Folder" },
+  { slug: "documents", label: "Document Collection", dataKey: "documents", icon: "FileText" },
+  { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare" },
+  { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
+  { slug: "ai-call-faqs", label: "AI Call FAQs", dataKey: "aiCallFaqs", icon: "Phone" },
+  { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
+];
+
+export function getTabBySlug(slug: string): TabConfig | undefined {
+  return TAB_CONFIG.find((tab) => tab.slug === slug);
+}

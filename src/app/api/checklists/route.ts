@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getDefaultChecklistData } from "@/lib/template-data";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const slug = searchParams.get("slug");
+
+  if (slug) {
+    const checklist = await prisma.checklist.findUnique({ where: { slug } });
+    if (!checklist) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json(checklist);
+  }
+
+  const checklists = await prisma.checklist.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true },
+  });
+  return NextResponse.json(checklists);
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { clientName } = body;
+
+  if (!clientName) {
+    return NextResponse.json({ error: "Client name is required" }, { status: 400 });
+  }
+
+  const slug = clientName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const existing = await prisma.checklist.findUnique({ where: { slug } });
+  if (existing) {
+    return NextResponse.json({ error: "A checklist with this name already exists" }, { status: 409 });
+  }
+
+  const defaults = getDefaultChecklistData();
+  const checklist = await prisma.checklist.create({
+    data: {
+      slug,
+      clientName,
+      companyInfo: JSON.parse(JSON.stringify(defaults.companyInfo)),
+      users: JSON.parse(JSON.stringify(defaults.users)),
+      campaigns: JSON.parse(JSON.stringify(defaults.campaigns)),
+      sites: JSON.parse(JSON.stringify(defaults.sites)),
+      prescreening: JSON.parse(JSON.stringify(defaults.prescreening)),
+      messaging: JSON.parse(JSON.stringify(defaults.messaging)),
+      sources: JSON.parse(JSON.stringify(defaults.sources)),
+      folders: JSON.parse(JSON.stringify(defaults.folders)),
+      documents: JSON.parse(JSON.stringify(defaults.documents)),
+      fbWhatsapp: JSON.parse(JSON.stringify(defaults.fbWhatsapp)),
+      instagram: JSON.parse(JSON.stringify(defaults.instagram)),
+      aiCallFaqs: JSON.parse(JSON.stringify(defaults.aiCallFaqs)),
+      agencyPortal: JSON.parse(JSON.stringify(defaults.agencyPortal)),
+    },
+  });
+
+  return NextResponse.json(checklist, { status: 201 });
+}

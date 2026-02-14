@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Checklist {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  clientName  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companyInfo   Json?
+  users         Json?
+  campaigns     Json?
+  sites         Json?
+  prescreening  Json?
+  messaging     Json?
+  sources       Json?
+  folders       Json?
+  documents     Json?
+  fbWhatsapp    Json?
+  instagram     Json?
+  aiCallFaqs    Json?
+  agencyPortal  Json?
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

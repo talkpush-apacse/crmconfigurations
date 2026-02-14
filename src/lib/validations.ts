@@ -1,0 +1,20 @@
+export const DROPDOWN_OPTIONS = {
+  yesNo: ["Yes", "No"],
+  userRoles: ["Owner", "Manager", "Limited Manager"],
+  interviewTypes: ["Onsite", "Virtual", "Hybrid"],
+  questionTypes: [
+    "Text",
+    "Number",
+    "Multiple Choice",
+    "Dropdown",
+    "Audio",
+    "Audio or Text",
+    "Video",
+    "File Upload",
+    "Play Media",
+    "Geolocation",
+  ],
+  accessPermissions: ["Anyone with Campaign Access", "All Owners"],
+  movementTypes: ["Automated", "Manual"],
+  required: ["Yes", "No"],
+} as const;
