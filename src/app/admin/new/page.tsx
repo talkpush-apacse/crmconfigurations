@@ -33,8 +33,14 @@ export default function NewChecklistPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create checklist");
+        let errorMsg = "Failed to create checklist";
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Response body may be empty or invalid JSON
+        }
+        throw new Error(errorMsg);
       }
 
       router.push("/admin");
