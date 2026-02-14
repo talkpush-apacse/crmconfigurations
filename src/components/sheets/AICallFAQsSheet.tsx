@@ -3,49 +3,64 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
-import { VoicePreview } from "@/components/shared/VoicePreview";
+import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { defaultAiCallData } from "@/lib/template-data";
 import type { ColumnDef, AiCallData, AiCallFaqRow } from "@/lib/types";
 
-const configFields: KeyValueField[] = [
-  {
-    key: "measureEnglish",
-    label: "Measure English Language Skills",
-    description: "Enable Talkscore AI language skills assessment during the call.",
-    type: "boolean",
-    link: {
-      url: "https://drive.google.com/file/d/1_0399mBTtdbs2yZoqts11V03IlVTiKYY/view?usp=sharing",
-      label: "Learn more about Talkscore AI Bias Accuracy and Internal Controls",
+function getConfigFields(selectedGender: string): KeyValueField[] {
+  const voiceOptions = selectedGender
+    ? VOICE_FILES.filter((v) => v.gender === selectedGender).map((v) => v.name)
+    : [];
+
+  return [
+    {
+      key: "measureEnglish",
+      label: "Measure English Language Skills",
+      description: "Enable Talkscore AI language skills assessment during the call.",
+      type: "boolean",
+      link: {
+        url: "https://drive.google.com/file/d/1_0399mBTtdbs2yZoqts11V03IlVTiKYY/view?usp=sharing",
+        label: "Learn more about Talkscore AI Bias Accuracy and Internal Controls",
+      },
     },
-  },
-  {
-    key: "gender",
-    label: "Gender",
-    description: "Select the preferred AI voice gender for the call.",
-    type: "dropdown",
-    options: ["Male", "Female"],
-  },
-  {
-    key: "callType",
-    label: "Call Type",
-    description: "How candidates will connect to the AI call.",
-    type: "dropdown",
-    options: ["Web", "Phone", "Both"],
-  },
-  {
-    key: "interviewRole",
-    label: "Interview Role",
-    description: "The role/position that interview questions relate to.",
-    type: "text",
-  },
-  {
-    key: "interviewQuestions",
-    label: "Interview Questions",
-    description: "Free-text interview questions the AI should ask candidates.",
-    type: "textarea",
-  },
-];
+    {
+      key: "gender",
+      label: "Gender",
+      description: "Select the preferred AI voice gender for the call.",
+      type: "dropdown",
+      options: ["Male", "Female"],
+    },
+    {
+      key: "preferredVoice",
+      label: "Preferred Voice",
+      description: selectedGender
+        ? "Select the AI voice to use for this client."
+        : "Select a gender first to see available voices.",
+      type: "dropdown",
+      options: voiceOptions,
+    },
+    {
+      key: "callType",
+      label: "Call Type",
+      description: "How candidates will connect to the AI call.",
+      type: "dropdown",
+      options: ["Web", "Phone", "Both"],
+    },
+    {
+      key: "interviewRole",
+      label: "Interview Role",
+      description: "The role/position that interview questions relate to.",
+      type: "text",
+    },
+    {
+      key: "interviewQuestions",
+      label: "Interview Questions",
+      description: "Free-text interview questions the AI should ask candidates.",
+      type: "textarea",
+    },
+  ];
+}
 
 const faqColumns: ColumnDef[] = [
   { key: "faq", label: "FAQ Topic", type: "text", description: "The topic or category of the FAQ" },
@@ -64,7 +79,14 @@ export function AICallFAQsSheet() {
 
   const faqs = aiCallData.faqs || [];
 
+  const configFields = getConfigFields(aiCallData.gender);
+
   const handleConfigChange = (key: string, value: string | boolean) => {
+    // Clear preferred voice when gender changes
+    if (key === "gender") {
+      updateField("aiCallFaqs", { ...aiCallData, gender: value as string, preferredVoice: "" });
+      return;
+    }
     updateField("aiCallFaqs", { ...aiCallData, [key]: value });
   };
 

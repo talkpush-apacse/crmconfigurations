@@ -9,7 +9,7 @@ interface VoiceFile {
   file: string;
 }
 
-const VOICE_FILES: VoiceFile[] = [
+export const VOICE_FILES: VoiceFile[] = [
   // Female voices
   { gender: "Female", name: "Aly", file: "/voices/Female - Aly.mp3" },
   { gender: "Female", name: "Hope – English (American Voice)", file: "/voices/Female - Hope English American Voice.mp4" },

@@ -138,6 +138,7 @@ export interface AiCallFaqRow {
 export interface AiCallData {
   measureEnglish: boolean;
   gender: string;
+  preferredVoice: string;
   callType: string;
   interviewRole: string;
   interviewQuestions: string;

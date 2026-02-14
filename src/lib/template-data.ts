@@ -185,6 +185,7 @@ export const defaultInstagram: InstagramData = {
 export const defaultAiCallData: AiCallData = {
   measureEnglish: false,
   gender: "",
+  preferredVoice: "",
   callType: "",
   interviewRole: "",
   interviewQuestions: "",
