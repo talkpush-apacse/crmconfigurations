@@ -127,12 +127,21 @@ export interface InstagramData {
   faqs: FaqEntry[];
 }
 
-// ===== AI Call FAQs =====
+// ===== AI Call =====
 export interface AiCallFaqRow {
   id: string;
   faq: string;
   example: string;
   faqResponse: string;
+}
+
+export interface AiCallData {
+  measureEnglish: boolean;
+  gender: string;
+  callType: string;
+  interviewRole: string;
+  interviewQuestions: string;
+  faqs: AiCallFaqRow[];
 }
 
 // ===== Agency Portal =====
@@ -163,6 +172,7 @@ export interface ChecklistData {
   clientName: string;
   createdAt: string;
   updatedAt: string;
+  enabledTabs: string[] | null;
   companyInfo: CompanyInfo | null;
   users: UserRow[] | null;
   campaigns: CampaignRow[] | null;
@@ -174,7 +184,7 @@ export interface ChecklistData {
   documents: DocumentRow[] | null;
   fbWhatsapp: FbWhatsappData | null;
   instagram: InstagramData | null;
-  aiCallFaqs: AiCallFaqRow[] | null;
+  aiCallFaqs: AiCallData | AiCallFaqRow[] | null;
   agencyPortal: AgencyPortalRow[] | null;
 }
 

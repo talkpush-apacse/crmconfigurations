@@ -10,7 +10,7 @@ import type {
   DocumentRow,
   FbWhatsappData,
   InstagramData,
-  AiCallFaqRow,
+  AiCallData,
   AgencyPortalRow,
 } from "./types";
 
@@ -182,20 +182,27 @@ export const defaultInstagram: InstagramData = {
   faqs: [],
 };
 
-export const defaultAiCallFaqs: AiCallFaqRow[] = [
-  { id: uid(), faq: "Documents to bring", example: "What documents do I need to bring?", faqResponse: "" },
-  { id: uid(), faq: "Salary", example: "What is the salary for this position?", faqResponse: "" },
-  { id: uid(), faq: "Address", example: "Where is the office located?", faqResponse: "" },
-  { id: uid(), faq: "What to expect", example: "What should I expect during the interview?", faqResponse: "" },
-  { id: uid(), faq: "Virtual interview", example: "Will the interview be virtual?", faqResponse: "" },
-  { id: uid(), faq: "Site name", example: "What is the name of the site?", faqResponse: "" },
-  { id: uid(), faq: "Interview format", example: "What is the format of the interview?", faqResponse: "" },
-  { id: uid(), faq: "Compensation/benefits", example: "What are the benefits?", faqResponse: "" },
-  { id: uid(), faq: "Dress code", example: "What is the dress code?", faqResponse: "" },
-  { id: uid(), faq: "Remote work policy", example: "Is remote work available?", faqResponse: "" },
-  { id: uid(), faq: "Shift schedules", example: "What are the shift schedules?", faqResponse: "" },
-  { id: uid(), faq: "Overtime policy", example: "What is the overtime policy?", faqResponse: "" },
-];
+export const defaultAiCallData: AiCallData = {
+  measureEnglish: false,
+  gender: "",
+  callType: "",
+  interviewRole: "",
+  interviewQuestions: "",
+  faqs: [
+    { id: uid(), faq: "Documents to bring", example: "What documents do I need to bring?", faqResponse: "" },
+    { id: uid(), faq: "Salary", example: "What is the salary for this position?", faqResponse: "" },
+    { id: uid(), faq: "Address", example: "Where is the office located?", faqResponse: "" },
+    { id: uid(), faq: "What to expect", example: "What should I expect during the interview?", faqResponse: "" },
+    { id: uid(), faq: "Virtual interview", example: "Will the interview be virtual?", faqResponse: "" },
+    { id: uid(), faq: "Site name", example: "What is the name of the site?", faqResponse: "" },
+    { id: uid(), faq: "Interview format", example: "What is the format of the interview?", faqResponse: "" },
+    { id: uid(), faq: "Compensation/benefits", example: "What are the benefits?", faqResponse: "" },
+    { id: uid(), faq: "Dress code", example: "What is the dress code?", faqResponse: "" },
+    { id: uid(), faq: "Remote work policy", example: "Is remote work available?", faqResponse: "" },
+    { id: uid(), faq: "Shift schedules", example: "What are the shift schedules?", faqResponse: "" },
+    { id: uid(), faq: "Overtime policy", example: "What is the overtime policy?", faqResponse: "" },
+  ],
+};
 
 export const defaultAgencyPortal: AgencyPortalRow[] = [
   {
@@ -222,7 +229,7 @@ export function getDefaultChecklistData() {
     documents: defaultDocuments,
     fbWhatsapp: defaultFbWhatsapp,
     instagram: defaultInstagram,
-    aiCallFaqs: defaultAiCallFaqs,
+    aiCallFaqs: defaultAiCallData,
     agencyPortal: defaultAgencyPortal,
   };
 }

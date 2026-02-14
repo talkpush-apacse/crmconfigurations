@@ -14,6 +14,8 @@ model Checklist {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  enabledTabs   Json?
+
   companyInfo   Json?
   users         Json?
   campaigns     Json?

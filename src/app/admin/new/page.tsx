@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { TabSelector } from "@/components/admin/TabSelector";
+import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
+  const [enabledTabs, setEnabledTabs] = useState<string[]>(getAllSelectableTabSlugs());
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +32,7 @@ export default function NewChecklistPage() {
       const res = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName }),
+        body: JSON.stringify({ clientName, enabledTabs }),
       });
 
       if (!res.ok) {
@@ -53,7 +56,7 @@ export default function NewChecklistPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-lg p-6">
+      <div className="mx-auto max-w-2xl p-6">
         <Link href="/admin" className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to dashboard
@@ -64,7 +67,7 @@ export default function NewChecklistPage() {
             <CardTitle>Create New Checklist</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <Label htmlFor="clientName">Client Name</Label>
                 <Input
@@ -81,6 +84,9 @@ export default function NewChecklistPage() {
                   <p className="mt-1 font-mono text-sm">/client/{slug}</p>
                 </div>
               )}
+
+              <TabSelector selectedTabs={enabledTabs} onChange={setEnabledTabs} />
+
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading || !clientName.trim()}>
                 {loading ? "Creating..." : "Create Checklist"}

@@ -9,6 +9,7 @@ export interface KeyValueField {
   description: string;
   type: "text" | "textarea" | "dropdown" | "boolean";
   options?: string[];
+  link?: { url: string; label: string };
 }
 
 interface KeyValueFormProps {
@@ -34,7 +35,19 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           )}
         >
           <div className="px-4 py-3 text-sm font-medium">{field.label}</div>
-          <div className="border-x px-4 py-3 text-sm text-muted-foreground">{field.description}</div>
+          <div className="border-x px-4 py-3 text-sm text-muted-foreground">
+            {field.description}
+            {field.link && (
+              <a
+                href={field.link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 block text-xs text-blue-600 hover:underline"
+              >
+                {field.link.label}
+              </a>
+            )}
+          </div>
           <div className="px-2 py-2 bg-yellow-50/50">
             <EditableCell
               value={data[field.key] ?? ""}

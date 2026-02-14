@@ -27,6 +27,7 @@ export async function PUT(
     const body = await request.json();
 
     const {
+      enabledTabs,
       companyInfo,
       users,
       campaigns,
@@ -45,6 +46,7 @@ export async function PUT(
     const checklist = await prisma.checklist.update({
       where: { id },
       data: {
+        enabledTabs,
         companyInfo,
         users,
         campaigns,

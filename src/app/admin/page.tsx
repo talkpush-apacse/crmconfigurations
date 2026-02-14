@@ -13,7 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, ExternalLink, Trash2, Copy, Download } from "lucide-react";
+import { Plus, ExternalLink, Trash2, Copy, Download, Settings } from "lucide-react";
+import { TabSelector } from "@/components/admin/TabSelector";
+import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 
 interface ChecklistSummary {
   id: string;
@@ -21,14 +23,16 @@ interface ChecklistSummary {
   clientName: string;
   createdAt: string;
   updatedAt: string;
+  enabledTabs: string[] | null;
 }
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
+  const [editingTabs, setEditingTabs] = useState<{ id: string; clientName: string; tabs: string[] } | null>(null);
+  const [savingTabs, setSavingTabs] = useState(false);
 
   const fetchChecklists = async () => {
     try {
@@ -76,11 +80,37 @@ export default function AdminDashboard() {
       await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName: newName }),
+        body: JSON.stringify({ clientName: newName, enabledTabs: original.enabledTabs }),
       });
       fetchChecklists();
     } catch {
       console.error("Failed to copy checklist");
+    }
+  };
+
+  const handleEditTabs = (c: ChecklistSummary) => {
+    setEditingTabs({
+      id: c.id,
+      clientName: c.clientName,
+      tabs: c.enabledTabs || getAllSelectableTabSlugs(),
+    });
+  };
+
+  const handleSaveTabs = async () => {
+    if (!editingTabs) return;
+    setSavingTabs(true);
+    try {
+      await fetch(`/api/checklists/${editingTabs.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledTabs: editingTabs.tabs }),
+      });
+      setEditingTabs(null);
+      fetchChecklists();
+    } catch {
+      console.error("Failed to save tab settings");
+    } finally {
+      setSavingTabs(false);
     }
   };
 
@@ -101,6 +131,33 @@ export default function AdminDashboard() {
             </Button>
           </Link>
         </div>
+
+        {/* Edit Tabs Dialog */}
+        {editingTabs && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <Card className="w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Edit Tabs — {editingTabs.clientName}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <TabSelector
+                  selectedTabs={editingTabs.tabs}
+                  onChange={(tabs) => setEditingTabs({ ...editingTabs, tabs })}
+                />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setEditingTabs(null)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveTabs} disabled={savingTabs}>
+                    {savingTabs ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -153,6 +210,14 @@ export default function AdminDashboard() {
                               <Download className="h-4 w-4" />
                             </Button>
                           </a>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Edit tabs"
+                            onClick={() => handleEditTabs(c)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

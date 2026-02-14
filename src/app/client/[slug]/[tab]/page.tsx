@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { getTabBySlug } from "@/lib/tab-config";
+import { getTabBySlug, getEnabledTabs } from "@/lib/tab-config";
+import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
 import { ReadMeSheet } from "@/components/sheets/ReadMeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
@@ -39,12 +40,23 @@ const sheetComponents: Record<string, React.ComponentType> = {
 export default function TabPage() {
   const params = useParams();
   const tab = params.tab as string;
+  const { data } = useChecklistContext();
   const tabConfig = getTabBySlug(tab);
 
   if (!tabConfig) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Tab not found</p>
+      </div>
+    );
+  }
+
+  // Guard against disabled tabs
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  if (!enabledTabs.find((t) => t.slug === tab)) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">This section is not enabled for this client.</p>
       </div>
     );
   }

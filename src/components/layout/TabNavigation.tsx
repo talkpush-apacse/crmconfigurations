@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { TAB_CONFIG } from "@/lib/tab-config";
+import { getEnabledTabs } from "@/lib/tab-config";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -51,7 +51,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
 
   return (
     <nav className="flex flex-col gap-1 p-3">
-      {TAB_CONFIG.map((tab) => {
+      {getEnabledTabs(data?.enabledTabs ?? null).map((tab) => {
         const isActive = pathname === `/client/${slug}/${tab.slug}`;
         const Icon = iconMap[tab.icon];
         const hasData =

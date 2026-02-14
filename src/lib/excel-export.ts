@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import path from "path";
-import type { ChecklistData } from "./types";
+import type { ChecklistData, AiCallData } from "./types";
 
 export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -29,7 +29,11 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   populateTableSheet(workbook, "Sources", data.sources as Record<string, unknown>[] | null, 12, ["category", "subcategory", "link", "comments"], "C");
   populateTableSheet(workbook, "Folders", data.folders as Record<string, unknown>[] | null, 12, ["folderName", "description", "movementType", "comments"], "C");
   populateTableSheet(workbook, "Document Collection", data.documents as Record<string, unknown>[] | null, 12, ["documentName", "applicableCandidates", "required", "blankTemplateLink", "applicableCampaigns", "accessPermissions", "folder", "comments"], "C");
-  populateTableSheet(workbook, "AI Call FAQs", data.aiCallFaqs as Record<string, unknown>[] | null, 4, ["faq", "example", "faqResponse"], "A");
+  // Handle both old array and new object format for AI Call
+  const aiCallFaqRows = Array.isArray(data.aiCallFaqs)
+    ? data.aiCallFaqs
+    : (data.aiCallFaqs as AiCallData)?.faqs ?? null;
+  populateTableSheet(workbook, "AI Call FAQs", aiCallFaqRows as unknown as Record<string, unknown>[] | null, 4, ["faq", "example", "faqResponse"], "A");
   populateTableSheet(workbook, "Agency Portal", data.agencyPortal as Record<string, unknown>[] | null, 12, ["agencyName", "contactName", "email", "phone", "country", "comments"], "C");
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -190,11 +194,15 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Comments", key: "comments", width: 30 },
   ], data.documents as Record<string, unknown>[] | null);
 
-  addTableSheet("AI Call FAQs", [
+  // Handle both old array and new object format for AI Call
+  const freshAiCallFaqRows = Array.isArray(data.aiCallFaqs)
+    ? data.aiCallFaqs
+    : (data.aiCallFaqs as AiCallData)?.faqs ?? null;
+  addTableSheet("AI Call", [
     { header: "FAQ", key: "faq", width: 25 },
     { header: "Example", key: "example", width: 40 },
     { header: "FAQ Response", key: "faqResponse", width: 50 },
-  ], data.aiCallFaqs as Record<string, unknown>[] | null);
+  ], freshAiCallFaqRows as unknown as Record<string, unknown>[] | null);
 
   addTableSheet("Agency Portal", [
     { header: "Agency Name", key: "agencyName", width: 25 },

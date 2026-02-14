@@ -43,7 +43,7 @@ export function WelcomeSheet() {
               <li><strong>Document Collection</strong> — Required documents setup</li>
               <li><strong>Facebook & WhatsApp</strong> — Messaging platform integration</li>
               <li><strong>Instagram Chatbot</strong> — Instagram integration</li>
-              <li><strong>AI Call FAQs</strong> — Automated call responses</li>
+              <li><strong>AI Call</strong> — AI call configuration and FAQs</li>
               <li><strong>Agency Portal</strong> — Agency management</li>
             </ul>
           </div>

@@ -19,10 +19,30 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "documents", label: "Document Collection", dataKey: "documents", icon: "FileText" },
   { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare" },
   { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
-  { slug: "ai-call-faqs", label: "AI Call FAQs", dataKey: "aiCallFaqs", icon: "Phone" },
+  { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
 ];
 
 export function getTabBySlug(slug: string): TabConfig | undefined {
   return TAB_CONFIG.find((tab) => tab.slug === slug);
+}
+
+// Tabs that are always included regardless of selection
+export const ALWAYS_ENABLED_SLUGS = ["welcome", "read-me"];
+
+// Tabs that can be toggled by admin
+export const SELECTABLE_TABS = TAB_CONFIG.filter(
+  (tab) => !ALWAYS_ENABLED_SLUGS.includes(tab.slug)
+);
+
+// Get all selectable tab slugs (for default "all selected")
+export function getAllSelectableTabSlugs(): string[] {
+  return SELECTABLE_TABS.map((tab) => tab.slug);
+}
+
+// Filter TAB_CONFIG to only enabled tabs
+export function getEnabledTabs(enabledTabSlugs: string[] | null | undefined): TabConfig[] {
+  if (!enabledTabSlugs) return TAB_CONFIG; // null/undefined means all enabled
+  const enabledSet = new Set([...ALWAYS_ENABLED_SLUGS, ...enabledTabSlugs]);
+  return TAB_CONFIG.filter((tab) => enabledSet.has(tab.slug));
 }
