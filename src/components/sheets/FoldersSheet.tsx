@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -58,6 +59,10 @@ export function FoldersSheet() {
         title="Folders"
         description="Configure the workflow stages (folders) that candidates move through during the recruitment process."
       />
+      <ExampleHint>
+        <p>Folders represent stages in your hiring pipeline. The default folders (Inbox, Interview, Hired, Rejected, Archived) cover most workflows. Add custom folders like &quot;Onboarding&quot;, &quot;Training&quot;, or &quot;For Pooling&quot; if needed.</p>
+      </ExampleHint>
+
       <EditableTable
         columns={columns}
         data={folders}

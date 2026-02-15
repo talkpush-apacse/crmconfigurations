@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
@@ -135,6 +136,16 @@ export function AICallFAQsSheet() {
         title="AI Call"
         description="Configure your AI call settings and define FAQ responses."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample AI Call configuration:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Interview Role:</strong> &quot;Customer Service Representative&quot;</li>
+          <li><strong>Interview Questions:</strong> &quot;Tell me about your work experience.&quot;, &quot;Why are you interested in this role?&quot;, &quot;Describe a time you handled a difficult customer.&quot;</li>
+          <li><strong>FAQ Response (Salary):</strong> &quot;Starting salary is PHP 18,000-22,000/month depending on experience.&quot;</li>
+          <li><strong>FAQ Response (Location):</strong> &quot;The office is located at {"{{interview_location}}"}. Please arrive 15 minutes early.&quot;</li>
+        </ul>
+      </ExampleHint>
 
       <KeyValueForm
         fields={configFields}

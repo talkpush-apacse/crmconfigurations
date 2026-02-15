@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAgencyPortal } from "@/lib/template-data";
@@ -59,6 +60,14 @@ export function AgencyPortalSheet() {
         title="Agency Portal"
         description="Manage staffing agencies and their contact information."
       />
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample agency entries:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Staff Alliance Inc.</strong> | Maria Reyes | maria@staffalliance.ph | +63 2 8888 1234 | Philippines</li>
+          <li><strong>JobStreet Staffing</strong> | John Torres | john@jobstreet.com.ph | +63 917 555 6789 | Philippines</li>
+        </ul>
+      </ExampleHint>
+
       <EditableTable
         columns={columns}
         data={agencies}

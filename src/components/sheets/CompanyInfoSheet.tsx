@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -44,6 +45,15 @@ export function CompanyInfoSheet() {
         title="Company Information"
         description="Provide basic company configuration settings for your Talkpush CRM instance."
       />
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample configuration:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Allow Duplicates:</strong> No &mdash; Most clients prevent duplicate profiles to avoid confusion.</li>
+          <li><strong>Cooling Period:</strong> 90 &mdash; A 90-day cooling period is typical for BPO clients.</li>
+          <li><strong>Rehires Allowed:</strong> Yes &mdash; Most clients allow previous employees to re-apply.</li>
+        </ul>
+      </ExampleHint>
+
       <KeyValueForm
         fields={fields}
         data={companyInfo as unknown as Record<string, string | boolean>}

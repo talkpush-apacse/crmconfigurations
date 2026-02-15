@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -62,6 +63,15 @@ export function DocumentsSheet() {
         title="Document Collection"
         description="Define the documents to be collected from candidates during the hiring process."
       />
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample documents to collect:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Resume/CV</strong> | All candidates | Required | All campaigns | Inbox</li>
+          <li><strong>NBI Clearance</strong> | All candidates | Required | All campaigns | Interview</li>
+          <li><strong>Pre-employment Medical</strong> | Hired candidates | Required | Hired folder</li>
+        </ul>
+      </ExampleHint>
+
       <EditableTable
         columns={columns}
         data={documents}

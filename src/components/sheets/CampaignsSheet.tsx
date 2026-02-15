@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultCampaigns } from "@/lib/template-data";
@@ -65,6 +66,14 @@ export function CampaignsSheet() {
         title="Campaigns List"
         description="Define your recruitment campaigns. Each campaign represents a job position or hiring pipeline."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample campaigns:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>CSR - Makati</strong> | Customer Service Representative | Makati Office | Handle inbound customer calls and resolve inquiries</li>
+          <li><strong>TSR - BGC Night</strong> | Technical Support Rep (Night Shift) | BGC Office | Provide L1 tech support for US-based clients</li>
+        </ul>
+      </ExampleHint>
 
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Campaign Type Reference</div>

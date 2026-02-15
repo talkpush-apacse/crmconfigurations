@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -68,6 +69,14 @@ export function UserListSheet() {
         title="User List"
         description="Define the users who will have access to the Talkpush CRM platform."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample user list:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Maria Santos</strong> | Owner | HR Director | maria@company.com | +63 917 123 4567 | BGC Office</li>
+          <li><strong>Juan dela Cruz</strong> | Manager | Recruiter | juan@company.com | +63 918 765 4321 | Makati Office</li>
+        </ul>
+      </ExampleHint>
 
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Role Reference</div>

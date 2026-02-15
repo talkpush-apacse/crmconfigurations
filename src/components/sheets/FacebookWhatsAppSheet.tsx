@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -86,6 +87,15 @@ export function FacebookWhatsAppSheet() {
         title="Facebook Messenger & WhatsApp"
         description="Configure your Facebook Messenger and WhatsApp chatbot integration."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample configuration:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Phone Number:</strong> +63 917 000 1234 (must NOT be registered on WhatsApp already)</li>
+          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; short, friendly name candidates will see</li>
+          <li><strong>Chatbot Persona:</strong> Professional and helpful &mdash; guides candidates through application</li>
+        </ul>
+      </ExampleHint>
 
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Setup Requirements</div>

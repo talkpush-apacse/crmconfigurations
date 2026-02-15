@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -62,6 +63,14 @@ export function SitesSheet() {
         title="Sites"
         description="Configure interview and office locations where candidates may be directed."
       />
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample sites:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Makati Main</strong> | MKT-HQ | Mon-Fri 9AM-5PM | Onsite | 5F Ayala Tower, Ayala Ave, Makati City | Valid ID, NBI Clearance</li>
+          <li><strong>BGC Hub</strong> | BGC-01 | Mon-Sat 8AM-8PM | Hybrid | 10F High Street South, BGC, Taguig | Valid ID, SSS E1</li>
+        </ul>
+      </ExampleHint>
+
       <EditableTable
         columns={columns}
         data={sites}

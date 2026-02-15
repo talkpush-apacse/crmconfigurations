@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -83,6 +84,15 @@ export function InstagramSheet() {
         title="Instagram Chatbot"
         description="Configure your Instagram chatbot integration."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample configuration:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Instagram Account:</strong> @companyph_careers</li>
+          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; same name across all channels for consistency</li>
+          <li><strong>Chatbot Persona:</strong> Friendly and conversational &mdash; matches Instagram&apos;s casual tone</li>
+        </ul>
+      </ExampleHint>
 
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Setup Requirements</div>

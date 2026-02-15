@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
@@ -76,6 +77,15 @@ export function PrescreeningSheet() {
         title="Pre-screening & Follow-up Questions"
         description="Define the questions candidates will answer during the screening process."
       />
+
+      <ExampleHint>
+        <p className="mb-1 font-medium">Sample pre-screening questions:</p>
+        <ul className="list-disc pl-4 space-y-0.5">
+          <li><strong>Are you at least 18 years old?</strong> | Multiple Choice | Yes, No | Auto-reject if &quot;No&quot;</li>
+          <li><strong>How many years of BPO experience do you have?</strong> | Dropdown | None, Less than 1 year, 1-2 years, 3+ years</li>
+          <li><strong>Are you willing to work night shifts?</strong> | Multiple Choice | Yes, No | Campaign-specific</li>
+        </ul>
+      </ExampleHint>
 
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Question Type Reference</div>
