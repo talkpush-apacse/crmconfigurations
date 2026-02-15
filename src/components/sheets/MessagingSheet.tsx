@@ -11,18 +11,24 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Copy } from "lucide-react";
-import type { MessagingTemplateRow } from "@/lib/types";
+import type { MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
 
-const channels = [
-  { key: "email", label: "Email", templateKey: "emailTemplate", activeKey: "emailActive" },
-  { key: "sms", label: "SMS", templateKey: "smsTemplate", activeKey: "smsActive" },
-  { key: "whatsapp", label: "WhatsApp", templateKey: "whatsappTemplate", activeKey: "whatsappActive" },
-  { key: "messenger", label: "Messenger", templateKey: "messengerTemplate", activeKey: "messengerActive" },
-] as const;
+const allChannels = [
+  { key: "email" as const, label: "Email", templateKey: "emailTemplate" as const, activeKey: "emailActive" as const },
+  { key: "sms" as const, label: "SMS", templateKey: "smsTemplate" as const, activeKey: "smsActive" as const },
+  { key: "whatsapp" as const, label: "WhatsApp", templateKey: "whatsappTemplate" as const, activeKey: "whatsappActive" as const },
+  { key: "messenger" as const, label: "Messenger", templateKey: "messengerTemplate" as const, activeKey: "messengerActive" as const },
+];
 
 export function MessagingSheet() {
   const { data, updateField } = useChecklistContext();
   const templates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
+
+  // Filter channels based on communication channels setting
+  const enabledChannels = data.communicationChannels as CommunicationChannels | null;
+  const channels = enabledChannels
+    ? allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false)
+    : allChannels; // null = show all (backward compat for old checklists)
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
     const updated = [...templates];

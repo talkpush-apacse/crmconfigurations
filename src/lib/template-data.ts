@@ -12,11 +12,21 @@ import type {
   InstagramData,
   AiCallData,
   AgencyPortalRow,
+  CommunicationChannels,
 } from "./types";
 
 export function uid(): string {
   return crypto.randomUUID();
 }
+
+export const defaultCommunicationChannels: CommunicationChannels = {
+  email: true,
+  sms: true,
+  messenger: false,
+  whatsapp: true,
+  liveCall: false,
+  aiCalls: false,
+};
 
 export const defaultCompanyInfo: CompanyInfo = {
   allowDuplicates: "",

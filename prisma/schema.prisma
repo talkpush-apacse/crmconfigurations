@@ -15,7 +15,8 @@ model Checklist {
   updatedAt   DateTime @updatedAt
   version     Int      @default(0)
 
-  enabledTabs   Json?
+  enabledTabs             Json?
+  communicationChannels   Json?
 
   companyInfo   Json?
   users         Json?

@@ -33,6 +33,7 @@ export async function PUT(
     const {
       version,
       enabledTabs,
+      communicationChannels,
       companyInfo,
       users,
       campaigns,
@@ -70,6 +71,7 @@ export async function PUT(
       data: {
         version: { increment: 1 },
         enabledTabs,
+        communicationChannels,
         companyInfo,
         users,
         campaigns,

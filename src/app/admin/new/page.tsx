@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { TabSelector } from "@/components/admin/TabSelector";
+import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
+import { defaultCommunicationChannels } from "@/lib/template-data";
+import type { CommunicationChannels } from "@/lib/types";
 
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
   const [enabledTabs, setEnabledTabs] = useState<string[]>(getAllSelectableTabSlugs());
+  const [channels, setChannels] = useState<CommunicationChannels>(defaultCommunicationChannels);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +26,26 @@ export default function NewChecklistPage() {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+
+  // Sync AI Calls channel ↔ AI Call tab
+  const handleChannelsChange = useCallback((newChannels: CommunicationChannels) => {
+    setChannels(newChannels);
+    // Auto-sync: AI Calls channel → AI Call tab
+    if (newChannels.aiCalls && !enabledTabs.includes("ai-call-faqs")) {
+      setEnabledTabs((prev) => [...prev, "ai-call-faqs"]);
+    } else if (!newChannels.aiCalls && enabledTabs.includes("ai-call-faqs")) {
+      setEnabledTabs((prev) => prev.filter((t) => t !== "ai-call-faqs"));
+    }
+  }, [enabledTabs]);
+
+  const handleTabsChange = useCallback((newTabs: string[]) => {
+    setEnabledTabs(newTabs);
+    // Auto-sync: AI Call tab → AI Calls channel
+    const aiTabEnabled = newTabs.includes("ai-call-faqs");
+    if (aiTabEnabled !== channels.aiCalls) {
+      setChannels((prev) => ({ ...prev, aiCalls: aiTabEnabled }));
+    }
+  }, [channels.aiCalls]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +56,7 @@ export default function NewChecklistPage() {
       const res = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, enabledTabs }),
+        body: JSON.stringify({ clientName, enabledTabs, communicationChannels: channels }),
       });
 
       if (!res.ok) {
@@ -85,7 +109,9 @@ export default function NewChecklistPage() {
                 </div>
               )}
 
-              <TabSelector selectedTabs={enabledTabs} onChange={setEnabledTabs} />
+              <ChannelSelector channels={channels} onChange={handleChannelsChange} />
+
+              <TabSelector selectedTabs={enabledTabs} onChange={handleTabsChange} />
 
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading || !clientName.trim()}>

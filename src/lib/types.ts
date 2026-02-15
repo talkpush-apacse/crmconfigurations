@@ -156,6 +156,16 @@ export interface AgencyPortalRow {
   comments: string;
 }
 
+// ===== Communication Channels =====
+export interface CommunicationChannels {
+  email: boolean;
+  sms: boolean;
+  messenger: boolean;
+  whatsapp: boolean;
+  liveCall: boolean;
+  aiCalls: boolean;
+}
+
 // ===== Shared =====
 export interface FaqEntry {
   id: string;
@@ -175,6 +185,7 @@ export interface ChecklistData {
   updatedAt: string;
   version: number;
   enabledTabs: string[] | null;
+  communicationChannels: CommunicationChannels | null;
   companyInfo: CompanyInfo | null;
   users: UserRow[] | null;
   campaigns: CampaignRow[] | null;

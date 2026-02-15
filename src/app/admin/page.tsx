@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Plus, ExternalLink, Trash2, Copy, Download, Settings, Search, CheckCircle } from "lucide-react";
 import { TabSelector } from "@/components/admin/TabSelector";
+import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
+import { defaultCommunicationChannels } from "@/lib/template-data";
+import type { CommunicationChannels } from "@/lib/types";
 
 interface ChecklistSummary {
   id: string;
@@ -25,6 +28,14 @@ interface ChecklistSummary {
   createdAt: string;
   updatedAt: string;
   enabledTabs: string[] | null;
+  communicationChannels: CommunicationChannels | null;
+}
+
+interface EditingState {
+  id: string;
+  clientName: string;
+  tabs: string[];
+  channels: CommunicationChannels;
 }
 
 export default function AdminDashboard() {
@@ -34,8 +45,8 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-  const [editingTabs, setEditingTabs] = useState<{ id: string; clientName: string; tabs: string[] } | null>(null);
-  const [savingTabs, setSavingTabs] = useState(false);
+  const [editing, setEditing] = useState<EditingState | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const fetchChecklists = async () => {
     try {
@@ -83,7 +94,11 @@ export default function AdminDashboard() {
       const createRes = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName: newName, enabledTabs: original.enabledTabs }),
+        body: JSON.stringify({
+          clientName: newName,
+          enabledTabs: original.enabledTabs,
+          communicationChannels: original.communicationChannels,
+        }),
       });
       const created = await createRes.json();
       fetchChecklists();
@@ -94,29 +109,58 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleEditTabs = (c: ChecklistSummary) => {
-    setEditingTabs({
+  const handleEditSettings = (c: ChecklistSummary) => {
+    setEditing({
       id: c.id,
       clientName: c.clientName,
       tabs: c.enabledTabs || getAllSelectableTabSlugs(),
+      channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
     });
   };
 
-  const handleSaveTabs = async () => {
-    if (!editingTabs) return;
-    setSavingTabs(true);
+  // Sync AI Calls channel ↔ AI Call tab in edit modal
+  const handleEditChannelsChange = useCallback((newChannels: CommunicationChannels) => {
+    setEditing((prev) => {
+      if (!prev) return prev;
+      let newTabs = [...prev.tabs];
+      if (newChannels.aiCalls && !newTabs.includes("ai-call-faqs")) {
+        newTabs = [...newTabs, "ai-call-faqs"];
+      } else if (!newChannels.aiCalls && newTabs.includes("ai-call-faqs")) {
+        newTabs = newTabs.filter((t) => t !== "ai-call-faqs");
+      }
+      return { ...prev, channels: newChannels, tabs: newTabs };
+    });
+  }, []);
+
+  const handleEditTabsChange = useCallback((newTabs: string[]) => {
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const aiTabEnabled = newTabs.includes("ai-call-faqs");
+      const newChannels = aiTabEnabled !== prev.channels.aiCalls
+        ? { ...prev.channels, aiCalls: aiTabEnabled }
+        : prev.channels;
+      return { ...prev, tabs: newTabs, channels: newChannels };
+    });
+  }, []);
+
+  const handleSaveSettings = async () => {
+    if (!editing) return;
+    setSaving(true);
     try {
-      await fetch(`/api/checklists/${editingTabs.id}`, {
+      await fetch(`/api/checklists/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabledTabs: editingTabs.tabs }),
+        body: JSON.stringify({
+          enabledTabs: editing.tabs,
+          communicationChannels: editing.channels,
+        }),
       });
-      setEditingTabs(null);
+      setEditing(null);
       fetchChecklists();
     } catch {
-      console.error("Failed to save tab settings");
+      console.error("Failed to save settings");
     } finally {
-      setSavingTabs(false);
+      setSaving(false);
     }
   };
 
@@ -138,26 +182,30 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        {/* Edit Tabs Dialog */}
-        {editingTabs && (
+        {/* Edit Settings Dialog (Channels + Tabs) */}
+        {editing && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <Card className="w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
               <CardHeader>
                 <CardTitle className="text-base">
-                  Edit Tabs — {editingTabs.clientName}
+                  Settings — {editing.clientName}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                <ChannelSelector
+                  channels={editing.channels}
+                  onChange={handleEditChannelsChange}
+                />
                 <TabSelector
-                  selectedTabs={editingTabs.tabs}
-                  onChange={(tabs) => setEditingTabs({ ...editingTabs, tabs })}
+                  selectedTabs={editing.tabs}
+                  onChange={handleEditTabsChange}
                 />
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setEditingTabs(null)}>
+                  <Button variant="outline" onClick={() => setEditing(null)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveTabs} disabled={savingTabs}>
-                    {savingTabs ? "Saving..." : "Save Changes"}
+                  <Button onClick={handleSaveSettings} disabled={saving}>
+                    {saving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </CardContent>
@@ -245,8 +293,8 @@ export default function AdminDashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Edit tabs"
-                            onClick={() => handleEditTabs(c)}
+                            title="Edit settings"
+                            onClick={() => handleEditSettings(c)}
                           >
                             <Settings className="h-4 w-4" />
                           </Button>
