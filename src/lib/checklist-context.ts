@@ -7,6 +7,8 @@ interface ChecklistContextType {
   data: ChecklistData;
   updateField: <K extends keyof ChecklistData>(field: K, value: ChecklistData[K]) => void;
   saveStatus: "saved" | "saving" | "error";
+  saveError: string | null;
+  retrySave: () => void;
 }
 
 export const ChecklistContext = createContext<ChecklistContextType | null>(null);

@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, ExternalLink, Trash2, Copy, Download, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, ExternalLink, Trash2, Copy, Download, Settings, Search, CheckCircle } from "lucide-react";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 
@@ -31,6 +32,8 @@ export default function AdminDashboard() {
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [editingTabs, setEditingTabs] = useState<{ id: string; clientName: string; tabs: string[] } | null>(null);
   const [savingTabs, setSavingTabs] = useState(false);
 
@@ -77,12 +80,15 @@ export default function AdminDashboard() {
       const original = await res.json();
       const newName = `${original.clientName} (Copy)`;
 
-      await fetch("/api/checklists", {
+      const createRes = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clientName: newName, enabledTabs: original.enabledTabs }),
       });
+      const created = await createRes.json();
       fetchChecklists();
+      setCopySuccess(created.slug || newName);
+      setTimeout(() => setCopySuccess(null), 4000);
     } catch {
       console.error("Failed to copy checklist");
     }
@@ -159,9 +165,33 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Copy success notification */}
+        {copySuccess && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <p className="text-sm text-green-700">
+              Checklist copied!{" "}
+              <Link href={`/client/${copySuccess}`} target="_blank" className="font-medium underline">
+                Open copy
+              </Link>
+            </p>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">All Checklists ({checklists.length})</CardTitle>
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle className="text-base">All Checklists ({checklists.length})</CardTitle>
+              <div className="relative w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {error && (
@@ -192,7 +222,9 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {checklists.map((c) => (
+                  {checklists
+                    .filter((c) => !searchQuery || c.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || c.slug.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.clientName}</TableCell>
                       <TableCell className="text-muted-foreground">{c.slug}</TableCell>

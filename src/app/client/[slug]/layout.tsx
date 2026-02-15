@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const slug = params.slug as string;
-  const { data, loading, error, saveStatus, updateField } = useChecklist(slug);
+  const { data, loading, error, saveStatus, saveError, updateField, retrySave } = useChecklist(slug);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -39,12 +39,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus }}>
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave }}>
       <div className="flex h-screen flex-col">
         <Header
           clientName={data.clientName}
           slug={slug}
           saveStatus={saveStatus}
+          saveError={saveError}
+          onRetrySave={retrySave}
           onToggleSidebar={() => setSidebarOpen(true)}
         />
         <div className="flex flex-1 overflow-hidden">

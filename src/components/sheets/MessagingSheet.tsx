@@ -2,7 +2,7 @@
 
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { defaultMessaging } from "@/lib/template-data";
+import { uid, defaultMessaging } from "@/lib/template-data";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export function MessagingSheet() {
     updateField("messaging", [
       ...templates,
       {
-        id: Math.random().toString(36).substring(2, 9),
+        id: uid(),
         name: "",
         purpose: "",
         language: "English",
@@ -56,7 +56,7 @@ export function MessagingSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...templates[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...templates[index], id: uid() };
     const updated = [...templates];
     updated.splice(index + 1, 0, clone);
     updateField("messaging", updated);

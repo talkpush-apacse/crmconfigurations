@@ -3,14 +3,14 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { defaultAgencyPortal } from "@/lib/template-data";
+import { uid, defaultAgencyPortal } from "@/lib/template-data";
 import type { ColumnDef, AgencyPortalRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
   { key: "agencyName", label: "Agency Name", type: "text", description: "Name of the staffing/recruitment agency" },
   { key: "contactName", label: "Contact Name", type: "text", description: "Primary point of contact at the agency" },
-  { key: "email", label: "Email", type: "text", description: "Contact email address" },
-  { key: "phone", label: "Phone", type: "text", description: "Contact phone number" },
+  { key: "email", label: "Email", type: "text", description: "Contact email address", validation: "email" },
+  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "country", label: "Country", type: "text", description: "Country where the agency operates" },
   { key: "comments", label: "Comments", type: "text" },
 ];
@@ -28,7 +28,7 @@ export function AgencyPortalSheet() {
   const handleAdd = () => {
     updateField("agencyPortal", [
       ...agencies,
-      { id: Math.random().toString(36).substring(2, 9), agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "" },
+      { id: uid(), agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "" },
     ]);
   };
 
@@ -37,7 +37,7 @@ export function AgencyPortalSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...agencies[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...agencies[index], id: uid() };
     const updated = [...agencies];
     updated.splice(index + 1, 0, clone);
     updateField("agencyPortal", updated);
@@ -46,7 +46,7 @@ export function AgencyPortalSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "",
       ...row,
     }));

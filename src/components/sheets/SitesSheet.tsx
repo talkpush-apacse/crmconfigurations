@@ -4,7 +4,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
-import { defaultSites } from "@/lib/template-data";
+import { uid, defaultSites } from "@/lib/template-data";
 import type { ColumnDef, SiteRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
@@ -14,7 +14,7 @@ const columns: ColumnDef[] = [
   { key: "interviewType", label: "Interview Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.interviewTypes], description: "Whether interviews are conducted onsite, virtually, or both" },
   { key: "fullAddress", label: "Full Address", type: "text", description: "Complete physical address of the site" },
   { key: "documentsToRring", label: "Documents to Bring", type: "textarea", description: "List of documents candidates should bring to the site" },
-  { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the location on Google Maps" },
+  { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the location on Google Maps", validation: "url" },
   { key: "comments", label: "Comments", type: "text" },
 ];
 
@@ -31,7 +31,7 @@ export function SitesSheet() {
   const handleAdd = () => {
     updateField("sites", [
       ...sites,
-      { id: Math.random().toString(36).substring(2, 9), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRring: "", googleMapsLink: "", comments: "" },
+      { id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRring: "", googleMapsLink: "", comments: "" },
     ]);
   };
 
@@ -40,7 +40,7 @@ export function SitesSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...sites[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...sites[index], id: uid() };
     const updated = [...sites];
     updated.splice(index + 1, 0, clone);
     updateField("sites", updated);
@@ -49,7 +49,7 @@ export function SitesSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRring: "", googleMapsLink: "", comments: "",
       ...row,
     }));

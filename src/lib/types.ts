@@ -173,6 +173,7 @@ export interface ChecklistData {
   clientName: string;
   createdAt: string;
   updatedAt: string;
+  version: number;
   enabledTabs: string[] | null;
   companyInfo: CompanyInfo | null;
   users: UserRow[] | null;
@@ -185,7 +186,7 @@ export interface ChecklistData {
   documents: DocumentRow[] | null;
   fbWhatsapp: FbWhatsappData | null;
   instagram: InstagramData | null;
-  aiCallFaqs: AiCallData | AiCallFaqRow[] | null;
+  aiCallFaqs: AiCallData | null;
   agencyPortal: AgencyPortalRow[] | null;
 }
 
@@ -197,4 +198,5 @@ export interface ColumnDef {
   type: "text" | "textarea" | "dropdown" | "boolean" | "readonly";
   options?: string[];
   width?: string;
+  validation?: "email" | "url" | "phone";
 }

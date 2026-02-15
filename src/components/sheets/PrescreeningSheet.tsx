@@ -4,7 +4,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
-import { defaultPrescreening } from "@/lib/template-data";
+import { uid, defaultPrescreening } from "@/lib/template-data";
 import type { ColumnDef, QuestionRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
@@ -45,7 +45,7 @@ export function PrescreeningSheet() {
   const handleAdd = () => {
     updateField("prescreening", [
       ...questions,
-      { id: Math.random().toString(36).substring(2, 9), category: "Pre-screening", question: "", questionType: "", answerOptions: "", applicableCampaigns: "", autoReject: "", rejectCondition: "", rejectReason: "", comments: "" },
+      { id: uid(), category: "Pre-screening", question: "", questionType: "", answerOptions: "", applicableCampaigns: "", autoReject: "", rejectCondition: "", rejectReason: "", comments: "" },
     ]);
   };
 
@@ -54,7 +54,7 @@ export function PrescreeningSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...questions[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...questions[index], id: uid() };
     const updated = [...questions];
     updated.splice(index + 1, 0, clone);
     updateField("prescreening", updated);
@@ -63,7 +63,7 @@ export function PrescreeningSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       category: "Pre-screening", question: "", questionType: "", answerOptions: "", applicableCampaigns: "", autoReject: "", rejectCondition: "", rejectReason: "", comments: "",
       ...row,
     }));

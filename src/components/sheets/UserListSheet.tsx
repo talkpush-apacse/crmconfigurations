@@ -4,15 +4,15 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
-import { defaultUsers } from "@/lib/template-data";
+import { uid, defaultUsers } from "@/lib/template-data";
 import type { ColumnDef, UserRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user" },
   { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: "Role determining platform access level" },
   { key: "jobTitle", label: "Job Title", type: "text", description: "User's job title within the organization" },
-  { key: "email", label: "Email", type: "text", description: "User's email address for login" },
-  { key: "phone", label: "Phone", type: "text", description: "Contact phone number" },
+  { key: "email", label: "Email", type: "text", description: "User's email address for login", validation: "email" },
+  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
   { key: "reportsTo", label: "Reports To", type: "text", description: "Direct manager or supervisor" },
   { key: "comments", label: "Comments", type: "text" },
@@ -37,7 +37,7 @@ export function UserListSheet() {
   const handleAdd = () => {
     updateField("users", [
       ...users,
-      { id: Math.random().toString(36).substring(2, 9), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" },
+      { id: uid(), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" },
     ]);
   };
 
@@ -46,7 +46,7 @@ export function UserListSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...users[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...users[index], id: uid() };
     const updated = [...users];
     updated.splice(index + 1, 0, clone);
     updateField("users", updated);
@@ -55,7 +55,7 @@ export function UserListSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "",
       ...row,
     }));

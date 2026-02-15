@@ -4,7 +4,7 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
-import { defaultFolders } from "@/lib/template-data";
+import { uid, defaultFolders } from "@/lib/template-data";
 import type { ColumnDef, FolderRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
@@ -27,7 +27,7 @@ export function FoldersSheet() {
   const handleAdd = () => {
     updateField("folders", [
       ...folders,
-      { id: Math.random().toString(36).substring(2, 9), folderName: "", description: "", movementType: "", comments: "" },
+      { id: uid(), folderName: "", description: "", movementType: "", comments: "" },
     ]);
   };
 
@@ -36,7 +36,7 @@ export function FoldersSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...folders[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...folders[index], id: uid() };
     const updated = [...folders];
     updated.splice(index + 1, 0, clone);
     updateField("folders", updated);
@@ -45,7 +45,7 @@ export function FoldersSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       folderName: "", description: "", movementType: "", comments: "",
       ...row,
     }));

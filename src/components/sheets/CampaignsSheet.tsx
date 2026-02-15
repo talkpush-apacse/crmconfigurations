@@ -3,7 +3,7 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { defaultCampaigns } from "@/lib/template-data";
+import { uid, defaultCampaigns } from "@/lib/template-data";
 import type { ColumnDef, CampaignRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
@@ -11,8 +11,8 @@ const columns: ColumnDef[] = [
   { key: "jobTitleExternal", label: "Job Title (External)", type: "text", description: "Job title shown to candidates on application pages" },
   { key: "site", label: "Site", type: "text", description: "Location/site associated with this campaign" },
   { key: "jobDescription", label: "Job Description", type: "textarea", description: "Full job description for the position" },
-  { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the interview/office location on Google Maps" },
-  { key: "zoomLink", label: "Zoom/Meeting Link", type: "text", description: "Virtual interview meeting link" },
+  { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the interview/office location on Google Maps", validation: "url" },
+  { key: "zoomLink", label: "Zoom/Meeting Link", type: "text", description: "Virtual interview meeting link", validation: "url" },
   { key: "comments", label: "Comments", type: "text" },
 ];
 
@@ -34,7 +34,7 @@ export function CampaignsSheet() {
   const handleAdd = () => {
     updateField("campaigns", [
       ...campaigns,
-      { id: Math.random().toString(36).substring(2, 9), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" },
+      { id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" },
     ]);
   };
 
@@ -43,7 +43,7 @@ export function CampaignsSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...campaigns[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...campaigns[index], id: uid() };
     const updated = [...campaigns];
     updated.splice(index + 1, 0, clone);
     updateField("campaigns", updated);
@@ -52,7 +52,7 @@ export function CampaignsSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "",
       ...row,
     }));

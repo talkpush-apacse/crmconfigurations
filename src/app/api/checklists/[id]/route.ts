@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const checklist = await prisma.checklist.findUnique({ where: { id } });
     if (!checklist) {
@@ -27,6 +31,7 @@ export async function PUT(
     const body = await request.json();
 
     const {
+      version,
       enabledTabs,
       companyInfo,
       users,
@@ -43,9 +48,27 @@ export async function PUT(
       agencyPortal,
     } = body;
 
+    // Optimistic locking: if version provided, check it matches
+    if (version !== undefined) {
+      const current = await prisma.checklist.findUnique({
+        where: { id },
+        select: { version: true },
+      });
+      if (!current) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (current.version !== version) {
+        return NextResponse.json(
+          { error: "Conflict: this checklist was modified by someone else. Please reload." },
+          { status: 409 }
+        );
+      }
+    }
+
     const checklist = await prisma.checklist.update({
       where: { id },
       data: {
+        version: { increment: 1 },
         enabledTabs,
         companyInfo,
         users,
@@ -71,10 +94,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     await prisma.checklist.delete({ where: { id } });
     return NextResponse.json({ success: true });

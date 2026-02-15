@@ -5,7 +5,7 @@ import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueFo
 import { EditableTable } from "@/components/shared/EditableTable";
 import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { defaultAiCallData } from "@/lib/template-data";
+import { uid, defaultAiCallData } from "@/lib/template-data";
 import type { ColumnDef, AiCallData, AiCallFaqRow } from "@/lib/types";
 
 function getConfigFields(selectedGender: string): KeyValueField[] {
@@ -98,7 +98,7 @@ export function AICallFAQsSheet() {
 
   const handleFaqAdd = () => {
     const newFaq: AiCallFaqRow = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       faq: "",
       example: "",
       faqResponse: "",
@@ -111,7 +111,7 @@ export function AICallFAQsSheet() {
   };
 
   const handleFaqDuplicate = (index: number) => {
-    const clone = { ...faqs[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...faqs[index], id: uid() };
     const updated = [...faqs];
     updated.splice(index + 1, 0, clone);
     updateField("aiCallFaqs", { ...aiCallData, faqs: updated });
@@ -120,7 +120,7 @@ export function AICallFAQsSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       faq: "",
       example: "",
       faqResponse: "",

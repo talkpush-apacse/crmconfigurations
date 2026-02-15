@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { getTabBySlug, getEnabledTabs } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
@@ -39,9 +40,21 @@ const sheetComponents: Record<string, React.ComponentType> = {
 
 export default function TabPage() {
   const params = useParams();
+  const router = useRouter();
   const tab = params.tab as string;
+  const slug = params.slug as string;
   const { data } = useChecklistContext();
   const tabConfig = getTabBySlug(tab);
+
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  const isEnabled = enabledTabs.some((t) => t.slug === tab);
+
+  // Auto-redirect to first enabled tab if current tab is disabled
+  useEffect(() => {
+    if (tabConfig && !isEnabled && enabledTabs.length > 0) {
+      router.replace(`/client/${slug}/${enabledTabs[0].slug}`);
+    }
+  }, [tabConfig, isEnabled, enabledTabs, slug, router]);
 
   if (!tabConfig) {
     return (
@@ -51,14 +64,9 @@ export default function TabPage() {
     );
   }
 
-  // Guard against disabled tabs
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
-  if (!enabledTabs.find((t) => t.slug === tab)) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">This section is not enabled for this client.</p>
-      </div>
-    );
+  // Guard against disabled tabs (render nothing while redirecting)
+  if (!isEnabled) {
+    return null;
   }
 
   const SheetComponent = sheetComponents[tab];

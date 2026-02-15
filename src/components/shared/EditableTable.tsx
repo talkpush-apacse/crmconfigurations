@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Trash2, Copy } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -46,6 +47,17 @@ export function EditableTable({
   addLabel = "Add Row",
   csvConfig,
 }: EditableTableProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+
+  const handleDeleteClick = (rowIdx: number) => {
+    if (confirmingDelete === rowIdx) {
+      onDelete(rowIdx);
+      setConfirmingDelete(null);
+    } else {
+      setConfirmingDelete(rowIdx);
+    }
+  };
+
   return (
     <div>
       {csvConfig && (
@@ -107,6 +119,7 @@ export function EditableTable({
                       options={col.options}
                       onChange={(val) => onUpdate(rowIdx, col.key, val)}
                       placeholder={col.label}
+                      validation={col.validation}
                     />
                   </TableCell>
                 ))}
@@ -123,15 +136,38 @@ export function EditableTable({
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDelete(rowIdx)}
-                      title="Delete row"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {confirmingDelete === rowIdx ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
+                          onClick={() => handleDeleteClick(rowIdx)}
+                          title="Confirm delete"
+                        >
+                          Delete?
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={() => setConfirmingDelete(null)}
+                          title="Cancel"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteClick(rowIdx)}
+                        title="Delete row"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

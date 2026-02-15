@@ -14,8 +14,8 @@ import type {
   AgencyPortalRow,
 } from "./types";
 
-function uid(): string {
-  return Math.random().toString(36).substring(2, 9);
+export function uid(): string {
+  return crypto.randomUUID();
 }
 
 export const defaultCompanyInfo: CompanyInfo = {

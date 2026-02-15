@@ -4,14 +4,14 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
-import { defaultDocuments } from "@/lib/template-data";
+import { uid, defaultDocuments } from "@/lib/template-data";
 import type { ColumnDef, DocumentRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
   { key: "documentName", label: "Document Name", type: "text", description: "Official name of the document to collect" },
   { key: "applicableCandidates", label: "Applicable Candidates", type: "text", description: "Which candidates need to provide this document" },
   { key: "required", label: "Required", type: "dropdown", options: [...DROPDOWN_OPTIONS.required], description: "Is this document mandatory?" },
-  { key: "blankTemplateLink", label: "Blank Template Link", type: "text", description: "Link to a blank template of this document" },
+  { key: "blankTemplateLink", label: "Blank Template Link", type: "text", description: "Link to a blank template of this document", validation: "url" },
   { key: "applicableCampaigns", label: "Applicable Campaigns", type: "text", description: "Which campaigns require this document" },
   { key: "accessPermissions", label: "Access Permissions", type: "dropdown", options: [...DROPDOWN_OPTIONS.accessPermissions], description: "Who can view the collected documents" },
   { key: "folder", label: "Folder", type: "text", description: "Which workflow folder triggers document collection" },
@@ -31,7 +31,7 @@ export function DocumentsSheet() {
   const handleAdd = () => {
     updateField("documents", [
       ...documents,
-      { id: Math.random().toString(36).substring(2, 9), documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "" },
+      { id: uid(), documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "" },
     ]);
   };
 
@@ -40,7 +40,7 @@ export function DocumentsSheet() {
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...documents[index], id: Math.random().toString(36).substring(2, 9) };
+    const clone = { ...documents[index], id: uid() };
     const updated = [...documents];
     updated.splice(index + 1, 0, clone);
     updateField("documents", updated);
@@ -49,7 +49,7 @@ export function DocumentsSheet() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
-      id: Math.random().toString(36).substring(2, 9),
+      id: uid(),
       documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "",
       ...row,
     }));

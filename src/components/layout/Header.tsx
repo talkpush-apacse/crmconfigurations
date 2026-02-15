@@ -8,10 +8,12 @@ interface HeaderProps {
   clientName: string;
   slug: string;
   saveStatus: "saved" | "saving" | "error";
+  saveError?: string | null;
+  onRetrySave?: () => void;
   onToggleSidebar: () => void;
 }
 
-export function Header({ clientName, slug, saveStatus, onToggleSidebar }: HeaderProps) {
+export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, onToggleSidebar }: HeaderProps) {
   const handleExport = () => {
     window.open(`/api/export/${slug}`, "_blank");
   };
@@ -28,7 +30,7 @@ export function Header({ clientName, slug, saveStatus, onToggleSidebar }: Header
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <SaveStatus status={saveStatus} />
+        <SaveStatus status={saveStatus} errorMessage={saveError} onRetry={onRetrySave} />
         <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="mr-2 h-4 w-4" />
           Export XLS

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 import { getDefaultChecklistData } from "@/lib/template-data";
 
 export async function GET(request: NextRequest) {
@@ -7,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get("slug");
 
+    // Public: fetch a single checklist by slug (for client-facing pages)
     if (slug) {
       const checklist = await prisma.checklist.findUnique({ where: { slug } });
       if (!checklist) {
@@ -14,6 +16,10 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json(checklist);
     }
+
+    // Protected: list all checklists (admin only)
+    const auth = requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
     const checklists = await prisma.checklist.findMany({
       orderBy: { updatedAt: "desc" },
@@ -28,6 +34,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const body = await request.json();
     const { clientName, enabledTabs } = body;
 
