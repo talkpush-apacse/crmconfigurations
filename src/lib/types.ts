@@ -1,5 +1,24 @@
 // ===== Company Information =====
 export interface CompanyInfo {
+  // Company Details
+  companyName: string;
+  companyAddress: string;
+  companyWebsiteUrl: string;
+  privacyPolicyUrl: string;
+  companyDescription: string;
+  // Facebook Details
+  fbPageName: string;
+  fbPageId: string;
+  fbPageUrl: string;
+  fbPagePocName: string;
+  fbPagePocEmail: string;
+  // Company Branding Assets
+  logoUrl: string;
+  logoSecondaryUrl: string;
+  companyColor: string;
+  bannerImageUrl: string;
+  bannerImageLargeUrl: string;
+  // Recruitment Process
   allowDuplicates: string;
   coolingPeriod: string;
   rehiresAllowed: string;

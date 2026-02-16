@@ -29,6 +29,25 @@ export const defaultCommunicationChannels: CommunicationChannels = {
 };
 
 export const defaultCompanyInfo: CompanyInfo = {
+  // Company Details
+  companyName: "",
+  companyAddress: "",
+  companyWebsiteUrl: "",
+  privacyPolicyUrl: "",
+  companyDescription: "",
+  // Facebook Details
+  fbPageName: "",
+  fbPageId: "",
+  fbPageUrl: "",
+  fbPagePocName: "",
+  fbPagePocEmail: "",
+  // Company Branding Assets
+  logoUrl: "",
+  logoSecondaryUrl: "",
+  companyColor: "",
+  bannerImageUrl: "",
+  bannerImageLargeUrl: "",
+  // Recruitment Process
   allowDuplicates: "",
   coolingPeriod: "",
   rehiresAllowed: "",
