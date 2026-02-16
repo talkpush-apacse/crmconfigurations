@@ -174,7 +174,7 @@ export function MessagingSheet() {
                         value={String(template[ch.templateKey] || "")}
                         onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
                         placeholder={`Enter ${ch.label} template...`}
-                        className="min-h-[60px] text-sm"
+                        className="min-h-[100px] text-sm"
                       />
                       <div className="flex items-center justify-center pt-2">
                         <Checkbox
@@ -192,7 +192,7 @@ export function MessagingSheet() {
                     value={template.comments}
                     onChange={(e) => handleUpdate(idx, "comments", e.target.value)}
                     placeholder="Additional notes..."
-                    className="mt-1"
+                    className="mt-1 min-h-[80px]"
                   />
                 </div>
 

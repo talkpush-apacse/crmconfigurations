@@ -16,7 +16,7 @@ const columns: ColumnDef[] = [
   { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
   { key: "reportsTo", label: "Reports To", type: "text", description: "Direct manager or supervisor" },
-  { key: "comments", label: "Comments", type: "text" },
+  { key: "comments", label: "Comments", type: "textarea" },
 ];
 
 const referenceData = [

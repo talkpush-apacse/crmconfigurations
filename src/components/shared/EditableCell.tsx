@@ -74,7 +74,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
   if (type === "dropdown" && options) {
     return (
       <Select value={String(value || "")} onValueChange={(v) => onChange(v)}>
-        <SelectTrigger className={cn("h-8 text-sm", className)}>
+        <SelectTrigger className={cn("h-9 text-sm", className)}>
           <SelectValue placeholder={placeholder || "Select..."} />
         </SelectTrigger>
         <SelectContent>
@@ -97,7 +97,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
           if (localValue !== String(value ?? "")) onChange(localValue);
         }}
         placeholder={placeholder}
-        className={cn("min-h-[60px] resize-y text-sm", className)}
+        className={cn("min-h-[80px] resize-y text-sm", className)}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
       />
     );
@@ -120,7 +120,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     return wrapWithValidation(
       <div
         className={cn(
-          "cursor-text rounded px-2 py-1.5 text-sm hover:bg-yellow-50",
+          "cursor-text rounded px-2 py-2 text-sm hover:bg-yellow-50",
           !localValue && "text-muted-foreground",
           validationError && "ring-1 ring-red-400 bg-red-50/50",
           className
@@ -152,7 +152,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
         }
       }}
       placeholder={placeholder}
-      className={cn("h-8 text-sm", validationError && "border-red-400 focus-visible:ring-red-400", className)}
+      className={cn("h-9 text-sm", validationError && "border-red-400 focus-visible:ring-red-400", className)}
     />
   );
 }

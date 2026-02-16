@@ -11,7 +11,7 @@ const columns: ColumnDef[] = [
   { key: "category", label: "Source Category", type: "text", description: "Category of the sourcing channel (e.g., Social Media, Job Boards, Referral)" },
   { key: "subcategory", label: "Source Subcategory", type: "text", description: "Specific platform or channel name (e.g., Facebook, LinkedIn, Indeed)" },
   { key: "link", label: "Link", type: "text", description: "URL to the source/channel page", validation: "url" },
-  { key: "comments", label: "Comments", type: "text" },
+  { key: "comments", label: "Comments", type: "textarea" },
 ];
 
 export function SourcesSheet() {

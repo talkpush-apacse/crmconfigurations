@@ -13,7 +13,7 @@ const columns: ColumnDef[] = [
   { key: "email", label: "Email", type: "text", description: "Contact email address", validation: "email" },
   { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "country", label: "Country", type: "text", description: "Country where the agency operates" },
-  { key: "comments", label: "Comments", type: "text" },
+  { key: "comments", label: "Comments", type: "textarea" },
 ];
 
 export function AgencyPortalSheet() {

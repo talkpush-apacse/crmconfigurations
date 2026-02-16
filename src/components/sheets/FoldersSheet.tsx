@@ -10,9 +10,9 @@ import type { ColumnDef, FolderRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
   { key: "folderName", label: "Folder Name", type: "text", description: "Name of the workflow stage/folder" },
-  { key: "description", label: "Description", type: "text", description: "When candidates are moved to this folder" },
+  { key: "description", label: "Description", type: "textarea", description: "When candidates are moved to this folder" },
   { key: "movementType", label: "Movement Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.movementTypes], description: "Whether candidates are moved here automatically or manually by a recruiter" },
-  { key: "comments", label: "Comments", type: "text" },
+  { key: "comments", label: "Comments", type: "textarea" },
 ];
 
 export function FoldersSheet() {

@@ -112,7 +112,10 @@ export function EditableTable({
                   {rowIdx + 1}
                 </TableCell>
                 {columns.map((col) => (
-                  <TableCell key={col.key} className="p-1">
+                  <TableCell
+                    key={col.key}
+                    className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
+                  >
                     <EditableCell
                       value={row[col.key] as string | boolean}
                       type={col.type}
@@ -123,7 +126,7 @@ export function EditableTable({
                     />
                   </TableCell>
                 ))}
-                <TableCell className="p-1">
+                <TableCell className="p-1.5">
                   <div className="flex items-center gap-0.5">
                     {onDuplicate && (
                       <Button

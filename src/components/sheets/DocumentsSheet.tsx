@@ -16,7 +16,7 @@ const columns: ColumnDef[] = [
   { key: "applicableCampaigns", label: "Applicable Campaigns", type: "text", description: "Which campaigns require this document" },
   { key: "accessPermissions", label: "Access Permissions", type: "dropdown", options: [...DROPDOWN_OPTIONS.accessPermissions], description: "Who can view the collected documents" },
   { key: "folder", label: "Folder", type: "text", description: "Which workflow folder triggers document collection" },
-  { key: "comments", label: "Comments", type: "text" },
+  { key: "comments", label: "Comments", type: "textarea" },
 ];
 
 export function DocumentsSheet() {
