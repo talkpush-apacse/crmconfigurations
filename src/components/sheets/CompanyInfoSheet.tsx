@@ -78,14 +78,14 @@ const brandingFields: KeyValueField[] = [
   {
     key: "logoUrl",
     label: "Company Logo (Primary)",
-    description: "Link to the primary company logo file. Minimum recommended size: 200×48 px. Provide a shareable link (e.g., Google Drive, Dropbox).",
-    type: "text",
+    description: "Upload or link to the primary company logo file. Minimum recommended size: 200×48 px.",
+    type: "file",
   },
   {
     key: "logoSecondaryUrl",
     label: "Company Logo (Secondary)",
-    description: "Link to a secondary or alternate version of the company logo (e.g., white version, icon-only).",
-    type: "text",
+    description: "Upload or link to a secondary or alternate version of the company logo (e.g., white version, icon-only).",
+    type: "file",
   },
   {
     key: "companyColor",
@@ -96,14 +96,14 @@ const brandingFields: KeyValueField[] = [
   {
     key: "bannerImageUrl",
     label: "Banner Image (1280×400)",
-    description: "Landing page banner image, recommended size 1280×400 px. Provide a shareable link to the image file.",
-    type: "text",
+    description: "Upload or link to a landing page banner image, recommended size 1280×400 px.",
+    type: "file",
   },
   {
     key: "bannerImageLargeUrl",
     label: "Banner Image (2100×1100)",
-    description: "Large landing page banner image, recommended size 2100×1100 px. Provide a shareable link to the image file.",
-    type: "text",
+    description: "Upload or link to a large landing page banner image, recommended size 2100×1100 px.",
+    type: "file",
   },
 ];
 

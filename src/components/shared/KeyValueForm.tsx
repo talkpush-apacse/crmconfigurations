@@ -1,13 +1,14 @@
 "use client";
 
 import { EditableCell } from "./EditableCell";
+import { FileUploadCell } from "./FileUploadCell";
 import { cn } from "@/lib/utils";
 
 export interface KeyValueField {
   key: string;
   label: string;
   description: string;
-  type: "text" | "textarea" | "dropdown" | "boolean";
+  type: "text" | "textarea" | "dropdown" | "boolean" | "file";
   options?: string[];
   link?: { url: string; label: string };
 }
@@ -49,13 +50,21 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
             )}
           </div>
           <div className="px-2 py-2 bg-yellow-50/50">
-            <EditableCell
-              value={data[field.key] ?? ""}
-              type={field.type}
-              options={field.options}
-              onChange={(val) => onChange(field.key, val)}
-              placeholder="Enter response"
-            />
+            {field.type === "file" ? (
+              <FileUploadCell
+                value={String(data[field.key] ?? "")}
+                onChange={(val) => onChange(field.key, val)}
+                placeholder="Upload file or paste URL"
+              />
+            ) : (
+              <EditableCell
+                value={data[field.key] ?? ""}
+                type={field.type}
+                options={field.options}
+                onChange={(val) => onChange(field.key, val)}
+                placeholder="Enter response"
+              />
+            )}
           </div>
         </div>
       ))}
