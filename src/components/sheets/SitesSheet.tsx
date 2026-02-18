@@ -11,8 +11,11 @@ import type { ColumnDef, SiteRow } from "@/lib/types";
 const columns: ColumnDef[] = [
   { key: "siteName", label: "Site Name", type: "text", description: "Public-facing name of the interview/office site" },
   { key: "internalName", label: "Internal Name", type: "text", description: "Internal identifier for this site" },
-  { key: "interviewHours", label: "Interview Hours", type: "text", description: "Available hours for scheduling interviews (e.g., 9AM-5PM)" },
   { key: "interviewType", label: "Interview Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.interviewTypes], description: "Whether interviews are conducted onsite, virtually, or both" },
+];
+
+const detailColumns: ColumnDef[] = [
+  { key: "interviewHours", label: "Interview Hours", type: "text", description: "Available hours for scheduling interviews (e.g., 9AM-5PM)" },
   { key: "fullAddress", label: "Full Address", type: "textarea", description: "Complete physical address of the site" },
   { key: "documentsToRring", label: "Documents to Bring", type: "textarea", description: "List of documents candidates should bring to the site" },
   { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the location on Google Maps", validation: "url" },
@@ -73,6 +76,7 @@ export function SitesSheet() {
 
       <EditableTable
         columns={columns}
+        detailColumns={detailColumns}
         data={sites}
         onUpdate={handleUpdate}
         onAdd={handleAdd}

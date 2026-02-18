@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Copy, X } from "lucide-react";
+import { useState, useEffect, Fragment } from "react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -23,6 +23,7 @@ import type { ColumnDef } from "@/lib/types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface EditableTableProps {
   columns: ColumnDef[];
+  detailColumns?: ColumnDef[];
   data: any[];
   onUpdate: (index: number, field: string, value: string | boolean) => void;
   onAdd: () => void;
@@ -39,6 +40,7 @@ interface EditableTableProps {
 
 export function EditableTable({
   columns,
+  detailColumns,
   data,
   onUpdate,
   onAdd,
@@ -48,11 +50,49 @@ export function EditableTable({
   csvConfig,
 }: EditableTableProps) {
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  // Collapse all rows when data length changes (add/delete/duplicate)
+  useEffect(() => {
+    setExpandedRows(new Set());
+  }, [data.length]);
+
+  const toggleRow = (rowIdx: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowIdx)) {
+        next.delete(rowIdx);
+      } else {
+        next.add(rowIdx);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (expandedRows.size === data.length) {
+      setExpandedRows(new Set());
+    } else {
+      setExpandedRows(new Set(data.map((_, i) => i)));
+    }
+  };
+
+  // Merge columns for CSV (includes all fields)
+  const allColumns = detailColumns ? [...columns, ...detailColumns] : columns;
 
   const handleDeleteClick = (rowIdx: number) => {
     if (confirmingDelete === rowIdx) {
       onDelete(rowIdx);
       setConfirmingDelete(null);
+      // Clean up expanded rows: remove deleted index and shift higher indices down
+      setExpandedRows((prev) => {
+        const next = new Set<number>();
+        for (const idx of prev) {
+          if (idx < rowIdx) next.add(idx);
+          else if (idx > rowIdx) next.add(idx - 1);
+        }
+        return next;
+      });
     } else {
       setConfirmingDelete(rowIdx);
     }
@@ -62,7 +102,7 @@ export function EditableTable({
     <div>
       {csvConfig && (
         <CsvToolbar
-          columns={columns}
+          columns={allColumns}
           sampleRow={csvConfig.sampleRow}
           onImport={csvConfig.onImport}
           sheetName={csvConfig.sheetName}
@@ -73,7 +113,23 @@ export function EditableTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-[#535FC1]">
-              <TableHead className="w-10 text-center text-white">#</TableHead>
+              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-white`}>
+                {detailColumns && data.length > 0 ? (
+                  <button
+                    onClick={toggleAll}
+                    className="hover:text-white/80 transition-colors"
+                    title={expandedRows.size === data.length ? "Collapse all" : "Expand all"}
+                  >
+                    {expandedRows.size === data.length ? (
+                      <ChevronDown className="h-3.5 w-3.5 mx-auto" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 mx-auto" />
+                    )}
+                  </button>
+                ) : (
+                  "#"
+                )}
+              </TableHead>
               {columns.map((col) => (
                 <TableHead key={col.key} className="text-white" style={{ width: col.width }}>
                   {col.description ? (
@@ -107,73 +163,134 @@ export function EditableTable({
               </TableRow>
             )}
             {data.map((row, rowIdx) => (
-              <TableRow key={(row.id as string) || rowIdx} className="bg-yellow-50/30">
-                <TableCell className="text-center text-xs text-muted-foreground">
-                  {rowIdx + 1}
-                </TableCell>
-                {columns.map((col) => (
-                  <TableCell
-                    key={col.key}
-                    className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
-                  >
-                    <EditableCell
-                      value={row[col.key] as string | boolean}
-                      type={col.type}
-                      options={col.options}
-                      onChange={(val) => onUpdate(rowIdx, col.key, val)}
-                      placeholder={col.label}
-                      validation={col.validation}
-                    />
-                  </TableCell>
-                ))}
-                <TableCell className="p-1.5">
-                  <div className="flex items-center gap-0.5">
-                    {onDuplicate && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-primary"
-                        onClick={() => onDuplicate(rowIdx)}
-                        title="Duplicate row"
+              <Fragment key={(row.id as string) || rowIdx}>
+                <TableRow className="bg-yellow-50/30">
+                  <TableCell className="text-center text-xs text-muted-foreground">
+                    {detailColumns ? (
+                      <button
+                        onClick={() => toggleRow(rowIdx)}
+                        className="inline-flex items-center gap-0.5 hover:text-primary transition-colors"
+                        title={expandedRows.has(rowIdx) ? "Collapse details" : "Expand details"}
                       >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
+                        {expandedRows.has(rowIdx) ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                        <span>{rowIdx + 1}</span>
+                      </button>
+                    ) : (
+                      rowIdx + 1
                     )}
-                    {confirmingDelete === rowIdx ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
-                          onClick={() => handleDeleteClick(rowIdx)}
-                          title="Confirm delete"
-                        >
-                          Delete?
-                        </Button>
+                  </TableCell>
+                  {columns.map((col) => (
+                    <TableCell
+                      key={col.key}
+                      className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
+                    >
+                      <EditableCell
+                        value={row[col.key] as string | boolean}
+                        type={col.type}
+                        options={col.options}
+                        onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                        placeholder={col.label}
+                        validation={col.validation}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell className="p-1.5">
+                    <div className="flex items-center gap-0.5">
+                      {onDuplicate && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground"
-                          onClick={() => setConfirmingDelete(null)}
-                          title="Cancel"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => onDuplicate(rowIdx)}
+                          title="Duplicate row"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteClick(rowIdx)}
-                        title="Delete row"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
+                      )}
+                      {confirmingDelete === rowIdx ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
+                            onClick={() => handleDeleteClick(rowIdx)}
+                            title="Confirm delete"
+                          >
+                            Delete?
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground"
+                            onClick={() => setConfirmingDelete(null)}
+                            title="Cancel"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteClick(rowIdx)}
+                          title="Delete row"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+                {detailColumns && expandedRows.has(rowIdx) && (
+                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                    <TableCell colSpan={columns.length + 2} className="p-0">
+                      <div className="px-6 py-3 ml-8 border-l-2 border-primary/20">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                          {detailColumns.map((col) => {
+                            const isWide = col.type === "textarea";
+                            return (
+                              <div
+                                key={col.key}
+                                className={isWide ? "col-span-2" : "col-span-1"}
+                              >
+                                <label className="block text-xs font-medium text-muted-foreground mb-0.5">
+                                  {col.description ? (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-help border-b border-dashed border-gray-300">
+                                          {col.label}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="bottom" className="max-w-xs">
+                                        <p className="text-xs">{col.description}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    col.label
+                                  )}
+                                </label>
+                                <EditableCell
+                                  value={row[col.key] as string | boolean}
+                                  type={col.type}
+                                  options={col.options}
+                                  onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                                  placeholder={col.label}
+                                  validation={col.validation}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
             ))}
           </TableBody>
         </Table>

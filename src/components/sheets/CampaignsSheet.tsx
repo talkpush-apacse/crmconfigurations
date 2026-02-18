@@ -11,7 +11,10 @@ const columns: ColumnDef[] = [
   { key: "nameInternal", label: "Campaign Name (Internal)", type: "text", description: "Internal name used within Talkpush to identify this campaign" },
   { key: "jobTitleExternal", label: "Job Title (External)", type: "text", description: "Job title shown to candidates on application pages" },
   { key: "site", label: "Site", type: "text", description: "Location/site associated with this campaign" },
-  { key: "jobDescription", label: "Job Description", type: "textarea", description: "Full job description for the position", width: "20%" },
+];
+
+const detailColumns: ColumnDef[] = [
+  { key: "jobDescription", label: "Job Description", type: "textarea", description: "Full job description for the position" },
   { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the interview/office location on Google Maps", validation: "url" },
   { key: "zoomLink", label: "Zoom/Meeting Link", type: "text", description: "Virtual interview meeting link", validation: "url" },
   { key: "comments", label: "Comments", type: "textarea" },
@@ -89,6 +92,7 @@ export function CampaignsSheet() {
 
       <EditableTable
         columns={columns}
+        detailColumns={detailColumns}
         data={campaigns}
         onUpdate={handleUpdate}
         onAdd={handleAdd}

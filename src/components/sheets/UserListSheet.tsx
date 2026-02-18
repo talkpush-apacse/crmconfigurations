@@ -11,10 +11,13 @@ import type { ColumnDef, UserRow } from "@/lib/types";
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user" },
   { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: "Role determining platform access level" },
-  { key: "jobTitle", label: "Job Title", type: "text", description: "User's job title within the organization" },
   { key: "email", label: "Email", type: "text", description: "User's email address for login", validation: "email" },
-  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
+];
+
+const detailColumns: ColumnDef[] = [
+  { key: "jobTitle", label: "Job Title", type: "text", description: "User's job title within the organization" },
+  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
   { key: "reportsTo", label: "Reports To", type: "text", description: "Direct manager or supervisor" },
   { key: "comments", label: "Comments", type: "textarea" },
 ];
@@ -92,6 +95,7 @@ export function UserListSheet() {
 
       <EditableTable
         columns={columns}
+        detailColumns={detailColumns}
         data={users}
         onUpdate={handleUpdate}
         onAdd={handleAdd}

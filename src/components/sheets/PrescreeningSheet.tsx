@@ -10,9 +10,12 @@ import type { ColumnDef, QuestionRow } from "@/lib/types";
 
 const columns: ColumnDef[] = [
   { key: "category", label: "Category", type: "dropdown", options: ["Pre-screening", "Follow-up"], description: "Whether this is a pre-screening or follow-up question" },
-  { key: "question", label: "Question", type: "textarea", description: "The actual question text shown to candidates", width: "18%" },
+  { key: "question", label: "Question", type: "textarea", description: "The actual question text shown to candidates", width: "25%" },
   { key: "questionType", label: "Question Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.questionTypes], description: "The format/type of response expected from the candidate" },
-  { key: "answerOptions", label: "Answer Options", type: "textarea", description: "For Multiple Choice/Dropdown types, list the available options separated by commas", width: "14%" },
+  { key: "answerOptions", label: "Answer Options", type: "textarea", description: "For Multiple Choice/Dropdown types, list the available options separated by commas", width: "20%" },
+];
+
+const detailColumns: ColumnDef[] = [
   { key: "applicableCampaigns", label: "Applicable Campaigns", type: "text", description: "Which campaigns this question applies to (leave blank for all)" },
   { key: "autoReject", label: "Auto-Reject", type: "dropdown", options: [...DROPDOWN_OPTIONS.yesNo], description: "Should incorrect answers automatically reject the candidate?" },
   { key: "rejectCondition", label: "Reject Condition", type: "text", description: "The condition that triggers auto-rejection (e.g., answer = 'No')" },
@@ -101,6 +104,7 @@ export function PrescreeningSheet() {
 
       <EditableTable
         columns={columns}
+        detailColumns={detailColumns}
         data={questions}
         onUpdate={handleUpdate}
         onAdd={handleAdd}
