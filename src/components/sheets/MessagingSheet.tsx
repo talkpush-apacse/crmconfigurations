@@ -89,8 +89,8 @@ export function MessagingSheet() {
         <p className="mt-1">The 8 pre-populated templates below cover this full flow. Edit them to match your branding and tone.</p>
       </ExampleHint>
 
-      <div className="mb-4 rounded-lg border bg-purple-50 p-3">
-        <p className="text-xs text-purple-700">
+      <div className="mb-4 rounded-lg border bg-brand-lavender-lightest p-3">
+        <p className="text-xs text-brand-lavender-darker">
           <strong>Available tokens:</strong>{" "}
           {"<Candidate First Name>, <Candidate Last Name>, <Campaign Name>, <Scheduler URL>, <Company Name>, <Site Name>"}
         </p>
@@ -105,7 +105,7 @@ export function MessagingSheet() {
           >
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3 text-left">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#535FC1] text-xs text-white">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-lavender-darker text-xs text-white">
                   {idx + 1}
                 </span>
                 <div>

@@ -65,7 +65,7 @@ export function VoicePreview({ selectedGender }: VoicePreviewProps) {
     return (
       <div className="mt-8">
         <div className="flex items-center gap-2 mb-3">
-          <Volume2 className="h-5 w-5 text-purple-600" />
+          <Volume2 className="h-5 w-5 text-brand-lavender-darker" />
           <h3 className="text-base font-semibold text-gray-900">Voice Preview</h3>
         </div>
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
@@ -80,9 +80,9 @@ export function VoicePreview({ selectedGender }: VoicePreviewProps) {
   return (
     <div className="mt-8">
       <div className="flex items-center gap-2 mb-3">
-        <Volume2 className="h-5 w-5 text-purple-600" />
+        <Volume2 className="h-5 w-5 text-brand-lavender-darker" />
         <h3 className="text-base font-semibold text-gray-900">Voice Preview</h3>
-        <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+        <span className="rounded-full bg-brand-lavender-lightest px-2.5 py-0.5 text-xs font-medium text-brand-lavender-darker">
           {selectedGender}
         </span>
       </div>
@@ -100,15 +100,15 @@ export function VoicePreview({ selectedGender }: VoicePreviewProps) {
               onClick={() => handlePlay(voice.file)}
               className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-all hover:shadow-sm ${
                 isPlaying
-                  ? "border-purple-400 bg-purple-50 shadow-sm"
-                  : "border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/50"
+                  ? "border-brand-lavender bg-brand-lavender-lightest shadow-sm"
+                  : "border-gray-200 bg-white hover:border-brand-lavender hover:bg-brand-lavender-lightest/50"
               }`}
             >
               <div
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                   isPlaying
-                    ? "bg-purple-600 text-white"
-                    : "bg-purple-100 text-purple-600"
+                    ? "bg-brand-lavender-darker text-white"
+                    : "bg-brand-lavender-lightest text-brand-lavender-darker"
                 }`}
               >
                 {isPlaying ? (

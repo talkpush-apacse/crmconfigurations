@@ -161,8 +161,8 @@ export function AICallFAQsSheet() {
           description="Define the frequently asked questions and responses for the AI call system."
         />
 
-        <div className="mb-4 rounded-lg border bg-purple-50 p-3">
-          <p className="text-xs text-purple-700">
+        <div className="mb-4 rounded-lg border bg-brand-lavender-lightest p-3">
+          <p className="text-xs text-brand-lavender-darker">
             <strong>Available placeholders:</strong>{" "}
             {"{{interview_location}}, {{company_name}}, {{site_name}}, {{interview_format}}, {{dress_code}}"}
           </p>
