@@ -22,7 +22,8 @@ interface KeyValueFormProps {
 export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
   return (
     <div className="rounded-lg border">
-      <div className="grid grid-cols-[200px_1fr_280px] bg-brand-lavender-darker text-white text-sm font-medium">
+      {/* Column headers — hidden on mobile, 3-col on lg+ */}
+      <div className="hidden lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px] bg-brand-lavender-darker text-white text-sm font-medium rounded-t-lg">
         <div className="px-4 py-2">Field</div>
         <div className="px-4 py-2">Description</div>
         <div className="px-4 py-2">Client Response</div>
@@ -31,12 +32,12 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
         <div
           key={field.key}
           className={cn(
-            "grid grid-cols-[200px_1fr_280px] border-b last:border-b-0",
+            "flex flex-col lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px] border-b last:border-b-0",
             idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
           )}
         >
-          <div className="px-4 py-3 text-sm font-medium">{field.label}</div>
-          <div className="border-x px-4 py-3 text-sm text-muted-foreground">
+          <div className="px-4 pt-3 pb-0 lg:py-3 text-sm font-medium">{field.label}</div>
+          <div className="lg:border-x px-4 py-2 lg:py-3 text-sm text-muted-foreground">
             {field.description}
             {field.link && (
               <a

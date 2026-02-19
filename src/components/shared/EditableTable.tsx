@@ -50,12 +50,16 @@ export function EditableTable({
   csvConfig,
 }: EditableTableProps) {
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(
+    () => new Set(data.map((_, i) => i))
+  );
 
-  // Collapse all rows when data length changes (add/delete/duplicate)
+  // Re-expand all rows when data length changes (add/delete/duplicate)
   useEffect(() => {
-    setExpandedRows(new Set());
-  }, [data.length]);
+    if (detailColumns) {
+      setExpandedRows(new Set(data.map((_, i) => i)));
+    }
+  }, [data.length, detailColumns]);
 
   const toggleRow = (rowIdx: number) => {
     setExpandedRows((prev) => {
@@ -84,15 +88,6 @@ export function EditableTable({
     if (confirmingDelete === rowIdx) {
       onDelete(rowIdx);
       setConfirmingDelete(null);
-      // Clean up expanded rows: remove deleted index and shift higher indices down
-      setExpandedRows((prev) => {
-        const next = new Set<number>();
-        for (const idx of prev) {
-          if (idx < rowIdx) next.add(idx);
-          else if (idx > rowIdx) next.add(idx - 1);
-        }
-        return next;
-      });
     } else {
       setConfirmingDelete(rowIdx);
     }
@@ -250,7 +245,7 @@ export function EditableTable({
                   <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
                     <TableCell colSpan={columns.length + 2} className="p-0">
                       <div className="px-6 py-3 ml-8 border-l-2 border-primary/20">
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                           {detailColumns.map((col) => {
                             const isWide = col.type === "textarea";
                             return (

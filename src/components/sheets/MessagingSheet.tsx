@@ -159,7 +159,7 @@ export function MessagingSheet() {
                 </div>
 
                 <div className="rounded-lg border">
-                  <div className="grid grid-cols-[120px_1fr_60px] bg-gray-100 px-3 py-2 text-xs font-medium">
+                  <div className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] bg-gray-100 px-3 py-2 text-xs font-medium">
                     <span>Channel</span>
                     <span>Template Content</span>
                     <span className="text-center">Active</span>
@@ -167,7 +167,7 @@ export function MessagingSheet() {
                   {channels.map((ch) => (
                     <div
                       key={ch.key}
-                      className="grid grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
+                      className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
                     >
                       <span className="pt-2 text-sm font-medium">{ch.label}</span>
                       <Textarea

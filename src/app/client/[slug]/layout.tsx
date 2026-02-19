@@ -8,7 +8,6 @@ import { Header } from "@/components/layout/Header";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ChecklistContext } from "@/lib/checklist-context";
-import { cn } from "@/lib/utils";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -51,7 +50,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         />
         <div className="flex flex-1 overflow-hidden">
           {/* Desktop sidebar */}
-          <aside className="hidden w-64 shrink-0 border-r bg-gray-50/50 lg:block">
+          <aside className="hidden w-64 xl:w-72 shrink-0 border-r bg-gray-50/50 lg:block">
             <ScrollArea className="h-full">
               <TabNavigation slug={slug} data={data} />
             </ScrollArea>
@@ -69,7 +68,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
           {/* Main content */}
           <main className="flex-1 overflow-auto">
-            <div className={cn("mx-auto max-w-5xl p-6")}>{children}</div>
+            <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
           </main>
         </div>
       </div>
