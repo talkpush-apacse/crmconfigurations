@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { getTabBySlug, getEnabledTabs } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
-import { ReadMeSheet } from "@/components/sheets/ReadMeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
 import { UserListSheet } from "@/components/sheets/UserListSheet";
 import { CampaignsSheet } from "@/components/sheets/CampaignsSheet";
@@ -22,7 +21,6 @@ import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
-  "read-me": ReadMeSheet,
   "company-info": CompanyInfoSheet,
   users: UserListSheet,
   campaigns: CampaignsSheet,

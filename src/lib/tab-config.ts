@@ -7,7 +7,6 @@ export interface TabConfig {
 
 export const TAB_CONFIG: TabConfig[] = [
   { slug: "welcome", label: "Welcome", dataKey: null, icon: "Home" },
-  { slug: "read-me", label: "Read Me - How To Use", dataKey: null, icon: "BookOpen" },
   { slug: "company-info", label: "Company Information", dataKey: "companyInfo", icon: "Building2" },
   { slug: "users", label: "User List", dataKey: "users", icon: "Users" },
   { slug: "campaigns", label: "Campaigns List", dataKey: "campaigns", icon: "Megaphone" },
@@ -28,7 +27,7 @@ export function getTabBySlug(slug: string): TabConfig | undefined {
 }
 
 // Tabs that are always included regardless of selection
-export const ALWAYS_ENABLED_SLUGS = ["welcome", "read-me"];
+export const ALWAYS_ENABLED_SLUGS = ["welcome"];
 
 // Tabs that can be toggled by admin
 export const SELECTABLE_TABS = TAB_CONFIG.filter(
