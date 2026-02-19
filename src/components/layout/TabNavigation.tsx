@@ -82,7 +82,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
               <span
                 className={cn(
                   "ml-auto h-2 w-2 shrink-0 rounded-full",
-                  hasData ? "bg-green-500" : "bg-gray-300"
+                  hasData ? "bg-status-completed" : "bg-muted-foreground/30"
                 )}
               />
             )}

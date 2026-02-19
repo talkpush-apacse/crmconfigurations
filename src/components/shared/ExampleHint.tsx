@@ -17,8 +17,8 @@ export function ExampleHint({ children }: ExampleHintProps) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50">
-        <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-purple-700 hover:bg-purple-100 rounded-lg transition-colors">
+      <div className="mb-4 rounded-lg border border-brand-lavender bg-brand-lavender-lightest">
+        <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-brand-lavender-darker hover:bg-brand-lavender-lighter rounded-lg transition-colors">
           <Lightbulb className="h-3.5 w-3.5" />
           <span>View Example</span>
           {open ? (
@@ -28,7 +28,7 @@ export function ExampleHint({ children }: ExampleHintProps) {
           )}
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="border-t border-purple-200 px-3 py-2 text-xs text-purple-700">
+          <div className="border-t border-brand-lavender px-3 py-2 text-xs text-brand-lavender-darker">
             {children}
           </div>
         </CollapsibleContent>

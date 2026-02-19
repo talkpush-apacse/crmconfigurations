@@ -45,10 +45,61 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Brand Accent Palette */
+  --color-brand-sage:              var(--brand-sage);
+  --color-brand-sage-lightest:     var(--brand-sage-lightest);
+  --color-brand-sage-lighter:      var(--brand-sage-lighter);
+  --color-brand-sage-darker:       var(--brand-sage-darker);
+  --color-brand-lavender:          var(--brand-lavender);
+  --color-brand-lavender-lightest: var(--brand-lavender-lightest);
+  --color-brand-lavender-lighter:  var(--brand-lavender-lighter);
+  --color-brand-lavender-darker:   var(--brand-lavender-darker);
+  --color-brand-pink:              var(--brand-pink);
+  --color-brand-pink-lightest:     var(--brand-pink-lightest);
+  --color-brand-pink-lighter:      var(--brand-pink-lighter);
+  --color-brand-pink-darker:       var(--brand-pink-darker);
+  --color-brand-amber:             var(--brand-amber);
+  --color-brand-amber-lightest:    var(--brand-amber-lightest);
+  --color-brand-amber-lighter:     var(--brand-amber-lighter);
+  --color-brand-amber-darker:      var(--brand-amber-darker);
+
+  /* Status Colors */
+  --color-status-completed:    var(--status-completed);
+  --color-status-in-progress:  var(--status-in-progress);
+  --color-status-pending:      var(--status-pending);
+  --color-status-declined:     var(--status-declined);
 }
 
 :root {
   --radius: 0.625rem;
+
+  /* Brand Accent Palette — Talkpush Design System */
+  --brand-sage:              oklch(0.76 0.06 148);
+  --brand-sage-lightest:     oklch(0.88 0.03 148);
+  --brand-sage-lighter:      oklch(0.82 0.05 148);
+  --brand-sage-darker:       oklch(0.60 0.09 148);
+
+  --brand-lavender:          oklch(0.82 0.08 258);
+  --brand-lavender-lightest: oklch(0.93 0.04 258);
+  --brand-lavender-lighter:  oklch(0.89 0.06 258);
+  --brand-lavender-darker:   oklch(0.67 0.12 258);
+
+  --brand-pink:              oklch(0.87 0.09 322);
+  --brand-pink-lightest:     oklch(0.94 0.05 322);
+  --brand-pink-lighter:      oklch(0.90 0.07 322);
+  --brand-pink-darker:       oklch(0.71 0.13 322);
+
+  --brand-amber:             oklch(0.79 0.13 70);
+  --brand-amber-lightest:    oklch(0.89 0.07 70);
+  --brand-amber-lighter:     oklch(0.84 0.10 70);
+  --brand-amber-darker:      oklch(0.64 0.17 70);
+
+  /* Status Colors */
+  --status-completed:    var(--brand-sage);
+  --status-in-progress:  var(--brand-lavender);
+  --status-pending:      var(--brand-amber);
+  --status-declined:     var(--destructive);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -125,4 +176,26 @@
     @apply bg-background text-foreground;
     @apply bg-background text-foreground;
   }
+}
+
+/* Brand Gradient Strip — Talkpush Design System */
+.brand-gradient-strip {
+  background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5);
+}
+
+/* Thin Scrollbar Utility */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
 }

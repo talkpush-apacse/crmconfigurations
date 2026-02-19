@@ -22,7 +22,7 @@ interface KeyValueFormProps {
 export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
   return (
     <div className="rounded-lg border">
-      <div className="grid grid-cols-[200px_1fr_280px] bg-[#535FC1] text-white text-sm font-medium">
+      <div className="grid grid-cols-[200px_1fr_280px] bg-brand-lavender-darker text-white text-sm font-medium">
         <div className="px-4 py-2">Field</div>
         <div className="px-4 py-2">Description</div>
         <div className="px-4 py-2">Client Response</div>

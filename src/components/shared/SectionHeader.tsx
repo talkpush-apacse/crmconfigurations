@@ -8,7 +8,7 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, description }: SectionHeaderProps) {
   return (
     <div className="mb-6">
-      <div className="rounded-t-lg bg-[#230F59] px-4 py-3">
+      <div className="rounded-t-lg bg-primary px-4 py-3">
         <h2 className="text-lg font-semibold text-white">{title}</h2>
       </div>
       {description && (

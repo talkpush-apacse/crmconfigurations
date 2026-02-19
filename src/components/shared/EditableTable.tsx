@@ -112,7 +112,7 @@ export function EditableTable({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-[#535FC1]">
+            <TableRow className="bg-brand-lavender-darker">
               <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-white`}>
                 {detailColumns && data.length > 0 ? (
                   <button
