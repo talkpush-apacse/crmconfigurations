@@ -14,6 +14,7 @@ const companyDetailsFields: KeyValueField[] = [
     label: "Company Name",
     description: "Official company name used to personalize the Talkpush account and candidate experience.",
     type: "text",
+    placeholder: "e.g. TaskUs Philippines Inc.",
   },
   {
     key: "companyAddress",
@@ -26,12 +27,14 @@ const companyDetailsFields: KeyValueField[] = [
     label: "Company Website URL",
     description: "Official company website. Must be a valid URL (e.g., https://www.company.com).",
     type: "text",
+    placeholder: "https://www.yourcompany.com",
   },
   {
     key: "privacyPolicyUrl",
     label: "Privacy Policy URL",
     description: "Link to the company's privacy policy page. Mandatory for GDPR/CCPA compliance — displayed to candidates during application.",
     type: "text",
+    placeholder: "https://www.yourcompany.com/privacy-policy",
   },
   {
     key: "companyDescription",
@@ -53,12 +56,14 @@ const facebookFields: KeyValueField[] = [
     label: "Facebook Page ID",
     description: "Unique numeric ID of the Facebook page. Found in Facebook Page Settings > Page Info.",
     type: "text",
+    placeholder: "e.g. 123456789012345",
   },
   {
     key: "fbPageUrl",
     label: "Facebook Page URL",
     description: "Direct link to the Facebook recruitment page (e.g., https://www.facebook.com/companypage).",
     type: "text",
+    placeholder: "https://www.facebook.com/yourpage",
   },
   {
     key: "fbPagePocName",
@@ -71,6 +76,7 @@ const facebookFields: KeyValueField[] = [
     label: "Facebook Page POC Email",
     description: "Email address of the point of contact managing the Facebook page.",
     type: "text",
+    placeholder: "e.g. marketing@yourcompany.com",
   },
 ];
 
@@ -92,6 +98,7 @@ const brandingFields: KeyValueField[] = [
     label: "Company Color (Hex Code)",
     description: "Primary brand color in hex format (e.g., #535FC1). Used for buttons, headers, and accent elements on candidate-facing pages.",
     type: "text",
+    placeholder: "e.g. #535FC1",
   },
   {
     key: "bannerImageUrl",
@@ -120,6 +127,7 @@ const recruitmentFields: KeyValueField[] = [
     label: "Cooling Period",
     description: "The number of days before a previously rejected candidate can re-apply. Enter a number (e.g., 90 for 90 days). Leave blank if duplicate applications are allowed.",
     type: "text",
+    placeholder: "e.g. 90 (number of days)",
   },
   {
     key: "rehiresAllowed",

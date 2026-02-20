@@ -143,6 +143,13 @@ export function FileUploadCell({
         )}
       </Button>
 
+      {/* OR divider */}
+      <div className="relative flex items-center my-1">
+        <div className="flex-1 border-t border-gray-200" />
+        <span className="mx-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">or</span>
+        <div className="flex-1 border-t border-gray-200" />
+      </div>
+
       {/* Manual URL input */}
       <Input
         value={editingUrl ? value : ""}

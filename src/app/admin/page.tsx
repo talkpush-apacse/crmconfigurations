@@ -13,8 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
-import { Plus, ExternalLink, Trash2, Copy, Download, Settings, Search, CheckCircle } from "lucide-react";
+import { Plus, ExternalLink, Trash2, Copy, Download, Settings, Search, CheckCircle, X } from "lucide-react";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
@@ -47,6 +52,11 @@ export default function AdminDashboard() {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = "Admin Dashboard | Talkpush CRM";
+  }, []);
 
   const fetchChecklists = async () => {
     try {
@@ -79,9 +89,11 @@ export default function AdminDashboard() {
     fetchChecklists();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete checklist "${name}"? This cannot be undone.`)) return;
+  const handleDelete = (id: string) => setDeletingId(id);
+
+  const handleConfirmDelete = async (id: string) => {
     await fetch(`/api/checklists/${id}`, { method: "DELETE" });
+    setDeletingId(null);
     fetchChecklists();
   };
 
@@ -274,47 +286,102 @@ export default function AdminDashboard() {
                     .filter((c) => !searchQuery || c.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || c.slug.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.clientName}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/client/${c.slug}`}
+                          target="_blank"
+                          className="hover:underline hover:text-primary transition-colors"
+                        >
+                          {c.clientName}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{c.slug}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(c.createdAt)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(c.updatedAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Link href={`/client/${c.slug}`} target="_blank">
-                            <Button variant="ghost" size="icon" title="Open checklist">
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="icon" title="Export XLS">
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Edit settings"
-                            onClick={() => handleEditSettings(c)}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Copy checklist"
-                            onClick={() => handleCopy(c.id)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            title="Delete checklist"
-                            onClick={() => handleDelete(c.id, c.clientName)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link href={`/client/${c.slug}`} target="_blank">
+                                <Button variant="ghost" size="icon">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>Open checklist</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="icon">
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent>Export to XLS</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditSettings(c)}
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit settings</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleCopy(c.id)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Duplicate checklist</TooltipContent>
+                          </Tooltip>
+
+                          {deletingId === c.id ? (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
+                                onClick={() => handleConfirmDelete(c.id)}
+                              >
+                                Delete?
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                onClick={() => setDeletingId(null)}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() => handleDelete(c.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete checklist</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

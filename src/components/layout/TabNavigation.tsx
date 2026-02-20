@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { cn } from "@/lib/utils";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Home,
   BookOpen,
   Building2,
@@ -79,12 +84,19 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
             {Icon && <Icon className="h-4 w-4 shrink-0" />}
             <span className="truncate">{tab.label}</span>
             {tab.dataKey && (
-              <span
-                className={cn(
-                  "ml-auto h-2 w-2 shrink-0 rounded-full",
-                  hasData ? "bg-status-completed" : "bg-muted-foreground/30"
-                )}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={cn(
+                      "ml-auto h-2.5 w-2.5 shrink-0 rounded-full",
+                      hasData ? "bg-amber-400" : "bg-muted-foreground/30"
+                    )}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {hasData ? "Data entered" : "Not started"}
+                </TooltipContent>
+              </Tooltip>
             )}
           </Link>
         );

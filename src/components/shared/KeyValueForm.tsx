@@ -11,6 +11,7 @@ export interface KeyValueField {
   type: "text" | "textarea" | "dropdown" | "boolean" | "file";
   options?: string[];
   link?: { url: string; label: string };
+  placeholder?: string;
 }
 
 interface KeyValueFormProps {
@@ -63,7 +64,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
                 type={field.type}
                 options={field.options}
                 onChange={(val) => onChange(field.key, val)}
-                placeholder="Enter response"
+                placeholder={field.placeholder ?? "Enter response"}
               />
             )}
           </div>

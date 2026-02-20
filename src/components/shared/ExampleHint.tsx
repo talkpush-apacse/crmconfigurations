@@ -13,7 +13,7 @@ interface ExampleHintProps {
 }
 
 export function ExampleHint({ children }: ExampleHintProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

@@ -54,6 +54,13 @@ export default function TabPage() {
     }
   }, [tabConfig, isEnabled, enabledTabs, slug, router]);
 
+  // Dynamic browser tab title
+  useEffect(() => {
+    if (tabConfig && data?.clientName) {
+      document.title = `${tabConfig.label} — ${data.clientName} | Talkpush CRM`;
+    }
+  }, [tab, tabConfig, data?.clientName]);
+
   if (!tabConfig) {
     return (
       <div className="flex items-center justify-center py-20">
