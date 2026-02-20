@@ -160,7 +160,7 @@ export function EditableTable({
             )}
             {data.map((row, rowIdx) => (
               <Fragment key={(row.id as string) || rowIdx}>
-                <TableRow className={cn("bg-yellow-50/30", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
+                <TableRow className={cn("bg-yellow-50/30 transition-colors hover:bg-yellow-50/60", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
                   <TableCell className="text-center text-xs text-muted-foreground">
                     {detailColumns ? (
                       <button
@@ -245,7 +245,7 @@ export function EditableTable({
                 {detailColumns && expandedRows.has(rowIdx) && (
                   <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
                     <TableCell colSpan={columns.length + 2} className="p-0">
-                      <div className="px-6 py-3 ml-8 border-l-2 border-primary/20">
+                      <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                           {detailColumns.map((col) => {
                             const isWide = col.type === "textarea";
@@ -254,7 +254,7 @@ export function EditableTable({
                                 key={col.key}
                                 className={isWide ? "col-span-2" : "col-span-1"}
                               >
-                                <label className="block text-xs font-medium text-muted-foreground mb-0.5">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
                                   {col.description ? (
                                     <Tooltip>
                                       <TooltipTrigger asChild>

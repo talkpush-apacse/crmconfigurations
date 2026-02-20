@@ -51,7 +51,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
               </a>
             )}
           </div>
-          <div className="px-2 py-2 bg-yellow-50/50">
+          <div className="p-1.5 bg-yellow-50/50">
             {field.type === "file" ? (
               <FileUploadCell
                 value={String(data[field.key] ?? "")}
