@@ -27,6 +27,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
     const { id } = await params;
     const body = await request.json();
 
@@ -88,7 +91,8 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(checklist);
+    // Return only the fields the client needs (version for optimistic locking)
+    return NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
   } catch (err) {
     console.error("PUT /api/checklists/[id] error:", err);
     return NextResponse.json({ error: "Failed to update checklist. Check database connection." }, { status: 500 });

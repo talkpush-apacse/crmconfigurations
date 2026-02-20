@@ -2,10 +2,18 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
+const WEAK_SECRETS = ["change-me-in-production", "secret", "admin", "password", "12345678", "changeme"];
+
 function getJwtSecret(): string {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) {
     throw new Error("ADMIN_SECRET environment variable is required. Set it in your .env or Vercel environment.");
+  }
+  if (secret.length < 32) {
+    throw new Error("ADMIN_SECRET must be at least 32 characters long. Use a random string.");
+  }
+  if (WEAK_SECRETS.includes(secret.toLowerCase())) {
+    throw new Error("ADMIN_SECRET is too weak. Use a random 32+ character string.");
   }
   return secret;
 }

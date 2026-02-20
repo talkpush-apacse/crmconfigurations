@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import { Upload, X, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,12 +68,12 @@ export function FileUploadCell({
         {/* Thumbnail preview for images */}
         {isImageUrl && (
           <div className="relative w-full h-16 rounded border bg-gray-50 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={value}
               alt="Preview"
-              className="h-full w-full object-contain"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              fill
+              className="object-contain"
+              unoptimized={value.startsWith("blob:") || value.startsWith("data:")}
             />
           </div>
         )}
