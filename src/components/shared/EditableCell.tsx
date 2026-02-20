@@ -120,9 +120,9 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     return wrapWithValidation(
       <div
         className={cn(
-          "cursor-text rounded px-2 py-2 text-sm hover:bg-yellow-50",
-          !localValue && "text-muted-foreground",
-          validationError && "ring-1 ring-red-400 bg-red-50/50",
+          "cursor-text rounded-md border border-gray-300 bg-white px-3 py-2 text-sm transition-colors hover:border-gray-400",
+          !localValue && "text-gray-400",
+          validationError && "border-red-400 bg-red-50/50",
           className
         )}
         onClick={() => setEditing(true)}

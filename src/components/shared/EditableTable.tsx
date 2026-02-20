@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { EditableCell } from "./EditableCell";
 import { CsvToolbar } from "./CsvToolbar";
+import { cn } from "@/lib/utils";
 import type { ColumnDef } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,7 +160,7 @@ export function EditableTable({
             )}
             {data.map((row, rowIdx) => (
               <Fragment key={(row.id as string) || rowIdx}>
-                <TableRow className="bg-yellow-50/30">
+                <TableRow className={cn("bg-yellow-50/30", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
                   <TableCell className="text-center text-xs text-muted-foreground">
                     {detailColumns ? (
                       <button
