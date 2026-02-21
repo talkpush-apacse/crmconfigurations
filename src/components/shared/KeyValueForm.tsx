@@ -12,6 +12,7 @@ export interface KeyValueField {
   options?: string[];
   link?: { url: string; label: string };
   placeholder?: string;
+  example?: string;
 }
 
 interface KeyValueFormProps {
@@ -21,19 +22,33 @@ interface KeyValueFormProps {
 }
 
 export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
+  // Only add the Sample column when at least one field has an example value
+  const hasSamples = fields.some((f) => f.example);
+
   return (
     <div className="rounded-lg border">
-      {/* Column headers — hidden on mobile, 3-col on lg+ */}
-      <div className="hidden lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px] bg-brand-lavender-darker text-white text-sm font-medium rounded-t-lg">
+      {/* Column headers — hidden on mobile */}
+      <div
+        className={cn(
+          "hidden lg:grid bg-brand-lavender-darker text-white text-sm font-medium rounded-t-lg",
+          hasSamples
+            ? "lg:grid-cols-[200px_1fr_280px_200px] xl:grid-cols-[220px_1fr_320px_220px]"
+            : "lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px]"
+        )}
+      >
         <div className="px-4 py-2">Field</div>
         <div className="px-4 py-2">Description</div>
         <div className="px-4 py-2">Client Response</div>
+        {hasSamples && <div className="px-4 py-2">Sample</div>}
       </div>
       {fields.map((field, idx) => (
         <div
           key={field.key}
           className={cn(
-            "flex flex-col lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px] border-b last:border-b-0",
+            "flex flex-col border-b last:border-b-0",
+            hasSamples
+              ? "lg:grid lg:grid-cols-[200px_1fr_280px_200px] xl:grid-cols-[220px_1fr_320px_220px]"
+              : "lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px]",
             idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
           )}
         >
@@ -52,6 +67,12 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
             )}
           </div>
           <div className="p-1.5 bg-yellow-50/50">
+            {/* Mobile-only sample hint — shown above the response input */}
+            {field.example && (
+              <p className="lg:hidden px-1 pt-0.5 pb-1 text-xs text-gray-400 italic">
+                e.g. {field.example}
+              </p>
+            )}
             {field.type === "file" ? (
               <FileUploadCell
                 value={String(data[field.key] ?? "")}
@@ -68,6 +89,16 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
               />
             )}
           </div>
+          {/* Sample column — desktop only, read-only */}
+          {hasSamples && (
+            <div className="hidden lg:flex items-start px-4 py-3 bg-gray-50/60 border-l">
+              {field.example ? (
+                <span className="text-sm text-gray-400 italic">{field.example}</span>
+              ) : (
+                <span className="text-sm text-gray-300">—</span>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

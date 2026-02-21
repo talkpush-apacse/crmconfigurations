@@ -83,6 +83,7 @@ export function SitesSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Site"
+        sampleRow={{ siteName: "Makati Main", internalName: "MKT-HQ", interviewType: "Onsite" }}
         csvConfig={{
           sampleRow: { siteName: "Main Office", internalName: "HQ", interviewHours: "9AM-5PM", interviewType: "Onsite", fullAddress: "123 Main St, City" },
           onImport: handleCsvImport,

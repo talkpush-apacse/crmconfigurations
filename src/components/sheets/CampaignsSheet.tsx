@@ -99,6 +99,7 @@ export function CampaignsSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Campaign"
+        sampleRow={{ nameInternal: "CSR - Makati", jobTitleExternal: "Customer Service Representative", site: "Makati Office" }}
         csvConfig={{
           sampleRow: { nameInternal: "CSR Campaign", jobTitleExternal: "Customer Service Representative", site: "Main Office", jobDescription: "Handle customer inquiries" },
           onImport: handleCsvImport,

@@ -75,6 +75,7 @@ export function SourcesSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Source"
+        sampleRow={{ category: "Job Boards", subcategory: "Indeed", link: "https://indeed.com/company-page", comments: "Primary job board" }}
         csvConfig={{
           sampleRow: { category: "Job Boards", subcategory: "Indeed", link: "https://indeed.com" },
           onImport: handleCsvImport,

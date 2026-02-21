@@ -102,6 +102,7 @@ export function UserListSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add User"
+        sampleRow={{ name: "Maria Santos", accessType: "Manager", email: "maria@company.com", site: "BGC Office", jobTitle: "HR Manager", phone: "+63 917 123 4567", reportsTo: "John dela Cruz" }}
         csvConfig={{
           sampleRow: { name: "John Doe", accessType: "Manager", jobTitle: "Recruiter", email: "john@company.com", phone: "+1234567890", site: "Main Office", reportsTo: "Jane Smith" },
           onImport: handleCsvImport,

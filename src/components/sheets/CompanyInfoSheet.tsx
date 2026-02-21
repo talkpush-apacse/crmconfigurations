@@ -15,12 +15,14 @@ const companyDetailsFields: KeyValueField[] = [
     description: "Official company name used to personalize the Talkpush account and candidate experience.",
     type: "text",
     placeholder: "e.g. TaskUs Philippines Inc.",
+    example: "TaskUs Philippines Inc.",
   },
   {
     key: "companyAddress",
     label: "Company Address",
     description: "Official business address for the country/location being onboarded. Used for geo-tagging and location-based features.",
     type: "textarea",
+    example: "5F Ayala Tower, Ayala Ave, Makati City 1226",
   },
   {
     key: "companyWebsiteUrl",
@@ -28,6 +30,7 @@ const companyDetailsFields: KeyValueField[] = [
     description: "Official company website. Must be a valid URL (e.g., https://www.company.com).",
     type: "text",
     placeholder: "https://www.yourcompany.com",
+    example: "https://www.taskus.com",
   },
   {
     key: "privacyPolicyUrl",
@@ -35,12 +38,14 @@ const companyDetailsFields: KeyValueField[] = [
     description: "Link to the company's privacy policy page. Mandatory for GDPR/CCPA compliance — displayed to candidates during application.",
     type: "text",
     placeholder: "https://www.yourcompany.com/privacy-policy",
+    example: "https://www.taskus.com/privacy-policy",
   },
   {
     key: "companyDescription",
     label: "Company Description",
     description: "Brief description of the company's services, global presence, and culture. Used in job postings and candidate-facing pages.",
     type: "textarea",
+    example: "TaskUs is a global outsourcing company providing customer experience, AI operations, and content security services.",
   },
 ];
 
@@ -50,6 +55,7 @@ const facebookFields: KeyValueField[] = [
     label: "Facebook Page Name",
     description: "Public name of the Facebook page used for recruitment (e.g., the name candidates see when interacting with the page).",
     type: "text",
+    example: "TaskUs Careers PH",
   },
   {
     key: "fbPageId",
@@ -57,6 +63,7 @@ const facebookFields: KeyValueField[] = [
     description: "Unique numeric ID of the Facebook page. Found in Facebook Page Settings > Page Info.",
     type: "text",
     placeholder: "e.g. 123456789012345",
+    example: "123456789012345",
   },
   {
     key: "fbPageUrl",
@@ -64,12 +71,14 @@ const facebookFields: KeyValueField[] = [
     description: "Direct link to the Facebook recruitment page (e.g., https://www.facebook.com/companypage).",
     type: "text",
     placeholder: "https://www.facebook.com/yourpage",
+    example: "https://www.facebook.com/TaskUsCareers",
   },
   {
     key: "fbPagePocName",
     label: "Facebook Page POC Name",
     description: "Name of the admin or point of contact who has access to manage the Facebook page.",
     type: "text",
+    example: "Maria Santos",
   },
   {
     key: "fbPagePocEmail",
@@ -77,6 +86,7 @@ const facebookFields: KeyValueField[] = [
     description: "Email address of the point of contact managing the Facebook page.",
     type: "text",
     placeholder: "e.g. marketing@yourcompany.com",
+    example: "marketing@taskus.com",
   },
 ];
 
@@ -99,6 +109,7 @@ const brandingFields: KeyValueField[] = [
     description: "Primary brand color in hex format (e.g., #535FC1). Used for buttons, headers, and accent elements on candidate-facing pages.",
     type: "text",
     placeholder: "e.g. #535FC1",
+    example: "#535FC1",
   },
   {
     key: "bannerImageUrl",
@@ -121,6 +132,7 @@ const recruitmentFields: KeyValueField[] = [
     description: "Should the system allow duplicate candidate profiles? If set to 'No', candidates with the same email or phone number will be flagged.",
     type: "dropdown",
     options: [...DROPDOWN_OPTIONS.yesNo],
+    example: "No",
   },
   {
     key: "coolingPeriod",
@@ -128,6 +140,7 @@ const recruitmentFields: KeyValueField[] = [
     description: "The number of days before a previously rejected candidate can re-apply. Enter a number (e.g., 90 for 90 days). Leave blank if duplicate applications are allowed.",
     type: "text",
     placeholder: "e.g. 90 (number of days)",
+    example: "90",
   },
   {
     key: "rehiresAllowed",
@@ -135,6 +148,7 @@ const recruitmentFields: KeyValueField[] = [
     description: "Can candidates who previously worked at the company apply again through the platform?",
     type: "dropdown",
     options: [...DROPDOWN_OPTIONS.yesNo],
+    example: "Yes",
   },
 ];
 

@@ -15,11 +15,11 @@ const requirementsList = [
 ];
 
 const fields: KeyValueField[] = [
-  { key: "instagramAccount", label: "Instagram Account", description: "Your Instagram Business Account username or handle.", type: "text" },
-  { key: "twoFactorAuth", label: "Two-Factor Authentication", description: "Has two-factor authentication been coordinated with Talkpush?", type: "text" },
-  { key: "businessAccountConnection", label: "Business Account Connection", description: "Is your Instagram Business Account connected to your Facebook page?", type: "text" },
-  { key: "chatbotName", label: "Chatbot Name", description: "The name that will appear as the chatbot identity in Instagram conversations.", type: "text" },
-  { key: "chatbotPersona", label: "Chatbot Persona", description: "The personality/tone the chatbot should use in Instagram messages.", type: "text" },
+  { key: "instagramAccount", label: "Instagram Account", description: "Your Instagram Business Account username or handle.", type: "text", example: "@taskus_careersph" },
+  { key: "twoFactorAuth", label: "Two-Factor Authentication", description: "Has two-factor authentication been coordinated with Talkpush?", type: "text", example: "Coordinated with Talkpush" },
+  { key: "businessAccountConnection", label: "Business Account Connection", description: "Is your Instagram Business Account connected to your Facebook page?", type: "text", example: "Connected" },
+  { key: "chatbotName", label: "Chatbot Name", description: "The name that will appear as the chatbot identity in Instagram conversations.", type: "text", example: "Ava" },
+  { key: "chatbotPersona", label: "Chatbot Persona", description: "The personality/tone the chatbot should use in Instagram messages.", type: "text", example: "Friendly and conversational" },
 ];
 
 const faqColumns: ColumnDef[] = [
@@ -129,6 +129,7 @@ export function InstagramSheet() {
           onDelete={handleFaqDelete}
           onDuplicate={handleFaqDuplicate}
           addLabel="Add FAQ"
+          sampleRow={{ category: "General", faq: "Working Hours", description: "Office hours question", example: "What are your working hours?", faqResponse: "Our office hours are 9AM to 6PM, Monday to Friday." }}
           csvConfig={{
             sampleRow: { category: "General", faq: "Working Hours", description: "Office hours question", example: "What are your working hours?", faqResponse: "Our office hours are 9AM to 6PM." },
             onImport: handleFaqCsvImport,

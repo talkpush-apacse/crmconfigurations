@@ -18,11 +18,11 @@ const requirementsList = [
 ];
 
 const fields: KeyValueField[] = [
-  { key: "phoneNumber", label: "Dedicated Phone Number", description: "A phone number dedicated for WhatsApp Business API integration. This number cannot be used with regular WhatsApp.", type: "text" },
-  { key: "businessManagerAccess", label: "Business Manager Access", description: "Have you granted Talkpush access to your Facebook Business Manager?", type: "text" },
-  { key: "businessVerification", label: "Business Verification", description: "Has your business completed Meta Business Verification?", type: "text" },
-  { key: "chatbotName", label: "Chatbot Name", description: "The name that will appear as the chatbot identity in conversations.", type: "text" },
-  { key: "chatbotPersona", label: "Chatbot Persona", description: "The personality/tone the chatbot should use (e.g., professional, friendly, casual).", type: "text" },
+  { key: "phoneNumber", label: "Dedicated Phone Number", description: "A phone number dedicated for WhatsApp Business API integration. This number cannot be used with regular WhatsApp.", type: "text", example: "+63 917 000 1234" },
+  { key: "businessManagerAccess", label: "Business Manager Access", description: "Have you granted Talkpush access to your Facebook Business Manager?", type: "text", example: "Yes — access granted to Talkpush" },
+  { key: "businessVerification", label: "Business Verification", description: "Has your business completed Meta Business Verification?", type: "text", example: "Verified" },
+  { key: "chatbotName", label: "Chatbot Name", description: "The name that will appear as the chatbot identity in conversations.", type: "text", example: "Ava" },
+  { key: "chatbotPersona", label: "Chatbot Persona", description: "The personality/tone the chatbot should use (e.g., professional, friendly, casual).", type: "text", example: "Professional and helpful" },
 ];
 
 const faqColumns: ColumnDef[] = [
@@ -132,6 +132,7 @@ export function FacebookWhatsAppSheet() {
           onDelete={handleFaqDelete}
           onDuplicate={handleFaqDuplicate}
           addLabel="Add FAQ"
+          sampleRow={{ category: "General", faq: "Working Hours", description: "Office hours question", example: "What are your working hours?", faqResponse: "Our office hours are 9AM to 6PM, Monday to Friday." }}
           csvConfig={{
             sampleRow: { category: "General", faq: "Working Hours", description: "Office hours question", example: "What are your working hours?", faqResponse: "Our office hours are 9AM to 6PM." },
             onImport: handleFaqCsvImport,

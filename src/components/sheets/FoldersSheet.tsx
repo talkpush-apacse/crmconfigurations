@@ -71,6 +71,7 @@ export function FoldersSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Folder"
+        sampleRow={{ folderName: "For Pooling", description: "Candidates held for future openings", movementType: "Manual", comments: "Custom stage" }}
         csvConfig={{
           sampleRow: { folderName: "Onboarding", description: "Candidates in onboarding process", movementType: "Manual" },
           onImport: handleCsvImport,

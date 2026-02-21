@@ -84,6 +84,7 @@ export function DocumentsSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Document"
+        sampleRow={{ documentName: "Resume/CV", applicableCandidates: "All candidates", required: "Required", folder: "Inbox" }}
         csvConfig={{
           sampleRow: { documentName: "Resume/CV", applicableCandidates: "All", required: "Required", folder: "Inbox" },
           onImport: handleCsvImport,

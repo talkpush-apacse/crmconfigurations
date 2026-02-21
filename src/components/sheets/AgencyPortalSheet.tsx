@@ -76,6 +76,7 @@ export function AgencyPortalSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Agency"
+        sampleRow={{ agencyName: "Staff Alliance Inc.", contactName: "Maria Reyes", email: "maria@staffalliance.ph", phone: "+63 2 8888 1234", country: "Philippines", comments: "Primary agency" }}
         csvConfig={{
           sampleRow: { agencyName: "ABC Staffing", contactName: "Jane Smith", email: "jane@abc.com", phone: "+1234567890", country: "Philippines" },
           onImport: handleCsvImport,

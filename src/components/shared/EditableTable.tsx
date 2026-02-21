@@ -31,6 +31,8 @@ interface EditableTableProps {
   onDelete: (index: number) => void;
   onDuplicate?: (index: number) => void;
   addLabel?: string;
+  /** Optional pinned sample row shown at the top of the table body (read-only) */
+  sampleRow?: Record<string, string>;
   csvConfig?: {
     sampleRow: Record<string, string>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,6 +50,7 @@ export function EditableTable({
   onDelete,
   onDuplicate,
   addLabel = "Add Row",
+  sampleRow,
   csvConfig,
 }: EditableTableProps) {
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
@@ -148,7 +151,8 @@ export function EditableTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 && (
+            {/* Empty state — only show when there is no data AND no sample row */}
+            {data.length === 0 && !sampleRow && (
               <TableRow>
                 <TableCell
                   colSpan={columns.length + 2}
@@ -156,6 +160,25 @@ export function EditableTable({
                 >
                   No data yet. Click &quot;{addLabel}&quot; to add a row.
                 </TableCell>
+              </TableRow>
+            )}
+            {/* Pinned sample row — read-only reference, not counted in real row numbering */}
+            {sampleRow && (
+              <TableRow className="bg-blue-50/60 hover:bg-blue-50/60">
+                <TableCell className="text-center py-2">
+                  <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">
+                    {detailColumns ? "Sample" : "eg."}
+                  </span>
+                </TableCell>
+                {columns.map((col) => (
+                  <TableCell key={col.key} className="p-2">
+                    <span className="block text-sm text-gray-400 italic px-1">
+                      {sampleRow[col.key] || "—"}
+                    </span>
+                  </TableCell>
+                ))}
+                {/* No action buttons in the sample row */}
+                <TableCell />
               </TableRow>
             )}
             {data.map((row, rowIdx) => (

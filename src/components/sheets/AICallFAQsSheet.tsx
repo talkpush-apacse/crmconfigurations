@@ -24,6 +24,7 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
         url: "https://drive.google.com/file/d/1_0399mBTtdbs2yZoqts11V03IlVTiKYY/view?usp=sharing",
         label: "Learn more about Talkscore AI Bias Accuracy and Internal Controls",
       },
+      example: "Yes",
     },
     {
       key: "gender",
@@ -31,6 +32,7 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
       description: "Select the preferred AI voice gender for the call.",
       type: "dropdown",
       options: ["Male", "Female"],
+      example: "Female",
     },
     {
       key: "preferredVoice",
@@ -40,6 +42,7 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
         : "Select a gender first to see available voices.",
       type: "dropdown",
       options: voiceOptions,
+      example: "Clara",
     },
     {
       key: "callType",
@@ -47,18 +50,21 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
       description: "How candidates will connect to the AI call.",
       type: "dropdown",
       options: ["Web", "Phone", "Both"],
+      example: "Web",
     },
     {
       key: "interviewRole",
       label: "Interview Role",
       description: "The role/position that interview questions relate to.",
       type: "text",
+      example: "Customer Service Representative",
     },
     {
       key: "interviewQuestions",
       label: "Interview Questions",
       description: "Free-text interview questions the AI should ask candidates.",
       type: "textarea",
+      example: "Tell me about yourself. Why are you interested in this role?",
     },
   ];
 }
@@ -176,6 +182,7 @@ export function AICallFAQsSheet() {
           onDelete={handleFaqDelete}
           onDuplicate={handleFaqDuplicate}
           addLabel="Add FAQ"
+          sampleRow={{ faq: "Salary", example: "How much is the starting salary?", faqResponse: "Starting salary is PHP 18,000-22,000/month depending on experience." }}
           csvConfig={{
             sampleRow: { faq: "Working Hours", example: "What are the working hours?", faqResponse: "Working hours are 9AM to 6PM, Monday to Friday." },
             onImport: handleCsvImport,

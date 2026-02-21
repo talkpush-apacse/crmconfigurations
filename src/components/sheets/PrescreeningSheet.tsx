@@ -111,6 +111,7 @@ export function PrescreeningSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add Question"
+        sampleRow={{ category: "Pre-screening", question: "Are you at least 18 years old?", questionType: "Multiple Choice", answerOptions: "Yes, No" }}
         csvConfig={{
           sampleRow: { category: "Pre-screening", question: "Are you available to start immediately?", questionType: "Multiple Choice", answerOptions: "Yes, No", autoReject: "Yes", rejectCondition: "No" },
           onImport: handleCsvImport,
