@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const checklists = await prisma.checklist.findMany({
       orderBy: { updatedAt: "desc" },
-      select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true },
+      select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true },
     });
     return NextResponse.json(checklists);
   } catch (err) {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { clientName, enabledTabs, communicationChannels } = body;
+    const { clientName, enabledTabs, communicationChannels, featureToggles } = body;
 
     if (!clientName) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         clientName,
         enabledTabs: enabledTabs ? JSON.parse(JSON.stringify(enabledTabs)) : null,
         communicationChannels: communicationChannels ? JSON.parse(JSON.stringify(communicationChannels)) : null,
+        featureToggles: featureToggles ? JSON.parse(JSON.stringify(featureToggles)) : null,
         companyInfo: JSON.parse(JSON.stringify(defaults.companyInfo)),
         users: JSON.parse(JSON.stringify(defaults.users)),
         campaigns: JSON.parse(JSON.stringify(defaults.campaigns)),

@@ -17,6 +17,7 @@ model Checklist {
 
   enabledTabs             Json?
   communicationChannels   Json?
+  featureToggles          Json?
 
   companyInfo   Json?
   users         Json?

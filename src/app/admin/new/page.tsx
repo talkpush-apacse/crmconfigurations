@@ -11,14 +11,15 @@ import Link from "next/link";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
-import { defaultCommunicationChannels } from "@/lib/template-data";
-import type { CommunicationChannels } from "@/lib/types";
+import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
+import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
 
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
   const [enabledTabs, setEnabledTabs] = useState<string[]>(getAllSelectableTabSlugs());
   const [channels, setChannels] = useState<CommunicationChannels>(defaultCommunicationChannels);
+  const [featureToggles, setFeatureToggles] = useState<FeatureToggles>(defaultFeatureToggles);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +57,7 @@ export default function NewChecklistPage() {
       const res = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, enabledTabs, communicationChannels: channels }),
+        body: JSON.stringify({ clientName, enabledTabs, communicationChannels: channels, featureToggles }),
       });
 
       if (!res.ok) {
@@ -109,7 +110,12 @@ export default function NewChecklistPage() {
                 </div>
               )}
 
-              <ChannelSelector channels={channels} onChange={handleChannelsChange} />
+              <ChannelSelector
+                channels={channels}
+                onChange={handleChannelsChange}
+                featureToggles={featureToggles}
+                onFeatureTogglesChange={setFeatureToggles}
+              />
 
               <TabSelector selectedTabs={enabledTabs} onChange={handleTabsChange} />
 

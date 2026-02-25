@@ -23,8 +23,8 @@ import { Plus, ExternalLink, Trash2, Copy, Download, Settings, Search, CheckCirc
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
-import { defaultCommunicationChannels } from "@/lib/template-data";
-import type { CommunicationChannels } from "@/lib/types";
+import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
+import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
 
 interface ChecklistSummary {
   id: string;
@@ -34,6 +34,7 @@ interface ChecklistSummary {
   updatedAt: string;
   enabledTabs: string[] | null;
   communicationChannels: CommunicationChannels | null;
+  featureToggles: FeatureToggles | null;
 }
 
 interface EditingState {
@@ -41,6 +42,7 @@ interface EditingState {
   clientName: string;
   tabs: string[];
   channels: CommunicationChannels;
+  featureToggles: FeatureToggles;
 }
 
 export default function AdminDashboard() {
@@ -110,6 +112,7 @@ export default function AdminDashboard() {
           clientName: newName,
           enabledTabs: original.enabledTabs,
           communicationChannels: original.communicationChannels,
+          featureToggles: original.featureToggles,
         }),
       });
       const created = await createRes.json();
@@ -127,6 +130,7 @@ export default function AdminDashboard() {
       clientName: c.clientName,
       tabs: c.enabledTabs || getAllSelectableTabSlugs(),
       channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
+      featureToggles: (c.featureToggles as FeatureToggles) || defaultFeatureToggles,
     });
   };
 
@@ -165,6 +169,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           enabledTabs: editing.tabs,
           communicationChannels: editing.channels,
+          featureToggles: editing.featureToggles,
         }),
       });
       setEditing(null);
@@ -207,6 +212,8 @@ export default function AdminDashboard() {
                 <ChannelSelector
                   channels={editing.channels}
                   onChange={handleEditChannelsChange}
+                  featureToggles={editing.featureToggles}
+                  onFeatureTogglesChange={(toggles) => setEditing((prev) => prev ? { ...prev, featureToggles: toggles } : prev)}
                 />
                 <TabSelector
                   selectedTabs={editing.tabs}

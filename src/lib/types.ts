@@ -185,6 +185,11 @@ export interface CommunicationChannels {
   aiCalls: boolean;
 }
 
+// ===== Feature Toggles =====
+export interface FeatureToggles {
+  aiCallVoiceSelection: boolean;
+}
+
 // ===== Shared =====
 export interface FaqEntry {
   id: string;
@@ -205,6 +210,7 @@ export interface ChecklistData {
   version: number;
   enabledTabs: string[] | null;
   communicationChannels: CommunicationChannels | null;
+  featureToggles: FeatureToggles | null;
   companyInfo: CompanyInfo | null;
   users: UserRow[] | null;
   campaigns: CampaignRow[] | null;

@@ -13,6 +13,7 @@ import type {
   AiCallData,
   AgencyPortalRow,
   CommunicationChannels,
+  FeatureToggles,
 } from "./types";
 
 export function uid(): string {
@@ -26,6 +27,10 @@ export const defaultCommunicationChannels: CommunicationChannels = {
   whatsapp: true,
   liveCall: false,
   aiCalls: false,
+};
+
+export const defaultFeatureToggles: FeatureToggles = {
+  aiCallVoiceSelection: true,
 };
 
 export const defaultCompanyInfo: CompanyInfo = {

@@ -8,7 +8,7 @@ import {
   PhoneCall,
   Bot,
 } from "lucide-react";
-import type { CommunicationChannels } from "@/lib/types";
+import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
 
 const channelConfig = [
   { key: "email" as const, label: "Email", icon: Mail, alwaysOn: true },
@@ -22,9 +22,11 @@ const channelConfig = [
 interface ChannelSelectorProps {
   channels: CommunicationChannels;
   onChange: (channels: CommunicationChannels) => void;
+  featureToggles: FeatureToggles;
+  onFeatureTogglesChange: (toggles: FeatureToggles) => void;
 }
 
-export function ChannelSelector({ channels, onChange }: ChannelSelectorProps) {
+export function ChannelSelector({ channels, onChange, featureToggles, onFeatureTogglesChange }: ChannelSelectorProps) {
   const toggleChannel = (key: keyof CommunicationChannels) => {
     onChange({ ...channels, [key]: !channels[key] });
   };
@@ -72,6 +74,24 @@ export function ChannelSelector({ channels, onChange }: ChannelSelectorProps) {
           );
         })}
       </div>
+      {channels.aiCalls && (
+        <div className="ml-1 mt-2 border-l-2 border-muted pl-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={featureToggles.aiCallVoiceSelection}
+              onChange={() =>
+                onFeatureTogglesChange({
+                  ...featureToggles,
+                  aiCallVoiceSelection: !featureToggles.aiCallVoiceSelection,
+                })
+              }
+              className="h-3.5 w-3.5"
+            />
+            <span>Allow clients to select the AI voice</span>
+          </label>
+        </div>
+      )}
     </div>
   );
 }

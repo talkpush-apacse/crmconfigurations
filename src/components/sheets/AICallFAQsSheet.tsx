@@ -7,7 +7,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAiCallData } from "@/lib/template-data";
-import type { ColumnDef, AiCallData, AiCallFaqRow } from "@/lib/types";
+import type { ColumnDef, AiCallData, AiCallFaqRow, FeatureToggles } from "@/lib/types";
 
 function getConfigFields(selectedGender: string): KeyValueField[] {
   const voiceOptions = selectedGender
@@ -86,7 +86,12 @@ export function AICallFAQsSheet() {
 
   const faqs = aiCallData.faqs || [];
 
-  const configFields = getConfigFields(aiCallData.gender);
+  const allowVoiceSelection =
+    (data.featureToggles as FeatureToggles | null)?.aiCallVoiceSelection !== false;
+
+  const configFields = getConfigFields(aiCallData.gender).filter(
+    (f) => allowVoiceSelection || !["gender", "preferredVoice"].includes(f.key)
+  );
 
   const handleConfigChange = (key: string, value: string | boolean) => {
     // Clear preferred voice when gender changes
@@ -159,7 +164,7 @@ export function AICallFAQsSheet() {
         onChange={handleConfigChange}
       />
 
-      <VoicePreview selectedGender={aiCallData.gender} />
+      {allowVoiceSelection && <VoicePreview selectedGender={aiCallData.gender} />}
 
       <div className="mt-8">
         <SectionHeader
