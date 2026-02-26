@@ -7,6 +7,7 @@ const csp = [
   "img-src 'self' data: blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co",
   "font-src 'self'",
+  "worker-src 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
 
