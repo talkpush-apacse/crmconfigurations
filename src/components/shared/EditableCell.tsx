@@ -75,7 +75,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
   if (type === "dropdown" && options) {
     return (
       <Select value={String(value || "")} onValueChange={(v) => onChange(v)}>
-        <SelectTrigger className={cn("h-9 text-sm bg-amber-50/60 border-amber-300 hover:border-amber-500", className)}>
+        <SelectTrigger className={cn("h-9 text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15", className)}>
           <SelectValue placeholder={placeholder || "Select..."} />
         </SelectTrigger>
         <SelectContent>
@@ -98,7 +98,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
           if (localValue !== String(value ?? "")) onChange(localValue);
         }}
         placeholder={placeholder}
-        className={cn("min-h-[80px] resize-y text-sm bg-amber-50/60 border-amber-300 hover:border-amber-500", className)}
+        className={cn("min-h-[80px] resize-y text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 placeholder:text-gray-400", className)}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
       />
     );
@@ -121,7 +121,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     return wrapWithValidation(
       <div
         className={cn(
-          "group flex cursor-text items-center justify-between rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-sm transition-colors hover:border-amber-500",
+          "group flex cursor-text items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm transition-colors hover:border-gray-400",
           !localValue && "text-gray-400",
           validationError && "border-red-400 bg-red-50/50",
           className
@@ -129,7 +129,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
         onClick={() => setEditing(true)}
       >
         <span className="min-w-0 flex-1 truncate">{localValue || placeholder || "Click to edit"}</span>
-        <Pencil className="ml-2 h-3 w-3 shrink-0 text-amber-400 opacity-0 transition-opacity group-hover:opacity-100" />
+        <Pencil className="ml-2 h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     );
   }
@@ -154,7 +154,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
         }
       }}
       placeholder={placeholder}
-      className={cn("h-9 text-sm", validationError && "border-red-400 focus-visible:ring-red-400", className)}
+      className={cn("h-9 text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 placeholder:text-gray-400", validationError && "border-red-400 focus-visible:ring-red-400", className)}
     />
   );
 }

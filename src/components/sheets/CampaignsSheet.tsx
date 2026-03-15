@@ -79,13 +79,15 @@ export function CampaignsSheet() {
         </ul>
       </ExampleHint>
 
-      <div className="mb-6 rounded-lg border">
-        <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Campaign Type Reference</div>
-        <div className="divide-y">
+      <div className="mb-6 rounded-lg border border-gray-200 bg-slate-50 overflow-hidden">
+        <div className="bg-slate-100 border-b border-gray-200 px-4 py-2.5 text-[13px] font-semibold text-gray-700">
+          Campaign Type Reference
+        </div>
+        <div className="divide-y divide-gray-200">
           {referenceData.map((r) => (
-            <div key={r.type} className="flex gap-4 px-4 py-2 text-sm">
-              <span className="w-36 shrink-0 font-medium">{r.type}</span>
-              <span className="text-muted-foreground">{r.description}</span>
+            <div key={r.type} className="grid px-4 py-2.5" style={{ gridTemplateColumns: "160px 1fr" }}>
+              <span className="text-[14px] font-medium text-gray-900">{r.type}</span>
+              <span className="text-[14px] text-gray-500">{r.description}</span>
             </div>
           ))}
         </div>

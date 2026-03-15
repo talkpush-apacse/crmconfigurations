@@ -111,12 +111,12 @@ export function EditableTable({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-brand-lavender-darker">
-              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-gray-900`}>
+            <TableRow className="bg-blue-600">
+              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-white`}>
                 {detailColumns && data.length > 0 ? (
                   <button
                     onClick={toggleAll}
-                    className="inline-flex items-center justify-center rounded p-1 hover:bg-black/10 hover:text-gray-900 transition-colors"
+                    className="inline-flex items-center justify-center rounded p-1 hover:bg-white/20 transition-colors"
                     title={expandedRows.size === data.length ? "Collapse all" : "Expand all"}
                   >
                     {expandedRows.size === data.length ? (
@@ -130,15 +130,15 @@ export function EditableTable({
                 )}
               </TableHead>
               {columns.map((col) => (
-                <TableHead key={col.key} className="text-gray-900" style={{ width: col.width }}>
+                <TableHead key={col.key} className="text-white text-[12px] font-semibold uppercase tracking-[0.05em]" style={{ width: col.width }}>
                   {col.description ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-500/60">
+                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-white/60">
                           {col.label}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
+                      <TooltipContent side="bottom" className="max-w-xs bg-slate-800 text-slate-50">
                         <p className="text-xs">{col.description}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -147,7 +147,7 @@ export function EditableTable({
                   )}
                 </TableHead>
               ))}
-              <TableHead className="w-10 text-gray-900" />
+              <TableHead className="w-10 text-white" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -166,8 +166,8 @@ export function EditableTable({
             {sampleRow && (
               <TableRow className="bg-blue-50 hover:bg-blue-50 border-l-4 border-blue-300">
                 <TableCell className="text-center py-2">
-                  <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-600 uppercase tracking-wider">
-                    {detailColumns ? "Sample" : "eg."}
+                  <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
+                    SAMPLE
                   </span>
                 </TableCell>
                 {columns.map((col) => (
@@ -183,7 +183,7 @@ export function EditableTable({
             )}
             {data.map((row, rowIdx) => (
               <Fragment key={(row.id as string) || rowIdx}>
-                <TableRow className={cn("bg-amber-50/40 transition-colors hover:bg-amber-50/70", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
+                <TableRow className={cn("transition-colors hover:bg-gray-50", rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
                   <TableCell className="text-center text-xs text-muted-foreground">
                     {detailColumns ? (
                       <button

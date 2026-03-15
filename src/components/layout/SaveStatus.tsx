@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -35,26 +34,20 @@ export function SaveStatus({ status, errorMessage, onRetry }: SaveStatusProps) {
     );
   }
 
+  if (status === "saving") {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-gray-500">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Saving...
+      </span>
+    );
+  }
+
+  // saved — plain text label, not a button
   return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
-        status === "saved" && "border-green-200 bg-green-50 text-green-700",
-        status === "saving" && "border-yellow-200 bg-yellow-50 text-yellow-700"
-      )}
-    >
-      {status === "saved" && (
-        <>
-          <Check className="h-3 w-3" />
-          Saved
-        </>
-      )}
-      {status === "saving" && (
-        <>
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Saving...
-        </>
-      )}
-    </div>
+    <span className="flex items-center gap-1 text-xs text-green-600">
+      <Check className="h-3 w-3" />
+      Saved
+    </span>
   );
 }

@@ -1,127 +1,182 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle, Edit3, ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { CheckCircle, Info, ArrowRight, ChevronDown } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { useChecklistContext } from "@/lib/checklist-context";
+import { getEnabledTabs } from "@/lib/tab-config";
+import type { ChecklistData } from "@/lib/types";
 
-interface InfoCardProps {
-  icon: React.ReactNode;
-  title: string;
-  colorClasses: string; // border + bg classes
-  storageKey: string;
-  children: React.ReactNode;
+/** Mirrors the completion logic from the layout */
+function getSectionState(val: unknown): "complete" | "in-progress" | "not-started" {
+  if (val === null || val === undefined) return "not-started";
+  if (Array.isArray(val)) {
+    if (val.length === 0) return "not-started";
+    const nonEmpty = val.filter((item) =>
+      typeof item === "object" && item !== null
+        ? Object.values(item as Record<string, unknown>).some((v) => v !== "" && v !== null && v !== undefined)
+        : true
+    );
+    return nonEmpty.length >= 3 ? "complete" : "in-progress";
+  }
+  if (typeof val === "object") {
+    const values = Object.values(val as Record<string, unknown>);
+    const filled = values.filter((v) => v !== "" && v !== null && v !== undefined).length;
+    if (filled === 0) return "not-started";
+    return filled / values.length >= 0.6 ? "complete" : "in-progress";
+  }
+  return "in-progress";
 }
 
-function InfoCard({ icon, title, colorClasses, storageKey, children }: InfoCardProps) {
-  // Start open on first visit; persist collapsed state across sessions
-  const [open, setOpen] = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored !== null) setOpen(stored !== "false");
-  }, [storageKey]);
-
-  const handleToggle = () => {
-    setOpen((v) => {
-      const next = !v;
-      localStorage.setItem(storageKey, String(next));
-      return next;
-    });
-  };
-
+function StatusChip({
+  label,
+  status,
+  href,
+}: {
+  label: string;
+  status: "complete" | "in-progress" | "not-started";
+  href: string;
+}) {
+  const dotClass =
+    status === "complete"
+      ? "bg-green-600"
+      : status === "in-progress"
+      ? "bg-amber-500"
+      : "border-2 border-gray-400 bg-transparent";
   return (
-    <div className={`rounded-lg border-l-4 ${colorClasses}`}>
-      <button
-        className="flex w-full items-center gap-3 p-4 text-left"
-        onClick={handleToggle}
-        aria-expanded={open}
-      >
-        <span className="shrink-0">{icon}</span>
-        <span className="flex-1 font-semibold">{title}</span>
-        {open ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-current opacity-60" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-current opacity-60" />
-        )}
-      </button>
-      {open && <div className="px-4 pb-4 pt-0">{children}</div>}
-    </div>
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-gray-700 hover:bg-slate-200 transition-colors"
+    >
+      <span className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
+      {label}
+    </Link>
   );
 }
 
 export function WelcomeSheet() {
+  const { data } = useChecklistContext();
+  const params = useParams();
+  const slug = params.slug as string;
+
+  // Lazy initializer reads localStorage once on mount — avoids setState-in-effect pattern
+  const [notesOpen, setNotesOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true; // SSR safe default
+    const stored = localStorage.getItem("talkpush_welcome_notes_seen");
+    return stored === null ? true : stored !== "false";
+  });
+
+  const handleNotesToggle = () => {
+    setNotesOpen((v) => {
+      const next = !v;
+      localStorage.setItem("talkpush_welcome_notes_seen", String(next));
+      return next;
+    });
+  };
+
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  const contentTabs = enabledTabs.filter((t) => t.dataKey);
+
+  const completedCount = contentTabs.filter((t) => {
+    const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
+    return getSectionState(val) === "complete";
+  }).length;
+
+  const totalCount = contentTabs.length;
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  const firstContentTab = contentTabs[0];
+
   return (
     <div>
       <SectionHeader title="Welcome" />
-      <div className="space-y-6 rounded-lg border bg-white p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-primary">
+      <div className="space-y-5">
+        {/* Hero — left-aligned, no wrapping card */}
+        <div>
+          <h1 className="text-[22px] font-semibold text-gray-900">
             Talkpush CRM Configuration Checklist
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            Welcome to your configuration checklist. This tool helps you set up your Talkpush CRM
-            platform by guiding you through each section of the configuration process.
+          <p className="mt-1 text-[14px] text-gray-500">
+            Complete each section to configure your Talkpush CRM platform.
           </p>
         </div>
 
-        <InfoCard
-          icon={<Edit3 className="h-5 w-5 text-yellow-600" />}
-          title="Editable Fields"
-          colorClasses="border-yellow-400 bg-yellow-50 text-yellow-800"
-          storageKey="welcome-card-editable-fields"
-        >
-          <p className="text-sm text-yellow-900">
-            Fields with a yellow background are editable. Click on them to enter your information.
-            Your changes are saved automatically.
+        {/* Progress summary card */}
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <p className="text-[16px] font-semibold text-gray-900">
+            {completedCount} of {totalCount} sections complete
           </p>
-        </InfoCard>
-
-        <InfoCard
-          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-          title="Auto-Save"
-          colorClasses="border-green-400 bg-green-50 text-green-800"
-          storageKey="welcome-card-auto-save"
-        >
-          <p className="text-sm text-green-700">
-            All changes are automatically saved 2 seconds after you stop typing.
-            The save status is shown in the top-right corner of the header.
-          </p>
-        </InfoCard>
-
-        <InfoCard
-          icon={<AlertCircle className="h-5 w-5 text-blue-600" />}
-          title="Important Notes"
-          colorClasses="border-blue-400 bg-blue-50 text-blue-800"
-          storageKey="welcome-card-important-notes"
-        >
-          <ul className="space-y-1 text-sm text-blue-700">
-            <li>Do not skip sections — complete each tab in order when possible.</li>
-            <li>Dropdown fields have predefined options — select from the list.</li>
-            <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
-            <li>You can delete rows using the trash icon on the right side.</li>
-            <li>Hover over column headers for detailed descriptions.</li>
-            <li>Export your completed checklist using the &quot;Export XLS&quot; button in the header.</li>
-          </ul>
-        </InfoCard>
-
-        <div className="rounded-lg bg-blue-50 p-4">
-          <h3 className="font-semibold text-blue-900">Sections Overview</h3>
-          <ul className="mt-2 space-y-1 text-sm text-blue-800">
-            <li><strong>Company Information</strong> — Basic company settings</li>
-            <li><strong>User List</strong> — Platform users and access levels</li>
-            <li><strong>Campaigns List</strong> — Job campaigns configuration</li>
-            <li><strong>Sites</strong> — Interview locations</li>
-            <li><strong>Pre-screening Questions</strong> — Candidate screening setup</li>
-            <li><strong>Messaging Templates</strong> — Communication templates</li>
-            <li><strong>Sources</strong> — Candidate sourcing channels</li>
-            <li><strong>Folders</strong> — Workflow stage configuration</li>
-            <li><strong>Document Collection</strong> — Required documents setup</li>
-            <li><strong>Facebook &amp; WhatsApp</strong> — Messaging platform integration</li>
-            <li><strong>Instagram Chatbot</strong> — Instagram integration</li>
-            <li><strong>AI Call</strong> — AI call configuration and FAQs</li>
-            <li><strong>Agency Portal</strong> — Agency management</li>
-          </ul>
+          <div className="mt-3 h-1.5 w-full rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full bg-green-600 transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {contentTabs.map((t) => {
+              const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
+              const status = getSectionState(val);
+              return (
+                <StatusChip
+                  key={t.slug}
+                  label={t.label}
+                  status={status}
+                  href={`/client/${slug}/${t.slug}`}
+                />
+              );
+            })}
+          </div>
         </div>
+
+        {/* Auto-save inline callout */}
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+          <p className="text-[14px] text-gray-500">
+            All changes auto-save 2 seconds after you stop typing.
+          </p>
+        </div>
+
+        {/* Important Notes accordion */}
+        <div className="rounded-lg border-l-4 border-blue-600 bg-blue-50">
+          <button
+            className="flex w-full items-center gap-3 p-4 text-left"
+            onClick={handleNotesToggle}
+            aria-expanded={notesOpen}
+          >
+            <Info className="h-5 w-5 text-blue-600 shrink-0" />
+            <span className="flex-1 text-[15px] font-semibold text-blue-900">Important Notes</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-blue-600 transition-transform duration-200 ${notesOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {notesOpen && (
+            <div className="px-4 pb-4 pt-0">
+              <ul className="space-y-1 text-[14px] text-blue-800">
+                <li>Do not skip sections — complete each tab in order when possible.</li>
+                <li>Dropdown fields have predefined options — select from the list.</li>
+                <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
+                <li>You can delete rows using the trash icon on the right side.</li>
+                <li>Hover over the ⓘ icon next to field labels for detailed descriptions.</li>
+                <li>Export your completed checklist using the &quot;Export XLS&quot; button in the header.</li>
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* CTA button */}
+        {firstContentTab && (
+          <div className="flex justify-end pt-2">
+            <Link
+              href={`/client/${slug}/${firstContentTab.slug}`}
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 transition-colors"
+            >
+              Continue to {firstContentTab.label}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

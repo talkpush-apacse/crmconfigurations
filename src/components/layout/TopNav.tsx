@@ -18,11 +18,11 @@ interface TopNavProps {
 
 function StatusDot({ status }: { status: NavItem["status"] }) {
   if (status === "complete")
-    return <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />;
+    return <span className="h-1.5 w-1.5 rounded-full bg-green-600 shrink-0" />;
   if (status === "in-progress")
-    return <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />;
+    return <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />;
   if (status === "not-started")
-    return <span className="h-1.5 w-1.5 rounded-full border-2 border-muted-foreground/40 bg-transparent shrink-0" />;
+    return <span className="h-1.5 w-1.5 rounded-full border-2 border-gray-400 bg-transparent shrink-0" />;
   return null;
 }
 
@@ -57,14 +57,14 @@ export function TopNav({ items }: TopNavProps) {
                 className={cn(
                   "flex items-center gap-1.5 h-11 px-3.5 text-[13px] font-medium whitespace-nowrap relative transition-colors",
                   isActive
-                    ? "text-primary font-semibold"
+                    ? "text-blue-600 font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm"
                 )}
               >
                 <StatusDot status={item.status} />
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t pointer-events-none" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t pointer-events-none" />
                 )}
               </Link>
             </li>
@@ -76,7 +76,7 @@ export function TopNav({ items }: TopNavProps) {
       <div className="flex sm:hidden items-center h-11 px-4 border-b border-border">
         <button
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className="flex items-center gap-2 text-[13px] font-semibold text-primary"
+          className="flex items-center gap-2 text-[13px] font-semibold text-blue-600"
         >
           <Menu className="h-4 w-4" />
           {activeItem?.label ?? "Menu"}
@@ -100,7 +100,7 @@ export function TopNav({ items }: TopNavProps) {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded text-[13px] font-medium",
                   isActive
-                    ? "bg-primary/5 text-primary font-semibold"
+                    ? "bg-blue-50 text-blue-600 font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >

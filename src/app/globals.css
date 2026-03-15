@@ -196,6 +196,25 @@
   background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5);
 }
 
+/* ---- Design System v1.8.0 semantic tokens ---- */
+/* These map to Tailwind equivalents: blue-600, blue-700, green-600, amber-500, etc. */
+:root {
+  --tp-primary:          #2563EB; /* blue-600 — active tabs, table headers, focus rings */
+  --tp-primary-hover:    #1D4ED8; /* blue-700 */
+  --tp-primary-subtle:   rgba(37,99,235,0.08);
+  --tp-status-complete:  #16A34A; /* green-600 */
+  --tp-status-progress:  #F59E0B; /* amber-500 */
+  --tp-status-empty:     #9CA3AF; /* gray-400 */
+  --tp-surface:          #FFFFFF;
+  --tp-surface-subtle:   #F8FAFC; /* slate-50 */
+  --tp-border:           #E5E7EB; /* gray-200 */
+  --tp-border-strong:    #D1D5DB; /* gray-300 */
+  --tp-text-primary:     #111827; /* gray-900 */
+  --tp-text-secondary:   #374151; /* gray-700 */
+  --tp-text-muted:       #6B7280; /* gray-500 */
+  --tp-text-placeholder: #9CA3AF; /* gray-400 */
+}
+
 /* Thin Scrollbar Utility */
 .scrollbar-thin {
   scrollbar-width: thin;

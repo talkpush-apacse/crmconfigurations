@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.8.0",
+    "codename": "Polished Surface",
+    "changes": [
+      "Replaced yellow editable fields with standard white/gray/blue form inputs",
+      "Moved Description column to ⓘ inline tooltips next to field labels",
+      "Unified color system: blue-600 primary for table headers, tab underlines, and focus rings",
+      "Redesigned Welcome page with progress card, status chips, and CTA button",
+      "Fixed header bar: Export XLS is now primary blue, Saved is plain text, Admin link higher contrast",
+      "Applied consistent typography scale across all section headings and tables",
+      "Updated reference tables (Role Reference, Campaign Type Reference) with consistent styling",
+      "Added Previous button to all section footers; last section shows Complete Checklist",
+      "View Example rows now have animated chevron, Eye icon, and clear hover state"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
     "version": "1.7.0",
     "codename": "Clear Shelf",
     "changes": [

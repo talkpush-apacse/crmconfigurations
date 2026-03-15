@@ -12,7 +12,7 @@ export function AboutSheet() {
       <SectionHeader title="About" />
       <div className="space-y-6 rounded-lg border bg-white p-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-primary">
+          <h1 className="text-[24px] font-semibold text-gray-900">
             Talkpush CRM Configuration Checklist
           </h1>
           <p className="mt-2 inline-flex items-center rounded-full bg-teal-50 px-3 py-1 font-mono text-sm font-medium text-teal-700">
