@@ -97,7 +97,7 @@ export function TopNav({ items, hasPendingChangesRef }: TopNavProps) {
     <TooltipProvider delayDuration={300}>
       <aside
         ref={navRef}
-        className="w-12 shrink-0 bg-background border-r border-border flex flex-col overflow-y-auto"
+        className="w-14 shrink-0 bg-background border-r border-border flex flex-col overflow-y-auto"
       >
         {items.map((item) => {
           const isActive = pathname === item.href;
@@ -111,14 +111,15 @@ export function TopNav({ items, hasPendingChangesRef }: TopNavProps) {
                     if (!confirmNavigation(item.href)) e.preventDefault();
                   }}
                   className={cn(
-                    "relative w-full h-10 flex items-center justify-center transition-colors shrink-0",
+                    "relative w-full h-14 flex flex-col items-center justify-center gap-1 px-1 transition-colors shrink-0",
                     isActive
                       ? "bg-blue-50 text-blue-600 border-l-2 border-blue-600"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground border-l-2 border-transparent"
                   )}
                   aria-label={item.label}
                 >
-                  <Icon className="h-4 w-4" strokeWidth={1.75} />
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                  <span className="text-[9px] leading-none text-center w-full truncate">{item.label}</span>
                   <StatusDot status={item.status} />
                 </Link>
               </TooltipTrigger>
