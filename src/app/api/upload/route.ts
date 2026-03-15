@@ -4,6 +4,8 @@ import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml", "application/pdf"];
+const ALLOWED_FOLDERS = ["logos", "banners", "documents", "general"] as const;
+type AllowedFolder = typeof ALLOWED_FOLDERS[number];
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +21,10 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const folder = (formData.get("folder") as string) || "general";
+    const rawFolder = (formData.get("folder") as string) || "general";
+    const folder: AllowedFolder = (ALLOWED_FOLDERS as readonly string[]).includes(rawFolder)
+      ? (rawFolder as AllowedFolder)
+      : "general";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });

@@ -7,29 +7,9 @@ import { LegendBar } from "@/components/layout/LegendBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
+import { getSectionState } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
-
-/** Mirrors the logic from TabNavigation — returns section completion state */
-function getSectionState(val: unknown): "complete" | "in-progress" | "empty" {
-  if (val === null || val === undefined) return "empty";
-  if (Array.isArray(val)) {
-    if (val.length === 0) return "empty";
-    const nonEmptyItems = val.filter((item) =>
-      typeof item === "object" && item !== null
-        ? Object.values(item as Record<string, unknown>).some((v) => v !== "" && v !== null && v !== undefined)
-        : true
-    );
-    return nonEmptyItems.length >= 3 ? "complete" : "in-progress";
-  }
-  if (typeof val === "object") {
-    const values = Object.values(val as Record<string, unknown>);
-    const filled = values.filter((v) => v !== "" && v !== null && v !== undefined).length;
-    if (filled === 0) return "empty";
-    return filled / values.length >= 0.6 ? "complete" : "in-progress";
-  }
-  return "in-progress";
-}
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -73,8 +53,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const navItems: NavItem[] = enabledTabs.map((tab) => {
     let status: NavItem["status"] = null;
     if (tab.dataKey && data) {
-      const raw = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData]);
-      status = raw === "empty" ? "not-started" : raw;
+      status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData]);
     }
     return {
       label: tab.label,

@@ -13,7 +13,32 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    const checklist = await prisma.checklist.findUnique({ where: { slug } });
+    // Note: this app uses a shared admin pool — all authenticated admins have access
+    // to all checklists. If per-user ownership is added in future, scope this query
+    // with: where: { slug, createdBy: auth.userId } after adding a createdBy column.
+    const checklist = await prisma.checklist.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        slug: true,
+        clientName: true,
+        companyInfo: true,
+        users: true,
+        campaigns: true,
+        sites: true,
+        prescreening: true,
+        messaging: true,
+        sources: true,
+        folders: true,
+        documents: true,
+        fbWhatsapp: true,
+        instagram: true,
+        aiCallFaqs: true,
+        agencyPortal: true,
+        communicationChannels: true,
+        featureToggles: true,
+      },
+    });
     if (!checklist) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
