@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.6.1",
+    "codename": "Steady Calm",
+    "changes": [
+      "Matched Upload CSV button styling to Download CSV for equal visual weight"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
     "version": "1.6.0",
     "codename": "Quiet Tide",
     "changes": [

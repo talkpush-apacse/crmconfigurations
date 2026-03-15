@@ -70,7 +70,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName }: CsvToolb
         variant="outline"
         size="sm"
         onClick={handleUploadClick}
-        className="text-xs"
+        className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
       >
         <Upload className="mr-1 h-3.5 w-3.5" />
         Upload CSV
