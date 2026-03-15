@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.7.0",
+    "codename": "Clear Shelf",
+    "changes": [
+      "Replaced sidebar navigation with a horizontal wrapping top nav bar",
+      "Status dots moved inline before each tab label",
+      "Added mobile drawer nav triggered by active tab name button",
+      "Added persistent LegendBar below the nav for section status reference"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
     "version": "1.6.1",
     "codename": "Steady Calm",
     "changes": [

@@ -1,21 +1,40 @@
 "use client";
 
-import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
-import { TabNavigation } from "@/components/layout/TabNavigation";
+import { TopNav } from "@/components/layout/TopNav";
+import { LegendBar } from "@/components/layout/LegendBar";
 import { Header } from "@/components/layout/Header";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import type { ChecklistData } from "@/lib/types";
+import type { NavItem } from "@/components/layout/TopNav";
+
+/** Mirrors the logic from TabNavigation — returns section completion state */
+function getSectionState(val: unknown): "complete" | "in-progress" | "empty" {
+  if (val === null || val === undefined) return "empty";
+  if (Array.isArray(val)) {
+    if (val.length === 0) return "empty";
+    const nonEmptyItems = val.filter((item) =>
+      typeof item === "object" && item !== null
+        ? Object.values(item as Record<string, unknown>).some((v) => v !== "" && v !== null && v !== undefined)
+        : true
+    );
+    return nonEmptyItems.length >= 3 ? "complete" : "in-progress";
+  }
+  if (typeof val === "object") {
+    const values = Object.values(val as Record<string, unknown>);
+    const filled = values.filter((v) => v !== "" && v !== null && v !== undefined).length;
+    if (filled === 0) return "empty";
+    return filled / values.length >= 0.6 ? "complete" : "in-progress";
+  }
+  return "in-progress";
+}
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const slug = params.slug as string;
   const { data, loading, error, saveStatus, saveError, updateField, retrySave } = useChecklist(slug);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
     return (
@@ -28,18 +47,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  const tabsWithData = getEnabledTabs(data?.enabledTabs ?? null).filter((t) => t.dataKey);
-  const filledCount = data
-    ? tabsWithData.filter((t) => {
-        const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-        if (val === null || val === undefined) return false;
-        if (Array.isArray(val)) return val.length > 0;
-        if (typeof val === "object") return Object.values(val as unknown as Record<string, unknown>).some((v) => v !== "" && v !== null);
-        return true;
-      }).length
-    : 0;
-  const totalCount = tabsWithData.length;
-
   if (error || !data) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -51,42 +58,48 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
+  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null);
+
+  const tabsWithData = enabledTabs.filter((t) => t.dataKey);
+  const filledCount = tabsWithData.filter((t) => {
+    const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
+    if (val === null || val === undefined) return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "object") return Object.values(val as unknown as Record<string, unknown>).some((v) => v !== "" && v !== null);
+    return true;
+  }).length;
+  const totalCount = tabsWithData.length;
+
+  const navItems: NavItem[] = enabledTabs.map((tab) => {
+    let status: NavItem["status"] = null;
+    if (tab.dataKey && data) {
+      const raw = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData]);
+      status = raw === "empty" ? "not-started" : raw;
+    }
+    return {
+      label: tab.label,
+      href: `/client/${slug}/${tab.slug}`,
+      status,
+    };
+  });
+
   return (
     <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave }}>
-      <div className="flex h-screen flex-col">
+      <div className="flex h-screen flex-col overflow-hidden">
         <Header
           clientName={data.clientName}
           slug={slug}
           saveStatus={saveStatus}
           saveError={saveError}
           onRetrySave={retrySave}
-          onToggleSidebar={() => setSidebarOpen(true)}
           filledCount={filledCount}
           totalCount={totalCount}
         />
-        <div className="flex flex-1 overflow-hidden">
-          {/* Desktop sidebar */}
-          <aside className="hidden w-64 xl:w-72 shrink-0 border-r bg-gray-50/50 lg:block">
-            <ScrollArea className="h-full">
-              <TabNavigation slug={slug} data={data} />
-            </ScrollArea>
-          </aside>
-
-          {/* Mobile sidebar */}
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <ScrollArea className="h-full">
-                <TabNavigation slug={slug} data={data} />
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-
-          {/* Main content */}
-          <main className="flex-1 overflow-auto">
-            <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
-          </main>
-        </div>
+        <TopNav items={navItems} />
+        <LegendBar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+        </main>
       </div>
     </ChecklistContext.Provider>
   );

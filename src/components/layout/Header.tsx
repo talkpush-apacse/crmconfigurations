@@ -11,7 +11,7 @@ interface HeaderProps {
   saveStatus: "saved" | "saving" | "error";
   saveError?: string | null;
   onRetrySave?: () => void;
-  onToggleSidebar: () => void;
+  onToggleSidebar?: () => void;
   filledCount: number;
   totalCount: number;
 }
@@ -25,9 +25,11 @@ export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, o
     <div>
       <header className="flex h-14 items-center justify-between border-b bg-white px-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onToggleSidebar}>
-            <Menu className="h-5 w-5" />
-          </Button>
+          {onToggleSidebar && (
+            <Button variant="ghost" size="icon" className="lg:hidden" onClick={onToggleSidebar}>
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
           <Link
             href="/admin"
             className="hidden lg:flex items-center gap-1.5 mr-2 pr-3 border-r rounded px-1.5 py-0.5 text-xs font-semibold text-muted-foreground hover:bg-gray-100 hover:text-foreground transition-colors"
