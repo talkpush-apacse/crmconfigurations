@@ -59,6 +59,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       label: tab.label,
       href: `/client/${slug}/${tab.slug}`,
       status,
+      icon: tab.icon,
     };
   });
 
@@ -74,11 +75,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           filledCount={filledCount}
           totalCount={totalCount}
         />
-        <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
-        <LegendBar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
-        </main>
+        <div className="flex flex-1 overflow-hidden">
+          <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <LegendBar />
+            <main className="flex-1 overflow-y-auto">
+              <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+            </main>
+          </div>
+        </div>
       </div>
     </ChecklistContext.Provider>
   );
