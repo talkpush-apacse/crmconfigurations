@@ -1,0 +1,81 @@
+[
+  {
+    "version": "1.5.0",
+    "codename": "Silver Bloom",
+    "changes": [
+      "Added sticky admin header with Talkpush wordmark and logout",
+      "Added collapsible sidebar navigation (desktop)",
+      "Added delete confirmation dialog to prevent accidental data loss",
+      "Made full table rows clickable with smooth hover transition",
+      "Replaced absolute dates with relative timestamps (hover for full date)",
+      "Added sortable Client, Created, and Updated columns",
+      "Added visual separator between safe actions and delete button",
+      "Added 5-second undo window after deleting a checklist",
+      "Improved column headers with uppercase, spaced styling",
+      "Added Status column placeholder for future completion tracking",
+      "Updated brand teal (#007A6A) across all UI — passes WCAG AA",
+      "Moved slug to secondary line under client name",
+      "Added footer with row count and app version",
+      "Improved empty states with icon and contextual messaging",
+      "Search input hidden until 8+ checklists exist",
+      "Upgraded card shadow and page title size"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
+    "version": "1.4.0",
+    "codename": "Rising Spark",
+    "changes": [
+      "Added AI call voice selection toggle per checklist",
+      "Added PWA support for Add to Home Screen on iOS and Android",
+      "Added About tab with version history"
+    ],
+    "deployed_at": "2026-03-12"
+  },
+  {
+    "version": "1.3.0",
+    "codename": "Iron Ledger",
+    "changes": [
+      "Added per-field sample column and pinned sample row to all sheets",
+      "Reverted SSL config to fix managed DB connection on Vercel"
+    ],
+    "deployed_at": "2026-02-21"
+  },
+  {
+    "version": "1.2.0",
+    "codename": "Amber Dusk",
+    "changes": [
+      "Applied Talkpush Design System brand tokens and color cleanup",
+      "Merged Read Me tab into Welcome tab",
+      "Expanded table rows by default for better desktop real estate",
+      "Added progress bar, tooltips, placeholders, and UX polish",
+      "Improved table row hover, detail panel labels, and input visibility",
+      "Security hardening, performance improvements, and Supabase storage prep"
+    ],
+    "deployed_at": "2026-02-20"
+  },
+  {
+    "version": "1.1.0",
+    "codename": "Open Gate",
+    "changes": [
+      "Added Company Details, Facebook, and Branding fields to Company Information",
+      "Added file upload for branding assets using Supabase Storage",
+      "Added expandable row detail for compact table UX",
+      "Improved UI consistency with taller inputs and wider columns"
+    ],
+    "deployed_at": "2026-02-18"
+  },
+  {
+    "version": "1.0.0",
+    "codename": "First Light",
+    "changes": [
+      "Initial production deployment with 14-tab configuration checklist",
+      "Admin dashboard with checklist management and Excel import/export",
+      "AI Call tab with voice preview and gender-filtered audio playback",
+      "Communication channels selector for messaging and AI Call visibility",
+      "Pre-populated messaging templates for email, SMS, WhatsApp, and Messenger",
+      "Security hardening, error handling, and auto-save with data safety"
+    ],
+    "deployed_at": "2026-02-15"
+  }
+]

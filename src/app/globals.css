@@ -83,6 +83,7 @@
   --brand-lavender:          oklch(0.82 0.08 258);
   --brand-lavender-lightest: oklch(0.93 0.04 258);
   --brand-lavender-lighter:  oklch(0.89 0.06 258);
+  /* P1 contrast fix: table headers use text-gray-900 on this background (~6:1 WCAG AA). Original value preserved. */
   --brand-lavender-darker:   oklch(0.67 0.12 258);
 
   --brand-pink:              oklch(0.87 0.09 322);
@@ -106,7 +107,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Talkpush teal #007A6A ≈ oklch(0.47 0.085 174). #00BFA5 fails WCAG AA (2.5:1); this passes at ~4.82:1 with white */
+  --primary: oklch(0.47 0.085 174);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -117,7 +119,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.71 0.12 174);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -125,7 +127,7 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.47 0.085 174);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);

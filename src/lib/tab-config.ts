@@ -20,6 +20,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
   { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
+  { slug: "about", label: "About", dataKey: null, icon: "Info" },
 ];
 
 export function getTabBySlug(slug: string): TabConfig | undefined {
@@ -27,7 +28,7 @@ export function getTabBySlug(slug: string): TabConfig | undefined {
 }
 
 // Tabs that are always included regardless of selection
-export const ALWAYS_ENABLED_SLUGS = ["welcome"];
+export const ALWAYS_ENABLED_SLUGS = ["welcome", "about"];
 
 // Tabs that can be toggled by admin
 export const SELECTABLE_TABS = TAB_CONFIG.filter(

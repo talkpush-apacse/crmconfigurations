@@ -18,6 +18,7 @@ import { FacebookWhatsAppSheet } from "@/components/sheets/FacebookWhatsAppSheet
 import { InstagramSheet } from "@/components/sheets/InstagramSheet";
 import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
+import { AboutSheet } from "@/components/sheets/AboutSheet";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
@@ -34,6 +35,7 @@ const sheetComponents: Record<string, React.ComponentType> = {
   instagram: InstagramSheet,
   "ai-call-faqs": AICallFAQsSheet,
   "agency-portal": AgencyPortalSheet,
+  about: AboutSheet,
 };
 
 export default function TabPage() {

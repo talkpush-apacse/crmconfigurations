@@ -25,6 +25,7 @@ import {
   Camera,
   Phone,
   Briefcase,
+  Info,
 } from "lucide-react";
 import type { ChecklistData } from "@/lib/types";
 
@@ -44,11 +45,34 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Camera,
   Phone,
   Briefcase,
+  Info,
 };
 
 interface TabNavigationProps {
   slug: string;
   data: ChecklistData | null;
+}
+
+/** Returns "complete" | "in-progress" | "empty" for a section's data */
+function getSectionState(val: unknown): "complete" | "in-progress" | "empty" {
+  if (val === null || val === undefined) return "empty";
+  if (Array.isArray(val)) {
+    if (val.length === 0) return "empty";
+    // Complete = 3+ rows, or all items have at least one filled field
+    const nonEmptyItems = val.filter((item) =>
+      typeof item === "object" && item !== null
+        ? Object.values(item as Record<string, unknown>).some((v) => v !== "" && v !== null && v !== undefined)
+        : true
+    );
+    return nonEmptyItems.length >= 3 ? "complete" : "in-progress";
+  }
+  if (typeof val === "object") {
+    const values = Object.values(val as Record<string, unknown>);
+    const filled = values.filter((v) => v !== "" && v !== null && v !== undefined).length;
+    if (filled === 0) return "empty";
+    return filled / values.length >= 0.6 ? "complete" : "in-progress";
+  }
+  return "in-progress";
 }
 
 export function TabNavigation({ slug, data }: TabNavigationProps) {
@@ -59,16 +83,18 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
       {getEnabledTabs(data?.enabledTabs ?? null).map((tab) => {
         const isActive = pathname === `/client/${slug}/${tab.slug}`;
         const Icon = iconMap[tab.icon];
-        const hasData =
+
+        const sectionState =
           tab.dataKey && data
-            ? (() => {
-                const val = data[tab.dataKey as keyof ChecklistData];
-                if (val === null || val === undefined) return false;
-                if (Array.isArray(val)) return val.length > 0;
-                if (typeof val === "object") return Object.values(val).some((v) => v !== "" && v !== null);
-                return true;
-              })()
-            : false;
+            ? getSectionState(data[tab.dataKey as keyof ChecklistData])
+            : null;
+
+        const dotLabel =
+          sectionState === "complete"
+            ? "Complete"
+            : sectionState === "in-progress"
+            ? "In progress"
+            : "Not started";
 
         return (
           <Link
@@ -83,24 +109,50 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
           >
             {Icon && <Icon className="h-4 w-4 shrink-0" />}
             <span className="truncate">{tab.label}</span>
-            {tab.dataKey && (
+            {tab.dataKey && sectionState !== null && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
+                    aria-label={dotLabel}
                     className={cn(
-                      "ml-auto h-2.5 w-2.5 shrink-0 rounded-full",
-                      hasData ? "bg-amber-400" : "bg-muted-foreground/30"
+                      "ml-auto h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
+                      sectionState === "complete"
+                        ? "bg-green-500"
+                        : sectionState === "in-progress"
+                        ? "bg-amber-400"
+                        : "border-2 border-muted-foreground/40 bg-transparent"
                     )}
                   />
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">
-                  {hasData ? "Data entered" : "Not started"}
+                  {dotLabel}
                 </TooltipContent>
               </Tooltip>
             )}
           </Link>
         );
       })}
+
+      {/* Legend */}
+      <div className="mt-3 border-t pt-3 px-1">
+        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+          Section status
+        </p>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+            Complete
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+            In progress
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+            Not started
+          </div>
+        </div>
+      </div>
     </nav>
   );
 }

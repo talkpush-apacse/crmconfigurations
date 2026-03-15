@@ -63,3 +63,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Authentication failed. Check database connection." }, { status: 500 });
   }
 }
+
+// Logout — clears the admin_token cookie
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("admin_token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
+  return response;
+}
