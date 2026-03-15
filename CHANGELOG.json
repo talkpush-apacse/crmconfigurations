@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.10.0",
+    "codename": "Regression Crisp",
+    "changes": [
+      "Replaced horizontal wrapping nav with a compact 48px icon-only vertical sidebar",
+      "Added Radix tooltip labels appearing on hover to the right of each icon",
+      "Added left-border active indicator replacing bottom-border underline",
+      "Status dots repositioned to top-right corner of each icon",
+      "Section status legend (LegendBar) now scoped to main content area only"
+    ],
+    "deployed_at": "2026-03-16"
+  },
+  {
     "version": "1.9.0",
     "codename": "Query Deep",
     "changes": [
