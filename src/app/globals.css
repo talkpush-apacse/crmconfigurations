@@ -180,6 +180,17 @@
   }
 }
 
+/* Section status dot — pop animation on completion */
+@keyframes dot-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.5); }
+  70%  { transform: scale(0.85); }
+  100% { transform: scale(1); }
+}
+.dot-complete {
+  animation: dot-pop 0.35s ease-out;
+}
+
 /* Brand Gradient Strip — Talkpush Design System */
 .brand-gradient-strip {
   background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5);

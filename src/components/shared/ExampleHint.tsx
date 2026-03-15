@@ -13,7 +13,8 @@ interface ExampleHintProps {
 }
 
 export function ExampleHint({ children }: ExampleHintProps) {
-  const [open, setOpen] = useState(true);
+  // Start collapsed — inline sample rows/columns already show the same data on first load
+  const [open, setOpen] = useState(false);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

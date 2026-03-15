@@ -58,62 +58,13 @@ export const defaultCompanyInfo: CompanyInfo = {
   rehiresAllowed: "",
 };
 
-export const defaultUsers: UserRow[] = [
-  {
-    id: uid(),
-    name: "",
-    accessType: "",
-    jobTitle: "",
-    email: "",
-    phone: "",
-    site: "",
-    reportsTo: "",
-    stage: "",
-    comments: "",
-  },
-];
+export const defaultUsers: UserRow[] = [];
 
-export const defaultCampaigns: CampaignRow[] = [
-  {
-    id: uid(),
-    nameInternal: "",
-    jobTitleExternal: "",
-    site: "",
-    jobDescription: "",
-    googleMapsLink: "",
-    zoomLink: "",
-    comments: "",
-  },
-];
+export const defaultCampaigns: CampaignRow[] = [];
 
-export const defaultSites: SiteRow[] = [
-  {
-    id: uid(),
-    siteName: "",
-    internalName: "",
-    interviewHours: "",
-    interviewType: "",
-    fullAddress: "",
-    documentsToRring: "",
-    googleMapsLink: "",
-    comments: "",
-  },
-];
+export const defaultSites: SiteRow[] = [];
 
-export const defaultPrescreening: QuestionRow[] = [
-  {
-    id: uid(),
-    category: "Pre-screening",
-    question: "",
-    questionType: "",
-    answerOptions: "",
-    applicableCampaigns: "",
-    autoReject: "",
-    rejectCondition: "",
-    rejectReason: "",
-    comments: "",
-  },
-];
+export const defaultPrescreening: QuestionRow[] = [];
 
 export const defaultMessaging: MessagingTemplateRow[] = [
   {
@@ -459,15 +410,7 @@ Bring a valid ID and your resume. Arrive 15 mins early. See you there!`,
   },
 ];
 
-export const defaultSources: SourceRow[] = [
-  {
-    id: uid(),
-    category: "",
-    subcategory: "",
-    link: "",
-    comments: "",
-  },
-];
+export const defaultSources: SourceRow[] = [];
 
 export const defaultFolders: FolderRow[] = [
   { id: uid(), folderName: "Inbox (Default)", description: "Candidates added to this folder first by default", movementType: "Automated", comments: "" },
@@ -477,19 +420,7 @@ export const defaultFolders: FolderRow[] = [
   { id: uid(), folderName: "Rejected", description: "Candidates who were not selected", movementType: "Manual", comments: "" },
 ];
 
-export const defaultDocuments: DocumentRow[] = [
-  {
-    id: uid(),
-    documentName: "",
-    applicableCandidates: "",
-    required: "",
-    blankTemplateLink: "",
-    applicableCampaigns: "",
-    accessPermissions: "",
-    folder: "",
-    comments: "",
-  },
-];
+export const defaultDocuments: DocumentRow[] = [];
 
 export const defaultFbWhatsapp: FbWhatsappData = {
   phoneNumber: "",
@@ -532,17 +463,7 @@ export const defaultAiCallData: AiCallData = {
   ],
 };
 
-export const defaultAgencyPortal: AgencyPortalRow[] = [
-  {
-    id: uid(),
-    agencyName: "",
-    contactName: "",
-    email: "",
-    phone: "",
-    country: "",
-    comments: "",
-  },
-];
+export const defaultAgencyPortal: AgencyPortalRow[] = [];
 
 export function getDefaultChecklistData() {
   return {

@@ -30,10 +30,10 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
       {/* Column headers — hidden on mobile */}
       <div
         className={cn(
-          "hidden lg:grid bg-brand-lavender-darker text-white text-sm font-medium rounded-t-lg",
+          "hidden lg:grid bg-brand-lavender-darker text-gray-900 text-sm font-medium rounded-t-lg",
           hasSamples
-            ? "lg:grid-cols-[200px_1fr_280px_200px] xl:grid-cols-[220px_1fr_320px_220px]"
-            : "lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px]"
+            ? "lg:grid-cols-[160px_minmax(200px,1fr)_240px_160px] xl:grid-cols-[200px_minmax(220px,1fr)_280px_200px]"
+            : "lg:grid-cols-[160px_minmax(200px,1fr)_240px] xl:grid-cols-[200px_minmax(220px,1fr)_280px]"
         )}
       >
         <div className="px-4 py-2">Field</div>
@@ -47,8 +47,8 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           className={cn(
             "flex flex-col border-b last:border-b-0",
             hasSamples
-              ? "lg:grid lg:grid-cols-[200px_1fr_280px_200px] xl:grid-cols-[220px_1fr_320px_220px]"
-              : "lg:grid lg:grid-cols-[200px_1fr_280px] xl:grid-cols-[220px_1fr_320px]",
+              ? "lg:grid lg:grid-cols-[160px_minmax(200px,1fr)_240px_160px] xl:grid-cols-[200px_minmax(220px,1fr)_280px_200px]"
+              : "lg:grid lg:grid-cols-[160px_minmax(200px,1fr)_240px] xl:grid-cols-[200px_minmax(220px,1fr)_280px]",
             idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
           )}
         >
@@ -66,7 +66,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
               </a>
             )}
           </div>
-          <div className="p-1.5 bg-yellow-50/50">
+          <div className="p-1.5 bg-amber-50/50">
             {/* Mobile-only sample hint — shown above the response input */}
             {field.example && (
               <p className="lg:hidden px-1 pt-0.5 pb-1 text-xs text-gray-400 italic">

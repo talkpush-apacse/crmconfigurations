@@ -6,6 +6,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultCampaigns } from "@/lib/template-data";
 import type { ColumnDef, CampaignRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "nameInternal", label: "Campaign Name (Internal)", type: "text", description: "Internal name used within Talkpush to identify this campaign" },
@@ -106,6 +107,7 @@ export function CampaignsSheet() {
           sheetName: "Campaigns",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

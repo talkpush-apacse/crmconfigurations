@@ -7,6 +7,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultInstagram } from "@/lib/template-data";
 import type { ColumnDef, InstagramData, FaqEntry } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const requirementsList = [
   "Provide your Instagram Business Account details",
@@ -137,6 +138,7 @@ export function InstagramSheet() {
           }}
         />
       </div>
+      <SectionFooter />
     </div>
   );
 }

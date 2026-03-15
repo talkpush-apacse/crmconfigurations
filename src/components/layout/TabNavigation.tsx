@@ -53,6 +53,13 @@ interface TabNavigationProps {
   data: ChecklistData | null;
 }
 
+/** Slugs that begin a new named group — a divider + label renders before them */
+const GROUP_STARTERS: Record<string, string> = {
+  users: "Recruitment",
+  "facebook-whatsapp": "Integrations",
+  about: "App",
+};
+
 /** Returns "complete" | "in-progress" | "empty" for a section's data */
 function getSectionState(val: unknown): "complete" | "in-progress" | "empty" {
   if (val === null || val === undefined) return "empty";
@@ -96,9 +103,19 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
             ? "In progress"
             : "Not started";
 
+        const groupLabel = GROUP_STARTERS[tab.slug];
+
         return (
+          <div key={tab.slug}>
+            {groupLabel && (
+              <div className="mt-3 mb-1 flex items-center gap-2 px-1">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  {groupLabel}
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            )}
           <Link
-            key={tab.slug}
             href={`/client/${slug}/${tab.slug}`}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
@@ -115,9 +132,9 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
                   <span
                     aria-label={dotLabel}
                     className={cn(
-                      "ml-auto h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
+                      "ml-auto h-2.5 w-2.5 shrink-0 rounded-full transition-all duration-300",
                       sectionState === "complete"
-                        ? "bg-green-500"
+                        ? "bg-green-500 shadow-[0_0_0_2px_rgba(34,197,94,0.2)] dot-complete"
                         : sectionState === "in-progress"
                         ? "bg-amber-400"
                         : "border-2 border-muted-foreground/40 bg-transparent"
@@ -130,6 +147,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
               </Tooltip>
             )}
           </Link>
+          </div>
         );
       })}
 

@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultPrescreening } from "@/lib/template-data";
 import type { ColumnDef, QuestionRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "category", label: "Category", type: "dropdown", options: ["Pre-screening", "Follow-up"], description: "Whether this is a pre-screening or follow-up question" },
@@ -118,6 +119,7 @@ export function PrescreeningSheet() {
           sheetName: "Pre-screening Questions",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

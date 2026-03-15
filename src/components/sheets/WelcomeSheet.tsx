@@ -1,7 +1,53 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Edit3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle, Edit3, ChevronDown, ChevronRight } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+
+interface InfoCardProps {
+  icon: React.ReactNode;
+  title: string;
+  colorClasses: string; // border + bg classes
+  storageKey: string;
+  children: React.ReactNode;
+}
+
+function InfoCard({ icon, title, colorClasses, storageKey, children }: InfoCardProps) {
+  // Start open on first visit; persist collapsed state across sessions
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(storageKey);
+    if (stored !== null) setOpen(stored !== "false");
+  }, [storageKey]);
+
+  const handleToggle = () => {
+    setOpen((v) => {
+      const next = !v;
+      localStorage.setItem(storageKey, String(next));
+      return next;
+    });
+  };
+
+  return (
+    <div className={`rounded-lg border-l-4 ${colorClasses}`}>
+      <button
+        className="flex w-full items-center gap-3 p-4 text-left"
+        onClick={handleToggle}
+        aria-expanded={open}
+      >
+        <span className="shrink-0">{icon}</span>
+        <span className="flex-1 font-semibold">{title}</span>
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-current opacity-60" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-current opacity-60" />
+        )}
+      </button>
+      {open && <div className="px-4 pb-4 pt-0">{children}</div>}
+    </div>
+  );
+}
 
 export function WelcomeSheet() {
   return (
@@ -18,42 +64,45 @@ export function WelcomeSheet() {
           </p>
         </div>
 
-        <div className="flex items-start gap-4 rounded-lg border-l-4 border-yellow-400 bg-yellow-50 p-4">
-          <Edit3 className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
-          <div>
-            <h3 className="font-semibold text-yellow-800">Editable Fields</h3>
-            <p className="mt-1 text-sm text-yellow-700">
-              Fields with a yellow background are editable. Click on them to enter your information.
-              Your changes are saved automatically.
-            </p>
-          </div>
-        </div>
+        <InfoCard
+          icon={<Edit3 className="h-5 w-5 text-yellow-600" />}
+          title="Editable Fields"
+          colorClasses="border-yellow-400 bg-yellow-50 text-yellow-800"
+          storageKey="welcome-card-editable-fields"
+        >
+          <p className="text-sm text-yellow-900">
+            Fields with a yellow background are editable. Click on them to enter your information.
+            Your changes are saved automatically.
+          </p>
+        </InfoCard>
 
-        <div className="flex items-start gap-4 rounded-lg border-l-4 border-green-400 bg-green-50 p-4">
-          <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-          <div>
-            <h3 className="font-semibold text-green-800">Auto-Save</h3>
-            <p className="mt-1 text-sm text-green-700">
-              All changes are automatically saved 2 seconds after you stop typing.
-              The save status is shown in the top-right corner of the header.
-            </p>
-          </div>
-        </div>
+        <InfoCard
+          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+          title="Auto-Save"
+          colorClasses="border-green-400 bg-green-50 text-green-800"
+          storageKey="welcome-card-auto-save"
+        >
+          <p className="text-sm text-green-700">
+            All changes are automatically saved 2 seconds after you stop typing.
+            The save status is shown in the top-right corner of the header.
+          </p>
+        </InfoCard>
 
-        <div className="flex items-start gap-4 rounded-lg border-l-4 border-blue-400 bg-blue-50 p-4">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-          <div>
-            <h3 className="font-semibold text-blue-800">Important Notes</h3>
-            <ul className="mt-1 space-y-1 text-sm text-blue-700">
-              <li>Do not skip sections — complete each tab in order when possible.</li>
-              <li>Dropdown fields have predefined options — select from the list.</li>
-              <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
-              <li>You can delete rows using the trash icon on the right side.</li>
-              <li>Hover over column headers for detailed descriptions.</li>
-              <li>Export your completed checklist using the &quot;Export XLS&quot; button in the header.</li>
-            </ul>
-          </div>
-        </div>
+        <InfoCard
+          icon={<AlertCircle className="h-5 w-5 text-blue-600" />}
+          title="Important Notes"
+          colorClasses="border-blue-400 bg-blue-50 text-blue-800"
+          storageKey="welcome-card-important-notes"
+        >
+          <ul className="space-y-1 text-sm text-blue-700">
+            <li>Do not skip sections — complete each tab in order when possible.</li>
+            <li>Dropdown fields have predefined options — select from the list.</li>
+            <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
+            <li>You can delete rows using the trash icon on the right side.</li>
+            <li>Hover over column headers for detailed descriptions.</li>
+            <li>Export your completed checklist using the &quot;Export XLS&quot; button in the header.</li>
+          </ul>
+        </InfoCard>
 
         <div className="rounded-lg bg-blue-50 p-4">
           <h3 className="font-semibold text-blue-900">Sections Overview</h3>
@@ -67,7 +116,7 @@ export function WelcomeSheet() {
             <li><strong>Sources</strong> — Candidate sourcing channels</li>
             <li><strong>Folders</strong> — Workflow stage configuration</li>
             <li><strong>Document Collection</strong> — Required documents setup</li>
-            <li><strong>Facebook & WhatsApp</strong> — Messaging platform integration</li>
+            <li><strong>Facebook &amp; WhatsApp</strong> — Messaging platform integration</li>
             <li><strong>Instagram Chatbot</strong> — Instagram integration</li>
             <li><strong>AI Call</strong> — AI call configuration and FAQs</li>
             <li><strong>Agency Portal</strong> — Agency management</li>

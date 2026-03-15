@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultUsers } from "@/lib/template-data";
 import type { ColumnDef, UserRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user" },
@@ -109,6 +110,7 @@ export function UserListSheet() {
           sheetName: "Users",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

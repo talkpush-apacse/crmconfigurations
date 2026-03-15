@@ -6,6 +6,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAgencyPortal } from "@/lib/template-data";
 import type { ColumnDef, AgencyPortalRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "agencyName", label: "Agency Name", type: "text", description: "Name of the staffing/recruitment agency" },
@@ -83,6 +84,7 @@ export function AgencyPortalSheet() {
           sheetName: "Agency Portal",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

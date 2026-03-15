@@ -112,11 +112,11 @@ export function EditableTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-brand-lavender-darker">
-              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-white`}>
+              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-gray-900`}>
                 {detailColumns && data.length > 0 ? (
                   <button
                     onClick={toggleAll}
-                    className="hover:text-white/80 transition-colors"
+                    className="inline-flex items-center justify-center rounded p-1 hover:bg-black/10 hover:text-gray-900 transition-colors"
                     title={expandedRows.size === data.length ? "Collapse all" : "Expand all"}
                   >
                     {expandedRows.size === data.length ? (
@@ -130,11 +130,11 @@ export function EditableTable({
                 )}
               </TableHead>
               {columns.map((col) => (
-                <TableHead key={col.key} className="text-white" style={{ width: col.width }}>
+                <TableHead key={col.key} className="text-gray-900" style={{ width: col.width }}>
                   {col.description ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="cursor-help border-b border-dashed border-white/50">
+                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-500/60">
                           {col.label}
                         </span>
                       </TooltipTrigger>
@@ -147,7 +147,7 @@ export function EditableTable({
                   )}
                 </TableHead>
               ))}
-              <TableHead className="w-10 text-white" />
+              <TableHead className="w-10 text-gray-900" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -164,15 +164,15 @@ export function EditableTable({
             )}
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
-              <TableRow className="bg-blue-50/60 hover:bg-blue-50/60">
+              <TableRow className="bg-blue-50 hover:bg-blue-50 border-l-4 border-blue-300">
                 <TableCell className="text-center py-2">
-                  <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">
+                  <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-600 uppercase tracking-wider">
                     {detailColumns ? "Sample" : "eg."}
                   </span>
                 </TableCell>
                 {columns.map((col) => (
                   <TableCell key={col.key} className="p-2">
-                    <span className="block text-sm text-gray-400 italic px-1">
+                    <span className="block text-sm text-blue-500 italic px-1">
                       {sampleRow[col.key] || "—"}
                     </span>
                   </TableCell>
@@ -183,12 +183,12 @@ export function EditableTable({
             )}
             {data.map((row, rowIdx) => (
               <Fragment key={(row.id as string) || rowIdx}>
-                <TableRow className={cn("bg-yellow-50/30 transition-colors hover:bg-yellow-50/60", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
+                <TableRow className={cn("bg-amber-50/40 transition-colors hover:bg-amber-50/70", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
                   <TableCell className="text-center text-xs text-muted-foreground">
                     {detailColumns ? (
                       <button
                         onClick={() => toggleRow(rowIdx)}
-                        className="inline-flex items-center gap-0.5 hover:text-primary transition-colors"
+                        className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-gray-100 hover:text-primary transition-colors"
                         title={expandedRows.has(rowIdx) ? "Collapse details" : "Expand details"}
                       >
                         {expandedRows.has(rowIdx) ? (
@@ -223,11 +223,11 @@ export function EditableTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
                           onClick={() => onDuplicate(rowIdx)}
                           title="Duplicate row"
                         >
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4" />
                         </Button>
                       )}
                       {confirmingDelete === rowIdx ? (
@@ -244,22 +244,22 @@ export function EditableTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground"
+                            className="h-8 w-8 text-muted-foreground hover:bg-gray-100"
                             onClick={() => setConfirmingDelete(null)}
                             title="Cancel"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-4 w-4" />
                           </Button>
                         </>
                       ) : (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
                           onClick={() => handleDeleteClick(rowIdx)}
                           title="Delete row"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -281,7 +281,7 @@ export function EditableTable({
                                   {col.description ? (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <span className="cursor-help border-b border-dashed border-gray-300">
+                                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/70">
                                           {col.label}
                                         </span>
                                       </TooltipTrigger>
@@ -315,7 +315,7 @@ export function EditableTable({
         </Table>
       </div>
       <div className="border-t p-2">
-        <Button variant="ghost" size="sm" onClick={onAdd} className="text-primary">
+        <Button variant="outline" size="sm" onClick={onAdd} className="text-primary border-primary/30 hover:border-primary/60">
           <Plus className="mr-1 h-4 w-4" />
           {addLabel}
         </Button>

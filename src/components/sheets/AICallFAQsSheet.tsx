@@ -8,6 +8,7 @@ import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAiCallData } from "@/lib/template-data";
 import type { ColumnDef, AiCallData, AiCallFaqRow, FeatureToggles } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 function getConfigFields(selectedGender: string): KeyValueField[] {
   const voiceOptions = selectedGender
@@ -195,6 +196,7 @@ export function AICallFAQsSheet() {
           }}
         />
       </div>
+      <SectionFooter />
     </div>
   );
 }

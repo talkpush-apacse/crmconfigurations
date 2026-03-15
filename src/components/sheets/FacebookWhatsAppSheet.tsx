@@ -7,6 +7,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultFbWhatsapp } from "@/lib/template-data";
 import type { ColumnDef, FbWhatsappData, FaqEntry } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const requirementsList = [
   "Provide a dedicated phone number for WhatsApp integration",
@@ -140,6 +141,7 @@ export function FacebookWhatsAppSheet() {
           }}
         />
       </div>
+      <SectionFooter />
     </div>
   );
 }

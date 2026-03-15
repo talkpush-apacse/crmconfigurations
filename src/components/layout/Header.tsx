@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Menu } from "lucide-react";
+import { Download, Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SaveStatus } from "./SaveStatus";
 
@@ -30,9 +30,11 @@ export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, o
           </Button>
           <Link
             href="/admin"
-            className="hidden lg:flex items-center gap-1.5 mr-2 pr-3 border-r text-xs font-semibold text-brand-lavender-darker hover:text-brand-lavender-darker/80 transition-colors"
+            className="hidden lg:flex items-center gap-1.5 mr-2 pr-3 border-r rounded px-1.5 py-0.5 text-xs font-semibold text-muted-foreground hover:bg-gray-100 hover:text-foreground transition-colors"
+            title="Back to Admin dashboard"
           >
-            ← Admin
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Admin
           </Link>
           <div>
             <h1 className="text-sm font-semibold">{clientName}</h1>
@@ -41,11 +43,11 @@ export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, o
         </div>
         <div className="flex items-center gap-3">
           {totalCount > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="font-medium tabular-nums text-foreground">{filledCount}</span>
-              <span>/</span>
-              <span className="tabular-nums">{totalCount}</span>
-              <span className="hidden sm:inline">sections</span>
+            <div className="flex items-center gap-2 rounded-full border bg-gray-50 px-3 py-1 text-xs">
+              <span className="font-semibold tabular-nums text-foreground">{filledCount}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="tabular-nums text-muted-foreground">{totalCount}</span>
+              <span className="hidden sm:inline text-muted-foreground">sections</span>
             </div>
           )}
           <SaveStatus status={saveStatus} errorMessage={saveError} onRetry={onRetrySave} />
@@ -55,7 +57,7 @@ export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, o
           </Button>
         </div>
       </header>
-      <div className="h-0.5 bg-muted">
+      <div className="h-1.5 bg-muted">
         <div
           className="h-full bg-brand-lavender-darker transition-all duration-500"
           style={{ width: totalCount > 0 ? `${(filledCount / totalCount) * 100}%` : "0%" }}

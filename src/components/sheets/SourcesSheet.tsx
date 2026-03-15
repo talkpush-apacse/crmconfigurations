@@ -6,6 +6,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultSources } from "@/lib/template-data";
 import type { ColumnDef, SourceRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "category", label: "Source Category", type: "text", description: "Category of the sourcing channel (e.g., Social Media, Job Boards, Referral)" },
@@ -82,6 +83,7 @@ export function SourcesSheet() {
           sheetName: "Sources",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

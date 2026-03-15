@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultSites } from "@/lib/template-data";
 import type { ColumnDef, SiteRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "siteName", label: "Site Name", type: "text", description: "Public-facing name of the interview/office site" },
@@ -90,6 +91,7 @@ export function SitesSheet() {
           sheetName: "Sites",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

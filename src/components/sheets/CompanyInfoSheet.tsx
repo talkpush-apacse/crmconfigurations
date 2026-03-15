@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { defaultCompanyInfo } from "@/lib/template-data";
 import type { CompanyInfo } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const companyDetailsFields: KeyValueField[] = [
   {
@@ -180,7 +181,10 @@ export function CompanyInfoSheet() {
 
       {/* Company Details */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Company Details</h3>
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Details</h3>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
         <KeyValueForm
           fields={companyDetailsFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -190,7 +194,10 @@ export function CompanyInfoSheet() {
 
       {/* Facebook Details */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Facebook Details</h3>
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Facebook Details</h3>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
         <KeyValueForm
           fields={facebookFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -200,7 +207,10 @@ export function CompanyInfoSheet() {
 
       {/* Company Branding Assets */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Company Branding Assets</h3>
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Branding Assets</h3>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
         <KeyValueForm
           fields={brandingFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -210,13 +220,17 @@ export function CompanyInfoSheet() {
 
       {/* Recruitment Process */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recruitment Process</h3>
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruitment Process</h3>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
         <KeyValueForm
           fields={recruitmentFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
           onChange={handleChange}
         />
       </div>
+      <SectionFooter />
     </div>
   );
 }

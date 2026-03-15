@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultFolders } from "@/lib/template-data";
 import type { ColumnDef, FolderRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "folderName", label: "Folder Name", type: "text", description: "Name of the workflow stage/folder" },
@@ -78,6 +79,7 @@ export function FoldersSheet() {
           sheetName: "Folders",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

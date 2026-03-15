@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.6.0",
+    "codename": "Quiet Tide",
+    "changes": [
+      "Improved sidebar section status dots with 3-state indicators and group dividers",
+      "Added section completion glow animation on status dot",
+      "Improved section header styling with left border accent",
+      "Improved subsection labels with divider-rule pattern",
+      "Improved sample rows with left border accent and badge label",
+      "Improved action icon hit targets and hover states",
+      "Improved CSV download button with brand color styling",
+      "Added localStorage persistence to Welcome page info cards",
+      "Tables now start empty instead of with a blank placeholder row",
+      "Improved expand/collapse chevron hit targets in expandable tables",
+      "Added 'Continue to next section' footer button on all content sections",
+      "Improved ExampleHint accordions start collapsed by default",
+      "Fixed contrast issues across section headers and table elements"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
     "version": "1.5.0",
     "codename": "Silver Bloom",
     "changes": [

@@ -38,9 +38,9 @@ export function SaveStatus({ status, errorMessage, onRetry }: SaveStatusProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-        status === "saved" && "bg-green-50 text-green-700",
-        status === "saving" && "bg-yellow-50 text-yellow-700"
+        "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
+        status === "saved" && "border-green-200 bg-green-50 text-green-700",
+        status === "saving" && "border-yellow-200 bg-yellow-50 text-yellow-700"
       )}
     >
       {status === "saved" && (

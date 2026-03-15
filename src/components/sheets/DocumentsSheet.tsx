@@ -7,6 +7,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultDocuments } from "@/lib/template-data";
 import type { ColumnDef, DocumentRow } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
   { key: "documentName", label: "Document Name", type: "text", description: "Official name of the document to collect" },
@@ -91,6 +92,7 @@ export function DocumentsSheet() {
           sheetName: "Documents",
         }}
       />
+      <SectionFooter />
     </div>
   );
 }

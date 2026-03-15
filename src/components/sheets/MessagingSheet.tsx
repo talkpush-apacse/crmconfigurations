@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Copy } from "lucide-react";
 import type { MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const allChannels = [
   { key: "email" as const, label: "Email", templateKey: "emailTemplate" as const, activeKey: "emailActive" as const },
@@ -105,12 +106,12 @@ export function MessagingSheet() {
           >
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3 text-left">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-lavender-darker text-xs text-white">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-lavender-darker text-xs text-gray-900 font-semibold">
                   {idx + 1}
                 </span>
                 <div>
                   <p className="font-medium">{template.name || "Untitled Template"}</p>
-                  <p className="text-xs text-muted-foreground">{template.purpose || "No purpose set"}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{template.purpose || "No purpose set"}</p>
                 </div>
               </div>
             </AccordionTrigger>
@@ -180,6 +181,7 @@ export function MessagingSheet() {
                         <Checkbox
                           checked={!!template[ch.activeKey]}
                           onCheckedChange={(checked) => handleUpdate(idx, ch.activeKey, !!checked)}
+                          aria-label={`${ch.label} active`}
                         />
                       </div>
                     </div>
@@ -228,6 +230,7 @@ export function MessagingSheet() {
           Add Template
         </Button>
       </div>
+      <SectionFooter />
     </div>
   );
 }
