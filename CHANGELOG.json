@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.9.0",
+    "codename": "Query Deep",
+    "changes": [
+      "Added database index on clientName for faster admin search and sort",
+      "Added server-side pagination to admin checklist list (50 per page)",
+      "Removed unsafe-eval from Content Security Policy in production",
+      "Added URL and email validation to Company Info fields (website, privacy policy, Facebook)",
+      "Added validation field support to KeyValueForm component",
+      "Added 3-attempt exponential backoff retry on failed saves",
+      "Extracted SettingsDialog into a standalone reusable component",
+      "Added unsaved changes warning when navigating between tabs"
+    ],
+    "deployed_at": "2026-03-15"
+  },
+  {
     "version": "1.8.0",
     "codename": "Polished Surface",
     "changes": [

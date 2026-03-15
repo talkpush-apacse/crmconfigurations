@@ -32,6 +32,8 @@ model Checklist {
   instagram     Json?
   aiCallFaqs    Json?
   agencyPortal  Json?
+
+  @@index([clientName])
 }
 
 model AdminUser {

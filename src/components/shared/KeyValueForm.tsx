@@ -15,6 +15,7 @@ export interface KeyValueField {
   link?: { url: string; label: string };
   placeholder?: string;
   example?: string;
+  validation?: "email" | "url" | "phone";
 }
 
 interface KeyValueFormProps {
@@ -107,6 +108,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
                 options={field.options}
                 onChange={(val) => onChange(field.key, val)}
                 placeholder={field.placeholder ?? "Enter response"}
+                validation={field.validation}
               />
             )}
           </div>

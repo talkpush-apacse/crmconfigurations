@@ -33,33 +33,50 @@ export function useChecklist(slug: string) {
   const save = useCallback(async (updatedData: ChecklistData) => {
     setSaveStatus("saving");
     setSaveError(null);
-    try {
-      const res = await fetch(`/api/checklists/${updatedData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedData),
-      });
-      if (res.status === 409) {
-        setSaveStatus("error");
-        setSaveError("This checklist was modified elsewhere. Please reload the page.");
-        return;
+
+    // Retry up to 3 attempts with exponential backoff (0s, 1s, 2s delays)
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 1000 * attempt));
       }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Save failed");
+      try {
+        // Always use the most recent data in case edits occurred during retry delay
+        const dataToSave = latestDataRef.current ?? updatedData;
+        const res = await fetch(`/api/checklists/${dataToSave.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dataToSave),
+        });
+        if (res.status === 409) {
+          // Conflict is definitive — do not retry
+          setSaveStatus("error");
+          setSaveError("This checklist was modified elsewhere. Please reload the page.");
+          return;
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          lastError = new Error(body.error || "Save failed");
+          continue; // retry
+        }
+        const saved = await res.json();
+        // Update version from server response for optimistic locking
+        setData((prev) => prev ? { ...prev, version: saved.version } : prev);
+        if (latestDataRef.current) {
+          latestDataRef.current = { ...latestDataRef.current, version: saved.version };
+        }
+        hasPendingChanges.current = false;
+        setSaveStatus("saved");
+        return; // success
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("Save failed");
+        // Network error — will retry
       }
-      const saved = await res.json();
-      // Update version from server response for optimistic locking
-      setData((prev) => prev ? { ...prev, version: saved.version } : prev);
-      if (latestDataRef.current) {
-        latestDataRef.current = { ...latestDataRef.current, version: saved.version };
-      }
-      hasPendingChanges.current = false;
-      setSaveStatus("saved");
-    } catch (err) {
-      setSaveStatus("error");
-      setSaveError(err instanceof Error ? err.message : "Save failed");
     }
+
+    // All attempts exhausted
+    setSaveStatus("error");
+    setSaveError(lastError?.message ?? "Save failed");
   }, []);
 
   const retrySave = useCallback(() => {
@@ -101,5 +118,5 @@ export function useChecklist(slug: string) {
     };
   }, []);
 
-  return { data, loading, error, saveStatus, saveError, updateField, retrySave };
+  return { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef: hasPendingChanges };
 }

@@ -14,6 +14,8 @@ export type NavItem = {
 
 interface TopNavProps {
   items: NavItem[];
+  /** Ref to the pending-changes flag from useChecklist. When true, warn before navigating. */
+  hasPendingChangesRef?: React.RefObject<boolean>;
 }
 
 function StatusDot({ status }: { status: NavItem["status"] }) {
@@ -26,7 +28,7 @@ function StatusDot({ status }: { status: NavItem["status"] }) {
   return null;
 }
 
-export function TopNav({ items }: TopNavProps) {
+export function TopNav({ items, hasPendingChangesRef }: TopNavProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -44,6 +46,14 @@ export function TopNav({ items }: TopNavProps) {
 
   const activeItem = items.find((i) => i.href === pathname);
 
+  /** Returns false (and shows a confirm) if there are unsaved changes. */
+  function confirmNavigation(href: string): boolean {
+    if (hasPendingChangesRef?.current && href !== pathname) {
+      return window.confirm("You have unsaved changes. Your data is being saved — navigate anyway?");
+    }
+    return true;
+  }
+
   return (
     <nav className="border-b border-border bg-background shrink-0">
       {/* Desktop: wrapping tabs (≥520px) */}
@@ -54,6 +64,9 @@ export function TopNav({ items }: TopNavProps) {
             <li key={item.href} className="flex items-stretch">
               <Link
                 href={item.href}
+                onClick={(e) => {
+                  if (!confirmNavigation(item.href)) e.preventDefault();
+                }}
                 className={cn(
                   "flex items-center gap-1.5 h-11 px-3.5 text-[13px] font-medium whitespace-nowrap relative transition-colors",
                   isActive
@@ -96,7 +109,13 @@ export function TopNav({ items }: TopNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setDrawerOpen(false)}
+                onClick={(e) => {
+                  if (!confirmNavigation(item.href)) {
+                    e.preventDefault();
+                  } else {
+                    setDrawerOpen(false);
+                  }
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded text-[13px] font-medium",
                   isActive

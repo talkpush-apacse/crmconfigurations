@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
+// unsafe-eval is only needed in dev (Next.js hot reload / React Fast Refresh).
+// In production Next.js App Router does not require it.
+const isDev = process.env.NODE_ENV !== "production";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-inline/eval in dev; tighten in future with nonces
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co",

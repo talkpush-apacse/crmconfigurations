@@ -41,12 +41,13 @@ import {
   ChevronsUpDown,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
 } from "lucide-react";
-import { TabSelector } from "@/components/admin/TabSelector";
-import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { SettingsDialog } from "@/components/admin/SettingsDialog";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
 import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
@@ -142,6 +143,9 @@ function SortHeader({
 export default function AdminDashboard() {
   const router = useRouter();
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,9 +176,10 @@ export default function AdminDashboard() {
     if (checklists.length < SEARCH_THRESHOLD) setSearchQuery("");
   }, [checklists.length]);
 
-  const fetchChecklists = async () => {
+  const fetchChecklists = async (page = currentPage) => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/checklists");
+      const res = await fetch(`/api/checklists?page=${page}`);
       if (res.status === 401) {
         router.push("/admin/login");
         return;
@@ -185,13 +190,15 @@ export default function AdminDashboard() {
         setChecklists([]);
         return;
       }
-      if (!Array.isArray(data)) {
+      if (!data.items || !Array.isArray(data.items)) {
         setError("Unexpected response from server");
         setChecklists([]);
         return;
       }
       setError("");
-      setChecklists(data);
+      setChecklists(data.items);
+      setTotal(data.total ?? 0);
+      setCurrentPage(page);
     } catch {
       setError("Failed to connect to server");
     } finally {
@@ -200,7 +207,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchChecklists();
+    fetchChecklists(1);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // P1-01 + P4-05: Close dialog and defer actual API call by 5s (undo-able)
@@ -208,8 +215,10 @@ export default function AdminDashboard() {
     setDeleteTarget(null);
     const timer = setTimeout(async () => {
       await fetch(`/api/checklists/${c.id}`, { method: "DELETE" });
-      setChecklists((prev) => prev.filter((x) => x.id !== c.id));
       setPendingDelete(null);
+      // Refetch current page; if it's now empty and not page 1, go back one page
+      const newPage = checklists.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      fetchChecklists(newPage);
     }, 5000);
     setPendingDelete({ item: c, timer });
   };
@@ -237,7 +246,7 @@ export default function AdminDashboard() {
         }),
       });
       const created = await createRes.json();
-      fetchChecklists();
+      fetchChecklists(currentPage);
       setCopySuccess(created.slug || newName);
       setTimeout(() => setCopySuccess(null), 4000);
     } catch {
@@ -294,7 +303,7 @@ export default function AdminDashboard() {
         }),
       });
       setEditing(null);
-      fetchChecklists();
+      fetchChecklists(currentPage);
     } catch {
       console.error("Failed to save settings");
     } finally {
@@ -400,41 +409,17 @@ export default function AdminDashboard() {
             </Dialog>
 
             {/* Edit Settings Dialog */}
-            {editing && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <Card className="mx-4 max-h-[80vh] w-full max-w-2xl overflow-y-auto">
-                  <div className="p-6">
-                    <h2 className="mb-4 text-base font-semibold">
-                      Settings — {editing.clientName}
-                    </h2>
-                    <div className="space-y-6">
-                      <ChannelSelector
-                        channels={editing.channels}
-                        onChange={handleEditChannelsChange}
-                        featureToggles={editing.featureToggles}
-                        onFeatureTogglesChange={(toggles) =>
-                          setEditing((prev) =>
-                            prev ? { ...prev, featureToggles: toggles } : prev
-                          )
-                        }
-                      />
-                      <TabSelector
-                        selectedTabs={editing.tabs}
-                        onChange={handleEditTabsChange}
-                      />
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setEditing(null)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleSaveSettings} disabled={saving}>
-                          {saving ? "Saving..." : "Save Changes"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
+            <SettingsDialog
+              editing={editing}
+              saving={saving}
+              onClose={() => setEditing(null)}
+              onSave={handleSaveSettings}
+              onChannelsChange={handleEditChannelsChange}
+              onTabsChange={handleEditTabsChange}
+              onFeatureTogglesChange={(toggles) =>
+                setEditing((prev) => prev ? { ...prev, featureToggles: toggles } : prev)
+              }
+            />
 
             {/* Copy success notification */}
             {copySuccess && (
@@ -474,7 +459,7 @@ export default function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
                   <CardTitle className="text-base">
-                    All Checklists ({checklists.length})
+                    All Checklists ({total})
                   </CardTitle>
 
                   {/* P2-07 + P4-06: sr-only label; shown only at threshold */}
@@ -738,12 +723,44 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* P3-03: Footer with row count and app version */}
+            {/* P3-03: Footer with pagination and app version */}
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                Showing {displayed.length} checklist{displayed.length !== 1 ? "s" : ""}
+                {searchQuery
+                  ? `${displayed.length} result${displayed.length !== 1 ? "s" : ""} on this page`
+                  : `Showing ${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, total)} of ${total} checklist${total !== 1 ? "s" : ""}`
+                }
               </span>
-              <span>Talkpush CRM Config · v{APP_VERSION}</span>
+              <div className="flex items-center gap-3">
+                {total > pageSize && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={currentPage <= 1 || loading}
+                      onClick={() => { setSearchQuery(""); fetchChecklists(currentPage - 1); }}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="tabular-nums">
+                      {currentPage} / {Math.ceil(total / pageSize)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      disabled={currentPage >= Math.ceil(total / pageSize) || loading}
+                      onClick={() => { setSearchQuery(""); fetchChecklists(currentPage + 1); }}
+                      aria-label="Next page"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+                <span>Talkpush CRM Config · v{APP_VERSION}</span>
+              </div>
             </div>
 
           </div>

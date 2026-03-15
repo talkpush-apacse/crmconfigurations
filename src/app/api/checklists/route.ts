@@ -21,11 +21,21 @@ export async function GET(request: NextRequest) {
     const auth = requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
-    const checklists = await prisma.checklist.findMany({
-      orderBy: { updatedAt: "desc" },
-      select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true },
-    });
-    return NextResponse.json(checklists);
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const pageSize = 50;
+    const skip = (page - 1) * pageSize;
+
+    const [items, total] = await prisma.$transaction([
+      prisma.checklist.findMany({
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true },
+        take: pageSize,
+        skip,
+      }),
+      prisma.checklist.count(),
+    ]);
+
+    return NextResponse.json({ items, total, page, pageSize });
   } catch (err) {
     console.error("GET /api/checklists error:", err);
     return NextResponse.json({ error: "Database connection failed" }, { status: 500 });

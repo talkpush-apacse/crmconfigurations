@@ -32,6 +32,7 @@ const companyDetailsFields: KeyValueField[] = [
     type: "text",
     placeholder: "https://www.yourcompany.com",
     example: "https://www.taskus.com",
+    validation: "url",
   },
   {
     key: "privacyPolicyUrl",
@@ -40,6 +41,7 @@ const companyDetailsFields: KeyValueField[] = [
     type: "text",
     placeholder: "https://www.yourcompany.com/privacy-policy",
     example: "https://www.taskus.com/privacy-policy",
+    validation: "url",
   },
   {
     key: "companyDescription",
@@ -73,6 +75,7 @@ const facebookFields: KeyValueField[] = [
     type: "text",
     placeholder: "https://www.facebook.com/yourpage",
     example: "https://www.facebook.com/TaskUsCareers",
+    validation: "url",
   },
   {
     key: "fbPagePocName",
@@ -88,6 +91,7 @@ const facebookFields: KeyValueField[] = [
     type: "text",
     placeholder: "e.g. marketing@yourcompany.com",
     example: "marketing@taskus.com",
+    validation: "email",
   },
 ];
 

@@ -14,7 +14,7 @@ import type { NavItem } from "@/components/layout/TopNav";
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const slug = params.slug as string;
-  const { data, loading, error, saveStatus, saveError, updateField, retrySave } = useChecklist(slug);
+  const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(slug);
 
   if (loading) {
     return (
@@ -74,7 +74,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           filledCount={filledCount}
           totalCount={totalCount}
         />
-        <TopNav items={navItems} />
+        <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
         <LegendBar />
         <main className="flex-1 overflow-y-auto">
           <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
