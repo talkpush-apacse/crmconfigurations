@@ -15,19 +15,18 @@ export function SectionFooter() {
   const { data } = useChecklistContext();
 
   const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
-  // Exclude welcome and about from prev/next — they are not content sections
-  const contentTabs = enabledTabs.filter((t) => t.slug !== "about");
+  // Exclude welcome from prev/next — it is not a content section
+  const contentTabs = enabledTabs.filter((t) => t.slug !== "welcome");
 
   const currentIndex = contentTabs.findIndex((t) => t.slug === currentTab);
 
-  // Don't render on welcome, about, or unrecognised tabs
-  if (currentIndex === -1 || currentTab === "welcome" || currentTab === "about") return null;
+  // Don't render on welcome or unrecognised tabs
+  if (currentIndex === -1 || currentTab === "welcome") return null;
 
   const prevTab = contentTabs[currentIndex - 1];
   const nextTab = contentTabs[currentIndex + 1];
 
-  // When the next tab is "about", this is the last content section
-  const isLastSection = !nextTab || nextTab.slug === "about";
+  const isLastSection = !nextTab;
 
   return (
     <div className="mt-10 flex items-center justify-between border-t border-gray-200 pt-5">
@@ -45,23 +44,19 @@ export function SectionFooter() {
       )}
 
       {/* Next / Complete button */}
-      {nextTab && (
-        isLastSection ? (
-          <Button asChild size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white">
-            <Link href={`/client/${slug}/${nextTab.slug}`}>
-              <CheckCircle2 className="h-4 w-4" />
-              Complete Checklist
-            </Link>
-          </Button>
-        ) : (
-          <Button asChild size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-            <Link href={`/client/${slug}/${nextTab.slug}`}>
-              Continue to {nextTab.label}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        )
-      )}
+      {isLastSection ? (
+        <div className="inline-flex items-center gap-1.5 text-sm text-green-700 font-medium">
+          <CheckCircle2 className="h-4 w-4" />
+          All sections complete
+        </div>
+      ) : nextTab ? (
+        <Button asChild size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+          <Link href={`/client/${slug}/${nextTab.slug}`}>
+            Continue to {nextTab.label}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      ) : null}
     </div>
   );
 }

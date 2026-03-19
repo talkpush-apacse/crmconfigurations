@@ -25,7 +25,6 @@ import {
   Camera,
   Phone,
   Briefcase,
-  Info,
 } from "lucide-react";
 import type { ChecklistData } from "@/lib/types";
 
@@ -45,7 +44,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Camera,
   Phone,
   Briefcase,
-  Info,
 };
 
 interface TabNavigationProps {
@@ -57,7 +55,6 @@ interface TabNavigationProps {
 const GROUP_STARTERS: Record<string, string> = {
   users: "Recruitment",
   "facebook-whatsapp": "Integrations",
-  about: "App",
 };
 
 /** Returns "complete" | "in-progress" | "empty" for a section's data */
