@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { getTabBySlug, getEnabledTabs } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
@@ -18,6 +18,7 @@ import { FacebookWhatsAppSheet } from "@/components/sheets/FacebookWhatsAppSheet
 import { InstagramSheet } from "@/components/sheets/InstagramSheet";
 import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
+import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
@@ -34,6 +35,7 @@ const sheetComponents: Record<string, React.ComponentType> = {
   instagram: InstagramSheet,
   "ai-call-faqs": AICallFAQsSheet,
   "agency-portal": AgencyPortalSheet,
+  "admin-settings": AdminSettingsSheet,
 };
 
 export default function TabPage() {
@@ -43,8 +45,19 @@ export default function TabPage() {
   const slug = params.slug as string;
   const { data } = useChecklistContext();
   const tabConfig = getTabBySlug(tab);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  // Check admin status for admin-only tabs
+  useEffect(() => {
+    if (tabConfig?.adminOnly) {
+      fetch("/api/auth/check")
+        .then((res) => res.json())
+        .then((json) => setIsAdmin(json.isAdmin === true))
+        .catch(() => setIsAdmin(false));
+    }
+  }, [tabConfig?.adminOnly]);
+
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, isAdmin);
   const isEnabled = enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled

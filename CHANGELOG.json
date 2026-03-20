@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.11.0",
+    "codename": "Smoke Grand",
+    "changes": [
+      "Added Admin Settings tab with 7 sections for internal CRM configuration",
+      "Admin-only tab visibility — hidden from clients, shown only to logged-in admins",
+      "Feature checkboxes section with 39 toggles and enabled counter",
+      "Business hours editor with day-of-week grid and time pickers",
+      "Employee Referral Program section with conditional field logic"
+    ],
+    "deployed_at": "2026-03-20"
+  },
+  {
     "version": "1.10.0",
     "codename": "Regression Crisp",
     "changes": [

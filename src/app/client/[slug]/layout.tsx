@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
@@ -15,6 +16,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const params = useParams();
   const slug = params.slug as string;
   const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(slug);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status to show/hide admin-only tabs
+  useEffect(() => {
+    fetch("/api/auth/check")
+      .then((res) => res.json())
+      .then((json) => setIsAdmin(json.isAdmin === true))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   if (loading) {
     return (
@@ -38,7 +48,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null);
+  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, isAdmin);
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey);
   const filledCount = tabsWithData.filter((t) => {

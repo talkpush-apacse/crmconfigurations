@@ -14,6 +14,7 @@ import type {
   AgencyPortalRow,
   CommunicationChannels,
   FeatureToggles,
+  AdminSettingsData,
 } from "./types";
 
 export function uid(): string {
@@ -465,6 +466,95 @@ export const defaultAiCallData: AiCallData = {
 
 export const defaultAgencyPortal: AgencyPortalRow[] = [];
 
+export const defaultAdminSettings: AdminSettingsData = {
+  // Basic Company Info
+  companyName: "",
+  companySubdomain: "",
+  region: "",
+  status: "",
+  companyLogo: "",
+  defaultCountry: "",
+  timeZone: "",
+  // Campaign & SMS Settings
+  catchAllCampaign: "",
+  telerivetProjectId: "",
+  inboundSmsHotline: "",
+  inboundNexmoSms: "",
+  twilioInboundSms: "",
+  chatInboundNumber: "",
+  numberOfAllowedUsers: "",
+  // Feature Checkboxes
+  transcript: false,
+  autoCall: false,
+  liveCall: false,
+  messengerIntegration: false,
+  smsOptOut: false,
+  recruitmentCenterScheduling: false,
+  pushMessages: false,
+  requireWhatsAppOptin: false,
+  myCalendar: false,
+  allowDisableReschedule: false,
+  expireApplicationOnCoolingPeriod: false,
+  autoflow: false,
+  talkpushOnboard: false,
+  ocr: false,
+  autoListJobCampaigns: false,
+  autoDeleteOldLeads: false,
+  geolocation: false,
+  autoflowInbox: false,
+  persistentPrivacyPolicyLink: false,
+  cookiesBannerNotification: false,
+  mandatoryRejectionReasons: false,
+  mandatoryShortlistedReasons: false,
+  talkScore: false,
+  talkScoreWeightDistribution: false,
+  applicantScoring: false,
+  customizableTalkScore: false,
+  tecolocoIntegration: false,
+  csvUpdate: false,
+  allowLimitedManagersSelfAssign: false,
+  recognitionExtractionValidation: false,
+  landingPageRealtimeFeedback: false,
+  documentProcessingMistral: false,
+  autoflowSets: false,
+  mandatoryEmailAndPhone: false,
+  templateCampaigns: false,
+  talkScoreReadingDetection: false,
+  overrideUnsubscribeCommand: false,
+  enableAutomaticGtmInsertion: false,
+  emailPreferenceManagement: false,
+  // Integration / Credentials
+  googleTagManagerContainerId: "",
+  tecolocoUsername: "",
+  tecolocoPassword: "",
+  elevenLabsWebhookSecret: "",
+  aiBotOpenAiKey: "",
+  cookiebotScript: "",
+  // Network / Security
+  accountDomainWhitelist: "",
+  ipWhitelist: "",
+  // Employee Referral Program (ERP)
+  erpLinkGeneration: false,
+  erpAllowedEmailDomains: "",
+  erpAttributionLogic: "first-touch",
+  enableCustomFields: false,
+  enableOnScreenLink: false,
+  requireEmailField: false,
+  requireEmployeeIdField: false,
+  enableSendingLinkToEmail: false,
+  erpEmailCompanyLogo: "",
+  // Business Hours
+  businessHours: [
+    { day: "Monday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Tuesday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Wednesday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Thursday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Friday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Saturday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Sunday", enabled: false, startTime: "09:00", endTime: "18:00" },
+  ],
+};
+
 export function getDefaultChecklistData() {
   return {
     companyInfo: defaultCompanyInfo,
@@ -480,5 +570,6 @@ export function getDefaultChecklistData() {
     instagram: defaultInstagram,
     aiCallFaqs: defaultAiCallData,
     agencyPortal: defaultAgencyPortal,
+    adminSettings: defaultAdminSettings,
   };
 }

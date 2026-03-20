@@ -200,6 +200,96 @@ export interface FaqEntry {
   faqResponse: string;
 }
 
+// ===== Business Hours Entry =====
+export interface BusinessHourEntry {
+  day: string;
+  enabled: boolean;
+  startTime: string;
+  endTime: string;
+}
+
+// ===== Admin Settings =====
+export interface AdminSettingsData {
+  // Basic Company Info
+  companyName: string;
+  companySubdomain: string;
+  region: string;
+  status: string;
+  companyLogo: string;
+  defaultCountry: string;
+  timeZone: string;
+  // Campaign & SMS Settings
+  catchAllCampaign: string;
+  telerivetProjectId: string;
+  inboundSmsHotline: string;
+  inboundNexmoSms: string;
+  twilioInboundSms: string;
+  chatInboundNumber: string;
+  numberOfAllowedUsers: string;
+  // Feature Checkboxes
+  transcript: boolean;
+  autoCall: boolean;
+  liveCall: boolean;
+  messengerIntegration: boolean;
+  smsOptOut: boolean;
+  recruitmentCenterScheduling: boolean;
+  pushMessages: boolean;
+  requireWhatsAppOptin: boolean;
+  myCalendar: boolean;
+  allowDisableReschedule: boolean;
+  expireApplicationOnCoolingPeriod: boolean;
+  autoflow: boolean;
+  talkpushOnboard: boolean;
+  ocr: boolean;
+  autoListJobCampaigns: boolean;
+  autoDeleteOldLeads: boolean;
+  geolocation: boolean;
+  autoflowInbox: boolean;
+  persistentPrivacyPolicyLink: boolean;
+  cookiesBannerNotification: boolean;
+  mandatoryRejectionReasons: boolean;
+  mandatoryShortlistedReasons: boolean;
+  talkScore: boolean;
+  talkScoreWeightDistribution: boolean;
+  applicantScoring: boolean;
+  customizableTalkScore: boolean;
+  tecolocoIntegration: boolean;
+  csvUpdate: boolean;
+  allowLimitedManagersSelfAssign: boolean;
+  recognitionExtractionValidation: boolean;
+  landingPageRealtimeFeedback: boolean;
+  documentProcessingMistral: boolean;
+  autoflowSets: boolean;
+  mandatoryEmailAndPhone: boolean;
+  templateCampaigns: boolean;
+  talkScoreReadingDetection: boolean;
+  overrideUnsubscribeCommand: boolean;
+  enableAutomaticGtmInsertion: boolean;
+  emailPreferenceManagement: boolean;
+  // Integration / Credentials
+  googleTagManagerContainerId: string;
+  tecolocoUsername: string;
+  tecolocoPassword: string;
+  elevenLabsWebhookSecret: string;
+  aiBotOpenAiKey: string;
+  cookiebotScript: string;
+  // Network / Security
+  accountDomainWhitelist: string;
+  ipWhitelist: string;
+  // Employee Referral Program (ERP)
+  erpLinkGeneration: boolean;
+  erpAllowedEmailDomains: string;
+  erpAttributionLogic: string;
+  enableCustomFields: boolean;
+  enableOnScreenLink: boolean;
+  requireEmailField: boolean;
+  requireEmployeeIdField: boolean;
+  enableSendingLinkToEmail: boolean;
+  erpEmailCompanyLogo: string;
+  // Business Hours
+  businessHours: BusinessHourEntry[];
+}
+
 // ===== Checklist Data (full) =====
 export interface ChecklistData {
   id: string;
@@ -224,6 +314,7 @@ export interface ChecklistData {
   instagram: InstagramData | null;
   aiCallFaqs: AiCallData | null;
   agencyPortal: AgencyPortalRow[] | null;
+  adminSettings: AdminSettingsData | null;
 }
 
 // ===== Column definition for EditableTable =====

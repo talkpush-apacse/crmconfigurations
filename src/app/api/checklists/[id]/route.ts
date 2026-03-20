@@ -51,6 +51,7 @@ export async function PUT(
       instagram,
       aiCallFaqs,
       agencyPortal,
+      adminSettings,
     } = body;
 
     // Optimistic locking: if version provided, check it matches
@@ -90,6 +91,7 @@ export async function PUT(
         instagram,
         aiCallFaqs,
         agencyPortal,
+        adminSettings,
       },
     });
 

@@ -3,6 +3,7 @@ export interface TabConfig {
   label: string;
   dataKey: string | null;
   icon: string;
+  adminOnly?: boolean;
 }
 
 export const TAB_CONFIG: TabConfig[] = [
@@ -20,6 +21,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
   { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
+  { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", adminOnly: true },
 ];
 
 export function getTabBySlug(slug: string): TabConfig | undefined {
@@ -29,9 +31,9 @@ export function getTabBySlug(slug: string): TabConfig | undefined {
 // Tabs that are always included regardless of selection
 export const ALWAYS_ENABLED_SLUGS = ["welcome"];
 
-// Tabs that can be toggled by admin
+// Tabs that can be toggled by admin (excludes always-enabled and admin-only tabs)
 export const SELECTABLE_TABS = TAB_CONFIG.filter(
-  (tab) => !ALWAYS_ENABLED_SLUGS.includes(tab.slug)
+  (tab) => !ALWAYS_ENABLED_SLUGS.includes(tab.slug) && !tab.adminOnly
 );
 
 // Get all selectable tab slugs (for default "all selected")
@@ -39,9 +41,14 @@ export function getAllSelectableTabSlugs(): string[] {
   return SELECTABLE_TABS.map((tab) => tab.slug);
 }
 
-// Filter TAB_CONFIG to only enabled tabs
-export function getEnabledTabs(enabledTabSlugs: string[] | null | undefined): TabConfig[] {
-  if (!enabledTabSlugs) return TAB_CONFIG; // null/undefined means all enabled
+// Filter TAB_CONFIG to only enabled tabs (excludes admin-only tabs by default)
+export function getEnabledTabs(enabledTabSlugs: string[] | null | undefined, includeAdminTabs = false): TabConfig[] {
+  let tabs = TAB_CONFIG;
+  if (!includeAdminTabs) {
+    tabs = tabs.filter((tab) => !tab.adminOnly);
+  }
+  if (!enabledTabSlugs) return tabs; // null/undefined means all enabled
   const enabledSet = new Set([...ALWAYS_ENABLED_SLUGS, ...enabledTabSlugs]);
-  return TAB_CONFIG.filter((tab) => enabledSet.has(tab.slug));
+  // Admin-only tabs are always included when includeAdminTabs is true (not controlled by enabledTabs)
+  return tabs.filter((tab) => tab.adminOnly || enabledSet.has(tab.slug));
 }

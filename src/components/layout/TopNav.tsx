@@ -18,6 +18,7 @@ import {
   Camera,
   Phone,
   Briefcase,
+  Shield,
   Info,
   type LucideIcon,
 } from "lucide-react";
@@ -61,6 +62,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Instagram: Camera,
   Phone,
   Briefcase,
+  Shield,
   Info,
 };
 

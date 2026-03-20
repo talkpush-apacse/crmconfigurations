@@ -31,7 +31,8 @@ model Checklist {
   fbWhatsapp    Json?
   instagram     Json?
   aiCallFaqs    Json?
-  agencyPortal  Json?
+  agencyPortal    Json?
+  adminSettings   Json?
 
   @@index([clientName])
 }
