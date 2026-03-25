@@ -1,3 +1,7 @@
+// ===== Roles =====
+export const ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
+export type Role = (typeof ROLES)[number];
+
 // ===== Company Information =====
 export interface CompanyInfo {
   // Company Details
@@ -298,6 +302,7 @@ export interface ChecklistData {
   createdAt: string;
   updatedAt: string;
   version: number;
+  fieldVersions: Record<string, number> | null;
   enabledTabs: string[] | null;
   communicationChannels: CommunicationChannels | null;
   featureToggles: FeatureToggles | null;
@@ -328,3 +333,46 @@ export interface ColumnDef {
   validation?: "email" | "url" | "phone";
   example?: string;
 }
+
+// ===== Field-level merge constants =====
+export const CHECKLIST_JSON_FIELDS = [
+  "enabledTabs",
+  "communicationChannels",
+  "featureToggles",
+  "companyInfo",
+  "users",
+  "campaigns",
+  "sites",
+  "prescreening",
+  "messaging",
+  "sources",
+  "folders",
+  "documents",
+  "fbWhatsapp",
+  "instagram",
+  "aiCallFaqs",
+  "agencyPortal",
+  "adminSettings",
+] as const;
+
+export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
+
+export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
+  enabledTabs: "Enabled Tabs",
+  communicationChannels: "Communication Channels",
+  featureToggles: "Feature Toggles",
+  companyInfo: "Company Info",
+  users: "Users",
+  campaigns: "Campaigns",
+  sites: "Sites",
+  prescreening: "Prescreening",
+  messaging: "Messaging",
+  sources: "Sources",
+  folders: "Folders",
+  documents: "Documents",
+  fbWhatsapp: "Facebook & WhatsApp",
+  instagram: "Instagram",
+  aiCallFaqs: "AI Call FAQs",
+  agencyPortal: "Agency Portal",
+  adminSettings: "Admin Settings",
+};

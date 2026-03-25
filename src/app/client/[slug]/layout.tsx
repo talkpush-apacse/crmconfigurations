@@ -9,7 +9,7 @@ import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState } from "@/lib/section-status";
-import type { ChecklistData } from "@/lib/types";
+import type { ChecklistData, Role } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -17,14 +17,28 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const slug = params.slug as string;
   const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(slug);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<Role | null>(null);
 
-  // Check admin status to show/hide admin-only tabs
+  // Check auth status to determine role and admin-only tab visibility
   useEffect(() => {
     fetch("/api/auth/check")
       .then((res) => res.json())
-      .then((json) => setIsAdmin(json.isAdmin === true))
-      .catch(() => setIsAdmin(false));
+      .then((json) => {
+        if (json.authenticated && json.role) {
+          setUserRole(json.role as Role);
+          setIsAdmin(json.role === "ADMIN");
+        } else {
+          // Backward compat: old response format
+          setIsAdmin(json.isAdmin === true);
+        }
+      })
+      .catch(() => {
+        setIsAdmin(false);
+        setUserRole(null);
+      });
   }, []);
+
+  const isReadOnly = userRole === "VIEWER";
 
   if (loading) {
     return (
@@ -74,7 +88,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   });
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave }}>
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly, userRole }}>
       <div className="flex h-screen flex-col overflow-hidden">
         <Header
           clientName={data.clientName}
@@ -84,6 +98,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           onRetrySave={retrySave}
           filledCount={filledCount}
           totalCount={totalCount}
+          isReadOnly={isReadOnly}
         />
         <div className="flex flex-1 overflow-hidden">
           <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />

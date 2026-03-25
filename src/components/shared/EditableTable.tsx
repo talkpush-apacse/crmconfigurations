@@ -19,6 +19,7 @@ import {
 import { EditableCell } from "./EditableCell";
 import { CsvToolbar } from "./CsvToolbar";
 import { cn } from "@/lib/utils";
+import { useChecklistContext } from "@/lib/checklist-context";
 import type { ColumnDef } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +54,7 @@ export function EditableTable({
   sampleRow,
   csvConfig,
 }: EditableTableProps) {
+  const { isReadOnly } = useChecklistContext();
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(
     () => new Set(data.map((_, i) => i))
@@ -99,7 +101,7 @@ export function EditableTable({
 
   return (
     <div>
-      {csvConfig && (
+      {csvConfig && !isReadOnly && (
         <CsvToolbar
           columns={allColumns}
           sampleRow={csvConfig.sampleRow}
@@ -147,7 +149,7 @@ export function EditableTable({
                   )}
                 </TableHead>
               ))}
-              <TableHead className="w-10 text-white" />
+              {!isReadOnly && <TableHead className="w-10 text-white" />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,6 +219,7 @@ export function EditableTable({
                       />
                     </TableCell>
                   ))}
+                  {!isReadOnly && (
                   <TableCell className="p-1.5">
                     <div className="flex items-center gap-0.5">
                       {onDuplicate && (
@@ -264,6 +267,7 @@ export function EditableTable({
                       )}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
                 {detailColumns && expandedRows.has(rowIdx) && (
                   <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
@@ -314,12 +318,14 @@ export function EditableTable({
           </TableBody>
         </Table>
       </div>
+      {!isReadOnly && (
       <div className="border-t p-2">
         <Button variant="outline" size="sm" onClick={onAdd} className="text-primary border-primary/30 hover:border-primary/60">
           <Plus className="mr-1 h-4 w-4" />
           {addLabel}
         </Button>
       </div>
+      )}
     </div>
     </div>
   );

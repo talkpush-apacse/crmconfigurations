@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.13.0",
+    "codename": "Unit Deep",
+    "changes": [
+      "Added field-level merge for concurrent editing — two users editing different tabs no longer conflict",
+      "Per-field version tracking with automatic conflict detection on same-field edits",
+      "Richer conflict error messages that name the specific conflicting section"
+    ],
+    "deployed_at": "2026-03-25"
+  },
+  {
+    "version": "1.12.0",
+    "codename": "Testbed Sealed",
+    "changes": [
+      "Added role-based access control with Admin, Editor, and Viewer roles",
+      "Editors and Viewers see only checklists assigned to them",
+      "Viewers get a read-only experience — no editing, no add/delete actions",
+      "Added User Management page for admins to create users and assign checklists",
+      "Role badge shown in header and user dropdown across admin dashboard"
+    ],
+    "deployed_at": "2026-03-25"
+  },
+  {
     "version": "1.11.0",
     "codename": "Smoke Grand",
     "changes": [

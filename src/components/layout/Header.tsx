@@ -14,9 +14,10 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
   filledCount: number;
   totalCount: number;
+  isReadOnly?: boolean;
 }
 
-export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, filledCount, totalCount }: HeaderProps) {
+export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, filledCount, totalCount, isReadOnly }: HeaderProps) {
   const handleExport = () => {
     window.open(`/api/export/${slug}`, "_blank");
   };
@@ -44,7 +45,13 @@ export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, f
               {filledCount}/{totalCount} sections
             </span>
           )}
-          <SaveStatus status={saveStatus} errorMessage={saveError} onRetry={onRetrySave} />
+          {isReadOnly ? (
+            <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              View Only
+            </span>
+          ) : (
+            <SaveStatus status={saveStatus} errorMessage={saveError} onRetry={onRetrySave} />
+          )}
           <Button
             size="sm"
             onClick={handleExport}

@@ -52,6 +52,7 @@ import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
 import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
+import type { Role } from "@/lib/types";
 
 // P4-06: Show search only when there are enough rows to warrant it
 const SEARCH_THRESHOLD = 8;
@@ -159,9 +160,19 @@ export default function AdminDashboard() {
   // P4-02: Sort state
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // RBAC: user role
+  const [userRole, setUserRole] = useState<Role | null>(null);
+  const isAdminRole = userRole === "ADMIN";
 
   useEffect(() => {
     document.title = "Admin Dashboard | Talkpush CRM";
+    // Fetch user role
+    fetch("/api/auth/check")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.authenticated && json.role) setUserRole(json.role as Role);
+      })
+      .catch(() => {});
   }, []);
 
   // Clean up timer on unmount
@@ -375,13 +386,14 @@ export default function AdminDashboard() {
                   Manage client configuration checklists
                 </p>
               </div>
-              <Link href="/admin/new">
-                {/* P3-01: Brand teal inherits from updated --primary token */}
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Checklist
-                </Button>
-              </Link>
+              {isAdminRole && (
+                <Link href="/admin/new">
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Checklist
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* P1-01: Proper delete confirmation dialog */}
@@ -503,11 +515,13 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Create your first client checklist to get started.
                     </p>
-                    <Link href="/admin/new">
-                      <Button variant="outline" className="mt-4">
-                        Create first checklist
-                      </Button>
-                    </Link>
+                    {isAdminRole && (
+                      <Link href="/admin/new">
+                        <Button variant="outline" className="mt-4">
+                          Create first checklist
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 ) : (
                   <Table>
@@ -668,50 +682,54 @@ export default function AdminDashboard() {
                                   <TooltipContent>Export to XLS</TooltipContent>
                                 </Tooltip>
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Configure ${c.clientName}`}
-                                      onClick={() => handleEditSettings(c)}
-                                    >
-                                      <Settings className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Configure</TooltipContent>
-                                </Tooltip>
+                                {isAdminRole && (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label={`Configure ${c.clientName}`}
+                                          onClick={() => handleEditSettings(c)}
+                                        >
+                                          <Settings className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Configure</TooltipContent>
+                                    </Tooltip>
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Duplicate ${c.clientName} checklist`}
-                                      onClick={() => handleCopy(c.id)}
-                                    >
-                                      <Copy className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Duplicate</TooltipContent>
-                                </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label={`Duplicate ${c.clientName} checklist`}
+                                          onClick={() => handleCopy(c.id)}
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Duplicate</TooltipContent>
+                                    </Tooltip>
 
-                                <Separator orientation="vertical" className="mx-1 h-5" />
+                                    <Separator orientation="vertical" className="mx-1 h-5" />
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Delete ${c.clientName} checklist`}
-                                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                      onClick={() => setDeleteTarget(c)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete</TooltipContent>
-                                </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label={`Delete ${c.clientName} checklist`}
+                                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                          onClick={() => setDeleteTarget(c)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete</TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

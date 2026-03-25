@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const token = createToken(user.id);
+    const token = createToken(user.id, user.role);
 
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true, role: user.role });
     response.cookies.set("admin_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

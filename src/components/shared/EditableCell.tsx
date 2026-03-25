@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useChecklistContext } from "@/lib/checklist-context";
 
 type ValidationType = "email" | "url" | "phone";
 
@@ -32,6 +33,7 @@ interface EditableCellProps {
 }
 
 export function EditableCell({ value, type, options, onChange, className, placeholder, validation }: EditableCellProps) {
+  const { isReadOnly } = useChecklistContext();
   const [editing, setEditing] = useState(false);
   const [localValue, setLocalValue] = useState(String(value ?? ""));
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -53,7 +55,14 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     return null;
   }, [validation, localValue]);
 
-  if (type === "readonly") {
+  if (type === "readonly" || isReadOnly) {
+    if (type === "boolean") {
+      return (
+        <div className={cn("flex items-center justify-center px-2 py-1.5", className)}>
+          <Checkbox checked={value === true || value === "true" || value === "Yes"} disabled />
+        </div>
+      );
+    }
     return (
       <div className={cn("px-2 py-1.5 text-sm text-muted-foreground", className)}>
         {String(value || "—")}

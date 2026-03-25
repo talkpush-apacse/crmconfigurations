@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requireAuth, requireRole } from "@/lib/api-auth";
 import { getDefaultChecklistData } from "@/lib/template-data";
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(checklist);
     }
 
-    // Protected: list all checklists (admin only)
+    // Protected: list checklists (filtered by role)
     const auth = requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
@@ -25,14 +25,26 @@ export async function GET(request: NextRequest) {
     const pageSize = 50;
     const skip = (page - 1) * pageSize;
 
+    // Admin sees all; Editor/Viewer see only assigned checklists
+    let whereClause = {};
+    if (auth.role !== "ADMIN") {
+      const assignments = await prisma.checklistAssignment.findMany({
+        where: { userId: auth.userId },
+        select: { checklistId: true },
+      });
+      const assignedIds = assignments.map((a) => a.checklistId);
+      whereClause = { id: { in: assignedIds } };
+    }
+
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
+        where: whereClause,
         orderBy: { updatedAt: "desc" },
         select: { id: true, slug: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true },
         take: pageSize,
         skip,
       }),
-      prisma.checklist.count(),
+      prisma.checklist.count({ where: whereClause }),
     ]);
 
     return NextResponse.json({ items, total, page, pageSize });
@@ -44,7 +56,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    // Only admins can create checklists
+    const auth = requireRole(request, ["ADMIN"]);
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
@@ -85,6 +98,7 @@ export async function POST(request: NextRequest) {
         instagram: JSON.parse(JSON.stringify(defaults.instagram)),
         aiCallFaqs: JSON.parse(JSON.stringify(defaults.aiCallFaqs)),
         agencyPortal: JSON.parse(JSON.stringify(defaults.agencyPortal)),
+        adminSettings: JSON.parse(JSON.stringify(defaults.adminSettings)),
       },
     });
 
