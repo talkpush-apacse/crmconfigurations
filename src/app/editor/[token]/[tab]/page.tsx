@@ -38,23 +38,24 @@ const sheetComponents: Record<string, React.ComponentType> = {
   "admin-settings": AdminSettingsSheet,
 };
 
-export default function TabPage() {
+export default function EditorTabPage() {
   const params = useParams();
   const router = useRouter();
   const tab = params.tab as string;
-  const slug = params.slug as string;
+  const token = params.token as string;
   const { data } = useChecklistContext();
   const tabConfig = getTabBySlug(tab);
 
+  // Editor link holders never see admin-only tabs
   const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, false);
   const isEnabled = enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
   useEffect(() => {
     if (tabConfig && !isEnabled && enabledTabs.length > 0) {
-      router.replace(`/client/${slug}/${enabledTabs[0].slug}`);
+      router.replace(`/editor/${token}/${enabledTabs[0].slug}`);
     }
-  }, [tabConfig, isEnabled, enabledTabs, slug, router]);
+  }, [tabConfig, isEnabled, enabledTabs, token, router]);
 
   // Dynamic browser tab title
   useEffect(() => {

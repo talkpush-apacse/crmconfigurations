@@ -20,7 +20,6 @@ async function main() {
       data: {
         email: adminEmail,
         passwordHash,
-        role: "ADMIN",
       },
     });
     console.log(`Created admin user: ${adminEmail} / admin123`);

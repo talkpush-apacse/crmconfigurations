@@ -15,25 +15,31 @@ interface HeaderProps {
   filledCount: number;
   totalCount: number;
   isReadOnly?: boolean;
+  editorToken?: string;
 }
 
-export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, filledCount, totalCount, isReadOnly }: HeaderProps) {
+export function Header({ clientName, slug, saveStatus, saveError, onRetrySave, filledCount, totalCount, isReadOnly, editorToken }: HeaderProps) {
   const handleExport = () => {
-    window.open(`/api/export/${slug}`, "_blank");
+    const exportUrl = editorToken
+      ? `/api/export/by-token/${editorToken}`
+      : `/api/export/${slug}`;
+    window.open(exportUrl, "_blank");
   };
 
   return (
     <div>
       <header className="flex h-14 items-center justify-between border-b bg-white px-4">
         <div className="flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="hidden lg:flex items-center gap-1.5 mr-2 pr-3 border-r text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline transition-colors min-h-[32px]"
-            title="Back to Admin dashboard"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Admin
-          </Link>
+          {!editorToken && (
+            <Link
+              href="/admin"
+              className="hidden lg:flex items-center gap-1.5 mr-2 pr-3 border-r text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline transition-colors min-h-[32px]"
+              title="Back to Admin dashboard"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Admin
+            </Link>
+          )}
           <div>
             <h1 className="text-sm font-semibold text-gray-900">{clientName}</h1>
             <p className="text-xs text-gray-500">CRM Configuration Checklist</p>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChecklistData } from "@/lib/types";
 import { FIELD_LABELS, type ChecklistJsonField } from "@/lib/types";
 
-export function useChecklist(slug: string) {
+export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug") {
   const [data, setData] = useState<ChecklistData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,10 @@ export function useChecklist(slug: string) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`/api/checklists?slug=${slug}`);
+        const url = mode === "token"
+          ? `/api/checklists/by-token/${slugOrToken}`
+          : `/api/checklists?slug=${slugOrToken}`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Checklist not found");
         const json = await res.json();
         setData(json);
@@ -30,7 +33,7 @@ export function useChecklist(slug: string) {
       }
     }
     fetchData();
-  }, [slug]);
+  }, [slugOrToken, mode]);
 
   const save = useCallback(async (updatedData: ChecklistData) => {
     setSaveStatus("saving");
@@ -51,7 +54,10 @@ export function useChecklist(slug: string) {
         // Re-snapshot dirty fields on retry (user may have edited more fields during backoff)
         const currentDirtyFields = attempt === 0 ? fieldsToSave : Array.from(dirtyFieldsRef.current);
 
-        const res = await fetch(`/api/checklists/by-slug/${slug}`, {
+        const saveUrl = mode === "token"
+          ? `/api/checklists/by-token/${slugOrToken}`
+          : `/api/checklists/by-slug/${slugOrToken}`;
+        const res = await fetch(saveUrl, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

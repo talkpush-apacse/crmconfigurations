@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,29 +7,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Role } from "@/lib/types";
-
-const ROLE_LABELS: Record<Role, string> = {
-  ADMIN: "Admin",
-  EDITOR: "Editor",
-  VIEWER: "Viewer",
-};
 
 export function AdminHeader() {
   const router = useRouter();
-  const [userRole, setUserRole] = useState<Role | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/check")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.authenticated && json.role) setUserRole(json.role as Role);
-      })
-      .catch(() => {});
-  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
@@ -54,17 +35,11 @@ export function AdminHeader() {
                 <User className="h-4 w-4" />
               </span>
               <span className="hidden text-sm font-medium sm:block">
-                {userRole ? ROLE_LABELS[userRole] : "..."}
+                Admin
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            {userRole && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                Role: {ROLE_LABELS[userRole]}
-              </div>
-            )}
-            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:text-destructive"
               onClick={handleLogout}

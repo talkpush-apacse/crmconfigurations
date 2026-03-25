@@ -14,14 +14,7 @@ export async function middleware(request: NextRequest) {
 
     try {
       const secret = new TextEncoder().encode(process.env.ADMIN_SECRET!);
-      const { payload } = await jwtVerify(token, secret);
-
-      // Old tokens without role claim — force re-login
-      if (!payload.role) {
-        const response = NextResponse.redirect(new URL("/admin/login", request.url));
-        response.cookies.delete("admin_token");
-        return response;
-      }
+      await jwtVerify(token, secret);
     } catch {
       // Token invalid or expired — redirect to login
       return NextResponse.redirect(new URL("/admin/login", request.url));

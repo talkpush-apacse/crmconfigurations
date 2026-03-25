@@ -1,7 +1,3 @@
-// ===== Roles =====
-export const ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
-export type Role = (typeof ROLES)[number];
-
 // ===== Company Information =====
 export interface CompanyInfo {
   // Company Details

@@ -11,10 +11,10 @@ import { getSectionState } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function EditorLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
-  const slug = params.slug as string;
-  const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(slug);
+  const token = params.token as string;
+  const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(token, "token");
 
   if (loading) {
     return (
@@ -32,12 +32,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-lg font-semibold text-destructive">Checklist not found</p>
-          <p className="mt-2 text-sm text-muted-foreground">{error || "This checklist does not exist."}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{error || "This link may be invalid or expired."}</p>
         </div>
       </div>
     );
   }
 
+  // Editor link holders never see admin-only tabs
   const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false);
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey);
@@ -57,7 +58,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     }
     return {
       label: tab.label,
-      href: `/client/${slug}/${tab.slug}`,
+      href: `/editor/${token}/${tab.slug}`,
       status,
       icon: tab.icon,
     };
@@ -68,12 +69,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <div className="flex h-screen flex-col overflow-hidden">
         <Header
           clientName={data.clientName}
-          slug={slug}
+          slug={data.slug}
           saveStatus={saveStatus}
           saveError={saveError}
           onRetrySave={retrySave}
           filledCount={filledCount}
           totalCount={totalCount}
+          isReadOnly={false}
+          editorToken={token}
         />
         <div className="flex flex-1 overflow-hidden">
           <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />

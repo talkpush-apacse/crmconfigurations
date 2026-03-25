@@ -44,6 +44,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Link2,
+  RefreshCw,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -52,7 +54,6 @@ import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
 import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
-import type { Role } from "@/lib/types";
 
 // P4-06: Show search only when there are enough rows to warrant it
 const SEARCH_THRESHOLD = 8;
@@ -82,6 +83,7 @@ function formatFullDate(d: string) {
 interface ChecklistSummary {
   id: string;
   slug: string;
+  editorToken: string;
   clientName: string;
   createdAt: string;
   updatedAt: string;
@@ -160,19 +162,11 @@ export default function AdminDashboard() {
   // P4-02: Sort state
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  // RBAC: user role
-  const [userRole, setUserRole] = useState<Role | null>(null);
-  const isAdminRole = userRole === "ADMIN";
+  // Editor link copy feedback
+  const [editorLinkCopied, setEditorLinkCopied] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Admin Dashboard | Talkpush CRM";
-    // Fetch user role
-    fetch("/api/auth/check")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.authenticated && json.role) setUserRole(json.role as Role);
-      })
-      .catch(() => {});
   }, []);
 
   // Clean up timer on unmount
@@ -322,6 +316,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCopyEditorLink = async (c: ChecklistSummary) => {
+    const url = `${window.location.origin}/editor/${c.editorToken}/welcome`;
+    await navigator.clipboard.writeText(url);
+    setEditorLinkCopied(c.id);
+    setTimeout(() => setEditorLinkCopied(null), 2000);
+  };
+
+  const handleRegenerateToken = async (c: ChecklistSummary) => {
+    try {
+      const res = await fetch(`/api/checklists/${c.id}/regenerate-token`, { method: "POST" });
+      if (res.ok) {
+        fetchChecklists(currentPage);
+      }
+    } catch {
+      console.error("Failed to regenerate token");
+    }
+  };
+
   // P4-02: Toggle sort key/direction
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -386,14 +398,12 @@ export default function AdminDashboard() {
                   Manage client configuration checklists
                 </p>
               </div>
-              {isAdminRole && (
-                <Link href="/admin/new">
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Checklist
-                  </Button>
-                </Link>
-              )}
+              <Link href="/admin/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Checklist
+                </Button>
+              </Link>
             </div>
 
             {/* P1-01: Proper delete confirmation dialog */}
@@ -439,13 +449,9 @@ export default function AdminDashboard() {
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <p className="text-sm text-green-700">
                   Checklist copied!{" "}
-                  <Link
-                    href={`/client/${copySuccess}`}
-                    target="_blank"
-                    className="font-medium underline"
-                  >
-                    Open copy
-                  </Link>
+                  <span className="font-medium">
+                    {copySuccess}
+                  </span>
                 </p>
               </div>
             )}
@@ -515,13 +521,11 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Create your first client checklist to get started.
                     </p>
-                    {isAdminRole && (
-                      <Link href="/admin/new">
-                        <Button variant="outline" className="mt-4">
-                          Create first checklist
-                        </Button>
-                      </Link>
-                    )}
+                    <Link href="/admin/new">
+                      <Button variant="outline" className="mt-4">
+                        Create first checklist
+                      </Button>
+                    </Link>
                   </div>
                 ) : (
                   <Table>
@@ -589,12 +593,12 @@ export default function AdminDashboard() {
                           <TableRow
                             key={c.id}
                             className="cursor-pointer transition-colors duration-100 hover:bg-muted/50"
-                            onClick={() => router.push(`/client/${c.slug}`)}
+                            onClick={() => router.push(`/editor/${c.editorToken}/welcome`)}
                           >
                             {/* P1-03 + P3-02: Teal link + slug as secondary line, no separate slug column */}
                             <TableCell className="py-2 font-medium">
                               <Link
-                                href={`/client/${c.slug}`}
+                                href={`/editor/${c.editorToken}/welcome`}
                                 target="_blank"
                                 className="text-teal-700 transition-colors hover:text-teal-900 hover:underline"
                                 onClick={(e) => e.stopPropagation()}
@@ -647,10 +651,31 @@ export default function AdminDashboard() {
                             >
                               {/* P2-05: Separator between safe actions and destructive delete */}
                               <div className="flex items-center justify-end gap-1">
+                                {/* Copy Editor Link */}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Copy editor link for ${c.clientName}`}
+                                      onClick={() => handleCopyEditorLink(c)}
+                                    >
+                                      {editorLinkCopied === c.id ? (
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <Link2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {editorLinkCopied === c.id ? "Copied!" : "Copy editor link"}
+                                  </TooltipContent>
+                                </Tooltip>
+
                                 {/* P1-02: aria-label on every icon button */}
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Link href={`/client/${c.slug}`} target="_blank">
+                                    <Link href={`/editor/${c.editorToken}/welcome`} target="_blank">
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -682,54 +707,64 @@ export default function AdminDashboard() {
                                   <TooltipContent>Export to XLS</TooltipContent>
                                 </Tooltip>
 
-                                {isAdminRole && (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          aria-label={`Configure ${c.clientName}`}
-                                          onClick={() => handleEditSettings(c)}
-                                        >
-                                          <Settings className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Configure</TooltipContent>
-                                    </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Configure ${c.clientName}`}
+                                      onClick={() => handleEditSettings(c)}
+                                    >
+                                      <Settings className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Configure</TooltipContent>
+                                </Tooltip>
 
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          aria-label={`Duplicate ${c.clientName} checklist`}
-                                          onClick={() => handleCopy(c.id)}
-                                        >
-                                          <Copy className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Duplicate</TooltipContent>
-                                    </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Duplicate ${c.clientName} checklist`}
+                                      onClick={() => handleCopy(c.id)}
+                                    >
+                                      <Copy className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Duplicate</TooltipContent>
+                                </Tooltip>
 
-                                    <Separator orientation="vertical" className="mx-1 h-5" />
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Regenerate editor link for ${c.clientName}`}
+                                      onClick={() => handleRegenerateToken(c)}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Regenerate editor link</TooltipContent>
+                                </Tooltip>
 
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          aria-label={`Delete ${c.clientName} checklist`}
-                                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                          onClick={() => setDeleteTarget(c)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Delete</TooltipContent>
-                                    </Tooltip>
-                                  </>
-                                )}
+                                <Separator orientation="vertical" className="mx-1 h-5" />
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Delete ${c.clientName} checklist`}
+                                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      onClick={() => setDeleteTarget(c)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Delete</TooltipContent>
+                                </Tooltip>
                               </div>
                             </TableCell>
                           </TableRow>

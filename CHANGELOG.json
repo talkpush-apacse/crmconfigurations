@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.14.0",
+    "codename": "Validate Sealed",
+    "changes": [
+      "Replaced role-based access control with shareable editor links",
+      "Each checklist gets an unguessable UUID editor token for link-based access",
+      "Added Copy Editor Link and Regenerate Token actions to admin dashboard",
+      "Editor link holders can edit one checklist without seeing admin pages",
+      "Removed user management page, roles, and assignment system",
+      "All logged-in users now have full admin access",
+      "Old /client/[slug] URLs redirect to new /editor/[token] routes"
+    ],
+    "deployed_at": "2026-03-26"
+  },
+  {
     "version": "1.13.0",
     "codename": "Unit Deep",
     "changes": [

@@ -3,27 +3,18 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutList, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/types";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [userRole, setUserRole] = useState<Role | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== null) setCollapsed(stored === "true");
-
-    fetch("/api/auth/check")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.authenticated && json.role) setUserRole(json.role as Role);
-      })
-      .catch(() => {});
   }, []);
 
   const toggle = () => {
@@ -35,8 +26,7 @@ export function AdminSidebar() {
   };
 
   const navItems = [
-    { href: "/admin", label: "Checklists", icon: LayoutList, show: true },
-    { href: "/admin/users", label: "Users", icon: Users, show: userRole === "ADMIN" },
+    { href: "/admin", label: "Checklists", icon: LayoutList },
   ];
 
   return (
@@ -47,7 +37,7 @@ export function AdminSidebar() {
       )}
     >
       <nav className="flex flex-1 flex-col gap-1 p-2 pt-4">
-        {navItems.filter((item) => item.show).map((item) => (
+        {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}

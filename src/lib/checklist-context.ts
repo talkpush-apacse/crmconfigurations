@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { ChecklistData, Role } from "./types";
+import type { ChecklistData } from "./types";
 
 interface ChecklistContextType {
   data: ChecklistData;
@@ -10,7 +10,7 @@ interface ChecklistContextType {
   saveError: string | null;
   retrySave: () => void;
   isReadOnly: boolean;
-  userRole: Role | null;
+  userRole: string | null;
 }
 
 export const ChecklistContext = createContext<ChecklistContextType | null>(null);

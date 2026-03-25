@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import type { Role } from "./types";
 
 const WEAK_SECRETS = ["change-me-in-production", "secret", "admin", "password", "12345678", "changeme"];
 
@@ -29,22 +28,20 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function createToken(userId: string, role: Role): string {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: "7d" });
+export function createToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
 }
 
-export function verifyToken(token: string): { userId: string; role: Role } | null {
+export function verifyToken(token: string): { userId: string } | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { userId: string; role?: Role };
-    // Old tokens without role are invalid — force re-login
-    if (!payload.role) return null;
-    return { userId: payload.userId, role: payload.role };
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return { userId: payload.userId };
   } catch {
     return null;
   }
 }
 
-export async function getAuthUser(): Promise<{ userId: string; role: Role } | null> {
+export async function getAuthUser(): Promise<{ userId: string } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;
   if (!token) return null;
