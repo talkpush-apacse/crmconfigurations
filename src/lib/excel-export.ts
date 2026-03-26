@@ -24,7 +24,12 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
 
   // Populate tabular sheets
   populateTableSheet(workbook, "User List", data.users as Record<string, unknown>[] | null, 19, ["name", "accessType", "jobTitle", "email", "phone", "site", "reportsTo", "comments"], "C");
-  populateTableSheet(workbook, "Campaigns List", data.campaigns as Record<string, unknown>[] | null, 12, ["nameInternal", "jobTitleExternal", "site", "jobDescription", "googleMapsLink", "zoomLink", "comments"], "C");
+  // Flatten assignedRecruiters arrays to comma-separated strings for export
+  const campaignsForExport = data.campaigns?.map((c) => ({
+    ...c,
+    assignedRecruiters: Array.isArray(c.assignedRecruiters) ? c.assignedRecruiters.join(", ") : (c.assignedRecruiters ?? ""),
+  })) ?? null;
+  populateTableSheet(workbook, "Campaigns List", campaignsForExport as Record<string, unknown>[] | null, 12, ["campaignId", "nameInternal", "jobTitleExternal", "site", "jobDescription", "googleMapsLink", "zoomLink", "assignedRecruiters", "comments"], "C");
   populateTableSheet(workbook, "Sites", data.sites as Record<string, unknown>[] | null, 12, ["siteName", "internalName", "interviewHours", "interviewType", "fullAddress", "documentsToRring", "googleMapsLink", "comments"], "C");
   populateTableSheet(workbook, "Sources", data.sources as Record<string, unknown>[] | null, 12, ["category", "subcategory", "link", "comments"], "C");
   populateTableSheet(workbook, "Folders", data.folders as Record<string, unknown>[] | null, 12, ["folderName", "description", "movementType", "comments"], "C");
@@ -120,15 +125,22 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Comments", key: "comments", width: 30 },
   ], data.users as Record<string, unknown>[] | null);
 
+  // Flatten assignedRecruiters arrays for fresh export
+  const freshCampaigns = data.campaigns?.map((c) => ({
+    ...c,
+    assignedRecruiters: Array.isArray(c.assignedRecruiters) ? c.assignedRecruiters.join(", ") : (c.assignedRecruiters ?? ""),
+  })) ?? null;
   addTableSheet("Campaigns", [
+    { header: "Campaign ID", key: "campaignId", width: 20 },
     { header: "Campaign Name (Internal)", key: "nameInternal", width: 30 },
     { header: "Job Title (External)", key: "jobTitleExternal", width: 30 },
     { header: "Site", key: "site", width: 20 },
     { header: "Job Description", key: "jobDescription", width: 40 },
     { header: "Google Maps Link", key: "googleMapsLink", width: 30 },
     { header: "Zoom Link", key: "zoomLink", width: 30 },
+    { header: "Assigned Recruiters", key: "assignedRecruiters", width: 35 },
     { header: "Comments", key: "comments", width: 30 },
-  ], data.campaigns as Record<string, unknown>[] | null);
+  ], freshCampaigns as Record<string, unknown>[] | null);
 
   addTableSheet("Sites", [
     { header: "Site Name", key: "siteName", width: 25 },

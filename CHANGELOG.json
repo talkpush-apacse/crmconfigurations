@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.15.0",
+    "codename": "Watchdog Fresh",
+    "changes": [
+      "Added logo size helper text below Company Logo field label",
+      "Added admin-only Campaign ID field visible in editor view only",
+      "Added Assigned Recruiters field with round robin note to Campaigns tab",
+      "Added helperText support to KeyValueForm component",
+      "Updated Excel export to include Campaign ID and Assigned Recruiters columns"
+    ],
+    "deployed_at": "2026-03-26"
+  },
+  {
     "version": "1.14.0",
     "codename": "Validate Sealed",
     "changes": [

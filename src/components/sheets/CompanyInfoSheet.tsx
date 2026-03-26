@@ -99,7 +99,8 @@ const brandingFields: KeyValueField[] = [
   {
     key: "logoUrl",
     label: "Company Logo (Primary)",
-    description: "Upload or link to the primary company logo file. Minimum recommended size: 200×48 px.",
+    description: "Upload or link to the primary company logo file.",
+    helperText: "Recommended size: 200\u00d748px (PNG or SVG, transparent background)",
     type: "file",
   },
   {

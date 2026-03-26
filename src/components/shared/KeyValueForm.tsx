@@ -16,6 +16,7 @@ export interface KeyValueField {
   placeholder?: string;
   example?: string;
   validation?: "email" | "url" | "phone";
+  helperText?: string;
 }
 
 interface KeyValueFormProps {
@@ -55,7 +56,8 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           )}
         >
           {/* Field label with ⓘ description tooltip */}
-          <div className="flex items-center gap-1.5 px-4 py-3 min-h-[52px]">
+          <div className="flex flex-col justify-center px-4 py-3 min-h-[52px]">
+            <div className="flex items-center gap-1.5">
             <span className="text-[14px] font-medium text-gray-700 leading-snug">{field.label}</span>
             {field.description && (
               <Tooltip>
@@ -85,6 +87,10 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
                   )}
                 </TooltipContent>
               </Tooltip>
+            )}
+            </div>
+            {field.helperText && (
+              <p className="mt-1 text-[11px] text-gray-400 leading-tight">{field.helperText}</p>
             )}
           </div>
           {/* Client response input */}

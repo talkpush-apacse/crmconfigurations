@@ -41,12 +41,14 @@ export interface UserRow {
 // ===== Campaigns List =====
 export interface CampaignRow {
   id: string;
+  campaignId?: string;
   nameInternal: string;
   jobTitleExternal: string;
   site: string;
   jobDescription: string;
   googleMapsLink: string;
   zoomLink: string;
+  assignedRecruiters?: string[];
   comments: string;
 }
 

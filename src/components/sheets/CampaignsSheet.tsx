@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
@@ -14,12 +16,17 @@ const columns: ColumnDef[] = [
   { key: "site", label: "Site", type: "text", description: "Location/site associated with this campaign" },
 ];
 
-const detailColumns: ColumnDef[] = [
+const baseDetailColumns: ColumnDef[] = [
   { key: "jobDescription", label: "Job Description", type: "textarea", description: "Full job description for the position" },
   { key: "googleMapsLink", label: "Google Maps Link", type: "text", description: "Link to the interview/office location on Google Maps", validation: "url" },
   { key: "zoomLink", label: "Zoom/Meeting Link", type: "text", description: "Virtual interview meeting link", validation: "url" },
+  { key: "assignedRecruiters", label: "Assigned Recruiters (optional \u00b7 round robin)", type: "text", description: "Separate names or emails with commas. These recruiters will be assigned via round robin." },
   { key: "comments", label: "Comments", type: "textarea" },
 ];
+
+const campaignIdColumn: ColumnDef = {
+  key: "campaignId", label: "Campaign ID \u00a0\u2022\u00a0Admin", type: "text", description: "Internal Talkpush campaign ID (admin-only field, not visible to clients)",
+};
 
 const referenceData = [
   { type: "Evergreen", description: "Continuous hiring pipeline — always open for applications, no specific requisition number." },
@@ -29,10 +36,32 @@ const referenceData = [
 export function CampaignsSheet() {
   const { data, updateField } = useChecklistContext();
   const campaigns = (data.campaigns as CampaignRow[]) || defaultCampaigns;
+  const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/editor");
+
+  // Build detail columns: include Campaign ID only for admin view
+  const detailColumns = useMemo(() => {
+    if (isAdmin) return [campaignIdColumn, ...baseDetailColumns];
+    return baseDetailColumns;
+  }, [isAdmin]);
+
+  // Flatten assignedRecruiters arrays to comma-separated strings for the table
+  const campaignsForTable = useMemo(() =>
+    campaigns.map((c) => ({
+      ...c,
+      assignedRecruiters: Array.isArray(c.assignedRecruiters) ? c.assignedRecruiters.join(", ") : (c.assignedRecruiters ?? ""),
+    })),
+    [campaigns]
+  );
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
     const updated = [...campaigns];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === "assignedRecruiters" && typeof value === "string") {
+      const arr = value ? value.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      updated[index] = { ...updated[index], assignedRecruiters: arr };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     updateField("campaigns", updated);
   };
 
@@ -96,7 +125,7 @@ export function CampaignsSheet() {
       <EditableTable
         columns={columns}
         detailColumns={detailColumns}
-        data={campaigns}
+        data={campaignsForTable}
         onUpdate={handleUpdate}
         onAdd={handleAdd}
         onDelete={handleDelete}
