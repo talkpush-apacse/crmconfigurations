@@ -64,7 +64,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   });
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null }}>
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null, basePath: `/client/${slug}` }}>
       <div className="flex h-screen flex-col overflow-hidden">
         <Header
           clientName={data.clientName}

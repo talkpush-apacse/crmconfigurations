@@ -10,9 +10,8 @@ import { useChecklistContext } from "@/lib/checklist-context";
 /** Renders Prev / Continue navigation at the bottom of each content sheet. */
 export function SectionFooter() {
   const params = useParams();
-  const slug = params.slug as string;
   const currentTab = params.tab as string;
-  const { data } = useChecklistContext();
+  const { data, basePath } = useChecklistContext();
 
   const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
   // Exclude welcome from prev/next — it is not a content section
@@ -33,7 +32,7 @@ export function SectionFooter() {
       {/* Previous link */}
       {prevTab && prevTab.slug !== "welcome" ? (
         <Link
-          href={`/client/${slug}/${prevTab.slug}`}
+          href={`${basePath}/${prevTab.slug}`}
           className="inline-flex items-center gap-1.5 text-[14px] text-gray-500 hover:text-gray-900 hover:underline transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -51,7 +50,7 @@ export function SectionFooter() {
         </div>
       ) : nextTab ? (
         <Button asChild size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-          <Link href={`/client/${slug}/${nextTab.slug}`}>
+          <Link href={`${basePath}/${nextTab.slug}`}>
             Continue to {nextTab.label}
             <ArrowRight className="h-4 w-4" />
           </Link>

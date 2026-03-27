@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.15.1",
+    "codename": "Watchdog Fresh",
+    "changes": [
+      "Fixed navigation buttons showing 'Checklist not found' on editor routes",
+      "Added basePath to ChecklistContext for route-aware link building"
+    ],
+    "deployed_at": "2026-03-27"
+  },
+  {
     "version": "1.15.0",
     "codename": "Watchdog Fresh",
     "changes": [

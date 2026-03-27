@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { CheckCircle, Info, ArrowRight, ChevronDown } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -37,9 +36,7 @@ function StatusChip({
 }
 
 export function WelcomeSheet() {
-  const { data } = useChecklistContext();
-  const params = useParams();
-  const slug = params.slug as string;
+  const { data, basePath } = useChecklistContext();
 
   // Lazy initializer reads localStorage once on mount — avoids setState-in-effect pattern
   const [notesOpen, setNotesOpen] = useState<boolean>(() => {
@@ -103,7 +100,7 @@ export function WelcomeSheet() {
                   key={t.slug}
                   label={t.label}
                   status={status}
-                  href={`/client/${slug}/${t.slug}`}
+                  href={`${basePath}/${t.slug}`}
                 />
               );
             })}
@@ -149,7 +146,7 @@ export function WelcomeSheet() {
         {firstContentTab && (
           <div className="flex justify-end pt-2">
             <Link
-              href={`/client/${slug}/${firstContentTab.slug}`}
+              href={`${basePath}/${firstContentTab.slug}`}
               className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 transition-colors"
             >
               Continue to {firstContentTab.label}

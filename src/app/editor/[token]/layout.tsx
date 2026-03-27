@@ -65,7 +65,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   });
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null }}>
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null, basePath: `/editor/${token}` }}>
       <div className="flex h-screen flex-col overflow-hidden">
         <Header
           clientName={data.clientName}

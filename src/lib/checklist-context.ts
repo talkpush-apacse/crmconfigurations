@@ -11,6 +11,8 @@ interface ChecklistContextType {
   retrySave: () => void;
   isReadOnly: boolean;
   userRole: string | null;
+  /** Route prefix for building tab links, e.g. "/client/exl" or "/editor/abc123" */
+  basePath: string;
 }
 
 export const ChecklistContext = createContext<ChecklistContextType | null>(null);
