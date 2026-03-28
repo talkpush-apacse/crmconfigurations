@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown } from "lucide-react";
+import { useState, useEffect, Fragment, useMemo } from "react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,9 +16,25 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "./EditableCell";
 import { CsvToolbar } from "./CsvToolbar";
 import { cn } from "@/lib/utils";
+import { arrayMove } from "@/lib/utils";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { ColumnDef } from "@/lib/types";
 
@@ -31,6 +47,8 @@ interface EditableTableProps {
   onAdd: () => void;
   onDelete: (index: number) => void;
   onDuplicate?: (index: number) => void;
+  /** Called with the reordered array when a row is dragged to a new position */
+  onReorder?: (reorderedData: any[]) => void;
   addLabel?: string;
   /** Optional pinned sample row shown at the top of the table body (read-only) */
   sampleRow?: Record<string, string>;
@@ -42,6 +60,207 @@ interface EditableTableProps {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function SortableRow({
+  row,
+  rowIdx,
+  columns,
+  detailColumns,
+  expandedRows,
+  toggleRow,
+  onUpdate,
+  onDuplicate,
+  confirmingDelete,
+  handleDeleteClick,
+  setConfirmingDelete,
+  isReadOnly,
+  canReorder,
+}: {
+  row: any;
+  rowIdx: number;
+  columns: ColumnDef[];
+  detailColumns?: ColumnDef[];
+  expandedRows: Set<number>;
+  toggleRow: (idx: number) => void;
+  onUpdate: (index: number, field: string, value: string | boolean) => void;
+  onDuplicate?: (index: number) => void;
+  confirmingDelete: number | null;
+  handleDeleteClick: (idx: number) => void;
+  setConfirmingDelete: (idx: number | null) => void;
+  isReadOnly: boolean;
+  canReorder: boolean;
+}) {
+  const sortableId = (row.id as string) || `row-${rowIdx}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId, disabled: isReadOnly || !canReorder });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Fragment>
+      <TableRow
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          "transition-colors hover:bg-gray-50",
+          rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
+          detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200",
+          isDragging && "bg-blue-50 shadow-sm"
+        )}
+      >
+        <TableCell className="text-center text-xs text-muted-foreground">
+          <div className="flex items-center justify-center gap-0.5">
+            {canReorder && !isReadOnly && (
+              <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-gray-200 transition-colors touch-none"
+                title="Drag to reorder"
+              >
+                <GripVertical className="h-3.5 w-3.5 text-gray-400" />
+              </button>
+            )}
+            {detailColumns ? (
+              <button
+                onClick={() => toggleRow(rowIdx)}
+                className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-gray-100 hover:text-primary transition-colors"
+                title={expandedRows.has(rowIdx) ? "Collapse details" : "Expand details"}
+              >
+                {expandedRows.has(rowIdx) ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                <span>{rowIdx + 1}</span>
+              </button>
+            ) : (
+              rowIdx + 1
+            )}
+          </div>
+        </TableCell>
+        {columns.map((col) => (
+          <TableCell
+            key={col.key}
+            className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
+          >
+            <EditableCell
+              value={row[col.key] as string | boolean}
+              type={col.type}
+              options={col.options}
+              onChange={(val) => onUpdate(rowIdx, col.key, val)}
+              placeholder={col.label}
+              validation={col.validation}
+            />
+          </TableCell>
+        ))}
+        {!isReadOnly && (
+          <TableCell className="p-1.5">
+            <div className="flex items-center gap-0.5">
+              {onDuplicate && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                  onClick={() => onDuplicate(rowIdx)}
+                  title="Duplicate row"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
+              {confirmingDelete === rowIdx ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
+                    onClick={() => handleDeleteClick(rowIdx)}
+                    title="Confirm delete"
+                  >
+                    Delete?
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:bg-gray-100"
+                    onClick={() => setConfirmingDelete(null)}
+                    title="Cancel"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
+                  onClick={() => handleDeleteClick(rowIdx)}
+                  title="Delete row"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </TableCell>
+        )}
+      </TableRow>
+      {detailColumns && expandedRows.has(rowIdx) && (
+        <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+          <TableCell colSpan={columns.length + 2} className="p-0">
+            <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                {detailColumns.map((col) => {
+                  const isWide = col.type === "textarea";
+                  return (
+                    <div
+                      key={col.key}
+                      className={isWide ? "col-span-2" : "col-span-1"}
+                    >
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {col.description ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/70">
+                                {col.label}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <p className="text-xs">{col.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          col.label
+                        )}
+                      </label>
+                      <EditableCell
+                        value={row[col.key] as string | boolean}
+                        type={col.type}
+                        options={col.options}
+                        onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                        placeholder={col.label}
+                        validation={col.validation}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </Fragment>
+  );
+}
+
 export function EditableTable({
   columns,
   detailColumns,
@@ -50,6 +269,7 @@ export function EditableTable({
   onAdd,
   onDelete,
   onDuplicate,
+  onReorder,
   addLabel = "Add Row",
   sampleRow,
   csvConfig,
@@ -58,6 +278,17 @@ export function EditableTable({
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(
     () => new Set(data.map((_, i) => i))
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  // Stable IDs for sortable context
+  const sortableIds = useMemo(
+    () => data.map((row, i) => (row.id as string) || `row-${i}`),
+    [data]
   );
 
   // Re-expand all rows when data length changes (add/delete/duplicate)
@@ -99,7 +330,20 @@ export function EditableTable({
     }
   };
 
-  return (
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorder) return;
+
+    const oldIndex = sortableIds.indexOf(active.id as string);
+    const newIndex = sortableIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onReorder(arrayMove(data, oldIndex, newIndex));
+  };
+
+  const canReorder = !!onReorder && !isReadOnly;
+
+  const tableContent = (
     <div>
       {csvConfig && !isReadOnly && (
         <CsvToolbar
@@ -114,7 +358,7 @@ export function EditableTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-blue-600">
-              <TableHead className={`${detailColumns ? "w-14" : "w-10"} text-center text-white`}>
+              <TableHead className={`${detailColumns ? "w-14" : canReorder ? "w-14" : "w-10"} text-center text-white`}>
                 {detailColumns && data.length > 0 ? (
                   <button
                     onClick={toggleAll}
@@ -184,136 +428,22 @@ export function EditableTable({
               </TableRow>
             )}
             {data.map((row, rowIdx) => (
-              <Fragment key={(row.id as string) || rowIdx}>
-                <TableRow className={cn("transition-colors hover:bg-gray-50", rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60", detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200")}>
-                  <TableCell className="text-center text-xs text-muted-foreground">
-                    {detailColumns ? (
-                      <button
-                        onClick={() => toggleRow(rowIdx)}
-                        className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-gray-100 hover:text-primary transition-colors"
-                        title={expandedRows.has(rowIdx) ? "Collapse details" : "Expand details"}
-                      >
-                        {expandedRows.has(rowIdx) ? (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        )}
-                        <span>{rowIdx + 1}</span>
-                      </button>
-                    ) : (
-                      rowIdx + 1
-                    )}
-                  </TableCell>
-                  {columns.map((col) => (
-                    <TableCell
-                      key={col.key}
-                      className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
-                    >
-                      <EditableCell
-                        value={row[col.key] as string | boolean}
-                        type={col.type}
-                        options={col.options}
-                        onChange={(val) => onUpdate(rowIdx, col.key, val)}
-                        placeholder={col.label}
-                        validation={col.validation}
-                      />
-                    </TableCell>
-                  ))}
-                  {!isReadOnly && (
-                  <TableCell className="p-1.5">
-                    <div className="flex items-center gap-0.5">
-                      {onDuplicate && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
-                          onClick={() => onDuplicate(rowIdx)}
-                          title="Duplicate row"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {confirmingDelete === rowIdx ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
-                            onClick={() => handleDeleteClick(rowIdx)}
-                            title="Confirm delete"
-                          >
-                            Delete?
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:bg-gray-100"
-                            onClick={() => setConfirmingDelete(null)}
-                            title="Cancel"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
-                          onClick={() => handleDeleteClick(rowIdx)}
-                          title="Delete row"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                  )}
-                </TableRow>
-                {detailColumns && expandedRows.has(rowIdx) && (
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
-                    <TableCell colSpan={columns.length + 2} className="p-0">
-                      <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                          {detailColumns.map((col) => {
-                            const isWide = col.type === "textarea";
-                            return (
-                              <div
-                                key={col.key}
-                                className={isWide ? "col-span-2" : "col-span-1"}
-                              >
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  {col.description ? (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/70">
-                                          {col.label}
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="bottom" className="max-w-xs">
-                                        <p className="text-xs">{col.description}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ) : (
-                                    col.label
-                                  )}
-                                </label>
-                                <EditableCell
-                                  value={row[col.key] as string | boolean}
-                                  type={col.type}
-                                  options={col.options}
-                                  onChange={(val) => onUpdate(rowIdx, col.key, val)}
-                                  placeholder={col.label}
-                                  validation={col.validation}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </Fragment>
+              <SortableRow
+                key={(row.id as string) || rowIdx}
+                row={row}
+                rowIdx={rowIdx}
+                columns={columns}
+                detailColumns={detailColumns}
+                expandedRows={expandedRows}
+                toggleRow={toggleRow}
+                onUpdate={onUpdate}
+                onDuplicate={onDuplicate}
+                confirmingDelete={confirmingDelete}
+                handleDeleteClick={handleDeleteClick}
+                setConfirmingDelete={setConfirmingDelete}
+                isReadOnly={isReadOnly}
+                canReorder={canReorder}
+              />
             ))}
           </TableBody>
         </Table>
@@ -329,4 +459,20 @@ export function EditableTable({
     </div>
     </div>
   );
+
+  if (canReorder) {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+          {tableContent}
+        </SortableContext>
+      </DndContext>
+    );
+  }
+
+  return tableContent;
 }

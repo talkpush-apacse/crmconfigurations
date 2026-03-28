@@ -38,7 +38,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false);
+  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null);
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey);
   const filledCount = tabsWithData.filter((t) => {
@@ -60,6 +60,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       href: `/client/${slug}/${tab.slug}`,
       status,
       icon: tab.icon,
+      slug: tab.slug,
     };
   });
 

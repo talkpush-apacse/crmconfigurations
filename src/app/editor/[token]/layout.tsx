@@ -39,7 +39,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   }
 
   // Editor link holders never see admin-only tabs
-  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false);
+  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null);
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey);
   const filledCount = tabsWithData.filter((t) => {
@@ -61,8 +61,13 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
       href: `/editor/${token}/${tab.slug}`,
       status,
       icon: tab.icon,
+      slug: tab.slug,
     };
   });
+
+  const handleTabReorder = (slugs: string[]) => {
+    updateField("tabOrder", slugs);
+  };
 
   return (
     <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null, basePath: `/editor/${token}` }}>
@@ -79,7 +84,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
           editorToken={token}
         />
         <div className="flex flex-1 overflow-hidden">
-          <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
+          <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} onReorder={handleTabReorder} />
           <div className="flex flex-col flex-1 overflow-hidden">
             <LegendBar />
             <main className="flex-1 overflow-y-auto">

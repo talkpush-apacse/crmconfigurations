@@ -42,13 +42,31 @@ export function getAllSelectableTabSlugs(): string[] {
 }
 
 // Filter TAB_CONFIG to only enabled tabs (excludes admin-only tabs by default)
-export function getEnabledTabs(enabledTabSlugs: string[] | null | undefined, includeAdminTabs = false): TabConfig[] {
+// When tabOrder is provided, reorder the result to match.
+export function getEnabledTabs(
+  enabledTabSlugs: string[] | null | undefined,
+  includeAdminTabs = false,
+  tabOrder?: string[] | null,
+): TabConfig[] {
   let tabs = TAB_CONFIG;
   if (!includeAdminTabs) {
     tabs = tabs.filter((tab) => !tab.adminOnly);
   }
-  if (!enabledTabSlugs) return tabs; // null/undefined means all enabled
-  const enabledSet = new Set([...ALWAYS_ENABLED_SLUGS, ...enabledTabSlugs]);
-  // Admin-only tabs are always included when includeAdminTabs is true (not controlled by enabledTabs)
-  return tabs.filter((tab) => tab.adminOnly || enabledSet.has(tab.slug));
+  if (enabledTabSlugs) {
+    const enabledSet = new Set([...ALWAYS_ENABLED_SLUGS, ...enabledTabSlugs]);
+    // Admin-only tabs are always included when includeAdminTabs is true (not controlled by enabledTabs)
+    tabs = tabs.filter((tab) => tab.adminOnly || enabledSet.has(tab.slug));
+  }
+
+  // Apply custom ordering if provided
+  if (tabOrder && tabOrder.length > 0) {
+    const slugIndex = new Map(tabOrder.map((slug, i) => [slug, i]));
+    tabs = [...tabs].sort((a, b) => {
+      const ai = slugIndex.get(a.slug) ?? Infinity;
+      const bi = slugIndex.get(b.slug) ?? Infinity;
+      return ai - bi;
+    });
+  }
+
+  return tabs;
 }

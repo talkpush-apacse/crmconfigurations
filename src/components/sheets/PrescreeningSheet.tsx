@@ -65,6 +65,10 @@ export function PrescreeningSheet() {
     updateField("prescreening", updated);
   };
 
+  const handleReorder = (reordered: QuestionRow[]) => {
+    updateField("prescreening", reordered);
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
@@ -111,6 +115,7 @@ export function PrescreeningSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         addLabel="Add Question"
         sampleRow={{ category: "Pre-screening", question: "Are you at least 18 years old?", questionType: "Multiple Choice", answerOptions: "Yes, No" }}
         csvConfig={{

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -10,7 +11,23 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Copy } from "lucide-react";
+import { Plus, Trash2, Copy, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { arrayMove } from "@/lib/utils";
 import type { MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 
@@ -21,8 +38,180 @@ const allChannels = [
   { key: "messenger" as const, label: "Messenger", templateKey: "messengerTemplate" as const, activeKey: "messengerActive" as const },
 ];
 
+function SortableTemplateItem({
+  template,
+  idx,
+  channels,
+  handleUpdate,
+  handleDuplicate,
+  handleDelete,
+  isReadOnly,
+}: {
+  template: MessagingTemplateRow;
+  idx: number;
+  channels: typeof allChannels;
+  handleUpdate: (index: number, field: string, value: string | boolean) => void;
+  handleDuplicate: (index: number) => void;
+  handleDelete: (index: number) => void;
+  isReadOnly: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: template.id || `template-${idx}`, disabled: isReadOnly });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <AccordionItem
+        value={template.id || String(idx)}
+        className={`rounded-lg border ${isDragging ? "ring-2 ring-blue-300 bg-blue-50" : ""}`}
+      >
+        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+          <div className="flex items-center gap-3 text-left">
+            {!isReadOnly && (
+              <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-200 transition-colors touch-none"
+                title="Drag to reorder"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GripVertical className="h-4 w-4 text-gray-400" />
+              </button>
+            )}
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white font-semibold shrink-0">
+              {idx + 1}
+            </span>
+            <div>
+              <p className="font-medium">{template.name || "Untitled Template"}</p>
+              <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{template.purpose || "No purpose set"}</p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Template Name</Label>
+                <Input
+                  value={template.name}
+                  onChange={(e) => handleUpdate(idx, "name", e.target.value)}
+                  placeholder="e.g., Invitation"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Language</Label>
+                <Input
+                  value={template.language}
+                  onChange={(e) => handleUpdate(idx, "language", e.target.value)}
+                  placeholder="e.g., English"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Purpose</Label>
+                <Input
+                  value={template.purpose}
+                  onChange={(e) => handleUpdate(idx, "purpose", e.target.value)}
+                  placeholder="What this template is used for"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Folder</Label>
+                <Input
+                  value={template.folder}
+                  onChange={(e) => handleUpdate(idx, "folder", e.target.value)}
+                  placeholder="e.g., Inbox"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border">
+              <div className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] bg-gray-100 px-3 py-2 text-xs font-medium">
+                <span>Channel</span>
+                <span>Template Content</span>
+                <span className="text-center">Active</span>
+              </div>
+              {channels.map((ch) => (
+                <div
+                  key={ch.key}
+                  className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
+                >
+                  <span className="pt-2 text-sm font-medium">{ch.label}</span>
+                  <Textarea
+                    value={String(template[ch.templateKey] || "")}
+                    onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
+                    placeholder={`Enter ${ch.label} template...`}
+                    className="min-h-[100px] text-sm"
+                  />
+                  <div className="flex items-center justify-center pt-2">
+                    <Checkbox
+                      checked={!!template[ch.activeKey]}
+                      onCheckedChange={(checked) => handleUpdate(idx, ch.activeKey, !!checked)}
+                      aria-label={`${ch.label} active`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <Label className="text-xs">Comments</Label>
+              <Textarea
+                value={template.comments}
+                onChange={(e) => handleUpdate(idx, "comments", e.target.value)}
+                placeholder="Additional notes..."
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+
+            {!isReadOnly && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => handleDuplicate(idx)}
+                >
+                  <Copy className="mr-1 h-3.5 w-3.5" />
+                  Duplicate
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => handleDelete(idx)}
+                >
+                  <Trash2 className="mr-1 h-3.5 w-3.5" />
+                  Delete Template
+                </Button>
+              </div>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </div>
+  );
+}
+
 export function MessagingSheet() {
-  const { data, updateField } = useChecklistContext();
+  const { data, updateField, isReadOnly } = useChecklistContext();
   const templates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
 
   // Filter channels based on communication channels setting
@@ -30,6 +219,16 @@ export function MessagingSheet() {
   const channels = enabledChannels
     ? allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false)
     : allChannels; // null = show all (backward compat for old checklists)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const sortableIds = useMemo(
+    () => templates.map((t, i) => t.id || `template-${i}`),
+    [templates]
+  );
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
     const updated = [...templates];
@@ -70,6 +269,34 @@ export function MessagingSheet() {
     updateField("messaging", updated);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortableIds.indexOf(active.id as string);
+    const newIndex = sortableIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    updateField("messaging", arrayMove(templates, oldIndex, newIndex));
+  };
+
+  const accordionContent = (
+    <Accordion type="multiple" className="space-y-3">
+      {templates.map((template, idx) => (
+        <SortableTemplateItem
+          key={template.id || idx}
+          template={template}
+          idx={idx}
+          channels={channels}
+          handleUpdate={handleUpdate}
+          handleDuplicate={handleDuplicate}
+          handleDelete={handleDelete}
+          isReadOnly={isReadOnly}
+        />
+      ))}
+    </Accordion>
+  );
+
   return (
     <div>
       <SectionHeader
@@ -97,139 +324,28 @@ export function MessagingSheet() {
         </p>
       </div>
 
-      <Accordion type="multiple" className="space-y-3">
-        {templates.map((template, idx) => (
-          <AccordionItem
-            key={template.id || idx}
-            value={template.id || String(idx)}
-            className="rounded-lg border"
-          >
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-3 text-left">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white font-semibold">
-                  {idx + 1}
-                </span>
-                <div>
-                  <p className="font-medium">{template.name || "Untitled Template"}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{template.purpose || "No purpose set"}</p>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs">Template Name</Label>
-                    <Input
-                      value={template.name}
-                      onChange={(e) => handleUpdate(idx, "name", e.target.value)}
-                      placeholder="e.g., Invitation"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Language</Label>
-                    <Input
-                      value={template.language}
-                      onChange={(e) => handleUpdate(idx, "language", e.target.value)}
-                      placeholder="e.g., English"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+      {!isReadOnly ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            {accordionContent}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        accordionContent
+      )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-xs">Purpose</Label>
-                    <Input
-                      value={template.purpose}
-                      onChange={(e) => handleUpdate(idx, "purpose", e.target.value)}
-                      placeholder="What this template is used for"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Folder</Label>
-                    <Input
-                      value={template.folder}
-                      onChange={(e) => handleUpdate(idx, "folder", e.target.value)}
-                      placeholder="e.g., Inbox"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border">
-                  <div className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] bg-gray-100 px-3 py-2 text-xs font-medium">
-                    <span>Channel</span>
-                    <span>Template Content</span>
-                    <span className="text-center">Active</span>
-                  </div>
-                  {channels.map((ch) => (
-                    <div
-                      key={ch.key}
-                      className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
-                    >
-                      <span className="pt-2 text-sm font-medium">{ch.label}</span>
-                      <Textarea
-                        value={String(template[ch.templateKey] || "")}
-                        onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
-                        placeholder={`Enter ${ch.label} template...`}
-                        className="min-h-[100px] text-sm"
-                      />
-                      <div className="flex items-center justify-center pt-2">
-                        <Checkbox
-                          checked={!!template[ch.activeKey]}
-                          onCheckedChange={(checked) => handleUpdate(idx, ch.activeKey, !!checked)}
-                          aria-label={`${ch.label} active`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <Label className="text-xs">Comments</Label>
-                  <Textarea
-                    value={template.comments}
-                    onChange={(e) => handleUpdate(idx, "comments", e.target.value)}
-                    placeholder="Additional notes..."
-                    className="mt-1 min-h-[80px]"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary"
-                    onClick={() => handleDuplicate(idx)}
-                  >
-                    <Copy className="mr-1 h-3.5 w-3.5" />
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => handleDelete(idx)}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
-                    Delete Template
-                  </Button>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-
-      <div className="mt-4">
-        <Button variant="outline" onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Template
-        </Button>
-      </div>
+      {!isReadOnly && (
+        <div className="mt-4">
+          <Button variant="outline" onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Template
+          </Button>
+        </div>
+      )}
       <SectionFooter />
     </div>
   );

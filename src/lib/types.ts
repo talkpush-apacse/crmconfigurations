@@ -302,6 +302,7 @@ export interface ChecklistData {
   version: number;
   fieldVersions: Record<string, number> | null;
   enabledTabs: string[] | null;
+  tabOrder: string[] | null;
   communicationChannels: CommunicationChannels | null;
   featureToggles: FeatureToggles | null;
   companyInfo: CompanyInfo | null;
@@ -335,6 +336,7 @@ export interface ColumnDef {
 // ===== Field-level merge constants =====
 export const CHECKLIST_JSON_FIELDS = [
   "enabledTabs",
+  "tabOrder",
   "communicationChannels",
   "featureToggles",
   "companyInfo",
@@ -357,6 +359,7 @@ export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
 
 export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   enabledTabs: "Enabled Tabs",
+  tabOrder: "Tab Order",
   communicationChannels: "Communication Channels",
   featureToggles: "Feature Toggles",
   companyInfo: "Company Info",

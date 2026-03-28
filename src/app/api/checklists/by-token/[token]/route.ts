@@ -130,6 +130,7 @@ export async function PUT(
     // --- Legacy whole-document path ---
     const {
       enabledTabs,
+      tabOrder,
       communicationChannels,
       featureToggles,
       companyInfo,
@@ -175,6 +176,7 @@ export async function PUT(
         version: { increment: 1 },
         fieldVersions: allFieldVersions,
         enabledTabs,
+        tabOrder,
         communicationChannels,
         featureToggles,
         companyInfo,

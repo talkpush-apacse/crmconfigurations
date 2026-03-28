@@ -43,6 +43,10 @@ export function SourcesSheet() {
     updateField("sources", updated);
   };
 
+  const handleReorder = (reordered: SourceRow[]) => {
+    updateField("sources", reordered);
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCsvImport = (rows: Record<string, any>[]) => {
     const newRows = rows.map((row) => ({
@@ -75,6 +79,7 @@ export function SourcesSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         addLabel="Add Source"
         sampleRow={{ category: "Job Boards", subcategory: "Indeed", link: "https://indeed.com/company-page", comments: "Primary job board" }}
         csvConfig={{

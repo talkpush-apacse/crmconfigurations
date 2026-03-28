@@ -18,6 +18,7 @@ model Checklist {
   fieldVersions Json?    @default("{}")
 
   enabledTabs             Json?
+  tabOrder                Json?
   communicationChannels   Json?
   featureToggles          Json?
 
