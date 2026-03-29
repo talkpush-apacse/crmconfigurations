@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { uid, defaultMessaging } from "@/lib/template-data";
+import { uid, defaultMessaging, defaultCommunicationChannels } from "@/lib/template-data";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -214,11 +214,9 @@ export function MessagingSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
   const templates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
 
-  // Filter channels based on communication channels setting
-  const enabledChannels = data.communicationChannels as CommunicationChannels | null;
-  const channels = enabledChannels
-    ? allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false)
-    : allChannels; // null = show all (backward compat for old checklists)
+  // Filter channels based on communication channels setting (fall back to defaults for old checklists)
+  const enabledChannels = (data.communicationChannels as CommunicationChannels | null) ?? defaultCommunicationChannels;
+  const channels = allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
