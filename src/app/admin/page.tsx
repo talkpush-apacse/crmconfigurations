@@ -89,6 +89,7 @@ interface ChecklistSummary {
   updatedAt: string;
   enabledTabs: string[] | null;
   communicationChannels: CommunicationChannels | null;
+  version: number;
   featureToggles: FeatureToggles | null;
 }
 
@@ -98,6 +99,7 @@ interface EditingState {
   tabs: string[];
   channels: CommunicationChannels;
   featureToggles: FeatureToggles;
+  version: number;
 }
 
 interface PendingDelete {
@@ -266,6 +268,7 @@ export default function AdminDashboard() {
       tabs: c.enabledTabs || getAllSelectableTabSlugs(),
       channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
       featureToggles: (c.featureToggles as FeatureToggles) || defaultFeatureToggles,
+      version: c.version,
     });
   };
 
@@ -298,15 +301,21 @@ export default function AdminDashboard() {
     if (!editing) return;
     setSaving(true);
     try {
-      await fetch(`/api/checklists/${editing.id}`, {
+      const res = await fetch(`/api/checklists/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          version: editing.version,
           enabledTabs: editing.tabs,
           communicationChannels: editing.channels,
           featureToggles: editing.featureToggles,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Failed to save settings:", err);
+        return;
+      }
       setEditing(null);
       fetchChecklists(currentPage);
     } catch {

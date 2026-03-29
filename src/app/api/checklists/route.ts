@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true },
         take: pageSize,
         skip,
       }),
