@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.16.0",
+    "codename": "XUnit Fresh",
+    "changes": [
+      "Added required field validation for Template Name and Purpose in Messaging Templates",
+      "Add Template button is disabled until all existing templates have Name and Purpose filled",
+      "Added dedicated Email Subject Line field in the Email channel row of each template",
+      "Extracted subject lines from pre-populated email template bodies into the new Subject field",
+      "Added Email Subject column to Excel export"
+    ],
+    "deployed_at": "2026-03-29"
+  },
+  {
     "version": "1.15.3",
     "codename": "Watchdog Fresh",
     "changes": [

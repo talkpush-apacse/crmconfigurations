@@ -170,6 +170,7 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Purpose", key: "purpose", width: 30 },
     { header: "Language", key: "language", width: 12 },
     { header: "Folder", key: "folder", width: 15 },
+    { header: "Email Subject", key: "emailSubject", width: 35 },
     { header: "Email Template", key: "emailTemplate", width: 40 },
     { header: "Email Active", key: "emailActive", width: 12 },
     { header: "SMS Template", key: "smsTemplate", width: 40 },

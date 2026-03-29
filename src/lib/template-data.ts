@@ -74,9 +74,8 @@ export const defaultMessaging: MessagingTemplateRow[] = [
     purpose: "First outreach message sent to candidate after sourcing",
     language: "English",
     folder: "Inbox",
-    emailTemplate: `Subject: You're Invited to Apply — <Campaign Name> at <Company Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "You're Invited to Apply — <Campaign Name> at <Company Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 We came across your profile and think you'd be a great fit for the <Campaign Name> role at <Company Name>, located at <Site Name>.
 
@@ -116,9 +115,8 @@ Tap below to apply — it only takes a few minutes:
     purpose: "Sent after candidate completes application / pre-screening",
     language: "English",
     folder: "Inbox",
-    emailTemplate: `Subject: Application Received — <Campaign Name> at <Company Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "Application Received — <Campaign Name> at <Company Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 Thank you for applying for the <Campaign Name> position at <Company Name>!
 
@@ -153,9 +151,8 @@ We've got your application — our team will review it and get back to you soon.
     purpose: "Invite shortlisted candidate to select an interview schedule",
     language: "English",
     folder: "Interview",
-    emailTemplate: `Subject: You're Shortlisted! Book Your Interview — <Campaign Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "You're Shortlisted! Book Your Interview — <Campaign Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 Congratulations! You've been shortlisted for the <Campaign Name> position at <Company Name>.
 
@@ -203,9 +200,8 @@ Bring a valid ID and arrive 15 mins early. Good luck!`,
     purpose: "Invite candidate to complete the AI recruiter interview",
     language: "English",
     folder: "Interview",
-    emailTemplate: `Subject: Complete Your AI Interview — <Campaign Name> at <Company Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "Complete Your AI Interview — <Campaign Name> at <Company Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 As the next step in your application for <Campaign Name>, we'd like you to complete a short AI-powered interview.
 
@@ -248,9 +244,8 @@ Find a quiet spot and speak clearly. Good luck! 🎤`,
     purpose: "Reminder for candidates who haven't finished their application",
     language: "English",
     folder: "Inbox",
-    emailTemplate: `Subject: Don't Miss Out — Complete Your Application for <Campaign Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "Don't Miss Out — Complete Your Application for <Campaign Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 We noticed you haven't finished your application for <Campaign Name> at <Company Name> yet.
 
@@ -288,9 +283,8 @@ Complete it now — it only takes a few minutes:
     purpose: "Reminder for candidates who haven't booked their interview",
     language: "English",
     folder: "Interview",
-    emailTemplate: `Subject: Reminder — Book Your Interview for <Campaign Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "Reminder — Book Your Interview for <Campaign Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 Just a friendly reminder that you haven't booked your interview for <Campaign Name> at <Company Name> yet.
 
@@ -327,9 +321,8 @@ Slots are limited — book now:
     purpose: "Reminder for candidates who haven't completed their AI interview",
     language: "English",
     folder: "Interview",
-    emailTemplate: `Subject: Reminder — Your AI Interview for <Campaign Name> is Pending
-
-Hi <Candidate First Name>,
+    emailSubject: "Reminder — Your AI Interview for <Campaign Name> is Pending",
+    emailTemplate: `Hi <Candidate First Name>,
 
 We noticed you haven't completed your AI interview for <Campaign Name> yet.
 
@@ -367,9 +360,8 @@ It only takes a few minutes:
     purpose: "Confirm the candidate's booked interview schedule",
     language: "English",
     folder: "Interview",
-    emailTemplate: `Subject: Interview Confirmed — <Campaign Name> at <Site Name>
-
-Hi <Candidate First Name>,
+    emailSubject: "Interview Confirmed — <Campaign Name> at <Site Name>",
+    emailTemplate: `Hi <Candidate First Name>,
 
 Your interview for <Campaign Name> at <Company Name> has been confirmed!
 

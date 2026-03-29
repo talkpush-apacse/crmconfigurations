@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Copy, GripVertical } from "lucide-react";
+import { Plus, Trash2, Copy, GripVertical, AlertCircle } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -46,6 +46,7 @@ function SortableTemplateItem({
   handleDuplicate,
   handleDelete,
   isReadOnly,
+  hasEmailChannel,
 }: {
   template: MessagingTemplateRow;
   idx: number;
@@ -54,7 +55,10 @@ function SortableTemplateItem({
   handleDuplicate: (index: number) => void;
   handleDelete: (index: number) => void;
   isReadOnly: boolean;
+  hasEmailChannel: boolean;
 }) {
+  const nameEmpty = !isReadOnly && !template.name.trim();
+  const purposeEmpty = !isReadOnly && !template.purpose.trim();
   const {
     attributes,
     listeners,
@@ -102,13 +106,18 @@ function SortableTemplateItem({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs">Template Name</Label>
+                <Label className="text-xs">Template Name <span className="text-red-500">*</span></Label>
                 <Input
                   value={template.name}
                   onChange={(e) => handleUpdate(idx, "name", e.target.value)}
                   placeholder="e.g., Invitation"
-                  className="mt-1"
+                  className={`mt-1 ${nameEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
                 />
+                {nameEmpty && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
+                    <AlertCircle className="h-3 w-3" /> Template name is required
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Language</Label>
@@ -123,13 +132,18 @@ function SortableTemplateItem({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs">Purpose</Label>
+                <Label className="text-xs">Purpose <span className="text-red-500">*</span></Label>
                 <Input
                   value={template.purpose}
                   onChange={(e) => handleUpdate(idx, "purpose", e.target.value)}
                   placeholder="What this template is used for"
-                  className="mt-1"
+                  className={`mt-1 ${purposeEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
                 />
+                {purposeEmpty && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
+                    <AlertCircle className="h-3 w-3" /> Purpose is required
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Folder</Label>
@@ -154,12 +168,25 @@ function SortableTemplateItem({
                   className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
                 >
                   <span className="pt-2 text-sm font-medium">{ch.label}</span>
-                  <Textarea
-                    value={String(template[ch.templateKey] || "")}
-                    onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
-                    placeholder={`Enter ${ch.label} template...`}
-                    className="min-h-[100px] text-sm"
-                  />
+                  <div className="space-y-2">
+                    {ch.key === "email" && hasEmailChannel && (
+                      <div>
+                        <Label className="text-xs text-gray-500">Subject Line</Label>
+                        <Input
+                          value={template.emailSubject || ""}
+                          onChange={(e) => handleUpdate(idx, "emailSubject", e.target.value)}
+                          placeholder="Enter email subject line..."
+                          className="mt-1 text-sm"
+                        />
+                      </div>
+                    )}
+                    <Textarea
+                      value={String(template[ch.templateKey] || "")}
+                      onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
+                      placeholder={`Enter ${ch.label} template...`}
+                      className="min-h-[100px] text-sm"
+                    />
+                  </div>
                   <div className="flex items-center justify-center pt-2">
                     <Checkbox
                       checked={!!template[ch.activeKey]}
@@ -217,6 +244,10 @@ export function MessagingSheet() {
   // Filter channels based on communication channels setting (fall back to defaults for old checklists)
   const enabledChannels = (data.communicationChannels as CommunicationChannels | null) ?? defaultCommunicationChannels;
   const channels = allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false);
+  const hasEmailChannel = channels.some((ch) => ch.key === "email");
+
+  // Validation: check if any template has empty name or purpose
+  const hasValidationErrors = templates.some((t) => !t.name.trim() || !t.purpose.trim());
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -235,6 +266,7 @@ export function MessagingSheet() {
   };
 
   const handleAdd = () => {
+    if (hasValidationErrors) return;
     updateField("messaging", [
       ...templates,
       {
@@ -243,6 +275,7 @@ export function MessagingSheet() {
         purpose: "",
         language: "English",
         folder: "",
+        emailSubject: "",
         emailTemplate: "",
         emailActive: false,
         smsTemplate: "",
@@ -290,6 +323,7 @@ export function MessagingSheet() {
           handleDuplicate={handleDuplicate}
           handleDelete={handleDelete}
           isReadOnly={isReadOnly}
+          hasEmailChannel={hasEmailChannel}
         />
       ))}
     </Accordion>
@@ -337,11 +371,21 @@ export function MessagingSheet() {
       )}
 
       {!isReadOnly && (
-        <div className="mt-4">
-          <Button variant="outline" onClick={handleAdd}>
+        <div className="mt-4 flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleAdd}
+            disabled={hasValidationErrors}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Template
           </Button>
+          {hasValidationErrors && (
+            <p className="flex items-center gap-1 text-xs text-red-500">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Fill in all required fields before adding a new template
+            </p>
+          )}
         </div>
       )}
       <SectionFooter />

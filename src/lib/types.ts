@@ -86,6 +86,7 @@ export interface MessagingTemplateRow {
   purpose: string;
   language: string;
   folder: string;
+  emailSubject: string;
   emailTemplate: string;
   emailActive: boolean;
   smsTemplate: string;
