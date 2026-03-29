@@ -84,7 +84,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
   if (type === "dropdown" && options) {
     return (
       <Select value={String(value || "")} onValueChange={(v) => onChange(v)}>
-        <SelectTrigger className={cn("h-9 text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15", className)}>
+        <SelectTrigger className={cn("h-9 text-sm", className)}>
           <SelectValue placeholder={placeholder || "Select..."} />
         </SelectTrigger>
         <SelectContent>
@@ -107,7 +107,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
           if (localValue !== String(value ?? "")) onChange(localValue);
         }}
         placeholder={placeholder}
-        className={cn("min-h-[80px] resize-y text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 placeholder:text-gray-400", className)}
+        className={cn("min-h-[80px] resize-y text-sm", className)}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
       />
     );
@@ -130,8 +130,8 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     return wrapWithValidation(
       <div
         className={cn(
-          "group flex cursor-text items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm transition-colors hover:border-gray-400",
-          !localValue && "text-gray-400",
+          "group flex cursor-text items-center justify-between rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
+          !localValue && "text-[#757575]",
           validationError && "border-red-400 bg-red-50/50",
           className
         )}
@@ -163,7 +163,7 @@ export function EditableCell({ value, type, options, onChange, className, placeh
         }
       }}
       placeholder={placeholder}
-      className={cn("h-9 text-sm bg-white border-gray-300 hover:border-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 placeholder:text-gray-400", validationError && "border-red-400 focus-visible:ring-red-400", className)}
+      className={cn("h-9 text-sm", validationError && "border-red-400 focus-visible:ring-red-400", className)}
     />
   );
 }

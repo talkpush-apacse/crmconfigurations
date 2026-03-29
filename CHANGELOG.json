@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.15.2",
+    "codename": "Watchdog Fresh",
+    "changes": [
+      "Improved form field visibility with stronger borders (#BDBDBD, 1.5px)",
+      "Added blue focus ring with glow effect for keyboard navigation",
+      "Improved placeholder text contrast to meet WCAG AA (4.5:1)",
+      "Added hover state feedback and depth shadow on all form inputs",
+      "Applied consistent styling to Select dropdowns and Textarea fields"
+    ],
+    "deployed_at": "2026-03-29"
+  },
+  {
     "version": "1.15.1",
     "codename": "Watchdog Fresh",
     "changes": [

@@ -53,7 +53,7 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
-        className="border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
+        className=""
       />
     </div>
   );
@@ -128,7 +128,7 @@ function FileField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Paste URL or file path"
-        className="border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
+        className=""
       />
     </div>
   );
@@ -200,7 +200,7 @@ function RadioField({
               value={opt.value}
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
-              className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+              className="h-4 w-4 text-teal-600 border-[#BDBDBD] focus:ring-[#1976D2]"
             />
             <span className="text-sm text-gray-700">{opt.label}</span>
           </label>
@@ -257,7 +257,7 @@ function BusinessHoursEditor({
               value={entry.startTime}
               onChange={(e) => updateDay(idx, "startTime", e.target.value)}
               disabled={!entry.enabled}
-              className="h-8 text-sm border-gray-300 bg-white disabled:opacity-40"
+              className="h-8 text-sm disabled:opacity-40"
             />
           </div>
           <div className="px-2 py-1.5">
@@ -266,7 +266,7 @@ function BusinessHoursEditor({
               value={entry.endTime}
               onChange={(e) => updateDay(idx, "endTime", e.target.value)}
               disabled={!entry.enabled}
-              className="h-8 text-sm border-gray-300 bg-white disabled:opacity-40"
+              className="h-8 text-sm disabled:opacity-40"
             />
           </div>
         </div>

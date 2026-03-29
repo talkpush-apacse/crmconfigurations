@@ -215,6 +215,34 @@
   --tp-text-placeholder: #9CA3AF; /* gray-400 */
 }
 
+/* ---- Global Form Field Visibility & Contrast ---- */
+/* Fallback for native inputs/textareas/selects not using shadcn components */
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]),
+textarea:not([data-slot]),
+select:not([data-slot]) {
+  border: 1.5px solid #BDBDBD;
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"])::placeholder,
+textarea:not([data-slot])::placeholder {
+  color: #757575;
+  font-style: normal;
+}
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]):hover,
+textarea:not([data-slot]):hover,
+select:not([data-slot]):hover {
+  border-color: #9E9E9E;
+}
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]):focus,
+textarea:not([data-slot]):focus,
+select:not([data-slot]):focus {
+  border-color: #1976D2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  outline: none;
+}
+
 /* Thin Scrollbar Utility */
 .scrollbar-thin {
   scrollbar-width: thin;
