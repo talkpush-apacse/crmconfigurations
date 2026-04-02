@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         instagram: JSON.parse(JSON.stringify(defaults.instagram)),
         aiCallFaqs: JSON.parse(JSON.stringify(defaults.aiCallFaqs)),
         agencyPortal: JSON.parse(JSON.stringify(defaults.agencyPortal)),
+        agencyPortalUsers: JSON.parse(JSON.stringify(defaults.agencyPortalUsers)),
         adminSettings: JSON.parse(JSON.stringify(defaults.adminSettings)),
       },
     });

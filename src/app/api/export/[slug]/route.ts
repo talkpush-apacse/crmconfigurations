@@ -35,6 +35,7 @@ export async function GET(
         instagram: true,
         aiCallFaqs: true,
         agencyPortal: true,
+        agencyPortalUsers: true,
         communicationChannels: true,
         featureToggles: true,
       },

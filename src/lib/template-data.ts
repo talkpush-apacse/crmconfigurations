@@ -12,6 +12,7 @@ import type {
   InstagramData,
   AiCallData,
   AgencyPortalRow,
+  AgencyPortalUser,
   CommunicationChannels,
   FeatureToggles,
   AdminSettingsData,
@@ -458,6 +459,8 @@ export const defaultAiCallData: AiCallData = {
 
 export const defaultAgencyPortal: AgencyPortalRow[] = [];
 
+export const defaultAgencyPortalUsers: AgencyPortalUser[] = [];
+
 export const defaultAdminSettings: AdminSettingsData = {
   // Basic Company Info
   companyName: "",
@@ -562,6 +565,7 @@ export function getDefaultChecklistData() {
     instagram: defaultInstagram,
     aiCallFaqs: defaultAiCallData,
     agencyPortal: defaultAgencyPortal,
+    agencyPortalUsers: defaultAgencyPortalUsers,
     adminSettings: defaultAdminSettings,
   };
 }

@@ -146,6 +146,7 @@ export async function PUT(
       instagram,
       aiCallFaqs,
       agencyPortal,
+      agencyPortalUsers,
       adminSettings,
     } = body;
 
@@ -191,6 +192,7 @@ export async function PUT(
         instagram,
         aiCallFaqs,
         agencyPortal,
+        agencyPortalUsers,
         adminSettings,
       },
     });
