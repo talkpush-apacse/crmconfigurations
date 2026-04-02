@@ -37,6 +37,10 @@ model Checklist {
   agencyPortal    Json?
   adminSettings   Json?
 
+  isCustom       Boolean  @default(false)
+  customSchema   Json?
+  customData     Json?
+
   @@index([clientName])
 }
 

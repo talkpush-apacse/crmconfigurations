@@ -52,7 +52,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
-import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
 
 // P4-06: Show search only when there are enough rows to warrant it
@@ -91,6 +91,8 @@ interface ChecklistSummary {
   communicationChannels: CommunicationChannels | null;
   version: number;
   featureToggles: FeatureToggles | null;
+  isCustom?: boolean;
+  customSchema?: CustomFieldDef[] | null;
 }
 
 interface EditingState {
@@ -100,6 +102,8 @@ interface EditingState {
   channels: CommunicationChannels;
   featureToggles: FeatureToggles;
   version: number;
+  isCustom: boolean;
+  customSchema: CustomFieldDef[];
 }
 
 interface PendingDelete {
@@ -242,15 +246,19 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/checklists/${id}`);
       const original = await res.json();
       const newName = `${original.clientName} (Copy)`;
+      const createBody: Record<string, unknown> = { clientName: newName };
+      if (original.isCustom) {
+        createBody.isCustom = true;
+        createBody.customSchema = original.customSchema;
+      } else {
+        createBody.enabledTabs = original.enabledTabs;
+        createBody.communicationChannels = original.communicationChannels;
+        createBody.featureToggles = original.featureToggles;
+      }
       const createRes = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientName: newName,
-          enabledTabs: original.enabledTabs,
-          communicationChannels: original.communicationChannels,
-          featureToggles: original.featureToggles,
-        }),
+        body: JSON.stringify(createBody),
       });
       const created = await createRes.json();
       fetchChecklists(currentPage);
@@ -269,6 +277,8 @@ export default function AdminDashboard() {
       channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
       featureToggles: (c.featureToggles as FeatureToggles) || defaultFeatureToggles,
       version: c.version,
+      isCustom: !!c.isCustom,
+      customSchema: (c.customSchema as CustomFieldDef[]) || [],
     });
   };
 
@@ -301,15 +311,23 @@ export default function AdminDashboard() {
     if (!editing) return;
     setSaving(true);
     try {
+      const body: Record<string, unknown> = {
+        version: editing.version,
+        changedFields: editing.isCustom
+          ? ["customSchema"]
+          : ["enabledTabs", "communicationChannels", "featureToggles"],
+      };
+      if (editing.isCustom) {
+        body.customSchema = editing.customSchema;
+      } else {
+        body.enabledTabs = editing.tabs;
+        body.communicationChannels = editing.channels;
+        body.featureToggles = editing.featureToggles;
+      }
       const res = await fetch(`/api/checklists/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          version: editing.version,
-          enabledTabs: editing.tabs,
-          communicationChannels: editing.channels,
-          featureToggles: editing.featureToggles,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
@@ -449,6 +467,9 @@ export default function AdminDashboard() {
               onTabsChange={handleEditTabsChange}
               onFeatureTogglesChange={(toggles) =>
                 setEditing((prev) => prev ? { ...prev, featureToggles: toggles } : prev)
+              }
+              onCustomSchemaChange={(schema) =>
+                setEditing((prev) => prev ? { ...prev, customSchema: schema } : prev)
               }
             />
 
@@ -606,14 +627,21 @@ export default function AdminDashboard() {
                           >
                             {/* P1-03 + P3-02: Teal link + slug as secondary line, no separate slug column */}
                             <TableCell className="py-2 font-medium">
-                              <Link
-                                href={`/editor/${c.editorToken}/welcome`}
-                                target="_blank"
-                                className="text-teal-700 transition-colors hover:text-teal-900 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {c.clientName}
-                              </Link>
+                              <span className="flex items-center gap-1.5">
+                                <Link
+                                  href={`/editor/${c.editorToken}/welcome`}
+                                  target="_blank"
+                                  className="text-teal-700 transition-colors hover:text-teal-900 hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {c.clientName}
+                                </Link>
+                                {c.isCustom && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
+                                    Custom
+                                  </Badge>
+                                )}
+                              </span>
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {c.slug}
                               </p>

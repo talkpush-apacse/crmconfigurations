@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true },
         take: pageSize,
         skip,
       }),
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { clientName, enabledTabs, communicationChannels, featureToggles } = body;
+    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema } = body;
 
     if (!clientName) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -65,28 +65,40 @@ export async function POST(request: NextRequest) {
     }
 
     const defaults = getDefaultChecklistData();
+
+    // Custom checklists: no standard tabs, store custom schema
+    const createData: Record<string, unknown> = {
+      slug,
+      clientName,
+      isCustom: !!isCustom,
+    };
+
+    if (isCustom) {
+      createData.enabledTabs = JSON.parse(JSON.stringify([]));
+      createData.customSchema = customSchema ? JSON.parse(JSON.stringify(customSchema)) : JSON.parse(JSON.stringify([]));
+      createData.customData = JSON.parse(JSON.stringify({}));
+    } else {
+      createData.enabledTabs = enabledTabs ? JSON.parse(JSON.stringify(enabledTabs)) : null;
+      createData.communicationChannels = communicationChannels ? JSON.parse(JSON.stringify(communicationChannels)) : null;
+      createData.featureToggles = featureToggles ? JSON.parse(JSON.stringify(featureToggles)) : null;
+      createData.companyInfo = JSON.parse(JSON.stringify(defaults.companyInfo));
+      createData.users = JSON.parse(JSON.stringify(defaults.users));
+      createData.campaigns = JSON.parse(JSON.stringify(defaults.campaigns));
+      createData.sites = JSON.parse(JSON.stringify(defaults.sites));
+      createData.prescreening = JSON.parse(JSON.stringify(defaults.prescreening));
+      createData.messaging = JSON.parse(JSON.stringify(defaults.messaging));
+      createData.sources = JSON.parse(JSON.stringify(defaults.sources));
+      createData.folders = JSON.parse(JSON.stringify(defaults.folders));
+      createData.documents = JSON.parse(JSON.stringify(defaults.documents));
+      createData.fbWhatsapp = JSON.parse(JSON.stringify(defaults.fbWhatsapp));
+      createData.instagram = JSON.parse(JSON.stringify(defaults.instagram));
+      createData.aiCallFaqs = JSON.parse(JSON.stringify(defaults.aiCallFaqs));
+      createData.agencyPortal = JSON.parse(JSON.stringify(defaults.agencyPortal));
+      createData.adminSettings = JSON.parse(JSON.stringify(defaults.adminSettings));
+    }
+
     const checklist = await prisma.checklist.create({
-      data: {
-        slug,
-        clientName,
-        enabledTabs: enabledTabs ? JSON.parse(JSON.stringify(enabledTabs)) : null,
-        communicationChannels: communicationChannels ? JSON.parse(JSON.stringify(communicationChannels)) : null,
-        featureToggles: featureToggles ? JSON.parse(JSON.stringify(featureToggles)) : null,
-        companyInfo: JSON.parse(JSON.stringify(defaults.companyInfo)),
-        users: JSON.parse(JSON.stringify(defaults.users)),
-        campaigns: JSON.parse(JSON.stringify(defaults.campaigns)),
-        sites: JSON.parse(JSON.stringify(defaults.sites)),
-        prescreening: JSON.parse(JSON.stringify(defaults.prescreening)),
-        messaging: JSON.parse(JSON.stringify(defaults.messaging)),
-        sources: JSON.parse(JSON.stringify(defaults.sources)),
-        folders: JSON.parse(JSON.stringify(defaults.folders)),
-        documents: JSON.parse(JSON.stringify(defaults.documents)),
-        fbWhatsapp: JSON.parse(JSON.stringify(defaults.fbWhatsapp)),
-        instagram: JSON.parse(JSON.stringify(defaults.instagram)),
-        aiCallFaqs: JSON.parse(JSON.stringify(defaults.aiCallFaqs)),
-        agencyPortal: JSON.parse(JSON.stringify(defaults.agencyPortal)),
-        adminSettings: JSON.parse(JSON.stringify(defaults.adminSettings)),
-      },
+      data: createData as Parameters<typeof prisma.checklist.create>[0]["data"],
     });
 
     return NextResponse.json(checklist, { status: 201 });
