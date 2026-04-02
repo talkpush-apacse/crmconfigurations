@@ -19,6 +19,7 @@ import { InstagramSheet } from "@/components/sheets/InstagramSheet";
 import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
 import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
+import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
@@ -44,24 +45,32 @@ export default function TabPage() {
   const tab = params.tab as string;
   const slug = params.slug as string;
   const { data } = useChecklistContext();
-  const tabConfig = getTabBySlug(tab);
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, false);
-  const isEnabled = enabledTabs.some((t) => t.slug === tab);
+  const isCustom = !!data?.isCustom;
+  const tabConfig = isCustom ? null : getTabBySlug(tab);
+
+  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false);
+  const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
   useEffect(() => {
-    if (tabConfig && !isEnabled && enabledTabs.length > 0) {
+    if (!isCustom && tabConfig && !isEnabled && enabledTabs.length > 0) {
       router.replace(`/client/${slug}/${enabledTabs[0].slug}`);
     }
-  }, [tabConfig, isEnabled, enabledTabs, slug, router]);
+  }, [isCustom, tabConfig, isEnabled, enabledTabs, slug, router]);
 
   // Dynamic browser tab title
   useEffect(() => {
-    if (tabConfig && data?.clientName) {
+    if (isCustom && data?.clientName) {
+      document.title = `Custom Checklist — ${data.clientName} | Talkpush CRM`;
+    } else if (tabConfig && data?.clientName) {
       document.title = `${tabConfig.label} — ${data.clientName} | Talkpush CRM`;
     }
-  }, [tab, tabConfig, data?.clientName]);
+  }, [isCustom, tab, tabConfig, data?.clientName]);
+
+  if (isCustom) {
+    return <CustomChecklistForm />;
+  }
 
   if (!tabConfig) {
     return (

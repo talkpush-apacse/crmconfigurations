@@ -147,6 +147,8 @@ export async function PUT(
       aiCallFaqs,
       agencyPortal,
       adminSettings,
+      customSchema,
+      customData,
     } = body;
 
     const current = await prisma.checklist.findUnique({
@@ -192,6 +194,8 @@ export async function PUT(
         aiCallFaqs,
         agencyPortal,
         adminSettings,
+        customSchema,
+        customData,
       },
     });
 

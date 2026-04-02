@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
-import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
+import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
 
 export interface SettingsEditingState {
   id: string;
@@ -12,6 +13,8 @@ export interface SettingsEditingState {
   tabs: string[];
   channels: CommunicationChannels;
   featureToggles: FeatureToggles;
+  isCustom: boolean;
+  customSchema: CustomFieldDef[];
 }
 
 interface SettingsDialogProps {
@@ -22,6 +25,7 @@ interface SettingsDialogProps {
   onChannelsChange: (channels: CommunicationChannels) => void;
   onTabsChange: (tabs: string[]) => void;
   onFeatureTogglesChange: (toggles: FeatureToggles) => void;
+  onCustomSchemaChange?: (schema: CustomFieldDef[]) => void;
 }
 
 export function SettingsDialog({
@@ -32,6 +36,7 @@ export function SettingsDialog({
   onChannelsChange,
   onTabsChange,
   onFeatureTogglesChange,
+  onCustomSchemaChange,
 }: SettingsDialogProps) {
   return (
     <Dialog open={!!editing} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -43,16 +48,25 @@ export function SettingsDialog({
         </DialogHeader>
         {editing && (
           <div className="space-y-6">
-            <ChannelSelector
-              channels={editing.channels}
-              onChange={onChannelsChange}
-              featureToggles={editing.featureToggles}
-              onFeatureTogglesChange={onFeatureTogglesChange}
-            />
-            <TabSelector
-              selectedTabs={editing.tabs}
-              onChange={onTabsChange}
-            />
+            {editing.isCustom ? (
+              <CustomFieldBuilder
+                value={editing.customSchema}
+                onChange={(schema) => onCustomSchemaChange?.(schema)}
+              />
+            ) : (
+              <>
+                <ChannelSelector
+                  channels={editing.channels}
+                  onChange={onChannelsChange}
+                  featureToggles={editing.featureToggles}
+                  onFeatureTogglesChange={onFeatureTogglesChange}
+                />
+                <TabSelector
+                  selectedTabs={editing.tabs}
+                  onChange={onTabsChange}
+                />
+              </>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={onClose}>
                 Cancel

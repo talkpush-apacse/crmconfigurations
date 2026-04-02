@@ -38,17 +38,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  const enabledTabs = getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null);
+  const isCustom = !!data.isCustom;
+
+  const enabledTabs = isCustom ? [] : getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null);
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey);
-  const filledCount = tabsWithData.filter((t) => {
-    const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-    if (val === null || val === undefined) return false;
-    if (Array.isArray(val)) return val.length > 0;
-    if (typeof val === "object") return Object.values(val as unknown as Record<string, unknown>).some((v) => v !== "" && v !== null);
-    return true;
-  }).length;
-  const totalCount = tabsWithData.length;
+  const filledCount = isCustom
+    ? 0
+    : tabsWithData.filter((t) => {
+        const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
+        if (val === null || val === undefined) return false;
+        if (Array.isArray(val)) return val.length > 0;
+        if (typeof val === "object") return Object.values(val as unknown as Record<string, unknown>).some((v) => v !== "" && v !== null);
+        return true;
+      }).length;
+  const totalCount = isCustom ? 0 : tabsWithData.length;
 
   const navItems: NavItem[] = enabledTabs.map((tab) => {
     let status: NavItem["status"] = null;
@@ -77,9 +81,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           totalCount={totalCount}
         />
         <div className="flex flex-1 overflow-hidden">
-          <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
+          {!isCustom && (
+            <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
+          )}
           <div className="flex flex-col flex-1 overflow-hidden">
-            <LegendBar />
+            {!isCustom && <LegendBar />}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
             </main>

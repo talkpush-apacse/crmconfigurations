@@ -147,6 +147,8 @@ export async function PUT(
       aiCallFaqs,
       agencyPortal,
       adminSettings,
+      customSchema,
+      customData,
     } = body;
 
     if (version !== undefined) {
@@ -193,6 +195,8 @@ export async function PUT(
         aiCallFaqs,
         agencyPortal,
         adminSettings,
+        customSchema,
+        customData,
       },
     });
 
