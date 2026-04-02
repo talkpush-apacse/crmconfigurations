@@ -148,6 +148,8 @@ export async function PUT(
       agencyPortal,
       agencyPortalUsers,
       adminSettings,
+      customSchema,
+      customData,
     } = body;
 
     if (version !== undefined) {
@@ -195,6 +197,8 @@ export async function PUT(
         agencyPortal,
         agencyPortalUsers,
         adminSettings,
+        customSchema,
+        customData,
       },
     });
 

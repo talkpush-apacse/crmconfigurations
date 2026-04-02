@@ -6,17 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutList, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
+import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
-import type { CommunicationChannels, FeatureToggles } from "@/lib/types";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
 
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
+  const [isCustom, setIsCustom] = useState(false);
+  const [customSchema, setCustomSchema] = useState<CustomFieldDef[]>([]);
   const [enabledTabs, setEnabledTabs] = useState<string[]>(getAllSelectableTabSlugs());
   const [channels, setChannels] = useState<CommunicationChannels>(defaultCommunicationChannels);
   const [featureToggles, setFeatureToggles] = useState<FeatureToggles>(defaultFeatureToggles);
@@ -54,10 +57,21 @@ export default function NewChecklistPage() {
     setLoading(true);
 
     try {
+      const body: Record<string, unknown> = { clientName };
+
+      if (isCustom) {
+        body.isCustom = true;
+        body.customSchema = customSchema;
+      } else {
+        body.enabledTabs = enabledTabs;
+        body.communicationChannels = channels;
+        body.featureToggles = featureToggles;
+      }
+
       const res = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, enabledTabs, communicationChannels: channels, featureToggles }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -110,14 +124,57 @@ export default function NewChecklistPage() {
                 </div>
               )}
 
-              <ChannelSelector
-                channels={channels}
-                onChange={handleChannelsChange}
-                featureToggles={featureToggles}
-                onFeatureTogglesChange={setFeatureToggles}
-              />
+              {/* Checklist mode toggle */}
+              <div>
+                <Label className="mb-2 block text-sm font-medium">Checklist Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsCustom(false)}
+                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
+                      !isCustom
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-gray-200 text-muted-foreground hover:border-gray-300"
+                    }`}
+                  >
+                    <LayoutList className="h-4 w-4 shrink-0" />
+                    <div>
+                      <div className="font-medium">Standard CRM</div>
+                      <div className="text-xs opacity-75">Fixed tabs &amp; structure</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustom(true)}
+                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
+                      isCustom
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-gray-200 text-muted-foreground hover:border-gray-300"
+                    }`}
+                  >
+                    <Settings2 className="h-4 w-4 shrink-0" />
+                    <div>
+                      <div className="font-medium">Custom</div>
+                      <div className="text-xs opacity-75">Define your own fields</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
 
-              <TabSelector selectedTabs={enabledTabs} onChange={handleTabsChange} />
+              {isCustom ? (
+                <CustomFieldBuilder value={customSchema} onChange={setCustomSchema} />
+              ) : (
+                <>
+                  <ChannelSelector
+                    channels={channels}
+                    onChange={handleChannelsChange}
+                    featureToggles={featureToggles}
+                    onFeatureTogglesChange={setFeatureToggles}
+                  />
+
+                  <TabSelector selectedTabs={enabledTabs} onChange={handleTabsChange} />
+                </>
+              )}
 
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading || !clientName.trim()}>

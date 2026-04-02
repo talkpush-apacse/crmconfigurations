@@ -301,6 +301,31 @@ export interface AdminSettingsData {
   businessHours: BusinessHourEntry[];
 }
 
+// ===== Custom Checklist Types =====
+export type CustomFieldType =
+  | 'text'
+  | 'textarea'
+  | 'richtext'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'checkbox'
+  | 'file'
+  | 'table';
+
+export interface CustomFieldDef {
+  id: string;
+  label: string;
+  type: CustomFieldType;
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+  columns?: string[];
+}
+
+export type CustomSchema = CustomFieldDef[];
+export type CustomData = Record<string, unknown>;
+
 // ===== Checklist Data (full) =====
 export interface ChecklistData {
   id: string;
@@ -329,6 +354,9 @@ export interface ChecklistData {
   agencyPortal: AgencyPortalRow[] | null;
   agencyPortalUsers: AgencyPortalUser[] | null;
   adminSettings: AdminSettingsData | null;
+  isCustom: boolean;
+  customSchema: CustomSchema | null;
+  customData: CustomData | null;
 }
 
 // ===== Column definition for EditableTable =====
@@ -364,6 +392,8 @@ export const CHECKLIST_JSON_FIELDS = [
   "agencyPortal",
   "agencyPortalUsers",
   "adminSettings",
+  "customSchema",
+  "customData",
 ] as const;
 
 export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
@@ -388,4 +418,6 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   agencyPortal: "Agency Portal",
   agencyPortalUsers: "Agency Portal Users",
   adminSettings: "Admin Settings",
+  customSchema: "Custom Schema",
+  customData: "Custom Data",
 };
