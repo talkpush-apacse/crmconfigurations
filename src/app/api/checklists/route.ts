@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items, total, page, pageSize });
   } catch (err) {
-    console.error("GET /api/checklists error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("GET /api/checklists error:", message, err);
     return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
   }
 }
