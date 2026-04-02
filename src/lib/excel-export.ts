@@ -23,7 +23,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   }
 
   // Populate tabular sheets
-  populateTableSheet(workbook, "User List", data.users as Record<string, unknown>[] | null, 19, ["name", "accessType", "jobTitle", "email", "phone", "site", "reportsTo", "comments"], "C");
+  populateTableSheet(workbook, "User List", data.users as Record<string, unknown>[] | null, 19, ["name", "accessType", "email", "phone", "jobTitle", "site", "reportsTo", "comments"], "C");
   // Flatten assignedRecruiters arrays to comma-separated strings for export
   const campaignsForExport = data.campaigns?.map((c) => ({
     ...c,
@@ -118,9 +118,9 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
   addTableSheet("User List", [
     { header: "Name", key: "name", width: 25 },
     { header: "Access Type", key: "accessType", width: 20 },
-    { header: "Job Title", key: "jobTitle", width: 25 },
     { header: "Email", key: "email", width: 30 },
     { header: "Phone", key: "phone", width: 20 },
+    { header: "Job Title", key: "jobTitle", width: 25 },
     { header: "Site", key: "site", width: 20 },
     { header: "Reports To", key: "reportsTo", width: 20 },
     { header: "Comments", key: "comments", width: 30 },

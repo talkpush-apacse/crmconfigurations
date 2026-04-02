@@ -10,15 +10,15 @@ import type { ColumnDef, UserRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
-  { key: "name", label: "Name", type: "text", description: "Full name of the user" },
-  { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: "Role determining platform access level" },
-  { key: "email", label: "Email", type: "text", description: "User's email address for login", validation: "email" },
-  { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
+  { key: "name", label: "Name", type: "text", description: "Full name of the user", required: true },
+  { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: "Role determining platform access level", required: true },
+  { key: "email", label: "Email", type: "text", description: "User's email address for login", validation: "email", required: true },
+  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone", required: true },
 ];
 
 const detailColumns: ColumnDef[] = [
   { key: "jobTitle", label: "Job Title", type: "text", description: "User's job title within the organization" },
-  { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone" },
+  { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
   { key: "reportsTo", label: "Reports To", type: "text", description: "Direct manager or supervisor" },
   { key: "comments", label: "Comments", type: "textarea" },
 ];
@@ -77,8 +77,8 @@ export function UserListSheet() {
       <ExampleHint>
         <p className="mb-1 font-medium">Sample user list:</p>
         <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Maria Santos</strong> | Owner | HR Director | maria@company.com | +63 917 123 4567 | BGC Office</li>
-          <li><strong>Juan dela Cruz</strong> | Manager | Recruiter | juan@company.com | +63 918 765 4321 | Makati Office</li>
+          <li><strong>Maria Santos</strong> | Owner | maria@company.com | +63 917 123 4567 | HR Director | BGC Office</li>
+          <li><strong>Juan dela Cruz</strong> | Manager | juan@company.com | +63 918 765 4321 | Recruiter | Makati Office</li>
         </ul>
       </ExampleHint>
 
@@ -105,9 +105,9 @@ export function UserListSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         addLabel="Add User"
-        sampleRow={{ name: "Maria Santos", accessType: "Manager", email: "maria@company.com", site: "BGC Office", jobTitle: "HR Manager", phone: "+63 917 123 4567", reportsTo: "John dela Cruz" }}
+        sampleRow={{ name: "Maria Santos", accessType: "Manager", email: "maria@company.com", phone: "+63 917 123 4567", jobTitle: "HR Manager", site: "BGC Office", reportsTo: "John dela Cruz" }}
         csvConfig={{
-          sampleRow: { name: "John Doe", accessType: "Manager", jobTitle: "Recruiter", email: "john@company.com", phone: "+1234567890", site: "Main Office", reportsTo: "Jane Smith" },
+          sampleRow: { name: "John Doe", accessType: "Manager", email: "john@company.com", phone: "+1234567890", jobTitle: "Recruiter", site: "Main Office", reportsTo: "Jane Smith", comments: "Primary recruiting contact" },
           onImport: handleCsvImport,
           sheetName: "Users",
         }}

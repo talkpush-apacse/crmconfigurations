@@ -4,15 +4,22 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChecklistData } from "@/lib/types";
 import { FIELD_LABELS, type ChecklistJsonField } from "@/lib/types";
 
+function cloneChecklistData(data: ChecklistData): ChecklistData {
+  return typeof structuredClone === "function"
+    ? structuredClone(data)
+    : JSON.parse(JSON.stringify(data)) as ChecklistData;
+}
+
 export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug") {
   const [data, setData] = useState<ChecklistData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const latestDataRef = useRef<ChecklistData | null>(null);
-  const hasPendingChanges = useRef(false);
+  const lastSavedDataRef = useRef<ChecklistData | null>(null);
+  const hasPendingChangesRef = useRef(false);
   const dirtyFieldsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -26,6 +33,12 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
         const json = await res.json();
         setData(json);
         latestDataRef.current = json;
+        lastSavedDataRef.current = cloneChecklistData(json);
+        dirtyFieldsRef.current.clear();
+        hasPendingChangesRef.current = false;
+        setHasPendingChanges(false);
+        setSaveStatus("saved");
+        setSaveError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
@@ -51,6 +64,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
       try {
         // Always use the most recent data in case edits occurred during retry delay
         const dataToSave = latestDataRef.current ?? updatedData;
+        const requestSnapshot = cloneChecklistData(dataToSave);
         // Re-snapshot dirty fields on retry (user may have edited more fields during backoff)
         const currentDirtyFields = attempt === 0 ? fieldsToSave : Array.from(dirtyFieldsRef.current);
 
@@ -82,6 +96,8 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
 
           setSaveStatus("error");
           setSaveError(message);
+          hasPendingChangesRef.current = true;
+          setHasPendingChanges(true);
           return;
         }
         if (!res.ok) {
@@ -90,15 +106,40 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
           continue; // retry
         }
         const saved = await res.json();
-        // Update version from server response for optimistic locking
-        setData((prev) => prev ? { ...prev, version: saved.version } : prev);
-        if (latestDataRef.current) {
-          latestDataRef.current = { ...latestDataRef.current, version: saved.version };
-        }
-        // Clear dirty fields only on success
-        dirtyFieldsRef.current.clear();
-        hasPendingChanges.current = false;
+        const latestData = latestDataRef.current;
+        const stillDirtyFields = Array.from(dirtyFieldsRef.current).filter((field) => {
+          if (!currentDirtyFields.includes(field)) return true;
+          if (!latestData) return false;
+
+          return JSON.stringify(latestData[field as keyof ChecklistData]) !== JSON.stringify(
+            requestSnapshot[field as keyof ChecklistData]
+          );
+        });
+
+        const persistedSnapshot = {
+          ...requestSnapshot,
+          version: saved.version,
+          updatedAt: saved.updatedAt ?? requestSnapshot.updatedAt,
+        };
+
+        lastSavedDataRef.current = cloneChecklistData(persistedSnapshot);
+
+        const nextData = latestData
+          ? {
+              ...latestData,
+              version: saved.version,
+              updatedAt: saved.updatedAt ?? latestData.updatedAt,
+            }
+          : persistedSnapshot;
+
+        setData(nextData);
+        latestDataRef.current = nextData;
+
+        dirtyFieldsRef.current = new Set(stillDirtyFields);
+        hasPendingChangesRef.current = stillDirtyFields.length > 0;
+        setHasPendingChanges(stillDirtyFields.length > 0);
         setSaveStatus("saved");
+        setSaveError(null);
         return; // success
       } catch (err) {
         lastError = err instanceof Error ? err : new Error("Save failed");
@@ -109,6 +150,27 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
     // All attempts exhausted
     setSaveStatus("error");
     setSaveError(lastError?.message ?? "Save failed");
+    hasPendingChangesRef.current = true;
+    setHasPendingChanges(true);
+  }, [mode, slugOrToken]);
+
+  const publishChanges = useCallback(() => {
+    if (latestDataRef.current && dirtyFieldsRef.current.size > 0) {
+      save(latestDataRef.current);
+    }
+  }, [save]);
+
+  const discardChanges = useCallback(() => {
+    if (!lastSavedDataRef.current) return;
+
+    const restoredData = cloneChecklistData(lastSavedDataRef.current);
+    setData(restoredData);
+    latestDataRef.current = restoredData;
+    dirtyFieldsRef.current.clear();
+    hasPendingChangesRef.current = false;
+    setHasPendingChanges(false);
+    setSaveStatus("saved");
+    setSaveError(null);
   }, []);
 
   const retrySave = useCallback(() => {
@@ -123,33 +185,42 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
         if (!prev) return prev;
         const updated = { ...prev, [field]: value };
         latestDataRef.current = updated;
-        hasPendingChanges.current = true;
+        hasPendingChangesRef.current = true;
+        setHasPendingChanges(true);
         dirtyFieldsRef.current.add(field as string);
-
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = setTimeout(() => {
-          if (latestDataRef.current) save(latestDataRef.current);
-        }, 2000);
+        setSaveStatus("saved");
+        setSaveError(null);
 
         return updated;
       });
     },
-    [save]
+    []
   );
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasPendingChanges.current || saveTimeoutRef.current) {
+      if (hasPendingChangesRef.current || saveStatus === "saving") {
         e.preventDefault();
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, []);
+  }, [saveStatus]);
 
-  return { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef: hasPendingChanges };
+  return {
+    data,
+    loading,
+    error,
+    saveStatus,
+    saveError,
+    hasPendingChanges,
+    updateField,
+    retrySave,
+    publishChanges,
+    discardChanges,
+    hasPendingChangesRef,
+  };
 }

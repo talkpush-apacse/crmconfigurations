@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -72,7 +72,7 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   /* Brand Accent Palette — Talkpush Design System */
   --brand-sage:              oklch(0.76 0.06 148);
@@ -107,8 +107,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Talkpush teal #007A6A ≈ oklch(0.47 0.085 174). #00BFA5 fails WCAG AA (2.5:1); this passes at ~4.82:1 with white */
-  --primary: oklch(0.47 0.085 174);
+  --primary: #1A73E8;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -119,7 +118,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.71 0.12 174);
+  --ring: #1A73E8;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -127,7 +126,7 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.47 0.085 174);
+  --sidebar-primary: #1A73E8;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -175,8 +174,10 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    background-image:
+      radial-gradient(circle at top left, rgba(226, 232, 240, 0.55), transparent 32%),
+      linear-gradient(180deg, #f8fafc 0%, #eef2ff 44%, #f8fafc 100%);
   }
 }
 
@@ -199,9 +200,9 @@
 /* ---- Design System v1.8.0 semantic tokens ---- */
 /* These map to Tailwind equivalents: blue-600, blue-700, green-600, amber-500, etc. */
 :root {
-  --tp-primary:          #2563EB; /* blue-600 — active tabs, table headers, focus rings */
-  --tp-primary-hover:    #1D4ED8; /* blue-700 */
-  --tp-primary-subtle:   rgba(37,99,235,0.08);
+  --tp-primary:          #1A73E8;
+  --tp-primary-hover:    #1765CB;
+  --tp-primary-subtle:   rgba(26,115,232,0.08);
   --tp-status-complete:  #16A34A; /* green-600 */
   --tp-status-progress:  #F59E0B; /* amber-500 */
   --tp-status-empty:     #9CA3AF; /* gray-400 */

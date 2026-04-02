@@ -13,7 +13,7 @@ export function SectionFooter() {
   const currentTab = params.tab as string;
   const { data, basePath } = useChecklistContext();
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, false, data?.tabOrder ?? null);
   // Exclude welcome from prev/next — it is not a content section
   const contentTabs = enabledTabs.filter((t) => t.slug !== "welcome");
 
@@ -28,12 +28,12 @@ export function SectionFooter() {
   const isLastSection = !nextTab;
 
   return (
-    <div className="mt-10 flex items-center justify-between border-t border-gray-200 pt-5">
+    <div className="mt-10 flex flex-col gap-4 rounded-[24px] bg-white/[0.82] px-5 py-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
       {/* Previous link */}
       {prevTab && prevTab.slug !== "welcome" ? (
         <Link
           href={`${basePath}/${prevTab.slug}`}
-          className="inline-flex items-center gap-1.5 text-[14px] text-gray-500 hover:text-gray-900 hover:underline transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
           Previous: {prevTab.label}
@@ -44,12 +44,12 @@ export function SectionFooter() {
 
       {/* Next / Complete button */}
       {isLastSection ? (
-        <div className="inline-flex items-center gap-1.5 text-sm text-green-700 font-medium">
+        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200/70">
           <CheckCircle2 className="h-4 w-4" />
           All sections complete
         </div>
       ) : nextTab ? (
-        <Button asChild size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+        <Button asChild size="sm" className="h-11 gap-2 rounded-xl bg-[#1A73E8] px-4 text-white hover:bg-[#1765cb] active:scale-95">
           <Link href={`${basePath}/${nextTab.slug}`}>
             Continue to {nextTab.label}
             <ArrowRight className="h-4 w-4" />

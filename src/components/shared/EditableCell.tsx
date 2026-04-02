@@ -30,17 +30,27 @@ interface EditableCellProps {
   className?: string;
   placeholder?: string;
   validation?: ValidationType;
+  required?: boolean;
+  showRequiredError?: boolean;
 }
 
-export function EditableCell({ value, type, options, onChange, className, placeholder, validation }: EditableCellProps) {
+export function EditableCell({
+  value,
+  type,
+  options,
+  onChange,
+  className,
+  placeholder,
+  validation,
+  required = false,
+  showRequiredError = false,
+}: EditableCellProps) {
   const { isReadOnly } = useChecklistContext();
   const [editing, setEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(String(value ?? ""));
+  const [draftValue, setDraftValue] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setLocalValue(String(value ?? ""));
-  }, [value]);
+  const committedValue = String(value ?? "");
+  const currentValue = draftValue ?? committedValue;
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -48,12 +58,25 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     }
   }, [editing]);
 
+  const requiredError = useMemo(() => {
+    if (!required || !showRequiredError || currentValue.trim() !== "") return null;
+    return `${placeholder || "This field"} is required`;
+  }, [required, showRequiredError, currentValue, placeholder]);
+
   const validationError = useMemo(() => {
-    if (!validation || !localValue) return null;
+    if (!validation || !currentValue) return null;
     const rule = VALIDATION_RULES[validation];
-    if (!rule.regex.test(localValue)) return rule.message;
+    if (!rule.regex.test(currentValue)) return rule.message;
     return null;
-  }, [validation, localValue]);
+  }, [validation, currentValue]);
+
+  const errorMessage = requiredError ?? validationError;
+
+  const commitDraftValue = () => {
+    const nextValue = draftValue ?? committedValue;
+    setDraftValue(null);
+    if (nextValue !== committedValue) onChange(nextValue);
+  };
 
   if (type === "readonly" || isReadOnly) {
     if (type === "boolean") {
@@ -81,12 +104,33 @@ export function EditableCell({ value, type, options, onChange, className, placeh
     );
   }
 
+  const wrapWithValidation = (content: React.ReactElement) => {
+    if (!errorMessage) return content;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs bg-red-50 text-red-700 border-red-200">
+          <p className="text-xs">{errorMessage}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   if (type === "dropdown" && options) {
     return (
       <Select value={String(value || "")} onValueChange={(v) => onChange(v)}>
-        <SelectTrigger className={cn("h-9 text-sm", className)}>
-          <SelectValue placeholder={placeholder || "Select..."} />
-        </SelectTrigger>
+        {wrapWithValidation(
+          <SelectTrigger
+            aria-invalid={!!errorMessage}
+            className={cn(
+              "h-9 text-sm",
+              errorMessage && "border-red-400 focus-visible:ring-red-400",
+              className
+            )}
+          >
+            <SelectValue placeholder={placeholder || "Select..."} />
+          </SelectTrigger>
+        )}
         <SelectContent>
           {options.map((opt) => (
             <SelectItem key={opt} value={opt}>
@@ -99,45 +143,41 @@ export function EditableCell({ value, type, options, onChange, className, placeh
   }
 
   if (type === "textarea") {
-    return (
+    return wrapWithValidation(
       <Textarea
-        value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        value={currentValue}
+        onChange={(e) => setDraftValue(e.target.value)}
         onBlur={() => {
-          if (localValue !== String(value ?? "")) onChange(localValue);
+          commitDraftValue();
         }}
         placeholder={placeholder}
-        className={cn("min-h-[80px] resize-y text-sm", className)}
+        aria-invalid={!!errorMessage}
+        className={cn(
+          "min-h-[80px] resize-y text-sm",
+          errorMessage && "border-red-400 focus-visible:ring-red-400",
+          className
+        )}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
       />
     );
   }
 
   // Default: text
-  const wrapWithValidation = (content: React.ReactElement) => {
-    if (!validationError) return content;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs bg-red-50 text-red-700 border-red-200">
-          <p className="text-xs">{validationError}</p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  };
-
   if (!editing) {
     return wrapWithValidation(
       <div
         className={cn(
           "group flex cursor-text items-center justify-between rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
-          !localValue && "text-[#757575]",
-          validationError && "border-red-400 bg-red-50/50",
+          !currentValue && "text-[#757575]",
+          errorMessage && "border-red-400 bg-red-50/50",
           className
         )}
-        onClick={() => setEditing(true)}
+        onClick={() => {
+          setDraftValue(committedValue);
+          setEditing(true);
+        }}
       >
-        <span className="min-w-0 flex-1 truncate">{localValue || placeholder || "Click to edit"}</span>
+        <span className="min-w-0 flex-1 truncate">{currentValue || placeholder || "Click to edit"}</span>
         <Pencil className="ml-2 h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     );
@@ -146,24 +186,25 @@ export function EditableCell({ value, type, options, onChange, className, placeh
   return wrapWithValidation(
     <Input
       ref={inputRef as React.RefObject<HTMLInputElement>}
-      value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
+      value={currentValue}
+      onChange={(e) => setDraftValue(e.target.value)}
       onBlur={() => {
         setEditing(false);
-        if (localValue !== String(value ?? "")) onChange(localValue);
+        commitDraftValue();
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           setEditing(false);
-          if (localValue !== String(value ?? "")) onChange(localValue);
+          commitDraftValue();
         }
         if (e.key === "Escape") {
           setEditing(false);
-          setLocalValue(String(value ?? ""));
+          setDraftValue(null);
         }
       }}
       placeholder={placeholder}
-      className={cn("h-9 text-sm", validationError && "border-red-400 focus-visible:ring-red-400", className)}
+      aria-invalid={!!errorMessage}
+      className={cn("h-9 text-sm", errorMessage && "border-red-400 focus-visible:ring-red-400", className)}
     />
   );
 }

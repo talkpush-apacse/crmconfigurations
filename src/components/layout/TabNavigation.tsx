@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getEnabledTabs } from "@/lib/tab-config";
+import { getSectionState } from "@/lib/section-status";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -57,28 +58,6 @@ const GROUP_STARTERS: Record<string, string> = {
   "facebook-whatsapp": "Integrations",
 };
 
-/** Returns "complete" | "in-progress" | "empty" for a section's data */
-function getSectionState(val: unknown): "complete" | "in-progress" | "empty" {
-  if (val === null || val === undefined) return "empty";
-  if (Array.isArray(val)) {
-    if (val.length === 0) return "empty";
-    // Complete = 3+ rows, or all items have at least one filled field
-    const nonEmptyItems = val.filter((item) =>
-      typeof item === "object" && item !== null
-        ? Object.values(item as Record<string, unknown>).some((v) => v !== "" && v !== null && v !== undefined)
-        : true
-    );
-    return nonEmptyItems.length >= 3 ? "complete" : "in-progress";
-  }
-  if (typeof val === "object") {
-    const values = Object.values(val as Record<string, unknown>);
-    const filled = values.filter((v) => v !== "" && v !== null && v !== undefined).length;
-    if (filled === 0) return "empty";
-    return filled / values.length >= 0.6 ? "complete" : "in-progress";
-  }
-  return "in-progress";
-}
-
 export function TabNavigation({ slug, data }: TabNavigationProps) {
   const pathname = usePathname();
 
@@ -90,7 +69,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
 
         const sectionState =
           tab.dataKey && data
-            ? getSectionState(data[tab.dataKey as keyof ChecklistData])
+            ? getSectionState(data[tab.dataKey as keyof ChecklistData], tab.dataKey)
             : null;
 
         const dotLabel =

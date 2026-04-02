@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
-import { LegendBar } from "@/components/layout/LegendBar";
+import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
@@ -14,7 +14,19 @@ import type { NavItem } from "@/components/layout/TopNav";
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const slug = params.slug as string;
-  const { data, loading, error, saveStatus, saveError, updateField, retrySave, hasPendingChangesRef } = useChecklist(slug);
+  const {
+    data,
+    loading,
+    error,
+    saveStatus,
+    saveError,
+    hasPendingChanges,
+    updateField,
+    retrySave,
+    publishChanges,
+    discardChanges,
+    hasPendingChangesRef,
+  } = useChecklist(slug);
 
   if (loading) {
     return (
@@ -47,17 +59,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     ? 0
     : tabsWithData.filter((t) => {
         const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-        if (val === null || val === undefined) return false;
-        if (Array.isArray(val)) return val.length > 0;
-        if (typeof val === "object") return Object.values(val as unknown as Record<string, unknown>).some((v) => v !== "" && v !== null);
-        return true;
+        return getSectionState(val, t.dataKey) !== "not-started";
       }).length;
   const totalCount = isCustom ? 0 : tabsWithData.length;
 
   const navItems: NavItem[] = enabledTabs.map((tab) => {
     let status: NavItem["status"] = null;
     if (tab.dataKey && data) {
-      status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData]);
+      status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData], tab.dataKey);
     }
     return {
       label: tab.label,
@@ -69,28 +78,35 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   });
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, retrySave, isReadOnly: false, userRole: null, basePath: `/client/${slug}` }}>
-      <div className="flex h-screen flex-col overflow-hidden">
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false, userRole: null, basePath: `/client/${slug}` }}>
+      <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(226,232,240,0.9),_transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#f8fafc_100%)] text-slate-950">
         <Header
           clientName={data.clientName}
           slug={slug}
+          items={navItems}
           saveStatus={saveStatus}
           saveError={saveError}
           onRetrySave={retrySave}
           filledCount={filledCount}
           totalCount={totalCount}
+          hasPendingChanges={hasPendingChanges}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (
             <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
           )}
           <div className="flex flex-col flex-1 overflow-hidden">
-            {!isCustom && <LegendBar />}
             <main className="flex-1 overflow-y-auto">
-              <div className="px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
             </main>
           </div>
         </div>
+        <FloatingActionBar
+          visible={hasPendingChanges}
+          isSaving={saveStatus === "saving"}
+          onDiscard={discardChanges}
+          onPublish={publishChanges}
+        />
       </div>
     </ChecklistContext.Provider>
   );

@@ -1,7 +1,9 @@
+import type { ChecklistJsonField } from "./types";
+
 export interface TabConfig {
   slug: string;
   label: string;
-  dataKey: string | null;
+  dataKey: ChecklistJsonField | null;
   icon: string;
   adminOnly?: boolean;
 }
@@ -12,7 +14,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "users", label: "User List", dataKey: "users", icon: "Users" },
   { slug: "campaigns", label: "Campaigns List", dataKey: "campaigns", icon: "Megaphone" },
   { slug: "sites", label: "Sites", dataKey: "sites", icon: "MapPin" },
-  { slug: "prescreening", label: "Pre-screening & Follow-up", dataKey: "prescreening", icon: "HelpCircle" },
+  { slug: "prescreening", label: "Pre-Screening Questions", dataKey: "prescreening", icon: "HelpCircle" },
   { slug: "messaging", label: "Messaging Templates", dataKey: "messaging", icon: "MessageSquare" },
   { slug: "sources", label: "Sources", dataKey: "sources", icon: "Link" },
   { slug: "folders", label: "Folders", dataKey: "folders", icon: "Folder" },

@@ -58,7 +58,7 @@ export function WelcomeSheet() {
 
   const completedCount = contentTabs.filter((t) => {
     const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-    return getSectionState(val) === "complete";
+    return getSectionState(val, t.dataKey) === "complete";
   }).length;
 
   const totalCount = contentTabs.length;
@@ -94,7 +94,7 @@ export function WelcomeSheet() {
           <div className="mt-3 flex flex-wrap gap-2">
             {contentTabs.map((t) => {
               const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-              const status = getSectionState(val);
+              const status = getSectionState(val, t.dataKey);
               return (
                 <StatusChip
                   key={t.slug}

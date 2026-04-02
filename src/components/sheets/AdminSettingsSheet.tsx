@@ -333,7 +333,7 @@ export function AdminSettingsSheet() {
     "talkScoreWeightDistribution", "applicantScoring", "customizableTalkScore",
     "tecolocoIntegration", "csvUpdate", "allowLimitedManagersSelfAssign",
     "recognitionExtractionValidation", "landingPageRealtimeFeedback",
-    "documentProcessingMistral", "autoflowSets", "mandatoryEmailAndPhone",
+    "documentProcessingMistral", "autoflowSets",
     "templateCampaigns", "talkScoreReadingDetection",
     "overrideUnsubscribeCommand", "enableAutomaticGtmInsertion",
     "emailPreferenceManagement",
@@ -477,7 +477,6 @@ export function AdminSettingsSheet() {
         <CheckboxItem label="Landing Page Real-time Feedback" checked={settings.landingPageRealtimeFeedback} onChange={updateBoolean("landingPageRealtimeFeedback")} />
         <CheckboxItem label="Document Processing Mistral Recognition" checked={settings.documentProcessingMistral} onChange={updateBoolean("documentProcessingMistral")} />
         <CheckboxItem label="Autoflow Sets" checked={settings.autoflowSets} onChange={updateBoolean("autoflowSets")} />
-        <CheckboxItem label="Mandatory Email and Phone Number" checked={settings.mandatoryEmailAndPhone} onChange={updateBoolean("mandatoryEmailAndPhone")} />
         <CheckboxItem label="Template Campaigns" checked={settings.templateCampaigns} onChange={updateBoolean("templateCampaigns")} />
         <CheckboxItem label="TalkScore Reading Detection" checked={settings.talkScoreReadingDetection} onChange={updateBoolean("talkScoreReadingDetection")} />
         <CheckboxItem label="Override Unsubscribe Command for Chatbots" checked={settings.overrideUnsubscribeCommand} onChange={updateBoolean("overrideUnsubscribeCommand")} />

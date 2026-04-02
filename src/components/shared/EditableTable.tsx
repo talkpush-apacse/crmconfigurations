@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Fragment, useMemo } from "react";
+import { useState, Fragment, useMemo } from "react";
 import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,35 +38,51 @@ import { arrayMove } from "@/lib/utils";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { ColumnDef } from "@/lib/types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface EditableTableProps {
+type EditableRow = { id?: string };
+
+interface EditableTableProps<TRow extends EditableRow> {
   columns: ColumnDef[];
   detailColumns?: ColumnDef[];
-  data: any[];
+  data: TRow[];
   onUpdate: (index: number, field: string, value: string | boolean) => void;
   onAdd: () => void;
   onDelete: (index: number) => void;
   onDuplicate?: (index: number) => void;
   /** Called with the reordered array when a row is dragged to a new position */
-  onReorder?: (reorderedData: any[]) => void;
+  onReorder?: (reorderedData: TRow[]) => void;
   addLabel?: string;
   /** Optional pinned sample row shown at the top of the table body (read-only) */
   sampleRow?: Record<string, string>;
   csvConfig?: {
     sampleRow: Record<string, string>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onImport: (rows: Record<string, any>[]) => void;
+    onImport: (rows: Record<string, string>[]) => void;
     sheetName: string;
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasCellValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim() !== "";
+  return value !== "" && value !== null && value !== undefined;
+}
+
+function renderColumnLabel(
+  col: ColumnDef,
+  markerClassName: string
+): React.ReactNode {
+  return (
+    <>
+      {col.label}
+      {col.required && <span className={cn("ml-1", markerClassName)}>*</span>}
+    </>
+  );
+}
+
 function SortableRow({
   row,
   rowIdx,
   columns,
   detailColumns,
-  expandedRows,
+  isExpanded,
   toggleRow,
   onUpdate,
   onDuplicate,
@@ -75,13 +91,14 @@ function SortableRow({
   setConfirmingDelete,
   isReadOnly,
   canReorder,
+  rowIsActive,
 }: {
-  row: any;
+  row: EditableRow;
   rowIdx: number;
   columns: ColumnDef[];
   detailColumns?: ColumnDef[];
-  expandedRows: Set<number>;
-  toggleRow: (idx: number) => void;
+  isExpanded: boolean;
+  toggleRow: () => void;
   onUpdate: (index: number, field: string, value: string | boolean) => void;
   onDuplicate?: (index: number) => void;
   confirmingDelete: number | null;
@@ -89,8 +106,10 @@ function SortableRow({
   setConfirmingDelete: (idx: number | null) => void;
   isReadOnly: boolean;
   canReorder: boolean;
+  rowIsActive: boolean;
 }) {
-  const sortableId = (row.id as string) || `row-${rowIdx}`;
+  const rowValues = row as Record<string, string | boolean | null | undefined>;
+  const sortableId = row.id || `row-${rowIdx}`;
   const {
     attributes,
     listeners,
@@ -114,7 +133,7 @@ function SortableRow({
         className={cn(
           "transition-colors hover:bg-gray-50",
           rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
-          detailColumns && !expandedRows.has(rowIdx) && "border-b border-gray-200",
+          detailColumns && !isExpanded && "border-b border-gray-200",
           isDragging && "bg-blue-50 shadow-sm"
         )}
       >
@@ -132,11 +151,11 @@ function SortableRow({
             )}
             {detailColumns ? (
               <button
-                onClick={() => toggleRow(rowIdx)}
+                onClick={toggleRow}
                 className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-gray-100 hover:text-primary transition-colors"
-                title={expandedRows.has(rowIdx) ? "Collapse details" : "Expand details"}
+                title={isExpanded ? "Collapse details" : "Expand details"}
               >
-                {expandedRows.has(rowIdx) ? (
+                {isExpanded ? (
                   <ChevronDown className="h-3.5 w-3.5" />
                 ) : (
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -154,12 +173,14 @@ function SortableRow({
             className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
           >
             <EditableCell
-              value={row[col.key] as string | boolean}
+              value={rowValues[col.key] as string | boolean}
               type={col.type}
               options={col.options}
               onChange={(val) => onUpdate(rowIdx, col.key, val)}
               placeholder={col.label}
               validation={col.validation}
+              required={col.required}
+              showRequiredError={rowIsActive}
             />
           </TableCell>
         ))}
@@ -213,7 +234,7 @@ function SortableRow({
           </TableCell>
         )}
       </TableRow>
-      {detailColumns && expandedRows.has(rowIdx) && (
+      {detailColumns && isExpanded && (
         <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
           <TableCell colSpan={columns.length + 2} className="p-0">
             <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
@@ -230,7 +251,7 @@ function SortableRow({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/70">
-                                {col.label}
+                                {renderColumnLabel(col, "text-red-500")}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-xs">
@@ -238,16 +259,18 @@ function SortableRow({
                             </TooltipContent>
                           </Tooltip>
                         ) : (
-                          col.label
+                          renderColumnLabel(col, "text-red-500")
                         )}
                       </label>
                       <EditableCell
-                        value={row[col.key] as string | boolean}
+                        value={rowValues[col.key] as string | boolean}
                         type={col.type}
                         options={col.options}
                         onChange={(val) => onUpdate(rowIdx, col.key, val)}
                         placeholder={col.label}
                         validation={col.validation}
+                        required={col.required}
+                        showRequiredError={rowIsActive}
                       />
                     </div>
                   );
@@ -261,7 +284,7 @@ function SortableRow({
   );
 }
 
-export function EditableTable({
+export function EditableTable<TRow extends EditableRow>({
   columns,
   detailColumns,
   data,
@@ -273,11 +296,11 @@ export function EditableTable({
   addLabel = "Add Row",
   sampleRow,
   csvConfig,
-}: EditableTableProps) {
+}: EditableTableProps<TRow>) {
   const { isReadOnly } = useChecklistContext();
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(
-    () => new Set(data.map((_, i) => i))
+  const [collapsedRowIds, setCollapsedRowIds] = useState<Set<string>>(
+    () => new Set()
   );
 
   const sensors = useSensors(
@@ -287,39 +310,37 @@ export function EditableTable({
 
   // Stable IDs for sortable context
   const sortableIds = useMemo(
-    () => data.map((row, i) => (row.id as string) || `row-${i}`),
+    () => data.map((row, i) => row.id || `row-${i}`),
     [data]
   );
 
-  // Re-expand all rows when data length changes (add/delete/duplicate)
-  useEffect(() => {
-    if (detailColumns) {
-      setExpandedRows(new Set(data.map((_, i) => i)));
-    }
-  }, [data.length, detailColumns]);
-
-  const toggleRow = (rowIdx: number) => {
-    setExpandedRows((prev) => {
+  const toggleRow = (rowId: string) => {
+    setCollapsedRowIds((prev) => {
       const next = new Set(prev);
-      if (next.has(rowIdx)) {
-        next.delete(rowIdx);
+      if (next.has(rowId)) {
+        next.delete(rowId);
       } else {
-        next.add(rowIdx);
+        next.add(rowId);
       }
       return next;
     });
   };
 
+  const visibleCollapsedCount = sortableIds.filter((id) => collapsedRowIds.has(id)).length;
+
   const toggleAll = () => {
-    if (expandedRows.size === data.length) {
-      setExpandedRows(new Set());
+    if (visibleCollapsedCount === data.length) {
+      setCollapsedRowIds(new Set());
     } else {
-      setExpandedRows(new Set(data.map((_, i) => i)));
+      setCollapsedRowIds(new Set(sortableIds));
     }
   };
 
-  // Merge columns for CSV (includes all fields)
-  const allColumns = detailColumns ? [...columns, ...detailColumns] : columns;
+  // Merge columns for CSV and row activity checks (includes all user-editable fields)
+  const allColumns = useMemo(
+    () => (detailColumns ? [...columns, ...detailColumns] : columns),
+    [columns, detailColumns]
+  );
 
   const handleDeleteClick = (rowIdx: number) => {
     if (confirmingDelete === rowIdx) {
@@ -363,9 +384,9 @@ export function EditableTable({
                   <button
                     onClick={toggleAll}
                     className="inline-flex items-center justify-center rounded p-1 hover:bg-white/20 transition-colors"
-                    title={expandedRows.size === data.length ? "Collapse all" : "Expand all"}
+                    title={visibleCollapsedCount === 0 ? "Collapse all" : "Expand all"}
                   >
-                    {expandedRows.size === data.length ? (
+                    {visibleCollapsedCount === 0 ? (
                       <ChevronDown className="h-3.5 w-3.5 mx-auto" />
                     ) : (
                       <ChevronRight className="h-3.5 w-3.5 mx-auto" />
@@ -381,7 +402,7 @@ export function EditableTable({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-white/60">
-                          {col.label}
+                          {renderColumnLabel(col, "text-red-200")}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs bg-slate-800 text-slate-50">
@@ -389,7 +410,7 @@ export function EditableTable({
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    col.label
+                    renderColumnLabel(col, "text-red-200")
                   )}
                 </TableHead>
               ))}
@@ -429,13 +450,13 @@ export function EditableTable({
             )}
             {data.map((row, rowIdx) => (
               <SortableRow
-                key={(row.id as string) || rowIdx}
+                key={row.id || rowIdx}
                 row={row}
                 rowIdx={rowIdx}
                 columns={columns}
                 detailColumns={detailColumns}
-                expandedRows={expandedRows}
-                toggleRow={toggleRow}
+                isExpanded={!collapsedRowIds.has(sortableIds[rowIdx])}
+                toggleRow={() => toggleRow(sortableIds[rowIdx])}
                 onUpdate={onUpdate}
                 onDuplicate={onDuplicate}
                 confirmingDelete={confirmingDelete}
@@ -443,6 +464,11 @@ export function EditableTable({
                 setConfirmingDelete={setConfirmingDelete}
                 isReadOnly={isReadOnly}
                 canReorder={canReorder}
+                rowIsActive={allColumns.some((col) =>
+                  hasCellValue(
+                    (row as Record<string, string | boolean | null | undefined>)[col.key]
+                  )
+                )}
               />
             ))}
           </TableBody>

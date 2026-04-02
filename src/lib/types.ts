@@ -368,6 +368,7 @@ export interface ColumnDef {
   options?: string[];
   width?: string;
   validation?: "email" | "url" | "phone";
+  required?: boolean;
   example?: string;
 }
 

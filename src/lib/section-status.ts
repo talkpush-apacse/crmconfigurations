@@ -1,30 +1,94 @@
+import type { ChecklistJsonField, UserRow } from "./types";
+
+export type SectionState = "complete" | "in-progress" | "not-started";
+
+const USER_EDITABLE_FIELDS: (keyof UserRow)[] = [
+  "name",
+  "accessType",
+  "jobTitle",
+  "email",
+  "phone",
+  "site",
+  "reportsTo",
+  "comments",
+];
+
+const USER_REQUIRED_FIELDS: (keyof UserRow)[] = [
+  "name",
+  "accessType",
+  "email",
+  "phone",
+];
+
+function hasMeaningfulValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim() !== "";
+  return value !== "" && value !== null && value !== undefined;
+}
+
+function getObjectValues(
+  obj: Record<string, unknown>,
+  ignoredKeys: string[] = []
+): unknown[] {
+  return Object.entries(obj)
+    .filter(([key]) => !ignoredKeys.includes(key))
+    .map(([, value]) => value);
+}
+
+function isUserRowActive(row: UserRow): boolean {
+  return USER_EDITABLE_FIELDS.some((field) => hasMeaningfulValue(row[field]));
+}
+
+function hasRequiredUserFields(row: UserRow): boolean {
+  return USER_REQUIRED_FIELDS.every((field) => hasMeaningfulValue(row[field]));
+}
+
+function getUserSectionState(val: unknown): SectionState {
+  if (!Array.isArray(val) || val.length === 0) return "not-started";
+
+  const activeRows = val.filter(
+    (row): row is UserRow =>
+      typeof row === "object" &&
+      row !== null &&
+      isUserRowActive(row as UserRow)
+  );
+
+  if (activeRows.length === 0) return "not-started";
+  return activeRows.every((row) => hasRequiredUserFields(row))
+    ? "complete"
+    : "in-progress";
+}
+
 /**
  * Computes the completion state of a single checklist section's data value.
  * Used in the client layout (nav dots) and WelcomeSheet (progress chips).
  * Single source of truth — do not duplicate this logic elsewhere.
  */
 export function getSectionState(
-  val: unknown
-): "complete" | "in-progress" | "not-started" {
+  val: unknown,
+  sectionKey?: ChecklistJsonField | null
+): SectionState {
   if (val === null || val === undefined) return "not-started";
+
+  if (sectionKey === "users") {
+    return getUserSectionState(val);
+  }
 
   if (Array.isArray(val)) {
     if (val.length === 0) return "not-started";
     const nonEmpty = val.filter((item) =>
       typeof item === "object" && item !== null
-        ? Object.values(item as Record<string, unknown>).some(
-            (v) => v !== "" && v !== null && v !== undefined
+        ? getObjectValues(item as Record<string, unknown>, ["id"]).some(
+            hasMeaningfulValue
           )
-        : true
+        : hasMeaningfulValue(item)
     );
     return nonEmpty.length >= 3 ? "complete" : "in-progress";
   }
 
   if (typeof val === "object") {
-    const values = Object.values(val as Record<string, unknown>);
-    const filled = values.filter(
-      (v) => v !== "" && v !== null && v !== undefined
-    ).length;
+    const values = getObjectValues(val as Record<string, unknown>);
+    if (values.length === 0) return "not-started";
+    const filled = values.filter(hasMeaningfulValue).length;
     if (filled === 0) return "not-started";
     return filled / values.length >= 0.6 ? "complete" : "in-progress";
   }

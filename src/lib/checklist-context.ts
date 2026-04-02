@@ -8,7 +8,10 @@ interface ChecklistContextType {
   updateField: <K extends keyof ChecklistData>(field: K, value: ChecklistData[K]) => void;
   saveStatus: "saved" | "saving" | "error";
   saveError: string | null;
+  hasPendingChanges: boolean;
   retrySave: () => void;
+  publishChanges: () => void;
+  discardChanges: () => void;
   isReadOnly: boolean;
   userRole: string | null;
   /** Route prefix for building tab links, e.g. "/client/exl" or "/editor/abc123" */
