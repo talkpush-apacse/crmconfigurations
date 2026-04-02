@@ -4,8 +4,8 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { uid, defaultAgencyPortal } from "@/lib/template-data";
-import type { ColumnDef, AgencyPortalRow } from "@/lib/types";
+import { uid, defaultAgencyPortal, defaultAgencyPortalUsers } from "@/lib/template-data";
+import type { ColumnDef, AgencyPortalRow, AgencyPortalUser } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const columns: ColumnDef[] = [
@@ -17,9 +17,31 @@ const columns: ColumnDef[] = [
   { key: "comments", label: "Comments", type: "textarea" },
 ];
 
+const userColumns: ColumnDef[] = [
+  { key: "name", label: "Name", type: "text", description: "Full name of the user" },
+  { key: "email", label: "Email", type: "text", description: "Email address", validation: "email" },
+  { key: "agency", label: "Agency", type: "text", description: "Agency name (free text)" },
+  {
+    key: "userAccess",
+    label: "User Access",
+    type: "dropdown",
+    description: "Role/access level in the Agency Portal",
+    options: [
+      "Talkpush Owner",
+      "Agency Admin",
+      "Agency Editor",
+      "Company Admin",
+      "Company Editor",
+      "Campaign Manager",
+      "Recruiter",
+    ],
+  },
+];
+
 export function AgencyPortalSheet() {
   const { data, updateField } = useChecklistContext();
   const agencies = (data.agencyPortal as AgencyPortalRow[]) || defaultAgencyPortal;
+  const users = (data.agencyPortalUsers as AgencyPortalUser[]) || defaultAgencyPortalUsers;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
     const updated = [...agencies];
@@ -55,6 +77,41 @@ export function AgencyPortalSheet() {
     updateField("agencyPortal", [...agencies, ...newRows]);
   };
 
+  // --- Agency Portal Users handlers ---
+  const handleUserUpdate = (index: number, field: string, value: string | boolean) => {
+    const updated = [...users];
+    updated[index] = { ...updated[index], [field]: value as string };
+    updateField("agencyPortalUsers", updated);
+  };
+
+  const handleUserAdd = () => {
+    updateField("agencyPortalUsers", [
+      ...users,
+      { id: uid(), name: "", email: "", agency: "", userAccess: "" as AgencyPortalUser["userAccess"] },
+    ]);
+  };
+
+  const handleUserDelete = (index: number) => {
+    updateField("agencyPortalUsers", users.filter((_, i) => i !== index));
+  };
+
+  const handleUserDuplicate = (index: number) => {
+    const clone = { ...users[index], id: uid() };
+    const updated = [...users];
+    updated.splice(index + 1, 0, clone);
+    updateField("agencyPortalUsers", updated);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleUserCsvImport = (rows: Record<string, any>[]) => {
+    const newRows = rows.map((row) => ({
+      id: uid(),
+      name: "", email: "", agency: "", userAccess: "" as AgencyPortalUser["userAccess"],
+      ...row,
+    }));
+    updateField("agencyPortalUsers", [...users, ...newRows]);
+  };
+
   return (
     <div>
       <SectionHeader
@@ -84,6 +141,30 @@ export function AgencyPortalSheet() {
           sheetName: "Agency Portal",
         }}
       />
+
+      <div className="mt-10">
+        <SectionHeader
+          title="Agency Portal Users"
+          description="List all users that need to be created in the Agency Portal. Specify their role/access level."
+        />
+
+        <EditableTable
+          columns={userColumns}
+          data={users}
+          onUpdate={handleUserUpdate}
+          onAdd={handleUserAdd}
+          onDelete={handleUserDelete}
+          onDuplicate={handleUserDuplicate}
+          addLabel="Add User"
+          sampleRow={{ name: "Maria Reyes", email: "maria@staffalliance.ph", agency: "Staff Alliance Inc.", userAccess: "Agency Admin" }}
+          csvConfig={{
+            sampleRow: { name: "Jane Smith", email: "jane@abc.com", agency: "ABC Staffing", userAccess: "Agency Admin" },
+            onImport: handleUserCsvImport,
+            sheetName: "Agency Portal Users",
+          }}
+        />
+      </div>
+
       <SectionFooter />
     </div>
   );

@@ -40,6 +40,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
     : (data.aiCallFaqs as AiCallData)?.faqs ?? null;
   populateTableSheet(workbook, "AI Call FAQs", aiCallFaqRows as unknown as Record<string, unknown>[] | null, 4, ["faq", "example", "faqResponse"], "A");
   populateTableSheet(workbook, "Agency Portal", data.agencyPortal as Record<string, unknown>[] | null, 12, ["agencyName", "contactName", "email", "phone", "country", "comments"], "C");
+  populateTableSheet(workbook, "Agency Portal Users", data.agencyPortalUsers as Record<string, unknown>[] | null, 12, ["name", "email", "agency", "userAccess"], "C");
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
@@ -225,6 +226,13 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Country", key: "country", width: 15 },
     { header: "Comments", key: "comments", width: 30 },
   ], data.agencyPortal as Record<string, unknown>[] | null);
+
+  addTableSheet("Agency Portal Users", [
+    { header: "Name", key: "name", width: 25 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Agency", key: "agency", width: 25 },
+    { header: "User Access", key: "userAccess", width: 20 },
+  ], data.agencyPortalUsers as Record<string, unknown>[] | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);

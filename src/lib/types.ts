@@ -178,6 +178,14 @@ export interface AgencyPortalRow {
   comments: string;
 }
 
+export interface AgencyPortalUser {
+  id: string;
+  name: string;
+  email: string;
+  agency: string;
+  userAccess: 'Talkpush Owner' | 'Agency Admin' | 'Agency Editor' | 'Company Admin' | 'Company Editor' | 'Campaign Manager' | 'Recruiter' | '';
+}
+
 // ===== Communication Channels =====
 export interface CommunicationChannels {
   email: boolean;
@@ -344,6 +352,7 @@ export interface ChecklistData {
   instagram: InstagramData | null;
   aiCallFaqs: AiCallData | null;
   agencyPortal: AgencyPortalRow[] | null;
+  agencyPortalUsers: AgencyPortalUser[] | null;
   adminSettings: AdminSettingsData | null;
   isCustom: boolean;
   customSchema: CustomSchema | null;
@@ -381,6 +390,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "instagram",
   "aiCallFaqs",
   "agencyPortal",
+  "agencyPortalUsers",
   "adminSettings",
   "customSchema",
   "customData",
@@ -406,6 +416,7 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   instagram: "Instagram",
   aiCallFaqs: "AI Call FAQs",
   agencyPortal: "Agency Portal",
+  agencyPortalUsers: "Agency Portal Users",
   adminSettings: "Admin Settings",
   customSchema: "Custom Schema",
   customData: "Custom Data",
