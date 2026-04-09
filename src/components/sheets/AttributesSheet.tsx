@@ -43,13 +43,33 @@ const emptyRow: AttributeRow = {
   readOnlyMode: false,
 };
 
+function toSnakeCase(str: string): string {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_]/g, "")
+    .replace(/\s+/g, "_");
+}
+
 export function AttributesSheet() {
   const { data, updateField } = useChecklistContext();
   const attributes = (data.attributes as AttributeRow[]) || defaultAttributes;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
     const updated = [...attributes];
-    updated[index] = { ...updated[index], [field]: value };
+    const row = { ...updated[index], [field]: value };
+
+    // Auto-derive key from attribute name if the key hasn't been manually edited
+    if (field === "attributeName" && typeof value === "string") {
+      const currentKey = updated[index].key;
+      const previousAutoKey = toSnakeCase(updated[index].attributeName);
+      // Only auto-fill if key is empty or matches the previous auto-generated value
+      if (!currentKey || currentKey === previousAutoKey) {
+        row.key = toSnakeCase(value);
+      }
+    }
+
+    updated[index] = row;
     updateField("attributes", updated);
   };
 
