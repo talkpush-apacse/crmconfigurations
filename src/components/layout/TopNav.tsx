@@ -13,6 +13,7 @@ import {
   Home,
   Info,
   Link as LinkIcon,
+  MapPin,
   Megaphone,
   MessageSquare,
   MessagesSquare,
@@ -20,6 +21,7 @@ import {
   Plus,
   Briefcase,
   Shield,
+  Tags,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -70,6 +72,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   MessageSquare,
   Share2: LinkIcon,
   Link: LinkIcon,
+  MapPin,
   Folder,
   FileText,
   MessagesSquare,
@@ -79,6 +82,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Phone,
   Briefcase,
   Shield,
+  Tags,
 };
 
 const GROUP_STARTERS: Record<string, string> = {
