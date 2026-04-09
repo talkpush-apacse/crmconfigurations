@@ -68,66 +68,12 @@ export async function POST(request: Request) {
   }
 }
 
-// --- GET (SSE stream — transport handles stateless 405 automatically) ---
-export async function GET(request: Request) {
-  const auth = validateMcpAuth(request);
-  if (!auth.valid) {
-    return corsResponse(401, { error: auth.error! });
-  }
-
-  try {
-    const server = createMcpServer();
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    });
-
-    await server.connect(transport);
-    const response = await transport.handleRequest(request);
-
-    if (response) {
-      for (const [key, value] of Object.entries(CORS_HEADERS)) {
-        response.headers.set(key, value);
-      }
-      return response;
-    }
-
-    return corsResponse(405, { error: "Method not allowed" });
-  } catch (error) {
-    console.error("[MCP] Error handling GET:", error);
-    return corsResponse(500, {
-      error: error instanceof Error ? error.message : "Internal server error",
-    });
-  }
+// --- GET (stateless mode — no SSE stream, return 405) ---
+export async function GET() {
+  return corsResponse(405, { error: "Method not allowed. Use POST for MCP requests." });
 }
 
-// --- DELETE (session cleanup — transport handles stateless mode) ---
-export async function DELETE(request: Request) {
-  const auth = validateMcpAuth(request);
-  if (!auth.valid) {
-    return corsResponse(401, { error: auth.error! });
-  }
-
-  try {
-    const server = createMcpServer();
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    });
-
-    await server.connect(transport);
-    const response = await transport.handleRequest(request);
-
-    if (response) {
-      for (const [key, value] of Object.entries(CORS_HEADERS)) {
-        response.headers.set(key, value);
-      }
-      return response;
-    }
-
-    return corsResponse(200, { message: "OK" });
-  } catch (error) {
-    console.error("[MCP] Error handling DELETE:", error);
-    return corsResponse(500, {
-      error: error instanceof Error ? error.message : "Internal server error",
-    });
-  }
+// --- DELETE (stateless mode — no sessions to clean up) ---
+export async function DELETE() {
+  return new NextResponse(null, { status: 200, headers: CORS_HEADERS });
 }
