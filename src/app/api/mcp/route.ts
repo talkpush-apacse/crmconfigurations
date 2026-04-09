@@ -20,8 +20,8 @@ export const runtime = "nodejs";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, mcp-session-id",
-  "Access-Control-Expose-Headers": "mcp-session-id",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, mcp-session-id, mcp-protocol-version",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version",
 };
 
 function corsResponse(status: number, body: Record<string, string>) {
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     const server = createMcpServer();
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
+      enableJsonResponse: true, // return JSON instead of SSE for compatibility
     });
 
     await server.connect(transport);
