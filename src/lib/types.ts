@@ -116,6 +116,23 @@ export interface FolderRow {
   comments: string;
 }
 
+// ===== Candidate Attributes =====
+export interface AttributeRow {
+  id: string;
+  attributeName: string;
+  key: string;
+  description: string;
+  dataType: string;
+  suggestedValues: string;
+  addToAllFutureCandidates: boolean;
+  showAcrossApplications: boolean;
+  markDataPrivate: boolean;
+  restrictToOwners: boolean;
+  hideAttributeCompliance: boolean;
+  useSuggestedValuesOnly: boolean;
+  readOnlyMode: boolean;
+}
+
 // ===== Document Collection =====
 export interface DocumentRow {
   id: string;
@@ -357,6 +374,7 @@ export interface ChecklistData {
   sources: SourceRow[] | null;
   folders: FolderRow[] | null;
   documents: DocumentRow[] | null;
+  attributes: AttributeRow[] | null;
   fbWhatsapp: FbWhatsappData | null;
   instagram: InstagramData | null;
   aiCallFaqs: AiCallData | null;
@@ -397,6 +415,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "sources",
   "folders",
   "documents",
+  "attributes",
   "fbWhatsapp",
   "instagram",
   "aiCallFaqs",
@@ -424,6 +443,7 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   sources: "Sources",
   folders: "Folders",
   documents: "Documents",
+  attributes: "Attributes",
   fbWhatsapp: "Facebook & WhatsApp",
   instagram: "Instagram",
   aiCallFaqs: "AI Call FAQs",

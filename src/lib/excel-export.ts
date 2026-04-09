@@ -34,6 +34,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   populateTableSheet(workbook, "Sources", data.sources as Record<string, unknown>[] | null, 12, ["category", "subcategory", "link", "comments"], "C");
   populateTableSheet(workbook, "Folders", data.folders as Record<string, unknown>[] | null, 12, ["folderName", "description", "movementType", "comments"], "C");
   populateTableSheet(workbook, "Document Collection", data.documents as Record<string, unknown>[] | null, 12, ["documentName", "applicableCandidates", "required", "blankTemplateLink", "applicableCampaigns", "accessPermissions", "folder", "comments"], "C");
+  populateTableSheet(workbook, "Attributes", data.attributes as Record<string, unknown>[] | null, 12, ["attributeName", "key", "description", "dataType", "suggestedValues", "addToAllFutureCandidates", "showAcrossApplications", "markDataPrivate", "restrictToOwners", "hideAttributeCompliance", "useSuggestedValuesOnly", "readOnlyMode"], "C");
   // Handle both old array and new object format for AI Call
   const aiCallFaqRows = Array.isArray(data.aiCallFaqs)
     ? data.aiCallFaqs
@@ -207,6 +208,21 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Folder", key: "folder", width: 15 },
     { header: "Comments", key: "comments", width: 30 },
   ], data.documents as Record<string, unknown>[] | null);
+
+  addTableSheet("Attributes", [
+    { header: "Attribute Name", key: "attributeName", width: 25 },
+    { header: "Key", key: "key", width: 25 },
+    { header: "Description", key: "description", width: 35 },
+    { header: "Data Type", key: "dataType", width: 15 },
+    { header: "Suggested Values", key: "suggestedValues", width: 30 },
+    { header: "Add to Future Candidates", key: "addToAllFutureCandidates", width: 25 },
+    { header: "Show Across Applications", key: "showAcrossApplications", width: 25 },
+    { header: "Private", key: "markDataPrivate", width: 10 },
+    { header: "Restrict to Owners", key: "restrictToOwners", width: 20 },
+    { header: "Hide (Compliance)", key: "hideAttributeCompliance", width: 20 },
+    { header: "Suggested Values Only", key: "useSuggestedValuesOnly", width: 22 },
+    { header: "Read-Only", key: "readOnlyMode", width: 12 },
+  ], data.attributes as Record<string, unknown>[] | null);
 
   // Handle both old array and new object format for AI Call
   const freshAiCallFaqRows = Array.isArray(data.aiCallFaqs)

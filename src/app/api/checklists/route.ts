@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       createData.sources = JSON.parse(JSON.stringify(defaults.sources));
       createData.folders = JSON.parse(JSON.stringify(defaults.folders));
       createData.documents = JSON.parse(JSON.stringify(defaults.documents));
+      createData.attributes = JSON.parse(JSON.stringify(defaults.attributes));
       createData.fbWhatsapp = JSON.parse(JSON.stringify(defaults.fbWhatsapp));
       createData.instagram = JSON.parse(JSON.stringify(defaults.instagram));
       createData.aiCallFaqs = JSON.parse(JSON.stringify(defaults.aiCallFaqs));

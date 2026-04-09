@@ -14,6 +14,7 @@ import { MessagingSheet } from "@/components/sheets/MessagingSheet";
 import { SourcesSheet } from "@/components/sheets/SourcesSheet";
 import { FoldersSheet } from "@/components/sheets/FoldersSheet";
 import { DocumentsSheet } from "@/components/sheets/DocumentsSheet";
+import { AttributesSheet } from "@/components/sheets/AttributesSheet";
 import { FacebookWhatsAppSheet } from "@/components/sheets/FacebookWhatsAppSheet";
 import { InstagramSheet } from "@/components/sheets/InstagramSheet";
 import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
@@ -32,6 +33,7 @@ const sheetComponents: Record<string, React.ComponentType> = {
   sources: SourcesSheet,
   folders: FoldersSheet,
   documents: DocumentsSheet,
+  attributes: AttributesSheet,
   "facebook-whatsapp": FacebookWhatsAppSheet,
   instagram: InstagramSheet,
   "ai-call-faqs": AICallFAQsSheet,

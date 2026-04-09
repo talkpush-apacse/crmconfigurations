@@ -11,6 +11,7 @@ import type {
   FbWhatsappData,
   InstagramData,
   AiCallData,
+  AttributeRow,
   AgencyPortalRow,
   AgencyPortalUser,
   CommunicationChannels,
@@ -416,6 +417,8 @@ export const defaultFolders: FolderRow[] = [
 
 export const defaultDocuments: DocumentRow[] = [];
 
+export const defaultAttributes: AttributeRow[] = [];
+
 export const defaultFbWhatsapp: FbWhatsappData = {
   phoneNumber: "",
   businessManagerAccess: "",
@@ -561,6 +564,7 @@ export function getDefaultChecklistData() {
     sources: defaultSources,
     folders: defaultFolders,
     documents: defaultDocuments,
+    attributes: defaultAttributes,
     fbWhatsapp: defaultFbWhatsapp,
     instagram: defaultInstagram,
     aiCallFaqs: defaultAiCallData,

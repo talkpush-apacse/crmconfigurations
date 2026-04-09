@@ -17,4 +17,5 @@ export const DROPDOWN_OPTIONS = {
   accessPermissions: ["Anyone with Campaign Access", "All Owners"],
   movementTypes: ["Automated", "Manual"],
   required: ["Yes", "No"],
+  attributeDataTypes: ["Text", "Number", "Date", "Boolean", "URL", "Email", "Phone", "Dropdown"],
 } as const;

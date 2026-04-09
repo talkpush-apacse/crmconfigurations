@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.18.0",
+    "codename": "Zero Bug Fresh",
+    "changes": [
+      "Added Attributes tab for defining candidate attributes with name, key, data type, and suggested values",
+      "Expandable detail panel per attribute row with 7 advanced settings (privacy, compliance, read-only, etc.)",
+      "CSV import/export and Excel export support for attributes"
+    ],
+    "deployed_at": "2026-04-09"
+  },
+  {
     "version": "1.17.0",
     "codename": "Yellow Build Grand",
     "changes": [

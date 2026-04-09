@@ -20,6 +20,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "sources", label: "Sources", dataKey: "sources", icon: "Link" },
   { slug: "folders", label: "Folders", dataKey: "folders", icon: "Folder" },
   { slug: "documents", label: "Document Collection", dataKey: "documents", icon: "FileText" },
+  { slug: "attributes", label: "Attributes", dataKey: "attributes", icon: "Tags" },
   { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare" },
   { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
   { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
