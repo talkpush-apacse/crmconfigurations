@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building2,
   Camera,
+  ChevronDown,
   FileText,
   Folder,
   GripVertical,
@@ -210,6 +211,27 @@ function SortableNavItem({
 export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLElement>(null);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    const ro = new ResizeObserver(checkScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      ro.disconnect();
+    };
+  }, [checkScroll, items]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -266,31 +288,44 @@ export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) 
         </div>
       </div>
 
-      <nav className="scrollbar-thin flex-1 overflow-y-auto py-4">
-        {items.map((item) => {
-          const isActive = pathname === item.href;
-          const groupLabel = GROUP_STARTERS[item.slug ?? ""];
+      <div className="relative flex-1 overflow-hidden">
+        <nav ref={scrollRef} className="scrollbar-thin h-full overflow-y-auto py-4">
+          {items.map((item) => {
+            const isActive = pathname === item.href;
+            const groupLabel = GROUP_STARTERS[item.slug ?? ""];
 
-          return (
-            <div key={item.slug || item.href}>
-              {groupLabel && (
-                <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    {groupLabel}
-                  </span>
-                  <div className="h-px flex-1 bg-white/10" />
-                </div>
-              )}
-              <SortableNavItem
-                item={item}
-                isActive={isActive}
-                confirmNavigation={confirmNavigation}
-                canReorder={canReorder}
-              />
-            </div>
-          );
-        })}
-      </nav>
+            return (
+              <div key={item.slug || item.href}>
+                {groupLabel && (
+                  <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      {groupLabel}
+                    </span>
+                    <div className="h-px flex-1 bg-white/10" />
+                  </div>
+                )}
+                <SortableNavItem
+                  item={item}
+                  isActive={isActive}
+                  confirmNavigation={confirmNavigation}
+                  canReorder={canReorder}
+                />
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Bottom fade + chevron to signal more tabs below */}
+        <div
+          className={cn(
+            "pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-1 transition-opacity duration-300",
+            canScrollDown ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <div className="h-12 w-full bg-gradient-to-t from-[#1e293b] to-transparent" />
+          <ChevronDown className="absolute bottom-1 h-4 w-4 animate-bounce text-slate-400" />
+        </div>
+      </div>
 
       <div className="border-t border-white/[0.08] p-2 xl:p-4">
         <Button
