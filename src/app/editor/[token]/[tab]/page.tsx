@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { getTabBySlug, getEnabledTabs } from "@/lib/tab-config";
+import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
@@ -50,30 +50,38 @@ export default function EditorTabPage() {
   const isCustom = !!data?.isCustom;
 
   const tabConfig = isCustom ? null : getTabBySlug(tab);
+  const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
 
   // Editor link holders never see admin-only tabs
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false);
+  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false, undefined, data?.customTabs);
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
   useEffect(() => {
-    if (!isCustom && tabConfig && !isEnabled && enabledTabs.length > 0) {
+    if (!isCustom && !customTab && tabConfig && !isEnabled && enabledTabs.length > 0) {
       router.replace(`/editor/${token}/${enabledTabs[0].slug}`);
     }
-  }, [isCustom, tabConfig, isEnabled, enabledTabs, token, router]);
+  }, [isCustom, customTab, tabConfig, isEnabled, enabledTabs, token, router]);
 
   // Dynamic browser tab title
   useEffect(() => {
     if (isCustom && data?.clientName) {
       document.title = `Custom Checklist — ${data.clientName} | Talkpush CRM`;
+    } else if (customTab && data?.clientName) {
+      document.title = `${customTab.label} — ${data.clientName} | Talkpush CRM`;
     } else if (tabConfig && data?.clientName) {
       document.title = `${tabConfig.label} — ${data.clientName} | Talkpush CRM`;
     }
-  }, [isCustom, tab, tabConfig, data?.clientName]);
+  }, [isCustom, tab, tabConfig, customTab, data?.clientName]);
 
   // Custom checklist: render the dynamic form
   if (isCustom) {
     return <CustomChecklistForm />;
+  }
+
+  // Custom tab on a standard checklist
+  if (customTab) {
+    return <CustomChecklistForm customTabId={customTab.id} />;
   }
 
   if (!tabConfig) {

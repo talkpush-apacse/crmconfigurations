@@ -41,6 +41,7 @@ model Checklist {
   isCustom       Boolean  @default(false)
   customSchema   Json?
   customData     Json?
+  customTabs     Json?
 
   @@index([clientName])
 }

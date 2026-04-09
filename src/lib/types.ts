@@ -326,6 +326,15 @@ export interface CustomFieldDef {
 export type CustomSchema = CustomFieldDef[];
 export type CustomData = Record<string, unknown>;
 
+// ===== Custom Tabs (for standard checklists) =====
+export interface CustomTab {
+  id: string;
+  slug: string;
+  label: string;
+  icon: string;
+  fields: CustomFieldDef[];
+}
+
 // ===== Checklist Data (full) =====
 export interface ChecklistData {
   id: string;
@@ -357,6 +366,7 @@ export interface ChecklistData {
   isCustom: boolean;
   customSchema: CustomSchema | null;
   customData: CustomData | null;
+  customTabs: CustomTab[] | null;
 }
 
 // ===== Column definition for EditableTable =====
@@ -395,6 +405,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "adminSettings",
   "customSchema",
   "customData",
+  "customTabs",
 ] as const;
 
 export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
@@ -421,4 +432,5 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   adminSettings: "Admin Settings",
   customSchema: "Custom Schema",
   customData: "Custom Data",
+  customTabs: "Custom Tabs",
 };

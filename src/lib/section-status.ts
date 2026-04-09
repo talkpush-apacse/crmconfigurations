@@ -1,4 +1,4 @@
-import type { ChecklistJsonField, UserRow } from "./types";
+import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData } from "./types";
 
 export type SectionState = "complete" | "in-progress" | "not-started";
 
@@ -94,4 +94,28 @@ export function getSectionState(
   }
 
   return "in-progress";
+}
+
+/**
+ * Computes the completion state of a custom tab based on its fields and customData.
+ */
+export function getCustomTabSectionState(
+  fields: CustomFieldDef[],
+  customData: CustomData | null,
+): SectionState {
+  if (!fields || fields.length === 0) return "not-started";
+  if (!customData) return "not-started";
+
+  const totalFields = fields.length;
+  const filledFields = fields.filter((f) => {
+    const val = customData[f.id];
+    if (val === null || val === undefined) return false;
+    if (typeof val === "string") return val.trim() !== "";
+    if (typeof val === "boolean") return val;
+    if (Array.isArray(val)) return val.length > 0;
+    return true;
+  }).length;
+
+  if (filledFields === 0) return "not-started";
+  return filledFields >= totalFields ? "complete" : "in-progress";
 }

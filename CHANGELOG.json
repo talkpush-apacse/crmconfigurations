@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.17.0",
+    "codename": "Yellow Build Grand",
+    "changes": [
+      "Added custom tabs support for standard CRM checklists",
+      "Custom tabs appear alongside standard tabs in the sidebar with status dots",
+      "Added CustomTabManager for creating, editing, reordering, and deleting custom tabs",
+      "Custom tab fields reuse all 9 field types (text, table, file, select, etc.)",
+      "Custom tabs available in both editor and client views",
+      "Settings dialog and new checklist page support custom tab configuration"
+    ],
+    "deployed_at": "2026-04-09"
+  },
+  {
     "version": "1.16.1",
     "codename": "XUnit Fresh",
     "changes": [

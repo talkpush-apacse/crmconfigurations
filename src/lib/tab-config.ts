@@ -1,4 +1,4 @@
-import type { ChecklistJsonField } from "./types";
+import type { ChecklistJsonField, CustomTab } from "./types";
 
 export interface TabConfig {
   slug: string;
@@ -6,6 +6,7 @@ export interface TabConfig {
   dataKey: ChecklistJsonField | null;
   icon: string;
   adminOnly?: boolean;
+  customTabId?: string;
 }
 
 export const TAB_CONFIG: TabConfig[] = [
@@ -43,12 +44,36 @@ export function getAllSelectableTabSlugs(): string[] {
   return SELECTABLE_TABS.map((tab) => tab.slug);
 }
 
+// Convert custom tabs to TabConfig entries
+export function getCustomTabConfigs(customTabs: CustomTab[] | null | undefined): TabConfig[] {
+  if (!customTabs || customTabs.length === 0) return [];
+  return customTabs.map((ct) => ({
+    slug: `custom-${ct.slug}`,
+    label: ct.label,
+    dataKey: null,
+    icon: ct.icon || "FileText",
+    customTabId: ct.id,
+  }));
+}
+
+// Find a custom tab by its prefixed slug
+export function getCustomTabBySlug(
+  slug: string,
+  customTabs: CustomTab[] | null | undefined,
+): CustomTab | undefined {
+  if (!slug.startsWith("custom-") || !customTabs) return undefined;
+  const tabSlug = slug.slice("custom-".length);
+  return customTabs.find((ct) => ct.slug === tabSlug);
+}
+
 // Filter TAB_CONFIG to only enabled tabs (excludes admin-only tabs by default)
 // When tabOrder is provided, reorder the result to match.
+// When customTabs is provided, append them after standard tabs.
 export function getEnabledTabs(
   enabledTabSlugs: string[] | null | undefined,
   includeAdminTabs = false,
   tabOrder?: string[] | null,
+  customTabs?: CustomTab[] | null,
 ): TabConfig[] {
   let tabs = TAB_CONFIG;
   if (!includeAdminTabs) {
@@ -60,15 +85,19 @@ export function getEnabledTabs(
     tabs = tabs.filter((tab) => tab.adminOnly || enabledSet.has(tab.slug));
   }
 
+  // Append custom tabs
+  const customConfigs = getCustomTabConfigs(customTabs);
+  let allTabs = [...tabs, ...customConfigs];
+
   // Apply custom ordering if provided
   if (tabOrder && tabOrder.length > 0) {
     const slugIndex = new Map(tabOrder.map((slug, i) => [slug, i]));
-    tabs = [...tabs].sort((a, b) => {
+    allTabs = allTabs.sort((a, b) => {
       const ai = slugIndex.get(a.slug) ?? Infinity;
       const bi = slugIndex.get(b.slug) ?? Infinity;
       return ai - bi;
     });
   }
 
-  return tabs;
+  return allTabs;
 }

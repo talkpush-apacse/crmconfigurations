@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true, customTabs: true },
         take: pageSize,
         skip,
       }),
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema } = body;
+    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs } = body;
 
     if (!clientName) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
       createData.aiCallFaqs = JSON.parse(JSON.stringify(defaults.aiCallFaqs));
       createData.agencyPortal = JSON.parse(JSON.stringify(defaults.agencyPortal));
       createData.adminSettings = JSON.parse(JSON.stringify(defaults.adminSettings));
+      if (customTabs && Array.isArray(customTabs) && customTabs.length > 0) {
+        createData.customTabs = JSON.parse(JSON.stringify(customTabs));
+        createData.customData = JSON.parse(JSON.stringify({}));
+      }
     }
 
     const checklist = await prisma.checklist.create({

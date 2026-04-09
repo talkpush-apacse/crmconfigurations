@@ -15,7 +15,7 @@ import {
 import { FileUploadCell } from "@/components/shared/FileUploadCell";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
-import type { CustomSchema, CustomData, CustomFieldDef, ColumnDef } from "@/lib/types";
+import type { CustomSchema, CustomData, CustomFieldDef, CustomTab, ColumnDef } from "@/lib/types";
 
 function TableField({
   field,
@@ -67,9 +67,21 @@ function TableField({
   );
 }
 
-export function CustomChecklistForm() {
+interface CustomChecklistFormProps {
+  /** When provided, renders fields from a specific custom tab instead of the top-level customSchema */
+  customTabId?: string;
+}
+
+export function CustomChecklistForm({ customTabId }: CustomChecklistFormProps = {}) {
   const { data, updateField, isReadOnly } = useChecklistContext();
-  const schema = (data?.customSchema ?? []) as CustomSchema;
+
+  // Determine which schema to use: custom tab fields or top-level customSchema
+  const customTab = customTabId
+    ? ((data?.customTabs as CustomTab[] | null) ?? []).find((t) => t.id === customTabId)
+    : null;
+  const schema = customTab
+    ? customTab.fields
+    : ((data?.customSchema ?? []) as CustomSchema);
   const customData = (data?.customData ?? {}) as CustomData;
 
   const handleChange = useCallback(
@@ -93,9 +105,9 @@ export function CustomChecklistForm() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">{data?.clientName}</h2>
+        <h2 className="text-lg font-semibold">{customTab ? customTab.label : data?.clientName}</h2>
         <p className="text-sm text-muted-foreground">
-          Fill out the fields below to complete this checklist.
+          Fill out the fields below to complete {customTab ? "this section" : "this checklist"}.
         </p>
       </div>
 

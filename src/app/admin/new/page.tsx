@@ -11,15 +11,17 @@ import Link from "next/link";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
+import { CustomTabManager } from "@/components/admin/CustomTabManager";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
-import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab } from "@/lib/types";
 
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [customSchema, setCustomSchema] = useState<CustomFieldDef[]>([]);
+  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
   const [enabledTabs, setEnabledTabs] = useState<string[]>(getAllSelectableTabSlugs());
   const [channels, setChannels] = useState<CommunicationChannels>(defaultCommunicationChannels);
   const [featureToggles, setFeatureToggles] = useState<FeatureToggles>(defaultFeatureToggles);
@@ -66,6 +68,9 @@ export default function NewChecklistPage() {
         body.enabledTabs = enabledTabs;
         body.communicationChannels = channels;
         body.featureToggles = featureToggles;
+        if (customTabs.length > 0) {
+          body.customTabs = customTabs;
+        }
       }
 
       const res = await fetch("/api/checklists", {
@@ -173,6 +178,8 @@ export default function NewChecklistPage() {
                   />
 
                   <TabSelector selectedTabs={enabledTabs} onChange={handleTabsChange} />
+
+                  <CustomTabManager value={customTabs} onChange={setCustomTabs} />
                 </>
               )}
 

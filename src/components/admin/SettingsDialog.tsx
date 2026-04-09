@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
-import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
+import { CustomTabManager } from "@/components/admin/CustomTabManager";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab } from "@/lib/types";
 
 export interface SettingsEditingState {
   id: string;
@@ -15,6 +16,7 @@ export interface SettingsEditingState {
   featureToggles: FeatureToggles;
   isCustom: boolean;
   customSchema: CustomFieldDef[];
+  customTabs: CustomTab[];
 }
 
 interface SettingsDialogProps {
@@ -26,6 +28,7 @@ interface SettingsDialogProps {
   onTabsChange: (tabs: string[]) => void;
   onFeatureTogglesChange: (toggles: FeatureToggles) => void;
   onCustomSchemaChange?: (schema: CustomFieldDef[]) => void;
+  onCustomTabsChange?: (tabs: CustomTab[]) => void;
 }
 
 export function SettingsDialog({
@@ -37,6 +40,7 @@ export function SettingsDialog({
   onTabsChange,
   onFeatureTogglesChange,
   onCustomSchemaChange,
+  onCustomTabsChange,
 }: SettingsDialogProps) {
   return (
     <Dialog open={!!editing} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -64,6 +68,10 @@ export function SettingsDialog({
                 <TabSelector
                   selectedTabs={editing.tabs}
                   onChange={onTabsChange}
+                />
+                <CustomTabManager
+                  value={editing.customTabs}
+                  onChange={(tabs) => onCustomTabsChange?.(tabs)}
                 />
               </>
             )}

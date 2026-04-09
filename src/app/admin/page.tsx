@@ -52,7 +52,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
-import type { CommunicationChannels, FeatureToggles, CustomFieldDef } from "@/lib/types";
+import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
 
 // P4-06: Show search only when there are enough rows to warrant it
@@ -93,6 +93,7 @@ interface ChecklistSummary {
   featureToggles: FeatureToggles | null;
   isCustom?: boolean;
   customSchema?: CustomFieldDef[] | null;
+  customTabs?: CustomTab[] | null;
 }
 
 interface EditingState {
@@ -104,6 +105,7 @@ interface EditingState {
   version: number;
   isCustom: boolean;
   customSchema: CustomFieldDef[];
+  customTabs: CustomTab[];
 }
 
 interface PendingDelete {
@@ -254,6 +256,9 @@ export default function AdminDashboard() {
         createBody.enabledTabs = original.enabledTabs;
         createBody.communicationChannels = original.communicationChannels;
         createBody.featureToggles = original.featureToggles;
+        if (original.customTabs) {
+          createBody.customTabs = original.customTabs;
+        }
       }
       const createRes = await fetch("/api/checklists", {
         method: "POST",
@@ -279,6 +284,7 @@ export default function AdminDashboard() {
       version: c.version,
       isCustom: !!c.isCustom,
       customSchema: (c.customSchema as CustomFieldDef[]) || [],
+      customTabs: (c.customTabs as CustomTab[]) || [],
     });
   };
 
@@ -315,7 +321,7 @@ export default function AdminDashboard() {
         version: editing.version,
         changedFields: editing.isCustom
           ? ["customSchema"]
-          : ["enabledTabs", "communicationChannels", "featureToggles"],
+          : ["enabledTabs", "communicationChannels", "featureToggles", "customTabs"],
       };
       if (editing.isCustom) {
         body.customSchema = editing.customSchema;
@@ -323,6 +329,7 @@ export default function AdminDashboard() {
         body.enabledTabs = editing.tabs;
         body.communicationChannels = editing.channels;
         body.featureToggles = editing.featureToggles;
+        body.customTabs = editing.customTabs;
       }
       const res = await fetch(`/api/checklists/${editing.id}`, {
         method: "PUT",
@@ -470,6 +477,9 @@ export default function AdminDashboard() {
               }
               onCustomSchemaChange={(schema) =>
                 setEditing((prev) => prev ? { ...prev, customSchema: schema } : prev)
+              }
+              onCustomTabsChange={(tabs) =>
+                setEditing((prev) => prev ? { ...prev, customTabs: tabs } : prev)
               }
             />
 

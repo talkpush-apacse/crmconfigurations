@@ -7,8 +7,8 @@ import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
-import { getSectionState } from "@/lib/section-status";
-import type { ChecklistData } from "@/lib/types";
+import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
+import type { ChecklistData, CustomTab, CustomData } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
 
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
@@ -51,14 +51,20 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   }
 
   const isCustom = !!data.isCustom;
+  const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
+  const customData = (data.customData as CustomData | null) ?? null;
 
   // Editor link holders never see admin-only tabs
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null);
+  const enabledTabs = isCustom ? [] : getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null, customTabs);
 
-  const tabsWithData = enabledTabs.filter((t) => t.dataKey);
+  const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);
   const filledCount = isCustom
     ? 0
     : tabsWithData.filter((t) => {
+        if (t.customTabId) {
+          const ct = customTabs?.find((c) => c.id === t.customTabId);
+          return ct ? getCustomTabSectionState(ct.fields, customData) !== "not-started" : false;
+        }
         const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
         return getSectionState(val, t.dataKey) !== "not-started";
       }).length;
@@ -66,7 +72,10 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
 
   const navItems: NavItem[] = enabledTabs.map((tab) => {
     let status: NavItem["status"] = null;
-    if (tab.dataKey && data) {
+    if (tab.customTabId) {
+      const ct = customTabs?.find((c) => c.id === tab.customTabId);
+      if (ct) status = getCustomTabSectionState(ct.fields, customData);
+    } else if (tab.dataKey && data) {
       status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData], tab.dataKey);
     }
     return {

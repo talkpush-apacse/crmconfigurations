@@ -150,6 +150,7 @@ export async function PUT(
       adminSettings,
       customSchema,
       customData,
+      customTabs,
     } = body;
 
     const current = await prisma.checklist.findUnique({
@@ -198,6 +199,7 @@ export async function PUT(
         adminSettings,
         customSchema,
         customData,
+        customTabs,
       },
     });
 
