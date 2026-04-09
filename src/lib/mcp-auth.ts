@@ -1,6 +1,7 @@
 /**
  * MCP Server Authentication
- * Validates Bearer token against MCP_API_KEY environment variable.
+ * Validates API key via Bearer token header OR ?api_key= query parameter.
+ * Claude AI's custom connector passes the key as a query parameter.
  */
 
 export function validateMcpAuth(request: Request): { valid: boolean; error?: string } {
@@ -9,19 +10,21 @@ export function validateMcpAuth(request: Request): { valid: boolean; error?: str
     return { valid: false, error: "MCP_API_KEY not configured on server" };
   }
 
+  // Check Authorization header first
   const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return { valid: false, error: "Missing Authorization header" };
+  if (authHeader) {
+    const [scheme, token] = authHeader.split(" ");
+    if (scheme === "Bearer" && token === apiKey) {
+      return { valid: true };
+    }
   }
 
-  const [scheme, token] = authHeader.split(" ");
-  if (scheme !== "Bearer" || !token) {
-    return { valid: false, error: "Invalid Authorization header format. Expected: Bearer <token>" };
+  // Fall back to query parameter (Claude AI custom connector format)
+  const url = new URL(request.url);
+  const queryKey = url.searchParams.get("api_key");
+  if (queryKey === apiKey) {
+    return { valid: true };
   }
 
-  if (token !== apiKey) {
-    return { valid: false, error: "Invalid API key" };
-  }
-
-  return { valid: true };
+  return { valid: false, error: "Invalid or missing API key" };
 }
