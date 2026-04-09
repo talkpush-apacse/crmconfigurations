@@ -24,6 +24,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare" },
   { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
   { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
+  { slug: "rejection-reasons", label: "Rejection Reasons", dataKey: "rejectionReasons", icon: "ThumbsDown" },
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
   { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", adminOnly: true },
 ];

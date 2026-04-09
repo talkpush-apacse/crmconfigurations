@@ -37,6 +37,7 @@ model Checklist {
   aiCallFaqs    Json?
   agencyPortal      Json?
   agencyPortalUsers Json?
+  rejectionReasons  Json?
   adminSettings     Json?
 
   isCustom       Boolean  @default(false)

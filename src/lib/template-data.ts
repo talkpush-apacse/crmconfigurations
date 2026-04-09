@@ -464,6 +464,30 @@ export const defaultAgencyPortal: AgencyPortalRow[] = [];
 
 export const defaultAgencyPortalUsers: AgencyPortalUser[] = [];
 
+export const defaultRejectionReasons: string[] = [
+  "Aptitude for Role",
+  "Attrition Risk",
+  "Creativity",
+  "Culture Fit",
+  "Decision Making",
+  "Education",
+  "Incomplete Requirements",
+  "Job References",
+  "Lack of Passion",
+  "Language Skills",
+  "Leadership Skills",
+  "Notice Period",
+  "Not Qualified",
+  "Presentation Skills",
+  "Problem Solving",
+  "Punctuality",
+  "Salary Expectations",
+  "Technical Expertise",
+  "Withdrawn",
+  "Work Experience",
+  "Wrong Location",
+];
+
 export const defaultAdminSettings: AdminSettingsData = {
   // Basic Company Info
   companyName: "",

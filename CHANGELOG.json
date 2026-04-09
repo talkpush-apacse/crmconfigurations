@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.19.0",
+    "codename": "Assertion Fresh",
+    "changes": [
+      "Added Rejection Reasons tab with tag-based UI for managing candidate rejection reasons",
+      "Pre-populated with 21 standard rejection reasons (Aptitude for Role, Culture Fit, etc.)",
+      "Add and remove rejection reasons with inline input and pill-style tags"
+    ],
+    "deployed_at": "2026-04-09"
+  },
+  {
     "version": "1.18.0",
     "codename": "Zero Bug Fresh",
     "changes": [

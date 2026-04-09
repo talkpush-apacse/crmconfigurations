@@ -27,6 +27,7 @@ import {
   Phone,
   Briefcase,
   Tags,
+  ThumbsDown,
 } from "lucide-react";
 import type { ChecklistData } from "@/lib/types";
 
@@ -47,6 +48,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Phone,
   Briefcase,
   Tags,
+  ThumbsDown,
 };
 
 interface TabNavigationProps {

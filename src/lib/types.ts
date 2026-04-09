@@ -380,6 +380,7 @@ export interface ChecklistData {
   aiCallFaqs: AiCallData | null;
   agencyPortal: AgencyPortalRow[] | null;
   agencyPortalUsers: AgencyPortalUser[] | null;
+  rejectionReasons: string[] | null;
   adminSettings: AdminSettingsData | null;
   isCustom: boolean;
   customSchema: CustomSchema | null;
@@ -421,6 +422,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "aiCallFaqs",
   "agencyPortal",
   "agencyPortalUsers",
+  "rejectionReasons",
   "adminSettings",
   "customSchema",
   "customData",
@@ -449,6 +451,7 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   aiCallFaqs: "AI Call FAQs",
   agencyPortal: "Agency Portal",
   agencyPortalUsers: "Agency Portal Users",
+  rejectionReasons: "Rejection Reasons",
   adminSettings: "Admin Settings",
   customSchema: "Custom Schema",
   customData: "Custom Data",

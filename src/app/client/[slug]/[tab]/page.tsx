@@ -18,6 +18,7 @@ import { AttributesSheet } from "@/components/sheets/AttributesSheet";
 import { FacebookWhatsAppSheet } from "@/components/sheets/FacebookWhatsAppSheet";
 import { InstagramSheet } from "@/components/sheets/InstagramSheet";
 import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
+import { RejectionReasonsSheet } from "@/components/sheets/RejectionReasonsSheet";
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
 import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
 import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
@@ -37,6 +38,7 @@ const sheetComponents: Record<string, React.ComponentType> = {
   "facebook-whatsapp": FacebookWhatsAppSheet,
   instagram: InstagramSheet,
   "ai-call-faqs": AICallFAQsSheet,
+  "rejection-reasons": RejectionReasonsSheet,
   "agency-portal": AgencyPortalSheet,
   "admin-settings": AdminSettingsSheet,
 };
