@@ -54,7 +54,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
   const customData = (data.customData as CustomData | null) ?? null;
 
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null, customTabs);
+  const enabledTabs = isCustom
+    ? []
+    : getEnabledTabs(
+        data.enabledTabs ?? null,
+        false,
+        data.tabOrder ?? null,
+        customTabs,
+        (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+      );
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);
   const filledCount = isCustom

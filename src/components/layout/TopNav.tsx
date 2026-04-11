@@ -66,6 +66,7 @@ interface TopNavProps {
   clientName: string;
   hasPendingChangesRef?: RefObject<boolean>;
   onReorder?: (slugs: string[]) => void;
+  onFilledByChange?: (map: Record<string, "talkpush" | "client">) => void;
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -216,7 +217,7 @@ function SortableNavItem({
   );
 }
 
-export function TopNav({ items, clientName, hasPendingChangesRef, onReorder }: TopNavProps) {
+export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onFilledByChange }: TopNavProps) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
@@ -247,22 +248,23 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder }: T
   );
 
   // Split items into two groups while preserving their relative order.
-  const talkpushItems = useMemo(
-    () => items.filter((item) => item.filledBy === "talkpush"),
-    [items]
-  );
   const clientItems = useMemo(
     () => items.filter((item) => item.filledBy !== "talkpush"),
     [items]
   );
-
-  const talkpushIds = useMemo(
-    () => talkpushItems.map((item) => item.slug || item.href),
-    [talkpushItems]
+  const talkpushItems = useMemo(
+    () => items.filter((item) => item.filledBy === "talkpush"),
+    [items]
   );
-  const clientIds = useMemo(
-    () => clientItems.map((item) => item.slug || item.href),
-    [clientItems]
+
+  // Combined visual order: client group first, then talkpush group.
+  const combinedItems = useMemo(
+    () => [...clientItems, ...talkpushItems],
+    [clientItems, talkpushItems]
+  );
+  const combinedIds = useMemo(
+    () => combinedItems.map((item) => item.slug || item.href),
+    [combinedItems]
   );
 
   function confirmNavigation(href: string): boolean {
@@ -282,26 +284,48 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder }: T
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Only allow reordering within the same group.
-    const activeInTalkpush = talkpushIds.includes(activeId);
-    const overInTalkpush = talkpushIds.includes(overId);
-    if (activeInTalkpush !== overInTalkpush) return;
-
-    const groupItems = activeInTalkpush ? talkpushItems : clientItems;
-    const groupIds = activeInTalkpush ? talkpushIds : clientIds;
-    const oldIndex = groupIds.indexOf(activeId);
-    const newIndex = groupIds.indexOf(overId);
+    const oldIndex = combinedIds.indexOf(activeId);
+    const newIndex = combinedIds.indexOf(overId);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(groupItems, oldIndex, newIndex);
-    const newClientItems = activeInTalkpush ? clientItems : reordered;
-    const newTalkpushItems = activeInTalkpush ? reordered : talkpushItems;
-    // Persist client group first, then talkpush group, to match visual order.
-    onReorder(
-      [...newClientItems, ...newTalkpushItems]
-        .map((item) => item.slug || "")
-        .filter(Boolean)
-    );
+    // Determine the target group based on which group the "over" item belongs to.
+    // If the user dropped on a talkpush item, the dragged item joins the talkpush group
+    // (and vice versa). This makes cross-group drops intuitive.
+    const overItem = combinedItems[newIndex];
+    const targetGroup: "talkpush" | "client" =
+      overItem.filledBy === "talkpush" ? "talkpush" : "client";
+
+    const reordered = arrayMove(combinedItems, oldIndex, newIndex);
+
+    // Build the new filledBy map (only include standard tabs with a slug).
+    const newFilledBy: Record<string, "talkpush" | "client"> = {};
+    for (const item of reordered) {
+      if (!item.slug) continue;
+      newFilledBy[item.slug] =
+        (item.slug === activeId
+          ? targetGroup
+          : item.filledBy === "talkpush"
+            ? "talkpush"
+            : "client");
+    }
+
+    // Re-bucket items by their new group, preserving the order within each bucket
+    // as it appears in `reordered` so the dropped item lands at the right position.
+    const newClientSlugs: string[] = [];
+    const newTalkpushSlugs: string[] = [];
+    for (const item of reordered) {
+      const slug = item.slug;
+      if (!slug) continue;
+      if (newFilledBy[slug] === "talkpush") {
+        newTalkpushSlugs.push(slug);
+      } else {
+        newClientSlugs.push(slug);
+      }
+    }
+
+    // Persist: client group first, then talkpush group (matches visual order).
+    onReorder([...newClientSlugs, ...newTalkpushSlugs]);
+    onFilledByChange?.(newFilledBy);
   };
 
   const canReorder = Boolean(onReorder);
@@ -352,27 +376,34 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder }: T
 
       <div className="relative flex-1 overflow-hidden">
         <nav ref={scrollRef} className="scrollbar-thin h-full overflow-y-auto py-4">
-          {clientItems.length > 0 && (
-            <>
-              <GroupHeader label={`Filled Up by ${clientName}`} />
-              {canReorder ? (
-                <SortableContext items={clientIds} strategy={verticalListSortingStrategy}>
+          {canReorder ? (
+            <SortableContext items={combinedIds} strategy={verticalListSortingStrategy}>
+              {clientItems.length > 0 && (
+                <>
+                  <GroupHeader label={`Filled Up by ${clientName}`} />
                   {renderGroup(clientItems)}
-                </SortableContext>
-              ) : (
-                renderGroup(clientItems)
+                </>
               )}
-            </>
-          )}
-          {talkpushItems.length > 0 && (
-            <>
-              <GroupHeader label="Filled Up by Talkpush" />
-              {canReorder ? (
-                <SortableContext items={talkpushIds} strategy={verticalListSortingStrategy}>
+              {talkpushItems.length > 0 && (
+                <>
+                  <GroupHeader label="Filled Up by Talkpush" />
                   {renderGroup(talkpushItems)}
-                </SortableContext>
-              ) : (
-                renderGroup(talkpushItems)
+                </>
+              )}
+            </SortableContext>
+          ) : (
+            <>
+              {clientItems.length > 0 && (
+                <>
+                  <GroupHeader label={`Filled Up by ${clientName}`} />
+                  {renderGroup(clientItems)}
+                </>
+              )}
+              {talkpushItems.length > 0 && (
+                <>
+                  <GroupHeader label="Filled Up by Talkpush" />
+                  {renderGroup(talkpushItems)}
+                </>
               )}
             </>
           )}

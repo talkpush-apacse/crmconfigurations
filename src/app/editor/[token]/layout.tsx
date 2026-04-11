@@ -55,7 +55,15 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   const customData = (data.customData as CustomData | null) ?? null;
 
   // Editor link holders never see admin-only tabs
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data.enabledTabs ?? null, false, data.tabOrder ?? null, customTabs);
+  const enabledTabs = isCustom
+    ? []
+    : getEnabledTabs(
+        data.enabledTabs ?? null,
+        false,
+        data.tabOrder ?? null,
+        customTabs,
+        (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+      );
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);
   const filledCount = isCustom
@@ -97,6 +105,10 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     updateField("tabOrder", slugs);
   };
 
+  const handleTabFilledByChange = (map: Record<string, "talkpush" | "client">) => {
+    updateField("tabFilledBy", map);
+  };
+
   return (
     <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false, userRole: null, basePath: `/editor/${token}` }}>
       <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(226,232,240,0.9),_transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#f8fafc_100%)] text-slate-950">
@@ -115,7 +127,13 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (
-            <TopNav items={navItems} clientName={data.clientName} hasPendingChangesRef={hasPendingChangesRef} onReorder={handleTabReorder} />
+            <TopNav
+              items={navItems}
+              clientName={data.clientName}
+              hasPendingChangesRef={hasPendingChangesRef}
+              onReorder={handleTabReorder}
+              onFilledByChange={handleTabFilledByChange}
+            />
           )}
           <div className="flex flex-col flex-1 overflow-hidden">
             <main className="flex-1 overflow-y-auto">

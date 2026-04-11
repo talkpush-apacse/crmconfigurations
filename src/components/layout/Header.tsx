@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import {
-  ArrowLeft,
-  ChevronRight,
-  Download,
-  LayoutGrid,
-  Workflow,
-} from "lucide-react";
+import { ArrowLeft, ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
@@ -75,39 +69,19 @@ export function Header({
     window.open(exportUrl, "_blank");
   };
 
-  const { activeItem, completeCount, inProgressCount, dashboardHref, workflowHref } =
-    useMemo(() => {
-      const active = items.find((item) => item.href === pathname) ?? items[0] ?? null;
-      const dashboard = items.find((item) => item.slug === "welcome")?.href ?? items[0]?.href ?? "#";
-      const workflow = items.find((item) => item.slug && item.slug !== "welcome")?.href ?? dashboard;
+  const { activeItem, completeCount, inProgressCount } = useMemo(() => {
+    const active = items.find((item) => item.href === pathname) ?? items[0] ?? null;
 
-      return {
-        activeItem: active,
-        completeCount: items.filter((item) => item.status === "complete").length,
-        inProgressCount: items.filter((item) => item.status === "in-progress").length,
-        dashboardHref: dashboard,
-        workflowHref: workflow,
-      };
-    }, [items, pathname]);
+    return {
+      activeItem: active,
+      completeCount: items.filter((item) => item.status === "complete").length,
+      inProgressCount: items.filter((item) => item.status === "in-progress").length,
+    };
+  }, [items, pathname]);
 
   const completionPercent = totalCount > 0
     ? Math.round((filledCount / totalCount) * 100)
     : 0;
-
-  const topLinks = [
-    {
-      label: "Dashboard",
-      href: dashboardHref,
-      icon: LayoutGrid,
-      active: pathname === dashboardHref,
-    },
-    {
-      label: "Workflows",
-      href: workflowHref,
-      icon: Workflow,
-      active: pathname !== dashboardHref,
-    },
-  ];
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/70 bg-white/[0.72] px-4 py-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-6 lg:px-8">
@@ -148,23 +122,6 @@ export function Header({
               </p>
             </div>
 
-            <nav className="mt-4 flex flex-wrap items-center gap-2">
-              {topLinks.map(({ label, href, icon: Icon, active }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all active:scale-95",
-                    active
-                      ? "bg-[#1A73E8] text-white shadow-[0_10px_24px_-16px_rgba(26,115,232,0.8)]"
-                      : "bg-slate-100/90 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              ))}
-            </nav>
           </div>
         </div>
 

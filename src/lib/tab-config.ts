@@ -75,11 +75,13 @@ export function getCustomTabBySlug(
 // Filter TAB_CONFIG to only enabled tabs (excludes admin-only tabs by default)
 // When tabOrder is provided, reorder the result to match.
 // When customTabs is provided, append them after standard tabs.
+// When tabFilledByOverrides is provided, each tab's filledBy is overridden per-slug.
 export function getEnabledTabs(
   enabledTabSlugs: string[] | null | undefined,
   includeAdminTabs = false,
   tabOrder?: string[] | null,
   customTabs?: CustomTab[] | null,
+  tabFilledByOverrides?: Record<string, FilledBy> | null,
 ): TabConfig[] {
   let tabs = TAB_CONFIG;
   if (!includeAdminTabs) {
@@ -94,6 +96,14 @@ export function getEnabledTabs(
   // Append custom tabs
   const customConfigs = getCustomTabConfigs(customTabs);
   let allTabs = [...tabs, ...customConfigs];
+
+  // Apply per-checklist filledBy overrides
+  if (tabFilledByOverrides) {
+    allTabs = allTabs.map((tab) => {
+      const override = tabFilledByOverrides[tab.slug];
+      return override ? { ...tab, filledBy: override } : tab;
+    });
+  }
 
   // Apply custom ordering if provided
   if (tabOrder && tabOrder.length > 0) {

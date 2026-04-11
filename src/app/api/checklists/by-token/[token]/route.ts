@@ -131,6 +131,7 @@ export async function PUT(
     const {
       enabledTabs,
       tabOrder,
+      tabFilledBy,
       communicationChannels,
       featureToggles,
       companyInfo,
@@ -181,6 +182,7 @@ export async function PUT(
         fieldVersions: allFieldVersions,
         enabledTabs,
         tabOrder,
+        tabFilledBy,
         communicationChannels,
         featureToggles,
         companyInfo,

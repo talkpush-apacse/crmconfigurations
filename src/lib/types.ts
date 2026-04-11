@@ -382,6 +382,7 @@ export interface ChecklistData {
   fieldVersions: Record<string, number> | null;
   enabledTabs: string[] | null;
   tabOrder: string[] | null;
+  tabFilledBy: Record<string, "talkpush" | "client"> | null;
   communicationChannels: CommunicationChannels | null;
   featureToggles: FeatureToggles | null;
   companyInfo: CompanyInfo | null;
@@ -425,6 +426,7 @@ export interface ColumnDef {
 export const CHECKLIST_JSON_FIELDS = [
   "enabledTabs",
   "tabOrder",
+  "tabFilledBy",
   "communicationChannels",
   "featureToggles",
   "companyInfo",
@@ -455,6 +457,7 @@ export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
 export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   enabledTabs: "Enabled Tabs",
   tabOrder: "Tab Order",
+  tabFilledBy: "Tab Filled By",
   communicationChannels: "Communication Channels",
   featureToggles: "Feature Toggles",
   companyInfo: "Company Info",

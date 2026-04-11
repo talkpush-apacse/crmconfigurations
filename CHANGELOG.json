@@ -1,12 +1,22 @@
 [
   {
+    "version": "1.22.0",
+    "codename": "Drifting Fresh",
+    "changes": [
+      "Drag-and-drop now works across groups \u2014 drop a tab onto the other group to reclassify it",
+      "Per-checklist filledBy overrides persist via the new tabFilledBy field",
+      "Default classification (Campaigns / Folders / Attributes = Talkpush) still applies until overridden"
+    ],
+    "deployed_at": "2026-04-11"
+  },
+  {
     "version": "1.21.0",
     "codename": "Chartered Fresh",
     "changes": [
       "Grouped sidebar modules into 'Filled Up by [Client]' and 'Filled Up by Talkpush' sections",
       "Client group uses the checklist's Client Name from configuration",
       "Classified Campaigns, Folders, and Attributes as Talkpush-filled modules",
-      "Drag-to-reorder now works within each group only (cross-group drops are ignored)"
+      "Drag-to-reorder scoped to within each group"
     ],
     "deployed_at": "2026-04-11"
   },
