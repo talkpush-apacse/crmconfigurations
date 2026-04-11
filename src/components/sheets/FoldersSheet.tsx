@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultFolders } from "@/lib/template-data";
@@ -18,6 +20,7 @@ const columns: ColumnDef[] = [
 
 export function FoldersSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("folders");
   const folders = (data.folders as FolderRow[]) || defaultFolders;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -60,6 +63,13 @@ export function FoldersSheet() {
         title="Folders"
         description="Configure the workflow stages (folders) that candidates move through during the recruitment process."
       />
+
+      <TabUploadBanner tabKey="folders" tabLabel="Folders" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p>Folders represent stages in your hiring pipeline. The default folders (Inbox, Interview, Hired, Rejected, Archived) cover most workflows. Add custom folders like &quot;Onboarding&quot;, &quot;Training&quot;, or &quot;For Pooling&quot; if needed.</p>
       </ExampleHint>
@@ -79,6 +89,8 @@ export function FoldersSheet() {
           sheetName: "Folders",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

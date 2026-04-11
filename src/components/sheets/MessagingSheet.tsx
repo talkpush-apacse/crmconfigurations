@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultMessaging, defaultCommunicationChannels } from "@/lib/template-data";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -239,6 +241,7 @@ function SortableTemplateItem({
 
 export function MessagingSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("messaging");
   const templates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
 
   // Filter channels based on communication channels setting (fall back to defaults for old checklists)
@@ -336,6 +339,12 @@ export function MessagingSheet() {
         description="Configure message templates for each communication channel. Use tokens like <Candidate First Name> or <Scheduler URL> for personalization."
       />
 
+      <TabUploadBanner tabKey="messaging" tabLabel="Messaging Templates" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Typical messaging flow:</p>
         <ol className="list-decimal pl-4 space-y-0.5">
@@ -387,6 +396,8 @@ export function MessagingSheet() {
             </p>
           )}
         </div>
+      )}
+        </>
       )}
       <SectionFooter />
     </div>

@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import path from "path";
-import type { ChecklistData, AiCallData } from "./types";
+import type { ChecklistData, AiCallData, TabUploadMetaMap } from "./types";
+import { TAB_CONFIG } from "./tab-config";
 
 export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -42,6 +43,8 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   populateTableSheet(workbook, "AI Call FAQs", aiCallFaqRows as unknown as Record<string, unknown>[] | null, 4, ["faq", "example", "faqResponse"], "A");
   populateTableSheet(workbook, "Agency Portal", data.agencyPortal as Record<string, unknown>[] | null, 12, ["agencyName", "contactName", "email", "phone", "country", "comments"], "C");
   populateTableSheet(workbook, "Agency Portal Users", data.agencyPortalUsers as Record<string, unknown>[] | null, 12, ["name", "email", "agency", "userAccess"], "C");
+
+  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
@@ -250,6 +253,63 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "User Access", key: "userAccess", width: 20 },
   ], data.agencyPortalUsers as Record<string, unknown>[] | null);
 
+  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
+
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
+}
+
+/**
+ * Adds a "Tab File Uploads" sheet listing every tab the client uploaded
+ * a spreadsheet for, plus whether they opted to skip manual entry. Skipped
+ * tabs should be reviewed against the uploaded files instead of the in-app form.
+ */
+function addTabUploadsSheet(
+  workbook: ExcelJS.Workbook,
+  tabUploadMeta: TabUploadMetaMap | null
+) {
+  if (!tabUploadMeta) return;
+
+  // Build rows in TAB_CONFIG order so the export matches the in-app tab order.
+  const rows: Array<{
+    tab: string;
+    skipped: string;
+    fileCount: number;
+    files: string;
+    urls: string;
+  }> = [];
+
+  for (const tab of TAB_CONFIG) {
+    if (!tab.dataKey) continue;
+    const meta = tabUploadMeta[tab.dataKey];
+    if (!meta || meta.uploadedFiles.length === 0) continue;
+    rows.push({
+      tab: tab.label,
+      skipped: meta.isSkipped ? "Yes" : "No",
+      fileCount: meta.uploadedFiles.length,
+      files: meta.uploadedFiles.map((f) => f.fileName).join("; "),
+      urls: meta.uploadedFiles.map((f) => f.fileUrl).join("; "),
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  // Avoid clobbering an existing sheet of the same name in the template.
+  if (workbook.getWorksheet("Tab File Uploads")) return;
+
+  const sheet = workbook.addWorksheet("Tab File Uploads");
+  sheet.columns = [
+    { header: "Tab", key: "tab", width: 28 },
+    { header: "Manual Entry Skipped", key: "skipped", width: 22 },
+    { header: "File Count", key: "fileCount", width: 12 },
+    { header: "File Names", key: "files", width: 50 },
+    { header: "File URLs", key: "urls", width: 60 },
+  ];
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1A73E8" },
+  };
+  rows.forEach((r) => sheet.addRow(r));
 }

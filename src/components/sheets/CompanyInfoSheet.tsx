@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { defaultCompanyInfo } from "@/lib/template-data";
@@ -160,6 +162,7 @@ const recruitmentFields: KeyValueField[] = [
 
 export function CompanyInfoSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("companyInfo");
   const companyInfo = (data.companyInfo as CompanyInfo) || defaultCompanyInfo;
 
   const handleChange = (key: string, value: string | boolean) => {
@@ -172,6 +175,13 @@ export function CompanyInfoSheet() {
         title="Company Information"
         description="Provide company details, Facebook page information, branding assets, and recruitment process settings for your Talkpush CRM instance."
       />
+
+      <TabUploadBanner tabKey="companyInfo" tabLabel="Company Information" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -235,6 +245,8 @@ export function CompanyInfoSheet() {
           onChange={handleChange}
         />
       </div>
+        </>
+      )}
       <SectionFooter />
     </div>
   );

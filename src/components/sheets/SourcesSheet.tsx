@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultSources } from "@/lib/template-data";
 import type { ColumnDef, SourceRow } from "@/lib/types";
@@ -17,6 +19,7 @@ const columns: ColumnDef[] = [
 
 export function SourcesSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("sources");
   const sources = (data.sources as SourceRow[]) || defaultSources;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -63,6 +66,13 @@ export function SourcesSheet() {
         title="Sources"
         description="Define the candidate sourcing channels and their details."
       />
+
+      <TabUploadBanner tabKey="sources" tabLabel="Sources" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample sourcing channels:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -88,6 +98,8 @@ export function SourcesSheet() {
           sheetName: "Sources",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

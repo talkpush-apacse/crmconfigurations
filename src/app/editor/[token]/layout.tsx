@@ -8,7 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
-import type { ChecklistData, CustomTab, CustomData } from "@/lib/types";
+import type { ChecklistData, CustomTab, CustomData, TabUploadMetaMap } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
 
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
@@ -70,6 +70,8 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
       }).length;
   const totalCount = isCustom ? 0 : tabsWithData.length;
 
+  const tabUploadMeta = (data.tabUploadMeta as TabUploadMetaMap | null) ?? null;
+
   const navItems: NavItem[] = enabledTabs.map((tab) => {
     let status: NavItem["status"] = null;
     if (tab.customTabId) {
@@ -78,12 +80,16 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     } else if (tab.dataKey && data) {
       status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData], tab.dataKey);
     }
+    const hasAttachments =
+      !!tab.dataKey && (tabUploadMeta?.[tab.dataKey]?.uploadedFiles?.length ?? 0) > 0;
     return {
       label: tab.label,
       href: `/editor/${token}/${tab.slug}`,
       status,
       icon: tab.icon,
       slug: tab.slug,
+      filledBy: tab.filledBy,
+      hasAttachments,
     };
   });
 
@@ -109,7 +115,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (
-            <TopNav items={navItems} hasPendingChangesRef={hasPendingChangesRef} onReorder={handleTabReorder} />
+            <TopNav items={navItems} clientName={data.clientName} hasPendingChangesRef={hasPendingChangesRef} onReorder={handleTabReorder} />
           )}
           <div className="flex flex-col flex-1 overflow-hidden">
             <main className="flex-1 overflow-y-auto">

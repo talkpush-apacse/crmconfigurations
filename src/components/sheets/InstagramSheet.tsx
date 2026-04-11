@@ -4,6 +4,8 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultInstagram } from "@/lib/template-data";
 import type { ColumnDef, InstagramData, FaqEntry } from "@/lib/types";
@@ -33,6 +35,7 @@ const faqColumns: ColumnDef[] = [
 
 export function InstagramSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("instagram");
   const igData = (data.instagram as InstagramData) || defaultInstagram;
   const faqs = igData.faqs || [];
 
@@ -86,6 +89,12 @@ export function InstagramSheet() {
         description="Configure your Instagram chatbot integration."
       />
 
+      <TabUploadBanner tabKey="instagram" tabLabel="Instagram Chatbot" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -138,6 +147,8 @@ export function InstagramSheet() {
           }}
         />
       </div>
+        </>
+      )}
       <SectionFooter />
     </div>
   );

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { X, Plus } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { defaultRejectionReasons } from "@/lib/template-data";
 import { SectionFooter } from "@/components/shared/SectionFooter";
@@ -12,6 +14,7 @@ import { Input } from "@/components/ui/input";
 
 export function RejectionReasonsSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("rejectionReasons");
   const reasons = (data.rejectionReasons as string[]) || defaultRejectionReasons;
   const [newReason, setNewReason] = useState("");
 
@@ -43,6 +46,13 @@ export function RejectionReasonsSheet() {
         title="Rejection Reasons"
         description="Define the standard rejection reasons that recruiters can select when rejecting a candidate. These will appear as options in the CRM."
       />
+
+      <TabUploadBanner tabKey="rejectionReasons" tabLabel="Rejection Reasons" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p>
           Add all the rejection reasons your team uses. Common examples include
@@ -108,6 +118,8 @@ export function RejectionReasonsSheet() {
           {reasons.length} reason{reasons.length !== 1 ? "s" : ""} configured
         </p>
       </div>
+        </>
+      )}
 
       <SectionFooter />
     </div>

@@ -5,6 +5,8 @@ import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { VoicePreview, VOICE_FILES } from "@/components/shared/VoicePreview";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAiCallData } from "@/lib/template-data";
 import type { ColumnDef, AiCallData, AiCallFaqRow, FeatureToggles } from "@/lib/types";
@@ -78,6 +80,7 @@ const faqColumns: ColumnDef[] = [
 
 export function AICallFAQsSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("aiCallFaqs");
 
   // Backward compatibility: detect old array format vs new object format
   const rawData = data.aiCallFaqs;
@@ -149,6 +152,12 @@ export function AICallFAQsSheet() {
         description="Configure your AI call settings and define FAQ responses."
       />
 
+      <TabUploadBanner tabKey="aiCallFaqs" tabLabel="AI Call" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample AI Call configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -196,6 +205,8 @@ export function AICallFAQsSheet() {
           }}
         />
       </div>
+        </>
+      )}
       <SectionFooter />
     </div>
   );

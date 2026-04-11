@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAgencyPortal, defaultAgencyPortalUsers } from "@/lib/template-data";
 import type { ColumnDef, AgencyPortalRow, AgencyPortalUser } from "@/lib/types";
@@ -40,6 +42,7 @@ const userColumns: ColumnDef[] = [
 
 export function AgencyPortalSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("agencyPortal");
   const agencies = (data.agencyPortal as AgencyPortalRow[]) || defaultAgencyPortal;
   const users = (data.agencyPortalUsers as AgencyPortalUser[]) || defaultAgencyPortalUsers;
 
@@ -118,6 +121,13 @@ export function AgencyPortalSheet() {
         title="Agency Portal"
         description="Manage staffing agencies and their contact information."
       />
+
+      <TabUploadBanner tabKey="agencyPortal" tabLabel="Agency Portal" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample agency entries:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -164,6 +174,8 @@ export function AgencyPortalSheet() {
           }}
         />
       </div>
+        </>
+      )}
 
       <SectionFooter />
     </div>

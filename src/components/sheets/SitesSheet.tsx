@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultSites } from "@/lib/template-data";
@@ -25,6 +27,7 @@ const detailColumns: ColumnDef[] = [
 
 export function SitesSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("sites");
   const sites = (data.sites as SiteRow[]) || defaultSites;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -67,6 +70,13 @@ export function SitesSheet() {
         title="Sites"
         description="Configure interview and office locations where candidates may be directed."
       />
+
+      <TabUploadBanner tabKey="sites" tabLabel="Sites" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample sites:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -91,6 +101,8 @@ export function SitesSheet() {
           sheetName: "Sites",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

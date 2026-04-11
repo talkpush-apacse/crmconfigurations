@@ -39,6 +39,7 @@ model Checklist {
   agencyPortalUsers Json?
   rejectionReasons  Json?
   adminSettings     Json?
+  tabUploadMeta     Json?
 
   isCustom       Boolean  @default(false)
   customSchema   Json?

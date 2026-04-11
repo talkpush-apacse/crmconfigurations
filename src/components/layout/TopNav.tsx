@@ -18,6 +18,7 @@ import {
   Megaphone,
   MessageSquare,
   MessagesSquare,
+  Paperclip,
   Phone,
   Plus,
   Briefcase,
@@ -56,10 +57,13 @@ export type NavItem = {
   status: "complete" | "in-progress" | "not-started" | null;
   icon?: string;
   slug?: string;
+  filledBy?: "talkpush" | "client";
+  hasAttachments?: boolean;
 };
 
 interface TopNavProps {
   items: NavItem[];
+  clientName: string;
   hasPendingChangesRef?: RefObject<boolean>;
   onReorder?: (slugs: string[]) => void;
 }
@@ -86,10 +90,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Tags,
 };
 
-const GROUP_STARTERS: Record<string, string> = {
-  users: "Recruitment",
-  "facebook-whatsapp": "Channels",
-};
 
 function getStatusLabel(status: NavItem["status"]) {
   if (status === "complete") return "Complete";
@@ -191,7 +191,15 @@ function SortableNavItem({
               </div>
 
               <div className="hidden min-w-0 flex-1 xl:block">
-                <div className="truncate font-medium">{item.label}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate font-medium">{item.label}</span>
+                  {item.hasAttachments && (
+                    <Paperclip
+                      className="h-3 w-3 shrink-0 text-blue-300"
+                      aria-label="Has uploaded files"
+                    />
+                  )}
+                </div>
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
                   <StatusIndicator status={item.status} />
                   <span>{getStatusLabel(item.status)}</span>
@@ -208,7 +216,7 @@ function SortableNavItem({
   );
 }
 
-export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) {
+export function TopNav({ items, clientName, hasPendingChangesRef, onReorder }: TopNavProps) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
@@ -238,9 +246,23 @@ export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) 
     useSensor(KeyboardSensor)
   );
 
-  const sortableIds = useMemo(
-    () => items.map((item) => item.slug || item.href),
+  // Split items into two groups while preserving their relative order.
+  const talkpushItems = useMemo(
+    () => items.filter((item) => item.filledBy === "talkpush"),
     [items]
+  );
+  const clientItems = useMemo(
+    () => items.filter((item) => item.filledBy !== "talkpush"),
+    [items]
+  );
+
+  const talkpushIds = useMemo(
+    () => talkpushItems.map((item) => item.slug || item.href),
+    [talkpushItems]
+  );
+  const clientIds = useMemo(
+    () => clientItems.map((item) => item.slug || item.href),
+    [clientItems]
   );
 
   function confirmNavigation(href: string): boolean {
@@ -257,15 +279,55 @@ export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) 
     const { active, over } = event;
     if (!over || active.id === over.id || !onReorder) return;
 
-    const oldIndex = sortableIds.indexOf(active.id as string);
-    const newIndex = sortableIds.indexOf(over.id as string);
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Only allow reordering within the same group.
+    const activeInTalkpush = talkpushIds.includes(activeId);
+    const overInTalkpush = talkpushIds.includes(overId);
+    if (activeInTalkpush !== overInTalkpush) return;
+
+    const groupItems = activeInTalkpush ? talkpushItems : clientItems;
+    const groupIds = activeInTalkpush ? talkpushIds : clientIds;
+    const oldIndex = groupIds.indexOf(activeId);
+    const newIndex = groupIds.indexOf(overId);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(items, oldIndex, newIndex);
-    onReorder(reordered.map((item) => item.slug || "").filter(Boolean));
+    const reordered = arrayMove(groupItems, oldIndex, newIndex);
+    const newClientItems = activeInTalkpush ? clientItems : reordered;
+    const newTalkpushItems = activeInTalkpush ? reordered : talkpushItems;
+    // Persist client group first, then talkpush group, to match visual order.
+    onReorder(
+      [...newClientItems, ...newTalkpushItems]
+        .map((item) => item.slug || "")
+        .filter(Boolean)
+    );
   };
 
   const canReorder = Boolean(onReorder);
+
+  const renderGroup = (groupItems: NavItem[]) =>
+    groupItems.map((item) => {
+      const isActive = pathname === item.href;
+      return (
+        <SortableNavItem
+          key={item.slug || item.href}
+          item={item}
+          isActive={isActive}
+          confirmNavigation={confirmNavigation}
+          canReorder={canReorder}
+        />
+      );
+    });
+
+  const GroupHeader = ({ label }: { label: string }) => (
+    <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex first:mt-0">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
+  );
 
   const navContent = (
     <aside
@@ -290,29 +352,30 @@ export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) 
 
       <div className="relative flex-1 overflow-hidden">
         <nav ref={scrollRef} className="scrollbar-thin h-full overflow-y-auto py-4">
-          {items.map((item) => {
-            const isActive = pathname === item.href;
-            const groupLabel = GROUP_STARTERS[item.slug ?? ""];
-
-            return (
-              <div key={item.slug || item.href}>
-                {groupLabel && (
-                  <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      {groupLabel}
-                    </span>
-                    <div className="h-px flex-1 bg-white/10" />
-                  </div>
-                )}
-                <SortableNavItem
-                  item={item}
-                  isActive={isActive}
-                  confirmNavigation={confirmNavigation}
-                  canReorder={canReorder}
-                />
-              </div>
-            );
-          })}
+          {clientItems.length > 0 && (
+            <>
+              <GroupHeader label={`Filled Up by ${clientName}`} />
+              {canReorder ? (
+                <SortableContext items={clientIds} strategy={verticalListSortingStrategy}>
+                  {renderGroup(clientItems)}
+                </SortableContext>
+              ) : (
+                renderGroup(clientItems)
+              )}
+            </>
+          )}
+          {talkpushItems.length > 0 && (
+            <>
+              <GroupHeader label="Filled Up by Talkpush" />
+              {canReorder ? (
+                <SortableContext items={talkpushIds} strategy={verticalListSortingStrategy}>
+                  {renderGroup(talkpushItems)}
+                </SortableContext>
+              ) : (
+                renderGroup(talkpushItems)
+              )}
+            </>
+          )}
         </nav>
 
         {/* Bottom fade + chevron to signal more tabs below */}
@@ -351,9 +414,7 @@ export function TopNav({ items, hasPendingChangesRef, onReorder }: TopNavProps) 
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-            {navContent}
-          </SortableContext>
+          {navContent}
         </DndContext>
       </TooltipProvider>
     );

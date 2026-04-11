@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultAttributes } from "@/lib/template-data";
@@ -53,6 +55,7 @@ function toSnakeCase(str: string): string {
 
 export function AttributesSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("attributes");
   const attributes = (data.attributes as AttributeRow[]) || defaultAttributes;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -114,6 +117,13 @@ export function AttributesSheet() {
         title="Candidate Attributes"
         description="Define the custom candidate attributes to be created in the CRM. Expand each row to configure advanced settings."
       />
+
+      <TabUploadBanner tabKey="attributes" tabLabel="Attributes" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample attributes:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -139,6 +149,8 @@ export function AttributesSheet() {
           sheetName: "Attributes",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

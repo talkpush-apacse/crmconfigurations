@@ -1,17 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api-auth";
+import { verifyToken } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml", "application/pdf"];
-const ALLOWED_FOLDERS = ["logos", "banners", "documents", "general"] as const;
+const ALLOWED_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+  // Excel + CSV — used by tab-upload banner ("Skip manual entry")
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/csv",
+  "application/csv",
+];
+const ALLOWED_FOLDERS = [
+  "logos",
+  "banners",
+  "documents",
+  "general",
+  "tab-uploads",
+] as const;
 type AllowedFolder = typeof ALLOWED_FOLDERS[number];
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
-    if (auth instanceof NextResponse) return auth;
-
     if (!supabase) {
       return NextResponse.json(
         { error: "File uploads not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." },
@@ -25,6 +41,54 @@ export async function POST(request: NextRequest) {
     const folder: AllowedFolder = (ALLOWED_FOLDERS as readonly string[]).includes(rawFolder)
       ? (rawFolder as AllowedFolder)
       : "general";
+
+    // --- Auth: admin cookie OR valid editor-token / client-slug ---
+    //
+    // Admin cookie holders can upload to any folder.
+    //
+    // Public editor-link or client-link holders can ONLY upload to the
+    // "tab-uploads" folder, and must provide a valid editorToken or slug
+    // that resolves to an existing checklist. The link itself is the access
+    // control (same pattern as PUT /api/checklists/by-token/[token]).
+    const adminCookie = request.cookies.get("admin_token")?.value;
+    const isAdmin = !!adminCookie && !!verifyToken(adminCookie);
+
+    if (!isAdmin) {
+      const editorToken = (formData.get("editorToken") as string) || "";
+      const slug = (formData.get("slug") as string) || "";
+
+      if (!editorToken && !slug) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
+      }
+
+      if (folder !== "tab-uploads") {
+        return NextResponse.json(
+          { error: "This folder requires admin access" },
+          { status: 403 }
+        );
+      }
+
+      // Validate the token/slug resolves to an existing checklist.
+      const checklist = editorToken
+        ? await prisma.checklist.findUnique({
+            where: { editorToken },
+            select: { id: true },
+          })
+        : await prisma.checklist.findUnique({
+            where: { slug },
+            select: { id: true },
+          });
+
+      if (!checklist) {
+        return NextResponse.json(
+          { error: "Invalid or expired link" },
+          { status: 401 }
+        );
+      }
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });

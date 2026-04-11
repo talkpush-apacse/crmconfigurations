@@ -1,5 +1,28 @@
 [
   {
+    "version": "1.21.0",
+    "codename": "Chartered Fresh",
+    "changes": [
+      "Grouped sidebar modules into 'Filled Up by [Client]' and 'Filled Up by Talkpush' sections",
+      "Client group uses the checklist's Client Name from configuration",
+      "Classified Campaigns, Folders, and Attributes as Talkpush-filled modules",
+      "Drag-to-reorder now works within each group only (cross-group drops are ignored)"
+    ],
+    "deployed_at": "2026-04-11"
+  },
+  {
+    "version": "1.20.0",
+    "codename": "Bundle Fresh",
+    "changes": [
+      "Added Excel/CSV upload banner to every data-entry tab so clients can upload existing spreadsheets instead of filling forms manually",
+      "Added 'Skip manual entry' toggle that hides form fields and marks the section as pending team review",
+      "Added paperclip indicator in the sidebar for tabs that have uploaded files",
+      "Added 'Tab File Uploads' summary sheet to Excel export listing uploaded files per tab",
+      "Added tabUploadMeta JSON column to persist upload metadata keyed by tab"
+    ],
+    "deployed_at": "2026-04-10"
+  },
+  {
     "version": "1.19.0",
     "codename": "Assertion Fresh",
     "changes": [

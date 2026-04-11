@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultUsers } from "@/lib/template-data";
@@ -31,6 +33,7 @@ const referenceData = [
 
 export function UserListSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("users");
   const users = (data.users as UserRow[]) || defaultUsers;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -74,6 +77,12 @@ export function UserListSheet() {
         description="Define the users who will have access to the Talkpush CRM platform."
       />
 
+      <TabUploadBanner tabKey="users" tabLabel="User List" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample user list:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -112,6 +121,8 @@ export function UserListSheet() {
           sheetName: "Users",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

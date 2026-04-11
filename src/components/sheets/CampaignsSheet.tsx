@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultCampaigns } from "@/lib/template-data";
 import type { ColumnDef, CampaignRow } from "@/lib/types";
@@ -35,6 +37,7 @@ const referenceData = [
 
 export function CampaignsSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("campaigns");
   const campaigns = (data.campaigns as CampaignRow[]) || defaultCampaigns;
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/editor");
@@ -100,6 +103,12 @@ export function CampaignsSheet() {
         description="Define your recruitment campaigns. Each campaign represents a job position or hiring pipeline."
       />
 
+      <TabUploadBanner tabKey="campaigns" tabLabel="Campaigns List" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample campaigns:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -138,6 +147,8 @@ export function CampaignsSheet() {
           sheetName: "Campaigns",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

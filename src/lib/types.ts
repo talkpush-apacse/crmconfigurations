@@ -318,6 +318,25 @@ export interface AdminSettingsData {
   businessHours: BusinessHourEntry[];
 }
 
+// ===== Tab Upload Meta =====
+// Per-tab metadata for the "Skip manual entry — upload your spreadsheet" feature.
+// Stored as a single JSON column on Checklist, keyed by tab data field name
+// (e.g. "users", "campaigns", "sites").
+export interface TabUploadFile {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+}
+
+export interface TabUploadMeta {
+  uploadedFiles: TabUploadFile[];
+  isSkipped: boolean;
+}
+
+export type TabUploadMetaMap = Record<string, TabUploadMeta>;
+
 // ===== Custom Checklist Types =====
 export type CustomFieldType =
   | 'text'
@@ -382,6 +401,7 @@ export interface ChecklistData {
   agencyPortalUsers: AgencyPortalUser[] | null;
   rejectionReasons: string[] | null;
   adminSettings: AdminSettingsData | null;
+  tabUploadMeta: TabUploadMetaMap | null;
   isCustom: boolean;
   customSchema: CustomSchema | null;
   customData: CustomData | null;
@@ -424,6 +444,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "agencyPortalUsers",
   "rejectionReasons",
   "adminSettings",
+  "tabUploadMeta",
   "customSchema",
   "customData",
   "customTabs",
@@ -453,6 +474,7 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   agencyPortalUsers: "Agency Portal Users",
   rejectionReasons: "Rejection Reasons",
   adminSettings: "Admin Settings",
+  tabUploadMeta: "Tab File Uploads",
   customSchema: "Custom Schema",
   customData: "Custom Data",
   customTabs: "Custom Tabs",

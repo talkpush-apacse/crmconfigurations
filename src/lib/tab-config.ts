@@ -1,32 +1,35 @@
 import type { ChecklistJsonField, CustomTab } from "./types";
 
+export type FilledBy = "talkpush" | "client";
+
 export interface TabConfig {
   slug: string;
   label: string;
   dataKey: ChecklistJsonField | null;
   icon: string;
+  filledBy: FilledBy;
   adminOnly?: boolean;
   customTabId?: string;
 }
 
 export const TAB_CONFIG: TabConfig[] = [
-  { slug: "welcome", label: "Welcome", dataKey: null, icon: "Home" },
-  { slug: "company-info", label: "Company Information", dataKey: "companyInfo", icon: "Building2" },
-  { slug: "users", label: "User List", dataKey: "users", icon: "Users" },
-  { slug: "campaigns", label: "Campaigns List", dataKey: "campaigns", icon: "Megaphone" },
-  { slug: "sites", label: "Sites", dataKey: "sites", icon: "MapPin" },
-  { slug: "prescreening", label: "Pre-Screening Questions", dataKey: "prescreening", icon: "HelpCircle" },
-  { slug: "messaging", label: "Messaging Templates", dataKey: "messaging", icon: "MessageSquare" },
-  { slug: "sources", label: "Sources", dataKey: "sources", icon: "Link" },
-  { slug: "folders", label: "Folders", dataKey: "folders", icon: "Folder" },
-  { slug: "documents", label: "Document Collection", dataKey: "documents", icon: "FileText" },
-  { slug: "attributes", label: "Attributes", dataKey: "attributes", icon: "Tags" },
-  { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare" },
-  { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera" },
-  { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone" },
-  { slug: "rejection-reasons", label: "Rejection Reasons", dataKey: "rejectionReasons", icon: "ThumbsDown" },
-  { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase" },
-  { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", adminOnly: true },
+  { slug: "welcome", label: "Welcome", dataKey: null, icon: "Home", filledBy: "client" },
+  { slug: "company-info", label: "Company Information", dataKey: "companyInfo", icon: "Building2", filledBy: "client" },
+  { slug: "users", label: "User List", dataKey: "users", icon: "Users", filledBy: "client" },
+  { slug: "campaigns", label: "Campaigns List", dataKey: "campaigns", icon: "Megaphone", filledBy: "talkpush" },
+  { slug: "sites", label: "Sites", dataKey: "sites", icon: "MapPin", filledBy: "client" },
+  { slug: "prescreening", label: "Pre-Screening Questions", dataKey: "prescreening", icon: "HelpCircle", filledBy: "client" },
+  { slug: "messaging", label: "Messaging Templates", dataKey: "messaging", icon: "MessageSquare", filledBy: "client" },
+  { slug: "sources", label: "Sources", dataKey: "sources", icon: "Link", filledBy: "client" },
+  { slug: "folders", label: "Folders", dataKey: "folders", icon: "Folder", filledBy: "talkpush" },
+  { slug: "documents", label: "Document Collection", dataKey: "documents", icon: "FileText", filledBy: "client" },
+  { slug: "attributes", label: "Attributes", dataKey: "attributes", icon: "Tags", filledBy: "talkpush" },
+  { slug: "facebook-whatsapp", label: "Facebook & WhatsApp", dataKey: "fbWhatsapp", icon: "MessagesSquare", filledBy: "client" },
+  { slug: "instagram", label: "Instagram Chatbot", dataKey: "instagram", icon: "Camera", filledBy: "client" },
+  { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone", filledBy: "client" },
+  { slug: "rejection-reasons", label: "Rejection Reasons", dataKey: "rejectionReasons", icon: "ThumbsDown", filledBy: "client" },
+  { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase", filledBy: "client" },
+  { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", filledBy: "talkpush", adminOnly: true },
 ];
 
 export function getTabBySlug(slug: string): TabConfig | undefined {
@@ -54,6 +57,7 @@ export function getCustomTabConfigs(customTabs: CustomTab[] | null | undefined):
     label: ct.label,
     dataKey: null,
     icon: ct.icon || "FileText",
+    filledBy: "client" as FilledBy,
     customTabId: ct.id,
   }));
 }

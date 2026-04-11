@@ -4,6 +4,8 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultFbWhatsapp } from "@/lib/template-data";
 import type { ColumnDef, FbWhatsappData, FaqEntry } from "@/lib/types";
@@ -36,6 +38,7 @@ const faqColumns: ColumnDef[] = [
 
 export function FacebookWhatsAppSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("fbWhatsapp");
   const fbData = (data.fbWhatsapp as FbWhatsappData) || defaultFbWhatsapp;
   const faqs = fbData.faqs || [];
 
@@ -89,6 +92,12 @@ export function FacebookWhatsAppSheet() {
         description="Configure your Facebook Messenger and WhatsApp chatbot integration."
       />
 
+      <TabUploadBanner tabKey="fbWhatsapp" tabLabel="Facebook & WhatsApp" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -141,6 +150,8 @@ export function FacebookWhatsAppSheet() {
           }}
         />
       </div>
+        </>
+      )}
       <SectionFooter />
     </div>
   );

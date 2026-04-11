@@ -124,6 +124,7 @@ export async function PUT(
       agencyPortal,
       agencyPortalUsers,
       adminSettings,
+      tabUploadMeta,
       customSchema,
       customData,
     } = body;
@@ -173,6 +174,7 @@ export async function PUT(
         agencyPortal,
         agencyPortalUsers,
         adminSettings,
+        tabUploadMeta,
         customSchema,
         customData,
       },

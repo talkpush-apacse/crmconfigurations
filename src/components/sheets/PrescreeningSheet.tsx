@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultPrescreening } from "@/lib/template-data";
 import type { ColumnDef, QuestionRow } from "@/lib/types";
@@ -106,6 +108,7 @@ const EMPTY_QUESTION: Omit<QuestionRow, "id"> = {
 
 export function PrescreeningSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("prescreening");
   const questions = (data.prescreening as QuestionRow[]) || defaultPrescreening;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -146,6 +149,12 @@ export function PrescreeningSheet() {
         description="Define the questions candidates will answer during the screening process. Use answer options for Multiple Choice and Dropdown types."
       />
 
+      <TabUploadBanner tabKey="prescreening" tabLabel="Pre-Screening Questions" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample questions:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -199,6 +208,8 @@ export function PrescreeningSheet() {
           sheetName: "Pre-Screening Questions",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );

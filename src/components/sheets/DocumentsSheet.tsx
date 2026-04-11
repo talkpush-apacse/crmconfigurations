@@ -3,6 +3,8 @@
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultDocuments } from "@/lib/template-data";
@@ -25,6 +27,7 @@ const detailColumns: ColumnDef[] = [
 
 export function DocumentsSheet() {
   const { data, updateField } = useChecklistContext();
+  const { isSkipped, uploadedFiles } = useTabUpload("documents");
   const documents = (data.documents as DocumentRow[]) || defaultDocuments;
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -67,6 +70,13 @@ export function DocumentsSheet() {
         title="Document Collection"
         description="Define the documents to be collected from candidates during the hiring process."
       />
+
+      <TabUploadBanner tabKey="documents" tabLabel="Document Collection" />
+
+      {isSkipped ? (
+        <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
+      ) : (
+        <>
       <ExampleHint>
         <p className="mb-1 font-medium">Sample documents to collect:</p>
         <ul className="list-disc pl-4 space-y-0.5">
@@ -92,6 +102,8 @@ export function DocumentsSheet() {
           sheetName: "Documents",
         }}
       />
+        </>
+      )}
       <SectionFooter />
     </div>
   );
