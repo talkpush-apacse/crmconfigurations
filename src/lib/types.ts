@@ -363,12 +363,40 @@ export type CustomSchema = CustomFieldDef[];
 export type CustomData = Record<string, unknown>;
 
 // ===== Custom Tabs (for standard checklists) =====
+
+// --- Table-based custom tab types (created via MCP) ---
+export interface CustomTabColumn {
+  key: string;            // unique column identifier (snake_case)
+  label: string;          // display label
+  type: "text" | "textarea" | "number" | "date" | "select" | "email" | "url" | "checkbox";
+  required?: boolean;
+  options?: string[];     // only for type: "select"
+  width?: string;         // optional Tailwind width class
+}
+
+export interface CustomTabRow {
+  id: string;             // unique row ID
+  [key: string]: unknown; // dynamic column values keyed by column.key
+}
+
+export interface CustomTabUploadedFile {
+  name: string;
+  url: string;
+  uploadedAt: string;     // ISO date string
+}
+
 export interface CustomTab {
   id: string;
   slug: string;
-  label: string;
+  label: string;           // display name (used by tab-config and navigation)
   icon: string;
-  fields: CustomFieldDef[];
+  fields: CustomFieldDef[]; // form-based custom tabs (legacy/admin-created)
+  // Table-based custom tab fields (MCP-created, optional for backward compat)
+  columns?: CustomTabColumn[];
+  rows?: CustomTabRow[];
+  uploadedFile?: CustomTabUploadedFile | null;
+  sortOrder?: number;
+  createdAt?: string;      // ISO date string
 }
 
 // ===== Checklist Data (full) =====

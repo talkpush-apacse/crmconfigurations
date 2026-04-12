@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.28",
+    "name": "Version 1.28 - Custom Tab Tables",
+    "changes": [
+      "Added table-based custom tabs creatable via MCP tools (add_custom_tab, update_custom_tab, delete_custom_tab)",
+      "Custom tabs now appear in client sidebar navigation alongside standard tabs",
+      "Table-based custom tabs support 8 column types: text, textarea, number, date, select, email, url, checkbox",
+      "Reference spreadsheet upload per custom tab (stores file as attachment, does not parse data)",
+      "Fixed Shield icon missing in sidebar for Admin Settings tab",
+      "Added Table icon for MCP-created custom tabs"
+    ],
+    "deployed_at": "2026-04-13"
+  },
+  {
     "version": "1.27",
     "name": "Version 1.27 - Drifting Fresh",
     "changes": [

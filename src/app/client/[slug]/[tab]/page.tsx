@@ -22,6 +22,7 @@ import { RejectionReasonsSheet } from "@/components/sheets/RejectionReasonsSheet
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
 import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
 import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
+import { CustomTabSheet } from "@/components/sheets/CustomTabSheet";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
@@ -81,6 +82,11 @@ export default function TabPage() {
 
   // Custom tab on a standard checklist
   if (customTab) {
+    // Table-based tabs (created via MCP) have columns defined
+    if (customTab.columns !== undefined) {
+      return <CustomTabSheet customTab={customTab} />;
+    }
+    // Form-based tabs (created via admin UI) use the legacy renderer
     return <CustomChecklistForm customTabId={customTab.id} />;
   }
 

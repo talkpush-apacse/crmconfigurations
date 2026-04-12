@@ -10,6 +10,7 @@ import { z } from "zod";
 import { prisma } from "./db";
 import { getSectionState, type SectionState } from "./section-status";
 import { CHECKLIST_JSON_FIELDS, FIELD_LABELS, type ChecklistJsonField } from "./types";
+import { TAB_CONFIG } from "./tab-config";
 import type {
   QuestionRow,
   SourceRow,
@@ -20,6 +21,9 @@ import type {
   SiteRow,
   DocumentRow,
   AgencyPortalRow,
+  CustomTab,
+  CustomTabColumn,
+  CustomTabRow,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -696,6 +700,263 @@ export function createMcpServer(): McpServer {
           {
             type: "text" as const,
             text: `Added ${result.added.length} agency(ies). Total: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // =========================================================================
+  // CUSTOM TAB TOOLS
+  // =========================================================================
+
+  // Fixed slugs that custom tabs must not collide with
+  const FIXED_SLUGS = new Set(TAB_CONFIG.map((t) => t.slug));
+
+  function generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function isSlugAvailable(slug: string, existingTabs: CustomTab[]): boolean {
+    if (FIXED_SLUGS.has(slug)) return false;
+    return !existingTabs.some((t) => t.slug === slug);
+  }
+
+  /**
+   * Read + write the customTabs array for a checklist inside a transaction with
+   * row-level lock to prevent race conditions.
+   */
+  async function mutateCustomTabs(
+    slug: string,
+    mutator: (tabs: CustomTab[]) => { tabs: CustomTab[]; result: Record<string, unknown> }
+  ): Promise<{ result: Record<string, unknown>; version: number }> {
+    return prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<
+        Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
+      >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE slug = ${slug} FOR UPDATE`;
+
+      const current = locked[0];
+      if (!current) throw new Error(`Checklist with slug "${slug}" not found`);
+
+      const checklist = await tx.checklist.findUnique({
+        where: { id: current.id },
+        select: { customTabs: true },
+      });
+
+      const existingTabs = ((checklist?.customTabs ?? []) as unknown as CustomTab[]);
+      const { tabs: newTabs, result } = mutator(existingTabs);
+
+      const newVersion = current.version + 1;
+      const fieldVersions = { ...(current.fieldVersions ?? {}), customTabs: newVersion };
+
+      await tx.checklist.update({
+        where: { id: current.id },
+        data: {
+          customTabs: JSON.parse(JSON.stringify(newTabs)),
+          version: newVersion,
+          fieldVersions,
+        },
+      });
+
+      return { result, version: newVersion };
+    });
+  }
+
+  // --- add_custom_tab ---
+  server.tool(
+    "add_custom_tab",
+    "Add a custom table tab to a checklist with defined columns and optional initial rows. Custom tabs appear in the client UI alongside standard tabs.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab_name: z.string().describe("Display name for the tab (e.g. 'Pre-boarding Documents')"),
+      tab_icon: z.string().optional().default("Table").describe("Lucide icon name (default: 'Table')"),
+      columns: z
+        .array(
+          z.object({
+            key: z.string().describe("Unique snake_case column identifier (e.g. 'document_name')"),
+            label: z.string().describe("Column display label"),
+            type: z
+              .enum(["text", "textarea", "number", "date", "select", "email", "url", "checkbox"])
+              .describe("Column data type"),
+            required: z.boolean().optional().default(false),
+            options: z
+              .array(z.string())
+              .optional()
+              .describe("Dropdown choices — only for type: select"),
+          })
+        )
+        .describe("Column definitions for the tab table"),
+      rows: z
+        .array(z.record(z.string(), z.unknown()))
+        .optional()
+        .default([])
+        .describe("Optional initial data rows (each row is a key→value object matching column keys)"),
+    },
+    async ({ slug, tab_name, tab_icon, columns, rows }) => {
+      const tabSlug = generateSlug(tab_name);
+
+      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
+        if (!isSlugAvailable(tabSlug, existingTabs)) {
+          throw new Error(
+            `Slug "${tabSlug}" is already in use by another tab. Choose a different tab name.`
+          );
+        }
+
+        const tabColumns: CustomTabColumn[] = columns.map((c) => ({
+          key: c.key,
+          label: c.label,
+          type: c.type,
+          required: c.required,
+          options: c.options,
+        }));
+
+        const tabRows: CustomTabRow[] = (rows ?? []).map((r) => ({
+          ...r,
+          id: uuid(),
+        }));
+
+        const newTab: CustomTab = {
+          id: `ct_${uuid()}`,
+          slug: tabSlug,
+          label: tab_name,
+          icon: tab_icon || "Table",
+          fields: [], // empty — this is a table-based tab
+          columns: tabColumns,
+          rows: tabRows,
+          uploadedFile: null,
+          sortOrder: existingTabs.length,
+          createdAt: new Date().toISOString(),
+        };
+
+        return {
+          tabs: [...existingTabs, newTab],
+          result: {
+            id: newTab.id,
+            slug: tabSlug,
+            url_slug: `custom-${tabSlug}`,
+            columnCount: tabColumns.length,
+            rowCount: tabRows.length,
+          },
+        };
+      });
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Created custom tab "${tab_name}" (id: ${result.id}, slug: custom-${result.slug}). ${result.columnCount} column(s), ${result.rowCount} initial row(s). Version: ${version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- update_custom_tab ---
+  server.tool(
+    "update_custom_tab",
+    "Update an existing custom tab's name, icon, or column definitions. Column data is a full replacement — existing row values for removed columns are retained in storage but won't render.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab_id: z.string().describe("The custom tab ID (e.g. 'ct_abc123')"),
+      tab_name: z.string().optional().describe("New display name for the tab"),
+      tab_icon: z.string().optional().describe("New Lucide icon name"),
+      columns: z
+        .array(
+          z.object({
+            key: z.string(),
+            label: z.string(),
+            type: z.enum(["text", "textarea", "number", "date", "select", "email", "url", "checkbox"]),
+            required: z.boolean().optional().default(false),
+            options: z.array(z.string()).optional(),
+          })
+        )
+        .optional()
+        .describe("Full replacement of column definitions (omit to keep existing columns)"),
+    },
+    async ({ slug, tab_id, tab_name, tab_icon, columns }) => {
+      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
+        const idx = existingTabs.findIndex((t) => t.id === tab_id);
+        if (idx === -1) throw new Error(`Custom tab with id "${tab_id}" not found`);
+
+        const existing = existingTabs[idx];
+
+        // Slug collision check if renaming
+        let newSlug = existing.slug;
+        let newLabel = existing.label;
+        if (tab_name && tab_name !== existing.label) {
+          newSlug = generateSlug(tab_name);
+          newLabel = tab_name;
+          const otherTabs = existingTabs.filter((_, i) => i !== idx);
+          if (!isSlugAvailable(newSlug, otherTabs)) {
+            throw new Error(
+              `Slug "${newSlug}" is already in use. Choose a different tab name.`
+            );
+          }
+        }
+
+        const updatedTab: CustomTab = {
+          ...existing,
+          label: newLabel,
+          slug: newSlug,
+          icon: tab_icon ?? existing.icon,
+          columns: columns
+            ? columns.map((c) => ({
+                key: c.key,
+                label: c.label,
+                type: c.type,
+                required: c.required,
+                options: c.options,
+              }))
+            : existing.columns,
+        };
+
+        const newTabs = [...existingTabs];
+        newTabs[idx] = updatedTab;
+
+        return {
+          tabs: newTabs,
+          result: { id: updatedTab.id, slug: updatedTab.slug, label: updatedTab.label },
+        };
+      });
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Updated custom tab "${result.label}" (id: ${result.id}, slug: custom-${result.slug}). Version: ${version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- delete_custom_tab ---
+  server.tool(
+    "delete_custom_tab",
+    "Remove a custom tab and all its data from a checklist. This is permanent.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab_id: z.string().describe("The custom tab ID to delete (e.g. 'ct_abc123')"),
+    },
+    async ({ slug, tab_id }) => {
+      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
+        const tab = existingTabs.find((t) => t.id === tab_id);
+        if (!tab) throw new Error(`Custom tab with id "${tab_id}" not found`);
+
+        return {
+          tabs: existingTabs.filter((t) => t.id !== tab_id),
+          result: { label: tab.label, slug: tab.slug },
+        };
+      });
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Deleted custom tab "${result.label}" (slug: custom-${result.slug}). Version: ${version}`,
           },
         ],
       };

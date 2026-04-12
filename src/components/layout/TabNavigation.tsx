@@ -28,6 +28,8 @@ import {
   Briefcase,
   Tags,
   ThumbsDown,
+  Table,
+  Shield,
 } from "lucide-react";
 import type { ChecklistData } from "@/lib/types";
 
@@ -49,6 +51,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Briefcase,
   Tags,
   ThumbsDown,
+  Table,
+  Shield,
 };
 
 interface TabNavigationProps {
@@ -67,7 +71,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
 
   return (
     <nav className="flex flex-col gap-1 p-3">
-      {getEnabledTabs(data?.enabledTabs ?? null).map((tab) => {
+      {getEnabledTabs(data?.enabledTabs ?? null, false, undefined, data?.customTabs ?? null).map((tab) => {
         const isActive = pathname === `/client/${slug}/${tab.slug}`;
         const Icon = iconMap[tab.icon];
 
