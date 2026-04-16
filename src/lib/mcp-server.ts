@@ -21,6 +21,7 @@ import type {
   SiteRow,
   DocumentRow,
   AgencyPortalRow,
+  UserRow,
   CustomTab,
   CustomTabColumn,
   CustomTabRow,
@@ -700,6 +701,60 @@ export function createMcpServer(): McpServer {
           {
             type: "text" as const,
             text: `Added ${result.added.length} agency(ies). Total: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- Users ---
+  server.tool(
+    "add_users",
+    "Append users to a checklist. Does NOT remove existing users.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      users: z
+        .array(
+          z.object({
+            name: z.string().describe("User's full name"),
+            accessType: z
+              .string()
+              .describe('Access level: "Owner", "Manager", or "Recruiter"'),
+            email: z.string().optional().default(""),
+            phone: z.string().optional().default(""),
+            jobTitle: z.string().optional().default(""),
+            site: z.string().optional().default("").describe("Site the user is assigned to"),
+            reportsTo: z.string().optional().default("").describe("Name of the user's manager"),
+            stage: z
+              .string()
+              .optional()
+              .default("")
+              .describe('Vertical or team (e.g. "Sourcing Luzon", "Healthcare", "L&A")'),
+            comments: z.string().optional().default(""),
+          })
+        )
+        .describe("Array of users to add"),
+    },
+    async ({ slug, users }) => {
+      const rows: UserRow[] = users.map((u) => ({
+        id: uuid(),
+        name: u.name,
+        accessType: u.accessType,
+        email: u.email ?? "",
+        phone: u.phone ?? "",
+        jobTitle: u.jobTitle ?? "",
+        site: u.site ?? "",
+        reportsTo: u.reportsTo ?? "",
+        stage: u.stage ?? "",
+        comments: u.comments ?? "",
+      }));
+
+      const result = await appendToSection<UserRow>(slug, "users", rows);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Added ${result.added.length} user(s). Total: ${result.totalCount}. Version: ${result.version}`,
           },
         ],
       };
