@@ -6,6 +6,7 @@ import { Upload, X, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 
 interface FileUploadCellProps {
   value: string;
@@ -23,6 +24,7 @@ export function FileUploadCell({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingUrl, setEditingUrl] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isImageUrl = value && /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(value);
@@ -103,12 +105,21 @@ export function FileUploadCell({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-            onClick={() => onChange("")}
+            onClick={() => setConfirmOpen(true)}
             title="Remove"
           >
             <X className="h-3 w-3" />
           </Button>
         </div>
+        <ConfirmDeleteDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          fileName={value.split("/").pop() ?? value}
+          onConfirm={() => {
+            onChange("");
+            setConfirmOpen(false);
+          }}
+        />
       </div>
     );
   }
