@@ -10,8 +10,8 @@
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:setup": "npx prisma migrate dev && npx tsx prisma/seed.ts",
-    "vercel-build": "npx prisma migrate deploy && next build",
-    "postinstall": "npx prisma generate"
+    "vercel-build": "next build",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
