@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrations need a direct PostgreSQL connection, not the Accelerate proxy URL.
+    // DATABASE_URL_DIRECT is the raw pg connection; fall back to DATABASE_URL if absent.
+    url: process.env["DATABASE_URL_DIRECT"] ?? process.env["DATABASE_URL"],
   },
 });
