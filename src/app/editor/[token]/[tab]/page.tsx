@@ -57,8 +57,8 @@ export default function EditorTabPage() {
   const tabConfig = isCustom ? null : getTabBySlug(tab);
   const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
 
-  // Editor link holders never see admin-only tabs
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false, undefined, data?.customTabs);
+  // Admin users see admin-only tabs; editor link holders do not
+  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, userRole === "admin", undefined, data?.customTabs);
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
