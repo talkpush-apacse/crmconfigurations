@@ -7,11 +7,8 @@ const GOOGLE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs")
 );
 
-const UNAUTHORIZED = NextResponse.redirect(
-  new URL("/admin/login?error=unauthorized", process.env.GOOGLE_REDIRECT_URI ?? "http://localhost:3000")
-);
-
-function redirectUnauthorized(baseUrl: string) {
+function redirectUnauthorized(baseUrl: string, reason?: string) {
+  if (reason) console.error("Google OAuth unauthorized:", reason);
   return NextResponse.redirect(new URL("/admin/login?error=unauthorized", baseUrl));
 }
 
@@ -26,7 +23,6 @@ export async function GET(request: NextRequest) {
 
   const stateCookie = request.cookies.get("oauth_state")?.value;
 
-  // Clear the state cookie immediately regardless of outcome
   const clearStateCookie = (response: NextResponse) => {
     response.cookies.set("oauth_state", "", {
       httpOnly: true,
@@ -40,11 +36,11 @@ export async function GET(request: NextRequest) {
 
   // CSRF check
   if (!stateParam || !stateCookie || stateParam !== stateCookie) {
-    return clearStateCookie(redirectUnauthorized(origin));
+    return clearStateCookie(redirectUnauthorized(origin, `state mismatch — param: ${stateParam}, cookie: ${stateCookie}`));
   }
 
   if (!code) {
-    return clearStateCookie(redirectUnauthorized(origin));
+    return clearStateCookie(redirectUnauthorized(origin, "no code in callback"));
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -52,7 +48,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   if (!clientId || !clientSecret || !redirectUri) {
-    return clearStateCookie(redirectUnauthorized(origin));
+    return clearStateCookie(redirectUnauthorized(origin, `missing env vars — clientId: ${!!clientId}, clientSecret: ${!!clientSecret}, redirectUri: ${!!redirectUri}`));
   }
 
   try {
@@ -70,15 +66,16 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      console.error("Google token exchange failed:", await tokenRes.text());
-      return clearStateCookie(redirectUnauthorized(origin));
+      const body = await tokenRes.text();
+      console.error("Google token exchange failed:", tokenRes.status, body);
+      return clearStateCookie(redirectUnauthorized(origin, `token exchange ${tokenRes.status}: ${body}`));
     }
 
     const tokenData = await tokenRes.json() as { id_token?: string };
     const idToken = tokenData.id_token;
 
     if (!idToken) {
-      return clearStateCookie(redirectUnauthorized(origin));
+      return clearStateCookie(redirectUnauthorized(origin, "no id_token in token response"));
     }
 
     // Verify ID token using Google's JWKS
@@ -91,19 +88,18 @@ export async function GET(request: NextRequest) {
     const sub = payload["sub"] as string | undefined;
 
     if (!email || !sub) {
-      return clearStateCookie(redirectUnauthorized(origin));
+      return clearStateCookie(redirectUnauthorized(origin, "missing email or sub in id_token"));
     }
 
     // Look up admin by email — never create new users via OAuth
     const user = await prisma.adminUser.findUnique({ where: { email } });
 
     if (!user) {
-      return clearStateCookie(redirectUnauthorized(origin));
+      return clearStateCookie(redirectUnauthorized(origin, `no admin found for email: ${email}`));
     }
 
     if (user.googleId !== null && user.googleId !== sub) {
-      // googleId is linked to a different Google account
-      return clearStateCookie(redirectUnauthorized(origin));
+      return clearStateCookie(redirectUnauthorized(origin, `googleId mismatch for ${email}`));
     }
 
     if (user.googleId === null) {
