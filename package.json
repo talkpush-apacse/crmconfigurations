@@ -10,7 +10,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:setup": "npx prisma migrate dev && npx tsx prisma/seed.ts",
-    "vercel-build": "next build",
+    "vercel-build": "prisma migrate deploy && next build",
     "postinstall": "prisma generate"
   },
   "dependencies": {
