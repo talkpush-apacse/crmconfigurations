@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import path from "path";
-import type { ChecklistData, AiCallData, TabUploadMetaMap } from "./types";
+import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule } from "./types";
 import { TAB_CONFIG } from "./tab-config";
 
 export async function generateExcel(data: ChecklistData): Promise<Buffer> {
@@ -44,6 +44,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   populateTableSheet(workbook, "Agency Portal", data.agencyPortal as Record<string, unknown>[] | null, 12, ["agencyName", "contactName", "email", "phone", "country", "comments"], "C");
   populateTableSheet(workbook, "Agency Portal Users", data.agencyPortalUsers as Record<string, unknown>[] | null, 12, ["name", "email", "agency", "userAccess"], "C");
 
+  addAutoflowsSheet(workbook, data.autoflows);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -253,10 +254,33 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "User Access", key: "userAccess", width: 20 },
   ], data.agencyPortalUsers as Record<string, unknown>[] | null);
 
+  addAutoflowsSheet(workbook, data.autoflows);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
+}
+
+function addAutoflowsSheet(workbook: ExcelJS.Workbook, autoflows: AutoflowRule[] | null | undefined) {
+  if (workbook.getWorksheet("Autoflows")) return;
+  const sheet = workbook.addWorksheet("Autoflows");
+  sheet.columns = [
+    { header: "Group", key: "group", width: 20 },
+    { header: "Trigger Type", key: "triggerType", width: 18 },
+    { header: "Trigger Folder / Attribute", key: "triggerSource", width: 25 },
+    { header: "Condition", key: "condition", width: 20 },
+    { header: "Action", key: "action", width: 25 },
+    { header: "Target Folder", key: "targetFolder", width: 20 },
+    { header: "Timing", key: "timing", width: 15 },
+    { header: "Message Template", key: "messageTemplate", width: 25 },
+    { header: "Rejection Reason", key: "rejectionReason", width: 20 },
+    { header: "Notes", key: "notes", width: 30 },
+  ];
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF535FC1" } };
+  if (autoflows) {
+    autoflows.forEach((rule) => sheet.addRow(rule as unknown as Record<string, unknown>));
+  }
 }
 
 /**

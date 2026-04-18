@@ -42,6 +42,8 @@ model Checklist {
   adminSettings     Json?
   tabUploadMeta     Json?
 
+  autoflows      Json?
+
   isCustom       Boolean  @default(false)
   customSchema   Json?
   customData     Json?

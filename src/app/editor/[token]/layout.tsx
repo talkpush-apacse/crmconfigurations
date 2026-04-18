@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
@@ -14,6 +15,15 @@ import type { NavItem } from "@/components/layout/TopNav";
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const token = params.token as string;
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/check")
+      .then((r) => r.json())
+      .then(({ authenticated }: { authenticated: boolean }) => setIsAdmin(!!authenticated))
+      .catch(() => setIsAdmin(false));
+  }, []);
+
   const {
     data,
     loading,
@@ -54,12 +64,12 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
   const customData = (data.customData as CustomData | null) ?? null;
 
-  // Editor link holders never see admin-only tabs
+  // Admin-only tabs are shown when the user has admin auth
   const enabledTabs = isCustom
     ? []
     : getEnabledTabs(
         data.enabledTabs ?? null,
-        false,
+        isAdmin,
         data.tabOrder ?? null,
         customTabs,
         (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
@@ -110,7 +120,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false, userRole: null, basePath: `/editor/${token}` }}>
+    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false, userRole: isAdmin ? "admin" : null, basePath: `/editor/${token}` }}>
       <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(226,232,240,0.9),_transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#f8fafc_100%)] text-slate-950">
         <Header
           clientName={data.clientName}
