@@ -52,6 +52,12 @@ export async function PUT(
     const id = existing.id;
     const body = await request.json();
 
+    // Payload size guard (5MB limit) — mirrors [id]/route.ts
+    const bodyStr = JSON.stringify(body);
+    if (bodyStr.length > 5_000_000) {
+      return NextResponse.json({ error: "Request payload too large" }, { status: 413 });
+    }
+
     const { version, changedFields } = body as {
       version?: number;
       changedFields?: string[];

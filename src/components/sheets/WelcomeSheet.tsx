@@ -107,11 +107,11 @@ export function WelcomeSheet() {
           </div>
         </div>
 
-        {/* Auto-save inline callout */}
+        {/* Save reminder */}
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
           <p className="text-[14px] text-gray-500">
-            All changes auto-save 2 seconds after you stop typing.
+            Click <span className="font-medium text-gray-700">Publish Changes</span> in the bottom bar to save your progress.
           </p>
         </div>
 
