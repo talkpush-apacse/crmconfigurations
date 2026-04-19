@@ -35,6 +35,12 @@ export async function register() {
         ADD COLUMN IF NOT EXISTS "autoflows" JSONB
     `);
 
+    // 20260420120000_add_configurator_checklist
+    await pool.query(`
+      ALTER TABLE "Checklist"
+        ADD COLUMN IF NOT EXISTS "configuratorChecklist" JSONB
+    `);
+
     console.log("[startup] DB migrations applied");
   } catch (err) {
     console.error("[startup] Migration error:", err);
