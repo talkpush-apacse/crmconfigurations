@@ -9,8 +9,24 @@ export async function GET(request: NextRequest) {
     const slug = searchParams.get("slug");
 
     // Public: fetch a single checklist by slug (for client-facing pages)
+    // adminSettings, editorToken, and fieldVersions are excluded — they contain
+    // credentials and internal tokens that must never be sent to unauthenticated callers.
     if (slug) {
-      const checklist = await prisma.checklist.findUnique({ where: { slug } });
+      const checklist = await prisma.checklist.findUnique({
+        where: { slug },
+        select: {
+          id: true, slug: true, clientName: true, createdAt: true, updatedAt: true,
+          version: true, isCustom: true,
+          enabledTabs: true, tabOrder: true, tabFilledBy: true,
+          communicationChannels: true, featureToggles: true,
+          customSchema: true, customData: true, customTabs: true, tabUploadMeta: true,
+          companyInfo: true, users: true, campaigns: true, sites: true,
+          prescreening: true, messaging: true, sources: true, folders: true,
+          documents: true, attributes: true, fbWhatsapp: true, instagram: true,
+          aiCallFaqs: true, agencyPortal: true, agencyPortalUsers: true,
+          rejectionReasons: true, autoflows: true,
+        },
+      });
       if (!checklist) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }

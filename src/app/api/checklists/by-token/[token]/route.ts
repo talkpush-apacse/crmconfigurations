@@ -152,6 +152,8 @@ export async function PUT(
       tabUploadMeta,
       customSchema,
       customData,
+      customTabs,
+      autoflows,
     } = body;
 
     if (version !== undefined) {
@@ -203,6 +205,8 @@ export async function PUT(
         tabUploadMeta,
         customSchema,
         customData,
+        customTabs,
+        autoflows,
       },
     });
 
