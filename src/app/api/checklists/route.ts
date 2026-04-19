@@ -25,15 +25,20 @@ export async function GET(request: NextRequest) {
     const pageSize = 50;
     const skip = (page - 1) * pageSize;
 
-    const [items, total] = await prisma.$transaction([
+    const [rawItems, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true, customTabs: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true, customTabs: true, configuratorChecklist: true },
         take: pageSize,
         skip,
       }),
       prisma.checklist.count(),
     ]);
+
+    const items = rawItems.map(({ configuratorChecklist, ...rest }) => ({
+      ...rest,
+      hasConfigurator: configuratorChecklist !== null,
+    }));
 
     return NextResponse.json({ items, total, page, pageSize });
   } catch (err) {

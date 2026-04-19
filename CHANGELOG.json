@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.29",
+    "name": "Version 1.29 - Configurator Checklist",
+    "changes": [
+      "Added Configurator's Checklist — a 55-step admin-only task list generated from client settings",
+      "Checklist filters items by enabled tabs, communication channels, and feature toggles",
+      "Status tracking per step: Completed, In Progress, In Progress w/ Dependency, Blocked",
+      "Notes field per step with debounced auto-save and optimistic locking (version-based 409 rebase)",
+      "Snapshot stability: progress denominator stays fixed until SE clicks 'Refresh from settings'",
+      "Stale-snapshot banner alerts when source settings have changed since last generation",
+      "Context boxes surface relevant data from the source checklist (company info, Facebook page, etc.)",
+      "Export to Excel: active items on Sheet 1, summary on Sheet 2, archived items on Sheet 3",
+      "Admin list: new ClipboardList button per row — 'Generate' or 'View' depending on state"
+    ],
+    "deployed_at": "2026-04-20"
+  },
+  {
     "version": "1.28",
     "name": "Version 1.28 - Custom Tab Tables",
     "changes": [

@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Checklist {
@@ -44,6 +43,8 @@ model Checklist {
   tabUploadMeta     Json?
 
   autoflows      Json?
+
+  configuratorChecklist Json?
 
   isCustom       Boolean  @default(false)
   customSchema   Json?

@@ -46,6 +46,7 @@ import {
   FileText,
   Link2,
   RefreshCw,
+  ClipboardList,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -94,6 +95,7 @@ interface ChecklistSummary {
   isCustom?: boolean;
   customSchema?: CustomFieldDef[] | null;
   customTabs?: CustomTab[] | null;
+  hasConfigurator?: boolean;
 }
 
 interface EditingState {
@@ -794,6 +796,23 @@ export default function AdminDashboard() {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Regenerate editor link</TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={c.hasConfigurator ? `View configurator's checklist for ${c.clientName}` : `Generate configurator's checklist for ${c.clientName}`}
+                                      onClick={() => router.push(`/admin/${c.slug}/configurator`)}
+                                      className={c.hasConfigurator ? "text-teal-600 hover:text-teal-700" : ""}
+                                    >
+                                      <ClipboardList className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {c.hasConfigurator ? "View Configurator's Checklist" : "Generate Configurator's Checklist"}
+                                  </TooltipContent>
                                 </Tooltip>
 
                                 <Separator orientation="vertical" className="mx-1 h-5" />

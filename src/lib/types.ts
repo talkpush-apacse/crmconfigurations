@@ -213,6 +213,14 @@ export interface CommunicationChannels {
   aiCalls: boolean;
 }
 
+// Single channel identifier used in configurator template conditions.
+// 'facebook' maps to communicationChannels.messenger (Facebook Messenger).
+// 'instagram' maps to enabledTabs.includes('instagram').
+export type CommunicationChannel =
+  | keyof CommunicationChannels
+  | 'facebook'
+  | 'instagram';
+
 // ===== Feature Toggles =====
 export interface FeatureToggles {
   aiCallVoiceSelection: boolean;
