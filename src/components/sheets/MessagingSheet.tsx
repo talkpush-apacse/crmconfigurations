@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
@@ -59,6 +59,20 @@ function SortableTemplateItem({
   isReadOnly: boolean;
   hasEmailChannel: boolean;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDeleteClick = () => {
+    if (confirmingDelete) {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmingDelete(false);
+      handleDelete(idx);
+    } else {
+      setConfirmingDelete(true);
+      confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 3000);
+    }
+  };
+
   const nameEmpty = !isReadOnly && !template.name.trim();
   const purposeEmpty = !isReadOnly && !template.purpose.trim();
   const {
@@ -224,11 +238,12 @@ function SortableTemplateItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive"
-                  onClick={() => handleDelete(idx)}
+                  className={confirmingDelete ? "text-destructive bg-red-50 scale-105" : "text-destructive"}
+                  onClick={handleDeleteClick}
+                  title={confirmingDelete ? "Click again to confirm delete" : "Delete template"}
                 >
                   <Trash2 className="mr-1 h-3.5 w-3.5" />
-                  Delete Template
+                  {confirmingDelete ? "Confirm Delete?" : "Delete Template"}
                 </Button>
               </div>
             )}

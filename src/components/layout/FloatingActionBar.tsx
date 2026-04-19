@@ -45,7 +45,7 @@ export function FloatingActionBar({
             size="sm"
             onClick={onPublish}
             disabled={isSaving}
-            className="h-11 rounded-xl bg-[#1A73E8] px-4 text-white shadow-[0_18px_32px_-22px_rgba(26,115,232,0.85)] hover:bg-[#1765cb] active:scale-95"
+            className="h-11 rounded-xl bg-[#00BFA5] px-4 text-white shadow-[0_18px_32px_-22px_rgba(0,191,165,0.85)] hover:bg-[#00a896] active:scale-95"
           >
             <UploadCloud className="h-4 w-4" />
             {isSaving ? "Publishing..." : "Publish Changes"}

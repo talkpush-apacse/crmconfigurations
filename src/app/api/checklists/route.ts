@@ -3,6 +3,15 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { getDefaultChecklistData } from "@/lib/template-data";
 
+function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
+  const publicChecklist = { ...checklist };
+  delete publicChecklist.instanceConfig;
+  delete publicChecklist.atsIntegrations;
+  // editorToken must never be returned to slug-based public viewers
+  delete publicChecklist.editorToken;
+  return publicChecklist;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,7 +23,7 @@ export async function GET(request: NextRequest) {
       if (!checklist) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      return NextResponse.json(checklist);
+      return NextResponse.json(omitInternalConfig(checklist as unknown as Record<string, unknown>));
     }
 
     // Protected: list all checklists (all authenticated users see everything)
@@ -96,7 +105,10 @@ export async function POST(request: NextRequest) {
       createData.instagram = JSON.parse(JSON.stringify(defaults.instagram));
       createData.aiCallFaqs = JSON.parse(JSON.stringify(defaults.aiCallFaqs));
       createData.agencyPortal = JSON.parse(JSON.stringify(defaults.agencyPortal));
+      createData.labels = JSON.parse(JSON.stringify(defaults.labels));
       createData.adminSettings = JSON.parse(JSON.stringify(defaults.adminSettings));
+      createData.instanceConfig = JSON.parse(JSON.stringify(defaults.instanceConfig));
+      createData.atsIntegrations = JSON.parse(JSON.stringify(defaults.atsIntegrations));
       if (customTabs && Array.isArray(customTabs) && customTabs.length > 0) {
         createData.customTabs = JSON.parse(JSON.stringify(customTabs));
         createData.customData = JSON.parse(JSON.stringify({}));

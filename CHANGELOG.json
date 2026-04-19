@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.29",
+    "name": "Version 1.29 - Bug Fix Batch",
+    "changes": [
+      "Fixed: Duplicate checklist now copies all content data (campaigns, users, sites, etc.) — not just config",
+      "Fixed: All admin async handlers (delete, copy, save, regen token) now show error banners on failure",
+      "Fixed: Token regeneration now requires confirmation dialog before invalidating the old link",
+      "Fixed: Legacy PUT by-slug and by-token routes now require version — prevents silent data overwrites",
+      "Fixed: MessagingSheet delete now requires 2-click confirmation (no accidental single-click delete)",
+      "Fixed: EditableTable delete confirm tracked by row ID (not index) — drag-reorder no longer targets wrong row",
+      "Fixed: Expand All / Collapse All toggle was inverted — now behaves correctly",
+      "Fixed: Context values memoized in layout files — reduces unnecessary re-renders on save status changes",
+      "Fixed: ADMIN_SECRET missing env var now logs a clear error instead of failing silently",
+      "Fixed: editorToken no longer returned to slug-based public viewers or echoed back to token callers",
+      "Fixed: Typo documentsToRring → documentsToRing across all files",
+      "Fixed: FloatingActionBar publish button now uses Talkpush teal instead of Google blue"
+    ],
+    "deployed_at": "2026-04-20"
+  },
+  {
     "version": "1.28",
     "name": "Version 1.28 - Custom Tab Tables",
     "changes": [

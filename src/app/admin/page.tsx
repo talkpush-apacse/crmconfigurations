@@ -161,10 +161,13 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [saving, setSaving] = useState(false);
   // P1-01: Dialog-based delete — replaces inline deletingId pattern
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
+  // Confirmation state for token regeneration
+  const [regenTarget, setRegenTarget] = useState<ChecklistSummary | null>(null);
   // P4-05: Optimistic delete with 5s undo window
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   // P4-02: Sort state
@@ -227,11 +230,22 @@ export default function AdminDashboard() {
   const handleConfirmDelete = (c: ChecklistSummary) => {
     setDeleteTarget(null);
     const timer = setTimeout(async () => {
-      await fetch(`/api/checklists/${c.id}`, { method: "DELETE" });
-      setPendingDelete(null);
-      // Refetch current page; if it's now empty and not page 1, go back one page
-      const newPage = checklists.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-      fetchChecklists(newPage);
+      try {
+        const res = await fetch(`/api/checklists/${c.id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error || "Delete failed");
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to delete checklist";
+        setOperationError(msg);
+        setTimeout(() => setOperationError(null), 5000);
+      } finally {
+        setPendingDelete(null);
+        // Refetch current page; if it's now empty and not page 1, go back one page
+        const newPage = checklists.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+        fetchChecklists(newPage);
+      }
     }, 5000);
     setPendingDelete({ item: c, timer });
   };
@@ -245,8 +259,12 @@ export default function AdminDashboard() {
 
   const handleCopy = async (id: string) => {
     try {
+      // 1. Fetch the full source checklist (auth-protected endpoint)
       const res = await fetch(`/api/checklists/${id}`);
-      const original = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch source checklist");
+      const original = await res.json() as Record<string, unknown>;
+
+      // 2. Create the new record (config skeleton)
       const newName = `${original.clientName} (Copy)`;
       const createBody: Record<string, unknown> = { clientName: newName };
       if (original.isCustom) {
@@ -256,21 +274,70 @@ export default function AdminDashboard() {
         createBody.enabledTabs = original.enabledTabs;
         createBody.communicationChannels = original.communicationChannels;
         createBody.featureToggles = original.featureToggles;
-        if (original.customTabs) {
-          createBody.customTabs = original.customTabs;
-        }
+        if (original.customTabs) createBody.customTabs = original.customTabs;
       }
       const createRes = await fetch("/api/checklists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(createBody),
       });
-      const created = await createRes.json();
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Failed to create copy");
+      }
+      const created = await createRes.json() as { id: string; slug: string; version: number };
+
+      // 3. PUT all content data from original into the new record (whole-document path)
+      // Without this step every content section would be empty defaults.
+      const contentBody: Record<string, unknown> = {
+        version: created.version,
+        enabledTabs: original.enabledTabs,
+        tabOrder: original.tabOrder,
+        tabFilledBy: original.tabFilledBy,
+        communicationChannels: original.communicationChannels,
+        featureToggles: original.featureToggles,
+        companyInfo: original.companyInfo,
+        users: original.users,
+        campaigns: original.campaigns,
+        sites: original.sites,
+        prescreening: original.prescreening,
+        messaging: original.messaging,
+        sources: original.sources,
+        folders: original.folders,
+        documents: original.documents,
+        attributes: original.attributes,
+        fbWhatsapp: original.fbWhatsapp,
+        instagram: original.instagram,
+        aiCallFaqs: original.aiCallFaqs,
+        agencyPortal: original.agencyPortal,
+        agencyPortalUsers: original.agencyPortalUsers,
+        rejectionReasons: original.rejectionReasons,
+        labels: original.labels,
+        adminSettings: original.adminSettings,
+        instanceConfig: original.instanceConfig,
+        atsIntegrations: original.atsIntegrations,
+        tabUploadMeta: original.tabUploadMeta,
+        customSchema: original.customSchema,
+        customData: original.customData,
+        customTabs: original.customTabs,
+      };
+      const putRes = await fetch(`/api/checklists/${created.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contentBody),
+      });
+      if (!putRes.ok) {
+        const err = await putRes.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Failed to copy content data");
+      }
+
       fetchChecklists(currentPage);
-      setCopySuccess(created.slug || newName);
+      setCopySuccess(`Checklist duplicated: ${created.slug || newName}`);
       setTimeout(() => setCopySuccess(null), 4000);
-    } catch {
-      console.error("Failed to copy checklist");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to copy checklist";
+      setOperationError(msg);
+      setTimeout(() => setOperationError(null), 5000);
     }
   };
 
@@ -338,13 +405,17 @@ export default function AdminDashboard() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        console.error("Failed to save settings:", err);
+        const msg = (err as { error?: string }).error || "Failed to save settings";
+        setOperationError(msg);
+        setTimeout(() => setOperationError(null), 5000);
         return;
       }
       setEditing(null);
       fetchChecklists(currentPage);
-    } catch {
-      console.error("Failed to save settings");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save settings";
+      setOperationError(msg);
+      setTimeout(() => setOperationError(null), 5000);
     } finally {
       setSaving(false);
     }
@@ -357,14 +428,24 @@ export default function AdminDashboard() {
     setTimeout(() => setEditorLinkCopied(null), 2000);
   };
 
-  const handleRegenerateToken = async (c: ChecklistSummary) => {
+  const handleRegenerateToken = (c: ChecklistSummary) => {
+    setRegenTarget(c);
+  };
+
+  const handleConfirmRegenToken = async () => {
+    if (!regenTarget) return;
+    const c = regenTarget;
+    setRegenTarget(null);
     try {
       const res = await fetch(`/api/checklists/${c.id}/regenerate-token`, { method: "POST" });
-      if (res.ok) {
-        fetchChecklists(currentPage);
-      }
-    } catch {
-      console.error("Failed to regenerate token");
+      if (!res.ok) throw new Error("Token regeneration failed");
+      fetchChecklists(currentPage);
+      setCopySuccess(`Editor link regenerated for ${c.clientName}`);
+      setTimeout(() => setCopySuccess(null), 4000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to regenerate token";
+      setOperationError(msg);
+      setTimeout(() => setOperationError(null), 5000);
     }
   };
 
@@ -483,16 +564,40 @@ export default function AdminDashboard() {
               }
             />
 
-            {/* Copy success notification */}
+            {/* Regen token confirmation dialog */}
+            <Dialog open={!!regenTarget} onOpenChange={() => setRegenTarget(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Regenerate editor link?</DialogTitle>
+                  <DialogDescription>
+                    This will invalidate the current editor link for <strong>{regenTarget?.clientName}</strong>. Anyone using the old link will lose access immediately.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setRegenTarget(null)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleConfirmRegenToken}>
+                    Regenerate
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Operation success notification */}
             {copySuccess && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <p className="text-sm text-green-700">
-                  Checklist copied!{" "}
-                  <span className="font-medium">
-                    {copySuccess}
-                  </span>
+                  <span className="font-medium">{copySuccess}</span>
                 </p>
+              </div>
+            )}
+
+            {/* Operation error notification */}
+            {operationError && (
+              <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">{operationError}</p>
               </div>
             )}
 
@@ -633,13 +738,13 @@ export default function AdminDashboard() {
                           <TableRow
                             key={c.id}
                             className="cursor-pointer transition-colors duration-100 hover:bg-muted/50"
-                            onClick={() => router.push(`/editor/${c.editorToken}/welcome`)}
+                            onClick={() => router.push(`/admin/checklists/${c.id}/welcome`)}
                           >
                             {/* P1-03 + P3-02: Teal link + slug as secondary line, no separate slug column */}
                             <TableCell className="py-2 font-medium">
                               <span className="flex items-center gap-1.5">
                                 <Link
-                                  href={`/editor/${c.editorToken}/welcome`}
+                                  href={`/admin/checklists/${c.id}/welcome`}
                                   target="_blank"
                                   className="text-teal-700 transition-colors hover:text-teal-900 hover:underline"
                                   onClick={(e) => e.stopPropagation()}
@@ -722,7 +827,7 @@ export default function AdminDashboard() {
                                 {/* P1-02: aria-label on every icon button */}
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Link href={`/editor/${c.editorToken}/welcome`} target="_blank">
+                                    <Link href={`/admin/checklists/${c.id}/welcome`} target="_blank">
                                       <Button
                                         variant="ghost"
                                         size="icon"

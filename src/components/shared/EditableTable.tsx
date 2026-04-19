@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment, useMemo } from "react";
+import { useState, Fragment, useMemo, useRef } from "react";
 import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,7 @@ interface EditableTableProps<TRow extends EditableRow> {
   /** Called with the reordered array when a row is dragged to a new position */
   onReorder?: (reorderedData: TRow[]) => void;
   addLabel?: string;
+  renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
   /** Optional pinned sample row shown at the top of the table body (read-only) */
   sampleRow?: Record<string, string>;
   csvConfig?: {
@@ -86,12 +87,13 @@ function SortableRow({
   toggleRow,
   onUpdate,
   onDuplicate,
-  confirmingDelete,
+  confirmingDeleteId,
   handleDeleteClick,
-  setConfirmingDelete,
+  clearConfirmingDelete,
   isReadOnly,
   canReorder,
   rowIsActive,
+  renderCellPrefix,
 }: {
   row: EditableRow;
   rowIdx: number;
@@ -101,15 +103,17 @@ function SortableRow({
   toggleRow: () => void;
   onUpdate: (index: number, field: string, value: string | boolean) => void;
   onDuplicate?: (index: number) => void;
-  confirmingDelete: number | null;
-  handleDeleteClick: (idx: number) => void;
-  setConfirmingDelete: (idx: number | null) => void;
+  confirmingDeleteId: string | null;
+  handleDeleteClick: (rowId: string, rowIdx: number) => void;
+  clearConfirmingDelete: () => void;
   isReadOnly: boolean;
   canReorder: boolean;
   rowIsActive: boolean;
+  renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
 }) {
   const rowValues = row as Record<string, string | boolean | null | undefined>;
   const sortableId = row.id || `row-${rowIdx}`;
+  const isConfirmingDelete = confirmingDeleteId === sortableId;
   const {
     attributes,
     listeners,
@@ -172,16 +176,21 @@ function SortableRow({
             key={col.key}
             className={`p-1.5${col.type === "textarea" ? " min-w-[180px]" : col.type === "text" ? " min-w-[120px]" : ""}`}
           >
-            <EditableCell
-              value={rowValues[col.key] as string | boolean}
-              type={col.type}
-              options={col.options}
-              onChange={(val) => onUpdate(rowIdx, col.key, val)}
-              placeholder={col.label}
-              validation={col.validation}
-              required={col.required}
-              showRequiredError={rowIsActive}
-            />
+            <div className="flex items-center gap-2">
+              {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
+              <div className="min-w-0 flex-1">
+                <EditableCell
+                  value={rowValues[col.key] as string | boolean}
+                  type={col.type}
+                  options={col.options}
+                  onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                  placeholder={col.label}
+                  validation={col.validation}
+                  required={col.required}
+                  showRequiredError={rowIsActive}
+                />
+              </div>
+            </div>
           </TableCell>
         ))}
         {!isReadOnly && (
@@ -198,13 +207,13 @@ function SortableRow({
                   <Copy className="h-4 w-4" />
                 </Button>
               )}
-              {confirmingDelete === rowIdx ? (
+              {isConfirmingDelete ? (
                 <>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
-                    onClick={() => handleDeleteClick(rowIdx)}
+                    onClick={() => handleDeleteClick(sortableId, rowIdx)}
                     title="Confirm delete"
                   >
                     Delete?
@@ -213,7 +222,7 @@ function SortableRow({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:bg-gray-100"
-                    onClick={() => setConfirmingDelete(null)}
+                    onClick={clearConfirmingDelete}
                     title="Cancel"
                   >
                     <X className="h-4 w-4" />
@@ -224,7 +233,7 @@ function SortableRow({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
-                  onClick={() => handleDeleteClick(rowIdx)}
+                  onClick={() => handleDeleteClick(sortableId, rowIdx)}
                   title="Delete row"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -294,11 +303,14 @@ export function EditableTable<TRow extends EditableRow>({
   onDuplicate,
   onReorder,
   addLabel = "Add Row",
+  renderCellPrefix,
   sampleRow,
   csvConfig,
 }: EditableTableProps<TRow>) {
   const { isReadOnly } = useChecklistContext();
-  const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+  // Track confirm by stable row ID (not index) so drag-reorder doesn't target the wrong row
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [collapsedRowIds, setCollapsedRowIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -329,7 +341,8 @@ export function EditableTable<TRow extends EditableRow>({
   const visibleCollapsedCount = sortableIds.filter((id) => collapsedRowIds.has(id)).length;
 
   const toggleAll = () => {
-    if (visibleCollapsedCount === data.length) {
+    // When any rows are collapsed, expand all; otherwise collapse all
+    if (visibleCollapsedCount > 0) {
       setCollapsedRowIds(new Set());
     } else {
       setCollapsedRowIds(new Set(sortableIds));
@@ -342,13 +355,21 @@ export function EditableTable<TRow extends EditableRow>({
     [columns, detailColumns]
   );
 
-  const handleDeleteClick = (rowIdx: number) => {
-    if (confirmingDelete === rowIdx) {
+  const handleDeleteClick = (rowId: string, rowIdx: number) => {
+    if (confirmingDeleteId === rowId) {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmingDeleteId(null);
       onDelete(rowIdx);
-      setConfirmingDelete(null);
     } else {
-      setConfirmingDelete(rowIdx);
+      setConfirmingDeleteId(rowId);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => setConfirmingDeleteId(null), 3000);
     }
+  };
+
+  const clearConfirmingDelete = () => {
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    setConfirmingDeleteId(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -459,9 +480,9 @@ export function EditableTable<TRow extends EditableRow>({
                 toggleRow={() => toggleRow(sortableIds[rowIdx])}
                 onUpdate={onUpdate}
                 onDuplicate={onDuplicate}
-                confirmingDelete={confirmingDelete}
+                confirmingDeleteId={confirmingDeleteId}
                 handleDeleteClick={handleDeleteClick}
-                setConfirmingDelete={setConfirmingDelete}
+                clearConfirmingDelete={clearConfirmingDelete}
                 isReadOnly={isReadOnly}
                 canReorder={canReorder}
                 rowIsActive={allColumns.some((col) =>
@@ -469,6 +490,7 @@ export function EditableTable<TRow extends EditableRow>({
                     (row as Record<string, string | boolean | null | undefined>)[col.key]
                   )
                 )}
+                renderCellPrefix={renderCellPrefix}
               />
             ))}
           </TableBody>

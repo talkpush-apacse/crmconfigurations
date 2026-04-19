@@ -12,8 +12,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
+    const adminSecret = process.env.ADMIN_SECRET;
+    if (!adminSecret) {
+      console.error("[middleware] ADMIN_SECRET environment variable is not set — blocking all admin access");
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+
     try {
-      const secret = new TextEncoder().encode(process.env.ADMIN_SECRET!);
+      const secret = new TextEncoder().encode(adminSecret);
       await jwtVerify(token, secret);
     } catch {
       // Token invalid or expired — redirect to login

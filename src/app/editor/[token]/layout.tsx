@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
@@ -109,8 +110,12 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     updateField("tabFilledBy", map);
   };
 
+  const contextValue = useMemo(() => ({
+    data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false as const, userRole: null, basePath: `/editor/${token}`,
+  }), [data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, token]);
+
   return (
-    <ChecklistContext.Provider value={{ data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false, userRole: null, basePath: `/editor/${token}` }}>
+    <ChecklistContext.Provider value={contextValue}>
       <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(226,232,240,0.9),_transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#f8fafc_100%)] text-slate-950">
         <Header
           clientName={data.clientName}
