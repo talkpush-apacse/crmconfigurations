@@ -140,6 +140,7 @@ export async function PUT(
       customSchema,
       customData,
       customTabs,
+      autoflows,
     } = body;
 
     // Version is required for all writes — reject versionless saves to prevent silent overwrites
@@ -198,6 +199,7 @@ export async function PUT(
         customSchema: toPrismaJson(customSchema),
         customData: toPrismaJson(customData),
         customTabs: toPrismaJson(customTabs),
+        autoflows: toPrismaJson(autoflows),
       },
     });
 

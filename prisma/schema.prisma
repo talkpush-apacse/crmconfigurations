@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Checklist {
@@ -42,6 +43,8 @@ model Checklist {
   adminSettings     Json?
   tabUploadMeta     Json?
 
+  autoflows      Json?
+
   isCustom       Boolean  @default(false)
   customSchema   Json?
   customData     Json?
@@ -53,6 +56,7 @@ model Checklist {
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?
+  googleId     String?  @unique
   createdAt    DateTime @default(now())
 }

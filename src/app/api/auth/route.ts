@@ -36,11 +36,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
-    const user = await prisma.adminUser.findUnique({ where: { email } });
-    if (!user) {
+    const rows = await prisma.$queryRaw<
+      Array<{ id: string; email: string; passwordHash: string | null }>
+    >`SELECT id, email, "passwordHash" FROM "AdminUser" WHERE email = ${email} LIMIT 1`;
+
+    if (!rows.length || !rows[0].passwordHash) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
-
+    const user = rows[0];
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

@@ -399,6 +399,21 @@ export interface CustomTab {
   createdAt?: string;      // ISO date string
 }
 
+// ===== Autoflow Rule =====
+export interface AutoflowRule {
+  id: string;
+  group: string;
+  triggerType: "Folder Entry" | "Attribute Change";
+  triggerSource: string;
+  condition: string;
+  action: string;
+  targetFolder: string;
+  timing: string;
+  messageTemplate: string;
+  rejectionReason: string;
+  notes: string;
+}
+
 // ===== Checklist Data (full) =====
 export interface ChecklistData {
   id: string;
@@ -435,6 +450,7 @@ export interface ChecklistData {
   customSchema: CustomSchema | null;
   customData: CustomData | null;
   customTabs: CustomTab[] | null;
+  autoflows: AutoflowRule[] | null;
 }
 
 // ===== Column definition for EditableTable =====
@@ -478,6 +494,7 @@ export const CHECKLIST_JSON_FIELDS = [
   "customSchema",
   "customData",
   "customTabs",
+  "autoflows",
 ] as const;
 
 export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
@@ -509,4 +526,5 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   customSchema: "Custom Schema",
   customData: "Custom Data",
   customTabs: "Custom Tabs",
+  autoflows: "Autoflows",
 };
