@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
@@ -48,35 +48,38 @@ const sheetComponents: Record<string, React.ComponentType> = {
   integrations: IntegrationsSheet,
 };
 
-export default function TabPage() {
+export default function AdminChecklistTabPage() {
   const params = useParams();
   const router = useRouter();
   const tab = params.tab as string;
-  const slug = params.slug as string;
+  const id = params.id as string;
   const { data } = useChecklistContext();
 
   const isCustom = !!data?.isCustom;
   const tabConfig = isCustom ? null : getTabBySlug(tab);
   const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
-
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false, undefined, data?.customTabs);
+  const enabledTabs = useMemo(
+    () =>
+      isCustom
+        ? []
+        : getEnabledTabs(data?.enabledTabs ?? null, true, data?.tabOrder ?? null, data?.customTabs),
+    [isCustom, data?.enabledTabs, data?.tabOrder, data?.customTabs]
+  );
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
-  // Auto-redirect to first enabled tab if current tab is disabled
   useEffect(() => {
     if (!isCustom && !customTab && tabConfig && !isEnabled && enabledTabs.length > 0) {
-      router.replace(`/client/${slug}/${enabledTabs[0].slug}`);
+      router.replace(`/admin/checklists/${id}/${enabledTabs[0].slug}`);
     }
-  }, [isCustom, customTab, tabConfig, isEnabled, enabledTabs, slug, router]);
+  }, [isCustom, customTab, tabConfig, isEnabled, enabledTabs, id, router]);
 
-  // Dynamic browser tab title
   useEffect(() => {
     if (isCustom && data?.clientName) {
-      document.title = `Custom Checklist — ${data.clientName} | Talkpush CRM`;
+      document.title = `Custom Checklist - ${data.clientName} | Talkpush CRM`;
     } else if (customTab && data?.clientName) {
-      document.title = `${customTab.label} — ${data.clientName} | Talkpush CRM`;
+      document.title = `${customTab.label} - ${data.clientName} | Talkpush CRM`;
     } else if (tabConfig && data?.clientName) {
-      document.title = `${tabConfig.label} — ${data.clientName} | Talkpush CRM`;
+      document.title = `${tabConfig.label} - ${data.clientName} | Talkpush CRM`;
     }
   }, [isCustom, tab, tabConfig, customTab, data?.clientName]);
 
@@ -84,13 +87,10 @@ export default function TabPage() {
     return <CustomChecklistForm />;
   }
 
-  // Custom tab on a standard checklist
   if (customTab) {
-    // Table-based tabs (created via MCP) have columns defined
     if (customTab.columns !== undefined) {
       return <CustomTabSheet customTab={customTab} />;
     }
-    // Form-based tabs (created via admin UI) use the legacy renderer
     return <CustomChecklistForm customTabId={customTab.id} />;
   }
 
@@ -102,7 +102,6 @@ export default function TabPage() {
     );
   }
 
-  // Guard against disabled tabs (render nothing while redirecting)
   if (!isEnabled) {
     return null;
   }

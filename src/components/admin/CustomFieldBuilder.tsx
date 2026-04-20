@@ -178,7 +178,9 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                     {FIELD_TYPE_OPTIONS.find((o) => o.value === field.type)?.label ?? field.type}
                   </Badge>
                   {field.placeholder && (
-                    <span className="text-xs text-muted-foreground truncate">"{field.placeholder}"</span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      &quot;{field.placeholder}&quot;
+                    </span>
                   )}
                 </div>
               </div>

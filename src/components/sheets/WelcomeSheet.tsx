@@ -36,7 +36,7 @@ function StatusChip({
 }
 
 export function WelcomeSheet() {
-  const { data, basePath } = useChecklistContext();
+  const { data, basePath, includeAdminTabs } = useChecklistContext();
 
   // Lazy initializer reads localStorage once on mount — avoids setState-in-effect pattern
   const [notesOpen, setNotesOpen] = useState<boolean>(() => {
@@ -53,7 +53,7 @@ export function WelcomeSheet() {
     });
   };
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null);
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, !!includeAdminTabs);
   const contentTabs = enabledTabs.filter((t) => t.dataKey);
 
   const completedCount = contentTabs.filter((t) => {

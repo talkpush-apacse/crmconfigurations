@@ -91,6 +91,7 @@ interface ChecklistSummary {
   communicationChannels: CommunicationChannels | null;
   version: number;
   featureToggles: FeatureToggles | null;
+  configuratorChecklist: unknown | null;
   isCustom?: boolean;
   customSchema?: CustomFieldDef[] | null;
   customTabs?: CustomTab[] | null;
@@ -314,7 +315,6 @@ export default function AdminDashboard() {
         rejectionReasons: original.rejectionReasons,
         labels: original.labels,
         adminSettings: original.adminSettings,
-        instanceConfig: original.instanceConfig,
         atsIntegrations: original.atsIntegrations,
         tabUploadMeta: original.tabUploadMeta,
         customSchema: original.customSchema,
@@ -821,6 +821,31 @@ export default function AdminDashboard() {
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     {editorLinkCopied === c.id ? "Copied!" : "Copy editor link"}
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Link href={`/admin/${c.slug}/configurator`}>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 rounded-md px-2"
+                                        aria-label={`${c.configuratorChecklist ? "View" : "Generate"} configurator checklist for ${c.clientName}`}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        <span className="hidden xl:inline">
+                                          {c.configuratorChecklist
+                                            ? "View Configurator's Checklist"
+                                            : "Generate Configurator's Checklist"}
+                                        </span>
+                                      </Button>
+                                    </Link>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {c.configuratorChecklist
+                                      ? "View Configurator's Checklist"
+                                      : "Generate Configurator's Checklist"}
                                   </TooltipContent>
                                 </Tooltip>
 

@@ -17,6 +17,10 @@ import type {
   CommunicationChannels,
   FeatureToggles,
   AdminSettingsData,
+  LabelRow,
+  BusinessHourEntry,
+  AtsIntegration,
+  IntegrationRow,
 } from "./types";
 
 export function uid(): string {
@@ -35,6 +39,16 @@ export const defaultCommunicationChannels: CommunicationChannels = {
 export const defaultFeatureToggles: FeatureToggles = {
   aiCallVoiceSelection: true,
 };
+
+export const defaultBusinessHours: BusinessHourEntry[] = [
+  { day: "Monday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Tuesday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Wednesday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Thursday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Friday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Saturday", isOpen: false, openTime: "08:00", closeTime: "17:00" },
+  { day: "Sunday", isOpen: false, openTime: "08:00", closeTime: "17:00" },
+];
 
 export const defaultCompanyInfo: CompanyInfo = {
   // Company Details
@@ -59,6 +73,7 @@ export const defaultCompanyInfo: CompanyInfo = {
   allowDuplicates: "",
   coolingPeriod: "",
   rehiresAllowed: "",
+  businessHours: defaultBusinessHours,
 };
 
 export const defaultUsers: UserRow[] = [];
@@ -488,6 +503,8 @@ export const defaultRejectionReasons: string[] = [
   "Wrong Location",
 ];
 
+export const defaultLabels: LabelRow[] = [];
+
 export const defaultAdminSettings: AdminSettingsData = {
   // Basic Company Info
   companyName: "",
@@ -567,15 +584,25 @@ export const defaultAdminSettings: AdminSettingsData = {
   erpEmailCompanyLogo: "",
   // Business Hours
   businessHours: [
-    { day: "Monday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Tuesday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Wednesday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Thursday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Friday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Saturday", enabled: false, startTime: "09:00", endTime: "18:00" },
-    { day: "Sunday", enabled: false, startTime: "09:00", endTime: "18:00" },
+    { day: "Monday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Tuesday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Wednesday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Thursday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Friday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Saturday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
+    { day: "Sunday", isOpen: false, openTime: "09:00", closeTime: "18:00" },
   ],
+  // Account Metadata
+  server: "",
+  accountCreatedAt: "",
+  goLiveTarget: "",
+  actualGoLiveDate: "",
+  assignedSE: "",
+  assignedCSM: "",
 };
+
+export const defaultAtsIntegrations: AtsIntegration[] = [];
+export const defaultIntegrations: IntegrationRow[] = [];
 
 export function getDefaultChecklistData() {
   return {
@@ -594,6 +621,9 @@ export function getDefaultChecklistData() {
     aiCallFaqs: defaultAiCallData,
     agencyPortal: defaultAgencyPortal,
     agencyPortalUsers: defaultAgencyPortalUsers,
+    labels: defaultLabels,
     adminSettings: defaultAdminSettings,
+    atsIntegrations: defaultAtsIntegrations,
+    integrations: defaultIntegrations,
   };
 }

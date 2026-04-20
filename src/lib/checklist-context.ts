@@ -14,6 +14,7 @@ interface ChecklistContextType {
   discardChanges: () => void;
   isReadOnly: boolean;
   userRole: string | null;
+  includeAdminTabs?: boolean;
   /** Route prefix for building tab links, e.g. "/client/exl" or "/editor/abc123" */
   basePath: string;
 }

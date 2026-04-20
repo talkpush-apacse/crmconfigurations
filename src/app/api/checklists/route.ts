@@ -5,8 +5,9 @@ import { getDefaultChecklistData } from "@/lib/template-data";
 
 function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
   const publicChecklist = { ...checklist };
-  delete publicChecklist.instanceConfig;
   delete publicChecklist.atsIntegrations;
+  delete publicChecklist.integrations;
+  delete publicChecklist.configuratorChecklist;
   // editorToken must never be returned to slug-based public viewers
   delete publicChecklist.editorToken;
   return publicChecklist;
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, version: true, isCustom: true, customSchema: true, customTabs: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, configuratorChecklist: true, version: true, isCustom: true, customSchema: true, customTabs: true },
         take: pageSize,
         skip,
       }),
@@ -123,8 +124,8 @@ export async function POST(request: NextRequest) {
       createData.agencyPortal = JSON.parse(JSON.stringify(defaults.agencyPortal));
       createData.labels = JSON.parse(JSON.stringify(defaults.labels));
       createData.adminSettings = JSON.parse(JSON.stringify(defaults.adminSettings));
-      createData.instanceConfig = JSON.parse(JSON.stringify(defaults.instanceConfig));
       createData.atsIntegrations = JSON.parse(JSON.stringify(defaults.atsIntegrations));
+      createData.integrations = JSON.parse(JSON.stringify(defaults.integrations));
       if (customTabs && Array.isArray(customTabs) && customTabs.length > 0) {
         createData.customTabs = JSON.parse(JSON.stringify(customTabs));
         createData.customData = JSON.parse(JSON.stringify({}));

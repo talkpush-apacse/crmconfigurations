@@ -211,6 +211,36 @@ function RadioField({
 }
 
 // ===== Business Hours Editor =====
+const BUSINESS_DAYS: BusinessHourEntry["day"][] = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+type LegacyBusinessHourEntry = Partial<BusinessHourEntry> & {
+  day?: string;
+  enabled?: boolean;
+  startTime?: string;
+  endTime?: string;
+};
+
+function normalizeBusinessHours(hours: LegacyBusinessHourEntry[] = []): BusinessHourEntry[] {
+  return BUSINESS_DAYS.map((day, index) => {
+    const entry = hours.find((hour) => hour.day === day) ?? hours[index];
+
+    return {
+      day,
+      isOpen: typeof entry?.isOpen === "boolean" ? entry.isOpen : entry?.enabled === true,
+      openTime: entry?.openTime ?? entry?.startTime ?? "09:00",
+      closeTime: entry?.closeTime ?? entry?.endTime ?? "18:00",
+    };
+  });
+}
+
 function BusinessHoursEditor({
   hours,
   onChange,
@@ -218,8 +248,10 @@ function BusinessHoursEditor({
   hours: BusinessHourEntry[];
   onChange: (hours: BusinessHourEntry[]) => void;
 }) {
+  const normalizedHours = normalizeBusinessHours(hours);
+
   const updateDay = (index: number, field: keyof BusinessHourEntry, value: string | boolean) => {
-    const updated = hours.map((h, i) =>
+    const updated = normalizedHours.map((h, i) =>
       i === index ? { ...h, [field]: value } : h
     );
     onChange(updated);
@@ -234,7 +266,7 @@ function BusinessHoursEditor({
         <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Start</div>
         <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">End</div>
       </div>
-      {hours.map((entry, idx) => (
+      {normalizedHours.map((entry, idx) => (
         <div
           key={entry.day}
           className={cn(
@@ -247,25 +279,25 @@ function BusinessHoursEditor({
           </div>
           <div className="px-3 py-2.5 flex justify-center">
             <Checkbox
-              checked={entry.enabled}
-              onCheckedChange={(val) => updateDay(idx, "enabled", val === true)}
+              checked={entry.isOpen}
+              onCheckedChange={(val) => updateDay(idx, "isOpen", val === true)}
             />
           </div>
           <div className="px-2 py-1.5">
             <Input
               type="time"
-              value={entry.startTime}
-              onChange={(e) => updateDay(idx, "startTime", e.target.value)}
-              disabled={!entry.enabled}
+              value={entry.openTime}
+              onChange={(e) => updateDay(idx, "openTime", e.target.value)}
+              disabled={!entry.isOpen}
               className="h-8 text-sm disabled:opacity-40"
             />
           </div>
           <div className="px-2 py-1.5">
             <Input
               type="time"
-              value={entry.endTime}
-              onChange={(e) => updateDay(idx, "endTime", e.target.value)}
-              disabled={!entry.enabled}
+              value={entry.closeTime}
+              onChange={(e) => updateDay(idx, "closeTime", e.target.value)}
+              disabled={!entry.isOpen}
               className="h-8 text-sm disabled:opacity-40"
             />
           </div>
@@ -274,6 +306,9 @@ function BusinessHoursEditor({
     </div>
   );
 }
+
+// ===== Server options =====
+const SERVER_OPTIONS = ["PH", "SG", "MY", "ID", "TH", "VN", "HK", "TW", "JP", "US", "EU"];
 
 // ===== Timezone options =====
 const TIMEZONE_OPTIONS = [
@@ -605,8 +640,50 @@ export function AdminSettingsSheet() {
       </p>
       <div className="mb-6">
         <BusinessHoursEditor
-          hours={settings.businessHours}
+          hours={settings.businessHours ?? defaultAdminSettings.businessHours}
           onChange={(hours) => update("businessHours", hours)}
+        />
+      </div>
+
+      {/* ACCOUNT METADATA */}
+      <SectionDivider title="Account Metadata" />
+      <div className="rounded-lg border overflow-hidden mb-6">
+        <DropdownField
+          label="Server"
+          value={settings.server ?? ""}
+          onChange={updateString("server")}
+          options={SERVER_OPTIONS}
+          placeholder="Select server"
+        />
+        <TextField
+          label="Account Created"
+          value={settings.accountCreatedAt ?? ""}
+          onChange={updateString("accountCreatedAt")}
+          type="date"
+        />
+        <TextField
+          label="Go-Live Target"
+          value={settings.goLiveTarget ?? ""}
+          onChange={updateString("goLiveTarget")}
+          type="date"
+        />
+        <TextField
+          label="Actual Go-Live Date"
+          value={settings.actualGoLiveDate ?? ""}
+          onChange={updateString("actualGoLiveDate")}
+          type="date"
+        />
+        <TextField
+          label="Assigned SE"
+          value={settings.assignedSE ?? ""}
+          onChange={updateString("assignedSE")}
+          placeholder="Solutions Engineer full name"
+        />
+        <TextField
+          label="Assigned CSM"
+          value={settings.assignedCSM ?? ""}
+          onChange={updateString("assignedCSM")}
+          placeholder="Customer Success Manager full name"
         />
       </div>
 

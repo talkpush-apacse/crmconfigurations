@@ -22,6 +22,8 @@ import { RejectionReasonsSheet } from "@/components/sheets/RejectionReasonsSheet
 import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
 import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
 import { AutoflowsSheet } from "@/components/sheets/AutoflowsSheet";
+import { AtsIntegrationsSheet } from "@/components/sheets/AtsIntegrationsSheet";
+import { IntegrationsSheet } from "@/components/sheets/IntegrationsSheet";
 import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
 
 const sheetComponents: Record<string, React.ComponentType> = {
@@ -42,6 +44,8 @@ const sheetComponents: Record<string, React.ComponentType> = {
   "rejection-reasons": RejectionReasonsSheet,
   "agency-portal": AgencyPortalSheet,
   "admin-settings": AdminSettingsSheet,
+  "ats-integrations": AtsIntegrationsSheet,
+  integrations: IntegrationsSheet,
 };
 
 export default function EditorTabPage() {

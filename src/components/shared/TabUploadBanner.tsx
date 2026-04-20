@@ -11,10 +11,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { TabUploadFile } from "@/lib/types";
-import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 
 interface TabUploadBannerProps {
   /**
@@ -63,7 +63,7 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
   const { basePath } = useChecklistContext();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmState, setConfirmState] = useState<{ open: boolean; file: TabUploadFile | null }>({ open: false, file: null });
+  const [deleteTarget, setDeleteTarget] = useState<TabUploadFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // basePath is always "/editor/<token>" or "/client/<slug>" — use it to prove
@@ -191,16 +191,6 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
         </div>
       </div>
 
-      <ConfirmDeleteDialog
-        open={confirmState.open}
-        onOpenChange={(open) => setConfirmState((s) => ({ ...s, open }))}
-        fileName={confirmState.file?.fileName ?? ""}
-        onConfirm={() => {
-          if (confirmState.file) handleRemove(confirmState.file.id);
-          setConfirmState({ open: false, file: null });
-        }}
-      />
-
       {error && (
         <p className="mt-2 text-xs text-red-600" role="alert">
           {error}
@@ -236,7 +226,7 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
                   </a>
                   <button
                     type="button"
-                    onClick={() => setConfirmState({ open: true, file })}
+                    onClick={() => setDeleteTarget(file)}
                     className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     title="Remove file"
                   >
@@ -259,6 +249,17 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
           </label>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        fileName={deleteTarget?.fileName ?? "this file"}
+        onConfirm={() => {
+          if (deleteTarget) handleRemove(deleteTarget.id);
+        }}
+      />
     </div>
   );
 }

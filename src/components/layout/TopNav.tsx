@@ -115,6 +115,17 @@ function StatusIndicator({ status }: { status: NavItem["status"] }) {
   return <span className="h-2.5 w-2.5 rounded-full bg-slate-500/60" />;
 }
 
+function GroupHeader({ label }: { label: string }) {
+  return (
+    <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex first:mt-0">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
+  );
+}
+
 function SortableNavItem({
   item,
   isActive,
@@ -343,15 +354,6 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
         />
       );
     });
-
-  const GroupHeader = ({ label }: { label: string }) => (
-    <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex first:mt-0">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-white/10" />
-    </div>
-  );
 
   const navContent = (
     <aside

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
-  (field) => field !== "instanceConfig" && field !== "atsIntegrations"
+  (field) => field !== "atsIntegrations" && field !== "integrations"
 );
 const JSON_FIELDS_SET = new Set<string>(PUBLIC_JSON_FIELDS);
 

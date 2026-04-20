@@ -31,6 +31,7 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase", filledBy: "client" },
   { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", filledBy: "talkpush", adminOnly: true },
   { slug: "autoflows", label: "Autoflows", dataKey: "autoflows", icon: "Zap", filledBy: "talkpush", adminOnly: true },
+  { slug: "integrations", label: "Integrations", dataKey: "integrations", icon: "PlugZap", filledBy: "talkpush", adminOnly: true },
 ];
 
 export function getTabBySlug(slug: string): TabConfig | undefined {

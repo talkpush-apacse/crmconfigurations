@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyPassword, createToken } from "@/lib/auth";
+import { clearAdminSessionCookie, setAdminSessionCookie, verifyPassword } from "@/lib/auth";
 
 // In-memory rate limiter: 5 attempts per 10 minutes per IP
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -49,16 +49,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const token = createToken(user.id);
-
     const response = NextResponse.json({ success: true });
-    response.cookies.set("admin_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
-      path: "/",
-    });
+    setAdminSessionCookie(response, user.id);
 
     return response;
   } catch (err) {
@@ -70,12 +62,6 @@ export async function POST(request: NextRequest) {
 // Logout — clears the admin_token cookie
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
-  response.cookies.set("admin_token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  });
+  clearAdminSessionCookie(response);
   return response;
 }

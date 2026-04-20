@@ -22,6 +22,7 @@ export interface CompanyInfo {
   allowDuplicates: string;
   coolingPeriod: string;
   rehiresAllowed: string;
+  businessHours?: BusinessHourEntry[];
 }
 
 // ===== User List =====
@@ -60,7 +61,7 @@ export interface SiteRow {
   interviewHours: string;
   interviewType: string;
   fullAddress: string;
-  documentsToRring: string;
+  documentsToRing: string;
   googleMapsLink: string;
   comments: string;
 }
@@ -203,6 +204,13 @@ export interface AgencyPortalUser {
   userAccess: 'Talkpush Owner' | 'Agency Admin' | 'Agency Editor' | 'Company Admin' | 'Company Editor' | 'Campaign Manager' | 'Recruiter' | '';
 }
 
+// ===== Labels =====
+export interface LabelRow {
+  id: string;
+  name: string;
+  color: string;
+}
+
 // ===== Communication Channels =====
 export interface CommunicationChannels {
   email: boolean;
@@ -212,6 +220,8 @@ export interface CommunicationChannels {
   liveCall: boolean;
   aiCalls: boolean;
 }
+
+export type CommunicationChannel = keyof CommunicationChannels | "facebook" | "instagram";
 
 // ===== Feature Toggles =====
 export interface FeatureToggles {
@@ -229,11 +239,20 @@ export interface FaqEntry {
 }
 
 // ===== Business Hours Entry =====
+export type BusinessDay =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday"
+  | "Sunday";
+
 export interface BusinessHourEntry {
-  day: string;
-  enabled: boolean;
-  startTime: string;
-  endTime: string;
+  day: BusinessDay;
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
 }
 
 // ===== Admin Settings =====
@@ -316,6 +335,231 @@ export interface AdminSettingsData {
   erpEmailCompanyLogo: string;
   // Business Hours
   businessHours: BusinessHourEntry[];
+  // Account Metadata
+  server: string;
+  accountCreatedAt: string;
+  goLiveTarget: string;
+  actualGoLiveDate: string;
+  assignedSE: string;
+  assignedCSM: string;
+}
+
+// ===== ATS / HRIS Integrations =====
+export type AtsSystem =
+  | "Workday"
+  | "SAP SuccessFactors"
+  | "PeopleStrong"
+  | "iCIMS"
+  | "Greenhouse"
+  | "Lever"
+  | "SmartRecruiters"
+  | "Oracle HCM"
+  | "Microsoft Dynamics HR"
+  | "BambooHR"
+  | "Other";
+
+export type IntegrationDirection = "Talkpush → ATS" | "ATS → Talkpush" | "Bidirectional";
+export type IntegrationEnvironment = "Sandbox" | "Production" | "Both";
+export type IntegrationAuthType = "API Key" | "OAuth 2.0" | "Basic Auth" | "Webhook" | "SFTP" | "Other";
+export type AtsIntegrationStatus = "Not Started" | "In Progress" | "UAT" | "Live" | "On Hold";
+
+export interface AtsTriggerRow {
+  id: string;
+  direction: "Talkpush → ATS" | "ATS → Talkpush";
+  talkpushFolder: string;
+  atsObject: string;
+  action: string;
+  notes: string;
+}
+
+export interface AtsFieldMappingRow {
+  id: string;
+  talkpushAttribute: string;
+  atsField: string;
+  dataType: string;
+  direction: "Talkpush → ATS" | "ATS → Talkpush" | "Bidirectional";
+  notes: string;
+}
+
+export interface AtsAuthRequirement {
+  id: string;
+  item: string;
+  value: string;
+  receivedFromClient: boolean;
+  notes: string;
+}
+
+export type AtsDataFormat = "JSON" | "XML" | "Flat file" | "Unknown";
+export type AtsFailureAction = "Retry" | "Error folder" | "Email alert" | "TBD";
+export type AtsTalkpushEnvironment = "Prod (test campaign)" | "Staging" | "Full production";
+export type AtsHandoffStatus = "Not shared" | "Shared with integration team" | "Shared with vendor" | "Confirmed by vendor";
+
+export interface AtsIntegrationChecklist {
+  dataFormat: AtsDataFormat | null;
+  failureAction: AtsFailureAction | null;
+  deduplicationNeeded: "Yes" | "No" | "TBD" | null;
+  deduplicationNotes: string;
+  apiRateLimit: string;
+  sandboxAccessConfirmed: "Yes" | "No" | null;
+  testCandidateAgreed: "Yes" | "No" | null;
+}
+
+export interface AtsHandoffInfo {
+  talkpushEnvironment: AtsTalkpushEnvironment;
+  webhookUrlFormat: string;
+  payloadSchema: string;
+  sampleJsonPayload: string;
+  handoffStatus: AtsHandoffStatus;
+}
+
+export interface AtsIntegration {
+  id: string;
+  name: string;
+  system: AtsSystem;
+  systemOther: string;
+  direction: IntegrationDirection;
+  environment: IntegrationEnvironment;
+  status: AtsIntegrationStatus;
+  integrationOwner: string;
+  targetGoLiveDate: string;
+  notes: string;
+  triggers: AtsTriggerRow[];
+  fieldMappings: AtsFieldMappingRow[];
+  authType: IntegrationAuthType;
+  authTypeOther: string;
+  authRequirements: AtsAuthRequirement[];
+  sandboxBaseUrl: string;
+  productionBaseUrl: string;
+  apiVersion: string;
+  additionalTechnicalNotes: string;
+  checklist: AtsIntegrationChecklist;
+  handoff: AtsHandoffInfo;
+}
+
+// ===== Integrations =====
+export type IntegrationCategory =
+  | "hris_ats"
+  | "assessment"
+  | "background_check"
+  | "medical_exam"
+  | "others";
+
+export type IntegrationActionType =
+  | "outbound_post"
+  | "inbound_pull"
+  | "inbound_patch_attribute"
+  | "inbound_upload_document"
+  | "inbound_change_status";
+
+export type IntegrationAuthMethod =
+  | "none"
+  | "api_key_query"
+  | "bearer_token"
+  | "custom_header"
+  | "basic_auth";
+
+export type IntegrationStatus =
+  | "not_started"
+  | "scoping"
+  | "in_development"
+  | "uat"
+  | "live";
+
+export type IntegrationMatchKey =
+  | "candidate_id"
+  | "email"
+  | "phone"
+  | "application_id";
+
+export type IntegrationApiEnvironment =
+  | "production"
+  | "staging"
+  | "test_campaign"
+  | "tbd";
+
+export type IntegrationCampaignScope =
+  | "single_campaign"
+  | "multiple_campaigns"
+  | "all_campaigns"
+  | "tbd";
+
+export type IntegrationCandidateIdSource =
+  | "provided_in_outbound_payload"
+  | "vendor_stores_talkpush_id"
+  | "lookup_get_campaign_invitations"
+  | "provided_by_talkpush_se"
+  | "other";
+
+export type IntegrationMultiMatchBehavior =
+  | "reject"
+  | "use_most_recent"
+  | "use_first_match"
+  | "manual_review"
+  | "tbd";
+
+export interface IntegrationPayloadMapping {
+  id: string;
+  talkpushSource: string;
+  vendorFieldName: string;
+  required: boolean;
+}
+
+export interface IntegrationResponseMapping {
+  id: string;
+  vendorResponseField: string;
+  targetAttribute: string;
+}
+
+export interface IntegrationAttributeMapping {
+  id: string;
+  vendorCallbackField: string;
+  targetAttribute: string;
+}
+
+export interface IntegrationRow {
+  id: string;
+  vendorName: string;
+  vendorCategory: IntegrationCategory | "";
+  actionType: IntegrationActionType | "";
+  triggerFolder: string;
+  status: IntegrationStatus | "";
+  vendorContactName: string;
+  vendorContactEmail: string;
+  vendorDocsUrl: string;
+  notes: string;
+  endpointUrl?: string;
+  authMethod?: IntegrationAuthMethod | "";
+  authParamName?: string;
+  authValue?: string;
+  outboundPayloadMapping?: IntegrationPayloadMapping[];
+  responseHandling?: IntegrationResponseMapping[];
+  inboundAttributeMapping?: IntegrationAttributeMapping[];
+  matchKey?: IntegrationMatchKey | "";
+  documentTag?: string;
+  targetFolder?: string;
+  filterCriteria?: string;
+
+  // Shared inbound API handoff fields
+  talkpushApiBaseUrl?: string;
+  apiEnvironment?: IntegrationApiEnvironment | "";
+  inboundAuthMethod?: IntegrationAuthMethod | "";
+  inboundAuthParamName?: string;
+  inboundAuthValue?: string;
+  campaignScope?: IntegrationCampaignScope | "";
+  campaignIds?: string;
+  campaignNames?: string;
+  candidateIdSource?: IntegrationCandidateIdSource | "";
+  candidateIdFieldName?: string;
+  lookupQueryParams?: string;
+  multiMatchBehavior?: IntegrationMultiMatchBehavior | "";
+  sampleRequest?: string;
+  sampleSuccessResponse?: string;
+  sampleErrorResponse?: string;
+  rateLimitNotes?: string;
+  retryTimeoutNotes?: string;
+  idempotencyNotes?: string;
+  uatTestCandidate?: string;
+  expectedTalkpushResult?: string;
 }
 
 // ===== Tab Upload Meta =====
@@ -418,6 +662,7 @@ export interface AutoflowRule {
 export interface ChecklistData {
   id: string;
   slug: string;
+  editorToken: string;
   clientName: string;
   createdAt: string;
   updatedAt: string;
@@ -428,6 +673,7 @@ export interface ChecklistData {
   tabFilledBy: Record<string, "talkpush" | "client"> | null;
   communicationChannels: CommunicationChannels | null;
   featureToggles: FeatureToggles | null;
+  configuratorChecklist: unknown | null;
   companyInfo: CompanyInfo | null;
   users: UserRow[] | null;
   campaigns: CampaignRow[] | null;
@@ -444,7 +690,10 @@ export interface ChecklistData {
   agencyPortal: AgencyPortalRow[] | null;
   agencyPortalUsers: AgencyPortalUser[] | null;
   rejectionReasons: string[] | null;
+  labels: LabelRow[] | null;
   adminSettings: AdminSettingsData | null;
+  atsIntegrations: AtsIntegration[] | null;
+  integrations: IntegrationRow[] | null;
   tabUploadMeta: TabUploadMetaMap | null;
   isCustom: boolean;
   customSchema: CustomSchema | null;
@@ -489,7 +738,10 @@ export const CHECKLIST_JSON_FIELDS = [
   "agencyPortal",
   "agencyPortalUsers",
   "rejectionReasons",
+  "labels",
   "adminSettings",
+  "atsIntegrations",
+  "integrations",
   "tabUploadMeta",
   "customSchema",
   "customData",
@@ -521,7 +773,10 @@ export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   agencyPortal: "Agency Portal",
   agencyPortalUsers: "Agency Portal Users",
   rejectionReasons: "Rejection Reasons",
+  labels: "Labels",
   adminSettings: "Admin Settings",
+  atsIntegrations: "ATS / HRIS Integrations",
+  integrations: "Integrations",
   tabUploadMeta: "Tab File Uploads",
   customSchema: "Custom Schema",
   customData: "Custom Data",

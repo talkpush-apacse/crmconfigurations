@@ -11,9 +11,9 @@ import { useChecklistContext } from "@/lib/checklist-context";
 export function SectionFooter() {
   const params = useParams();
   const currentTab = params.tab as string;
-  const { data, basePath } = useChecklistContext();
+  const { data, basePath, includeAdminTabs } = useChecklistContext();
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, false, data?.tabOrder ?? null);
+  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, !!includeAdminTabs, data?.tabOrder ?? null);
   // Exclude welcome from prev/next — it is not a content section
   const contentTabs = enabledTabs.filter((t) => t.slug !== "welcome");
 

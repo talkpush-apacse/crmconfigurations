@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const WEAK_SECRETS = ["change-me-in-production", "secret", "admin", "password", "12345678", "changeme"];
@@ -24,7 +25,8 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(password: string, hash?: string | null): Promise<boolean> {
+  if (!hash) return false;
   return bcrypt.compare(password, hash);
 }
 
@@ -39,6 +41,26 @@ export function verifyToken(token: string): { userId: string } | null {
   } catch {
     return null;
   }
+}
+
+export function setAdminSessionCookie(response: NextResponse, userId: string): void {
+  response.cookies.set("admin_token", createToken(userId), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60,
+    path: "/",
+  });
+}
+
+export function clearAdminSessionCookie(response: NextResponse): void {
+  response.cookies.set("admin_token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
 }
 
 export async function getAuthUser(): Promise<{ userId: string } | null> {

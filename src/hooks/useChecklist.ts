@@ -10,7 +10,7 @@ function cloneChecklistData(data: ChecklistData): ChecklistData {
     : JSON.parse(JSON.stringify(data)) as ChecklistData;
 }
 
-export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug") {
+export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" = "slug") {
   const [data, setData] = useState<ChecklistData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,9 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
       try {
         const url = mode === "token"
           ? `/api/checklists/by-token/${slugOrToken}`
-          : `/api/checklists?slug=${slugOrToken}`;
+          : mode === "id"
+            ? `/api/checklists/${slugOrToken}`
+            : `/api/checklists?slug=${slugOrToken}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error("Checklist not found");
         const json = await res.json();
@@ -70,7 +72,9 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" = "slug
 
         const saveUrl = mode === "token"
           ? `/api/checklists/by-token/${slugOrToken}`
-          : `/api/checklists/by-slug/${slugOrToken}`;
+          : mode === "id"
+            ? `/api/checklists/${slugOrToken}`
+            : `/api/checklists/by-slug/${slugOrToken}`;
         const res = await fetch(saveUrl, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

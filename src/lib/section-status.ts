@@ -1,4 +1,4 @@
-import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData } from "./types";
+import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData, IntegrationRow } from "./types";
 
 export type SectionState = "complete" | "in-progress" | "not-started";
 
@@ -58,6 +58,45 @@ function getUserSectionState(val: unknown): SectionState {
     : "in-progress";
 }
 
+function hasInstanceConfigValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.trim() !== "";
+  if (Array.isArray(value)) return value.some(hasInstanceConfigValue);
+  if (typeof value === "object" && value !== null) {
+    return getObjectValues(value as Record<string, unknown>).some(hasInstanceConfigValue);
+  }
+  return value !== null && value !== undefined;
+}
+
+function isIntegrationRowActive(row: IntegrationRow): boolean {
+  return getObjectValues(row as unknown as Record<string, unknown>, ["id"]).some((value) => {
+    if (Array.isArray(value)) return value.some(hasInstanceConfigValue);
+    if (typeof value === "object" && value !== null) return hasInstanceConfigValue(value);
+    return hasMeaningfulValue(value);
+  });
+}
+
+function hasRequiredIntegrationFields(row: IntegrationRow): boolean {
+  return ["vendorName", "vendorCategory", "actionType", "triggerFolder"].every((field) =>
+    hasMeaningfulValue(row[field as keyof IntegrationRow])
+  );
+}
+
+function getIntegrationsSectionState(val: unknown): SectionState {
+  if (!Array.isArray(val) || val.length === 0) return "not-started";
+
+  const activeRows = val.filter(
+    (row): row is IntegrationRow =>
+      typeof row === "object" &&
+      row !== null &&
+      isIntegrationRowActive(row as IntegrationRow)
+  );
+
+  if (activeRows.length === 0) return "not-started";
+  if (activeRows.length >= 2 && activeRows.every(hasRequiredIntegrationFields)) return "complete";
+  return "in-progress";
+}
+
 /**
  * Computes the completion state of a single checklist section's data value.
  * Used in the client layout (nav dots) and WelcomeSheet (progress chips).
@@ -71,6 +110,10 @@ export function getSectionState(
 
   if (sectionKey === "users") {
     return getUserSectionState(val);
+  }
+
+  if (sectionKey === "integrations") {
+    return getIntegrationsSectionState(val);
   }
 
   if (Array.isArray(val)) {

@@ -5,6 +5,11 @@ import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 
 const JSON_FIELDS_SET = new Set<string>(CHECKLIST_JSON_FIELDS);
 
+function toPrismaJson(value: unknown) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -93,10 +98,10 @@ export async function PUT(
         const updatedFieldVersions = { ...currentFieldVersions };
 
         for (const field of validFields) {
-          updateData[field] = body[field];
+          updateData[field] = toPrismaJson(body[field]);
           updatedFieldVersions[field] = newVersion;
         }
-        updateData.fieldVersions = updatedFieldVersions;
+        updateData.fieldVersions = toPrismaJson(updatedFieldVersions);
 
         const checklist = await tx.checklist.update({
           where: { id },
@@ -143,12 +148,17 @@ export async function PUT(
       sources,
       folders,
       documents,
+      attributes,
       fbWhatsapp,
       instagram,
       aiCallFaqs,
       agencyPortal,
       agencyPortalUsers,
+      rejectionReasons,
+      labels,
       adminSettings,
+      atsIntegrations,
+      integrations,
       tabUploadMeta,
       customSchema,
       customData,
@@ -180,32 +190,37 @@ export async function PUT(
       where: { id },
       data: {
         version: { increment: 1 },
-        fieldVersions: allFieldVersions,
-        enabledTabs,
-        tabOrder,
-        tabFilledBy,
-        communicationChannels,
-        featureToggles,
-        companyInfo,
-        users,
-        campaigns,
-        sites,
-        prescreening,
-        messaging,
-        sources,
-        folders,
-        documents,
-        fbWhatsapp,
-        instagram,
-        aiCallFaqs,
-        agencyPortal,
-        agencyPortalUsers,
-        adminSettings,
-        tabUploadMeta,
-        customSchema,
-        customData,
-        customTabs,
-        autoflows,
+        fieldVersions: toPrismaJson(allFieldVersions),
+        enabledTabs: toPrismaJson(enabledTabs),
+        tabOrder: toPrismaJson(tabOrder),
+        tabFilledBy: toPrismaJson(tabFilledBy),
+        communicationChannels: toPrismaJson(communicationChannels),
+        featureToggles: toPrismaJson(featureToggles),
+        companyInfo: toPrismaJson(companyInfo),
+        users: toPrismaJson(users),
+        campaigns: toPrismaJson(campaigns),
+        sites: toPrismaJson(sites),
+        prescreening: toPrismaJson(prescreening),
+        messaging: toPrismaJson(messaging),
+        sources: toPrismaJson(sources),
+        folders: toPrismaJson(folders),
+        documents: toPrismaJson(documents),
+        attributes: toPrismaJson(attributes),
+        fbWhatsapp: toPrismaJson(fbWhatsapp),
+        instagram: toPrismaJson(instagram),
+        aiCallFaqs: toPrismaJson(aiCallFaqs),
+        agencyPortal: toPrismaJson(agencyPortal),
+        agencyPortalUsers: toPrismaJson(agencyPortalUsers),
+        rejectionReasons: toPrismaJson(rejectionReasons),
+        labels: toPrismaJson(labels),
+        adminSettings: toPrismaJson(adminSettings),
+        atsIntegrations: toPrismaJson(atsIntegrations),
+        integrations: toPrismaJson(integrations),
+        tabUploadMeta: toPrismaJson(tabUploadMeta),
+        customSchema: toPrismaJson(customSchema),
+        customData: toPrismaJson(customData),
+        customTabs: toPrismaJson(customTabs),
+        autoflows: toPrismaJson(autoflows),
       },
     });
 

@@ -1,16 +1,33 @@
 /**
  * MCP Server for CRM Config Checklist
  *
- * Exposes 14 tools (4 read + 10 write) for managing checklists via Claude AI.
- * All write tools are append-only — they add rows without touching existing data.
+ * Exposes tools for managing checklists via Claude AI.
+ * Most write tools are append-only; configuration tools merge partial updates.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { prisma } from "./db";
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { getSectionState, type SectionState } from "./section-status";
 import { CHECKLIST_JSON_FIELDS, FIELD_LABELS, type ChecklistJsonField } from "./types";
 import { TAB_CONFIG } from "./tab-config";
+import { CONFIGURATOR_TEMPLATE } from "./configurator-template";
+import {
+  getAttachmentTabKeys,
+  parseStorageUrl,
+  scanChecklistForAttachments,
+  type Attachment,
+} from "./mcp/attachments";
+import {
+  ConfiguratorServiceError,
+  generateConfiguratorChecklist,
+  getConfiguratorChecklist,
+  getConfiguratorMeta,
+  getConfiguratorProgress,
+  refreshConfiguratorSnapshot,
+  updateConfiguratorItem,
+} from "./configurator-service";
 import type {
   QuestionRow,
   SourceRow,
@@ -25,6 +42,23 @@ import type {
   CustomTab,
   CustomTabColumn,
   CustomTabRow,
+  LabelRow,
+  AtsIntegration,
+  AtsTriggerRow,
+  AtsFieldMappingRow,
+  IntegrationActionType,
+  IntegrationApiEnvironment,
+  IntegrationAttributeMapping,
+  IntegrationAuthMethod,
+  IntegrationCampaignScope,
+  IntegrationCandidateIdSource,
+  IntegrationCategory,
+  IntegrationMatchKey,
+  IntegrationMultiMatchBehavior,
+  IntegrationPayloadMapping,
+  IntegrationResponseMapping,
+  IntegrationRow,
+  IntegrationStatus,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -34,6 +68,176 @@ import type {
 function uuid(): string {
   return crypto.randomUUID();
 }
+
+function toPrismaJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function mcpJson(value: unknown) {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
+  };
+}
+
+function mcpError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    content: [{ type: "text" as const, text: message }],
+    isError: true,
+  };
+}
+
+const MAX_INLINE_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+function appendWarning(current: string | undefined, next: string | undefined): string | undefined {
+  if (!next) return current;
+  if (!current) return next;
+  return `${current}; ${next}`;
+}
+
+async function createAttachmentSignedUrl(
+  attachment: Attachment,
+  expirySeconds: number
+): Promise<{ signedUrl: string; signedUrlExpiresAt: string; warning?: string }> {
+  const signedUrlExpiresAt = new Date(Date.now() + expirySeconds * 1000).toISOString();
+  const storageParts = parseStorageUrl(attachment.url);
+
+  if (!storageParts) {
+    return {
+      signedUrl: attachment.url,
+      signedUrlExpiresAt,
+      warning: "Stored URL is not a Supabase Storage URL; returning stored URL without signing",
+    };
+  }
+
+  const { supabase } = await import("./supabase");
+  if (!supabase) {
+    throw new Error("Supabase service-role client is not configured; cannot create signed URL");
+  }
+
+  const { data, error } = await supabase.storage
+    .from(storageParts.bucket)
+    .createSignedUrl(storageParts.path, expirySeconds);
+
+  if (error) {
+    throw new Error(`Failed to create signed URL: ${error.message}`);
+  }
+
+  if (!data?.signedUrl) {
+    throw new Error("Failed to create signed URL: Supabase returned no URL");
+  }
+
+  return { signedUrl: data.signedUrl, signedUrlExpiresAt };
+}
+
+async function fetchAttachmentBytesBase64(
+  signedUrl: string
+): Promise<{ bytesBase64?: string; warning?: string }> {
+  const response = await fetch(signedUrl);
+
+  if (!response.ok) {
+    throw new Error(`Failed to download attachment: ${response.status} ${response.statusText}`);
+  }
+
+  const contentLengthHeader = response.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : null;
+  if (contentLength !== null && Number.isFinite(contentLength) && contentLength > MAX_INLINE_ATTACHMENT_BYTES) {
+    return { warning: "File too large for inline bytes; use signedUrl" };
+  }
+
+  if (!response.body) {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > MAX_INLINE_ATTACHMENT_BYTES) {
+      return { warning: "File too large for inline bytes; use signedUrl" };
+    }
+    return { bytesBase64: buffer.toString("base64") };
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_INLINE_ATTACHMENT_BYTES) {
+      await reader.cancel();
+      return { warning: "File too large for inline bytes; use signedUrl" };
+    }
+
+    chunks.push(Buffer.from(value));
+  }
+
+  return { bytesBase64: Buffer.concat(chunks).toString("base64") };
+}
+
+const integrationPayloadMappingSchema = z.object({
+  talkpushSource: z.string().optional().default(""),
+  vendorFieldName: z.string().optional().default(""),
+  required: z.boolean().optional().default(false),
+});
+
+const integrationResponseMappingSchema = z.object({
+  vendorResponseField: z.string().optional().default(""),
+  targetAttribute: z.string().optional().default(""),
+});
+
+const integrationAttributeMappingSchema = z.object({
+  vendorCallbackField: z.string().optional().default(""),
+  targetAttribute: z.string().optional().default(""),
+});
+
+const integrationRowSchema = z.object({
+  vendorName: z.string(),
+  vendorCategory: z.enum(["hris_ats", "assessment", "background_check", "medical_exam", "others"]).optional(),
+  actionType: z.enum(["outbound_post", "inbound_pull", "inbound_patch_attribute", "inbound_upload_document", "inbound_change_status"]).optional(),
+  triggerFolder: z.string().optional(),
+  status: z.enum(["not_started", "scoping", "in_development", "uat", "live"]).optional(),
+  vendorContactName: z.string().optional(),
+  vendorContactEmail: z.string().optional(),
+  vendorDocsUrl: z.string().optional(),
+  notes: z.string().optional(),
+  endpointUrl: z.string().optional(),
+  authMethod: z.enum(["none", "api_key_query", "bearer_token", "custom_header", "basic_auth"]).optional(),
+  authParamName: z.string().optional(),
+  authValue: z.string().optional(),
+  outboundPayloadMapping: z.array(integrationPayloadMappingSchema).optional(),
+  responseHandling: z.array(integrationResponseMappingSchema).optional(),
+  inboundAttributeMapping: z.array(integrationAttributeMappingSchema).optional(),
+  matchKey: z.enum(["candidate_id", "email", "phone", "application_id"]).optional(),
+  documentTag: z.string().optional(),
+  targetFolder: z.string().optional(),
+  filterCriteria: z.string().optional(),
+  talkpushApiBaseUrl: z.string().optional(),
+  apiEnvironment: z.enum(["production", "staging", "test_campaign", "tbd"]).optional(),
+  inboundAuthMethod: z.enum(["none", "api_key_query", "bearer_token", "custom_header", "basic_auth"]).optional(),
+  inboundAuthParamName: z.string().optional(),
+  inboundAuthValue: z.string().optional(),
+  campaignScope: z.enum(["single_campaign", "multiple_campaigns", "all_campaigns", "tbd"]).optional(),
+  campaignIds: z.string().optional(),
+  campaignNames: z.string().optional(),
+  candidateIdSource: z.enum([
+    "provided_in_outbound_payload",
+    "vendor_stores_talkpush_id",
+    "lookup_get_campaign_invitations",
+    "provided_by_talkpush_se",
+    "other",
+  ]).optional(),
+  candidateIdFieldName: z.string().optional(),
+  lookupQueryParams: z.string().optional(),
+  multiMatchBehavior: z.enum(["reject", "use_most_recent", "use_first_match", "manual_review", "tbd"]).optional(),
+  sampleRequest: z.string().optional(),
+  sampleSuccessResponse: z.string().optional(),
+  sampleErrorResponse: z.string().optional(),
+  rateLimitNotes: z.string().optional(),
+  retryTimeoutNotes: z.string().optional(),
+  idempotencyNotes: z.string().optional(),
+  uatTestCandidate: z.string().optional(),
+  expectedTalkpushResult: z.string().optional(),
+});
 
 /** Convert attributeName to snake_case key with "1_" prefix (matches UI behavior) */
 function deriveAttributeKey(name: string): string {
@@ -82,9 +286,9 @@ async function appendToSection<T extends { id: string }>(
     await tx.checklist.update({
       where: { id: current.id },
       data: {
-        [sectionField]: merged as unknown as Record<string, unknown>[],
+        [sectionField]: toPrismaJson(merged),
         version: newVersion,
-        fieldVersions,
+        fieldVersions: toPrismaJson(fieldVersions),
       },
     });
 
@@ -124,9 +328,9 @@ async function appendStringsToSection(
     await tx.checklist.update({
       where: { id: current.id },
       data: {
-        [sectionField]: merged,
+        [sectionField]: toPrismaJson(merged),
         version: newVersion,
-        fieldVersions,
+        fieldVersions: toPrismaJson(fieldVersions),
       },
     });
 
@@ -134,6 +338,105 @@ async function appendStringsToSection(
   });
 
   return result;
+}
+
+async function appendToSectionByEditorToken<T extends { id: string }>(
+  editorToken: string,
+  sectionField: string,
+  newRows: T[]
+): Promise<{ added: T[]; totalCount: number; version: number }> {
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<
+      Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
+    >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE "editorToken" = ${editorToken} FOR UPDATE`;
+
+    const current = locked[0];
+    if (!current) {
+      throw new Error("Checklist not found for the provided editor token");
+    }
+
+    const checklist = await tx.checklist.findUnique({
+      where: { id: current.id },
+      select: { [sectionField]: true } as Record<string, boolean>,
+    });
+
+    const existingData = ((checklist as Record<string, unknown>)?.[sectionField] as T[]) ?? [];
+    const merged = [...existingData, ...newRows];
+    const newVersion = current.version + 1;
+    const fieldVersions = { ...(current.fieldVersions ?? {}), [sectionField]: newVersion };
+
+    await tx.checklist.update({
+      where: { id: current.id },
+      data: {
+        [sectionField]: toPrismaJson(JSON.parse(JSON.stringify(merged))),
+        version: newVersion,
+        fieldVersions: toPrismaJson(fieldVersions),
+      },
+    });
+
+    return { added: newRows, totalCount: merged.length, version: newVersion };
+  });
+}
+
+async function appendToAtsIntegration<
+  TRow extends AtsTriggerRow | AtsFieldMappingRow
+>(
+  slug: string,
+  integrationId: string,
+  rowField: "triggers" | "fieldMappings",
+  newRows: TRow[]
+): Promise<{ added: TRow[]; totalCount: number; version: number; integrationName: string }> {
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<
+      Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
+    >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE slug = ${slug} FOR UPDATE`;
+
+    const current = locked[0];
+    if (!current) {
+      throw new Error(`Checklist with slug "${slug}" not found`);
+    }
+
+    const checklist = await tx.checklist.findUnique({
+      where: { id: current.id },
+      select: { atsIntegrations: true },
+    });
+
+    const existingIntegrations = ((checklist?.atsIntegrations ?? []) as unknown) as AtsIntegration[];
+    const integrationIndex = existingIntegrations.findIndex((integration) => integration.id === integrationId);
+    if (integrationIndex === -1) {
+      throw new Error(`ATS integration with id "${integrationId}" not found`);
+    }
+
+    const existingIntegration = existingIntegrations[integrationIndex];
+    const existingRows = Array.isArray(existingIntegration[rowField])
+      ? (existingIntegration[rowField] as TRow[])
+      : [];
+    const updatedIntegration: AtsIntegration = {
+      ...existingIntegration,
+      [rowField]: [...existingRows, ...newRows],
+    };
+    const nextIntegrations = [...existingIntegrations];
+    nextIntegrations[integrationIndex] = updatedIntegration;
+
+    const newVersion = current.version + 1;
+    const fieldVersions = { ...(current.fieldVersions ?? {}), atsIntegrations: newVersion };
+
+    await tx.checklist.update({
+      where: { id: current.id },
+      data: {
+        atsIntegrations: toPrismaJson(JSON.parse(JSON.stringify(nextIntegrations))),
+        version: newVersion,
+        fieldVersions: toPrismaJson(fieldVersions),
+      },
+    });
+
+    return {
+      added: newRows,
+      totalCount: existingRows.length + newRows.length,
+      version: newVersion,
+      integrationName: updatedIntegration.name || updatedIntegration.system || integrationId,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +516,6 @@ export function createMcpServer(): McpServer {
         };
       }
 
-      const enabledTabs = (checklist.enabledTabs as string[] | null) ?? [];
       const progress: Record<string, SectionState> = {};
 
       for (const field of CHECKLIST_JSON_FIELDS) {
@@ -264,6 +566,112 @@ export function createMcpServer(): McpServer {
           },
         ],
       };
+    }
+  );
+
+  server.tool(
+    "list_attachments",
+    "List every file attachment uploaded across a checklist's tabs, optionally filtered to one tab key",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab: z.string().optional().describe("Optional tab key to filter by, e.g. 'companyInfo' or 'documents'"),
+    },
+    async ({ slug, tab }) => {
+      try {
+        const checklist = await prisma.checklist.findUnique({
+          where: { slug },
+        });
+
+        if (!checklist) {
+          return mcpError(new Error(`Checklist with slug "${slug}" not found`));
+        }
+
+        const checklistRecord = checklist as unknown as Record<string, unknown>;
+        const validTabs = getAttachmentTabKeys(checklistRecord);
+        if (tab && !validTabs.has(tab)) {
+          return mcpError(new Error(`Tab "${tab}" not found`));
+        }
+
+        const attachments = scanChecklistForAttachments(checklistRecord);
+        const filteredAttachments = tab
+          ? attachments.filter((attachment) => attachment.tab === tab)
+          : attachments;
+
+        return mcpJson({
+          slug,
+          clientName: checklist.clientName,
+          count: filteredAttachments.length,
+          attachments: filteredAttachments,
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "fetch_attachment",
+    "Return a fresh signed URL for a checklist attachment and optionally inline base64 bytes for files under 10 MB",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab: z.string().describe("Tab key returned by list_attachments"),
+      fieldPath: z.string().describe("Attachment fieldPath returned by list_attachments"),
+      includeBytes: z.boolean().optional().default(false).describe("Include file bytes as base64 when the file is under 10 MB"),
+      signedUrlExpirySeconds: z
+        .number()
+        .int()
+        .positive()
+        .max(3600)
+        .optional()
+        .default(300)
+        .describe("Signed URL expiry in seconds, max 3600"),
+    },
+    async ({ slug, tab, fieldPath, includeBytes, signedUrlExpirySeconds }) => {
+      try {
+        const checklist = await prisma.checklist.findUnique({
+          where: { slug },
+        });
+
+        if (!checklist) {
+          return mcpError(new Error(`Checklist with slug "${slug}" not found`));
+        }
+
+        const checklistRecord = checklist as unknown as Record<string, unknown>;
+        const validTabs = getAttachmentTabKeys(checklistRecord);
+        if (!validTabs.has(tab)) {
+          return mcpError(new Error(`Tab "${tab}" not found`));
+        }
+
+        const attachment = scanChecklistForAttachments(checklistRecord).find(
+          (candidate) => candidate.tab === tab && candidate.fieldPath === fieldPath
+        );
+
+        if (!attachment) {
+          return mcpError(new Error(`Attachment not found at ${tab}.${fieldPath}`));
+        }
+
+        const signed = await createAttachmentSignedUrl(attachment, signedUrlExpirySeconds);
+        let warning = signed.warning;
+        let bytesBase64: string | undefined;
+
+        if (includeBytes) {
+          const bytes = await fetchAttachmentBytesBase64(signed.signedUrl);
+          bytesBase64 = bytes.bytesBase64;
+          warning = appendWarning(warning, bytes.warning);
+        }
+
+        return mcpJson({
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          signedUrl: signed.signedUrl,
+          signedUrlExpiresAt: signed.signedUrlExpiresAt,
+          ...(bytesBase64 ? { bytesBase64 } : {}),
+          ...(warning ? { warning } : {}),
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
     }
   );
 
@@ -564,7 +972,7 @@ export function createMcpServer(): McpServer {
             interviewHours: z.string().optional().default("").describe("Interview schedule hours"),
             interviewType: z.string().optional().default("").describe("Type: Face-to-Face, Virtual, Hybrid"),
             fullAddress: z.string().optional().default(""),
-            documentsToRring: z.string().optional().default("").describe("Documents candidates should bring"),
+            documentsToRing: z.string().optional().default("").describe("Documents candidates should bring"),
             googleMapsLink: z.string().optional().default(""),
             comments: z.string().optional().default(""),
           })
@@ -579,7 +987,7 @@ export function createMcpServer(): McpServer {
         interviewHours: s.interviewHours,
         interviewType: s.interviewType,
         fullAddress: s.fullAddress,
-        documentsToRring: s.documentsToRring,
+        documentsToRing: s.documentsToRing,
         googleMapsLink: s.googleMapsLink,
         comments: s.comments,
       }));
@@ -659,6 +1067,40 @@ export function createMcpServer(): McpServer {
           {
             type: "text" as const,
             text: `Added ${result.added.length} reason(s). Total: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- Labels ---
+  server.tool(
+    "add_labels",
+    "Append candidate labels to a checklist. Each label has a name and a hex color.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      labels: z
+        .array(
+          z.object({
+            name: z.string().describe("Label name (e.g. 'Priority Candidate')"),
+            color: z.string().optional().default("#6366F1").describe("Hex color string (e.g. '#FF5733')"),
+          })
+        )
+        .describe("Array of labels to add"),
+    },
+    async ({ slug, labels }) => {
+      const rows: LabelRow[] = labels.map((label) => ({
+        id: uuid(),
+        name: label.name,
+        color: label.color || "#6366F1",
+      }));
+
+      const result = await appendToSection<LabelRow>(slug, "labels", rows);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Added ${result.added.length} label(s). Total: ${result.totalCount}. Version: ${result.version}`,
           },
         ],
       };
@@ -755,6 +1197,181 @@ export function createMcpServer(): McpServer {
           {
             type: "text" as const,
             text: `Added ${result.added.length} user(s). Total: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- ATS / HRIS Integrations ---
+  server.tool(
+    "add_ats_trigger_rows",
+    "Append trigger rows to a specific ATS integration. Use this to populate the Trigger Configuration table from the client's folder list.",
+    {
+      slug: z.string(),
+      integrationId: z.string().describe("ID of the AtsIntegration to append to"),
+      triggers: z.array(
+        z.object({
+          direction: z.enum(["Talkpush → ATS", "ATS → Talkpush"]),
+          talkpushFolder: z.string(),
+          atsObject: z.string().optional().default(""),
+          action: z.string().optional().default(""),
+          notes: z.string().optional().default(""),
+        })
+      ),
+    },
+    async ({ slug, integrationId, triggers }) => {
+      const rows: AtsTriggerRow[] = triggers.map((trigger) => ({
+        id: uuid(),
+        direction: trigger.direction,
+        talkpushFolder: trigger.talkpushFolder,
+        atsObject: trigger.atsObject,
+        action: trigger.action,
+        notes: trigger.notes,
+      }));
+
+      const result = await appendToAtsIntegration<AtsTriggerRow>(
+        slug,
+        integrationId,
+        "triggers",
+        rows
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Added ${result.added.length} ATS trigger row(s) to "${result.integrationName}". Total triggers: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "add_ats_field_mappings",
+    "Append field mapping rows to a specific ATS integration. Use this to populate the Field Mapping table from the client's attribute list.",
+    {
+      slug: z.string(),
+      integrationId: z.string(),
+      fieldMappings: z.array(
+        z.object({
+          talkpushAttribute: z.string().describe("Exact attribute key, e.g. 'first_name'"),
+          atsField: z.string().optional().default(""),
+          dataType: z.string().optional().default(""),
+          direction: z
+            .enum(["Talkpush → ATS", "ATS → Talkpush", "Bidirectional"])
+            .optional()
+            .default("Talkpush → ATS"),
+          notes: z.string().optional().default(""),
+        })
+      ),
+    },
+    async ({ slug, integrationId, fieldMappings }) => {
+      const rows: AtsFieldMappingRow[] = fieldMappings.map((mapping) => ({
+        id: uuid(),
+        talkpushAttribute: mapping.talkpushAttribute,
+        atsField: mapping.atsField,
+        dataType: mapping.dataType,
+        direction: mapping.direction,
+        notes: mapping.notes,
+      }));
+
+      const result = await appendToAtsIntegration<AtsFieldMappingRow>(
+        slug,
+        integrationId,
+        "fieldMappings",
+        rows
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Added ${result.added.length} ATS field mapping row(s) to "${result.integrationName}". Total mappings: ${result.totalCount}. Version: ${result.version}`,
+          },
+        ],
+      };
+    }
+  );
+
+  // --- Integrations ---
+  server.tool(
+    "add_integrations",
+    "Append one or more integration action rows to the Integrations tab. Each row represents a single integration action (outbound POST, inbound attribute update, etc.) for a vendor. A single vendor with multiple actions should be passed as multiple rows.",
+    {
+      token: z.string().describe("Editor token for the target checklist"),
+      rows: z.array(integrationRowSchema).describe("Integration action rows to append"),
+    },
+    async ({ token, rows }) => {
+      const integrationRows: IntegrationRow[] = rows.map((row) => ({
+        id: uuid(),
+        vendorName: row.vendorName,
+        vendorCategory: (row.vendorCategory ?? "") as IntegrationCategory | "",
+        actionType: (row.actionType ?? "") as IntegrationActionType | "",
+        triggerFolder: row.triggerFolder ?? "",
+        status: (row.status ?? "") as IntegrationStatus | "",
+        vendorContactName: row.vendorContactName ?? "",
+        vendorContactEmail: row.vendorContactEmail ?? "",
+        vendorDocsUrl: row.vendorDocsUrl ?? "",
+        notes: row.notes ?? "",
+        endpointUrl: row.endpointUrl ?? "",
+        authMethod: (row.authMethod ?? "none") as IntegrationAuthMethod,
+        authParamName: row.authParamName ?? "",
+        authValue: row.authValue ?? "",
+        outboundPayloadMapping: (row.outboundPayloadMapping ?? []).map((mapping) => ({
+          id: uuid(),
+          talkpushSource: mapping.talkpushSource ?? "",
+          vendorFieldName: mapping.vendorFieldName ?? "",
+          required: !!mapping.required,
+        })) as IntegrationPayloadMapping[],
+        responseHandling: (row.responseHandling ?? []).map((mapping) => ({
+          id: uuid(),
+          vendorResponseField: mapping.vendorResponseField ?? "",
+          targetAttribute: mapping.targetAttribute ?? "",
+        })) as IntegrationResponseMapping[],
+        inboundAttributeMapping: (row.inboundAttributeMapping ?? []).map((mapping) => ({
+          id: uuid(),
+          vendorCallbackField: mapping.vendorCallbackField ?? "",
+          targetAttribute: mapping.targetAttribute ?? "",
+        })) as IntegrationAttributeMapping[],
+        matchKey: (row.matchKey ?? "") as IntegrationMatchKey | "",
+        documentTag: row.documentTag ?? "",
+        targetFolder: row.targetFolder ?? "",
+        filterCriteria: row.filterCriteria ?? "",
+        talkpushApiBaseUrl: row.talkpushApiBaseUrl ?? "",
+        apiEnvironment: (row.apiEnvironment ?? "") as IntegrationApiEnvironment | "",
+        inboundAuthMethod: (row.inboundAuthMethod ?? "") as IntegrationAuthMethod | "",
+        inboundAuthParamName: row.inboundAuthParamName ?? "",
+        inboundAuthValue: row.inboundAuthValue ?? "",
+        campaignScope: (row.campaignScope ?? "") as IntegrationCampaignScope | "",
+        campaignIds: row.campaignIds ?? "",
+        campaignNames: row.campaignNames ?? "",
+        candidateIdSource: (row.candidateIdSource ?? "") as IntegrationCandidateIdSource | "",
+        candidateIdFieldName: row.candidateIdFieldName ?? "",
+        lookupQueryParams: row.lookupQueryParams ?? "",
+        multiMatchBehavior: (row.multiMatchBehavior ?? "") as IntegrationMultiMatchBehavior | "",
+        sampleRequest: row.sampleRequest ?? "",
+        sampleSuccessResponse: row.sampleSuccessResponse ?? "",
+        sampleErrorResponse: row.sampleErrorResponse ?? "",
+        rateLimitNotes: row.rateLimitNotes ?? "",
+        retryTimeoutNotes: row.retryTimeoutNotes ?? "",
+        idempotencyNotes: row.idempotencyNotes ?? "",
+        uatTestCandidate: row.uatTestCandidate ?? "",
+        expectedTalkpushResult: row.expectedTalkpushResult ?? "",
+      }));
+
+      const result = await appendToSectionByEditorToken<IntegrationRow>(
+        token,
+        "integrations",
+        integrationRows
+      );
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Added ${result.added.length} integration row(s). Total: ${result.totalCount}. Version: ${result.version}`,
           },
         ],
       };
@@ -1015,6 +1632,150 @@ export function createMcpServer(): McpServer {
           },
         ],
       };
+    }
+  );
+
+  // =========================================================================
+  // CONFIGURATOR CHECKLIST TOOLS
+  // =========================================================================
+
+  server.tool(
+    "generate_configurator_checklist",
+    "Generates the initial SE configurator checklist for a client checklist by slug. Idempotent — returns existing checklist if already generated.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+    },
+    async ({ slug }) => {
+      try {
+        const before = await getConfiguratorMeta(slug);
+        const blob = await generateConfiguratorChecklist(slug);
+        const after = await getConfiguratorMeta(slug);
+
+        return mcpJson({
+          slug,
+          clientName: after.clientName,
+          totalItems: blob.snapshotItemIds.length,
+          generatedAt: blob.generatedAt,
+          alreadyExisted: before.generated,
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "get_configurator_checklist",
+    "Retrieves the full configurator checklist for a client with all items, statuses, and notes. Set includeArchived=true to include items that are no longer in scope but retain historical status.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      includeArchived: z.boolean().optional().default(false),
+    },
+    async ({ slug, includeArchived }) => {
+      try {
+        const blob = await getConfiguratorChecklist(slug, { includeArchived });
+        const templateMap = new Map(CONFIGURATOR_TEMPLATE.map((item) => [item.id, item]));
+        return mcpJson({
+          ...blob,
+          items: blob.items.map((item) => {
+            const template = templateMap.get(item.itemId);
+            return {
+              itemId: item.itemId,
+              section: template?.section ?? "Unknown",
+              title: template?.title ?? item.itemId,
+              status: item.status,
+              notes: item.notes,
+              updatedAt: item.updatedAt,
+              updatedBy: item.updatedBy,
+              archived: item.archived,
+            };
+          }),
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "get_configurator_progress",
+    "Returns a lightweight progress summary (counts by status, per-section breakdown, staleness flag) for a client's configurator checklist. Use this instead of get_configurator_checklist when you only need status metrics.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+    },
+    async ({ slug }) => {
+      try {
+        return mcpJson(await getConfiguratorProgress(slug));
+      } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "update_configurator_item",
+    "Updates the status and/or notes of a single configurator checklist item. Accepts any of the 4 statuses (completed, in_progress, in_progress_with_dependency, blocked) or null to clear.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      itemId: z.string().describe("Stable configurator template item ID"),
+      status: z.enum(["completed", "in_progress", "in_progress_with_dependency", "blocked"]).nullable(),
+      notes: z.string().nullable().optional(),
+    },
+    async ({ slug, itemId, status, notes }) => {
+      try {
+        return mcpJson(
+          await updateConfiguratorItem(slug, {
+            itemId,
+            status,
+            notes: notes ?? null,
+            updatedBy: "mcp",
+          })
+        );
+      } catch (error) {
+        if (error instanceof ConfiguratorServiceError) return mcpError(error);
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "refresh_configurator_snapshot",
+    "Re-syncs the configurator checklist snapshot against the current source checklist settings. Adds newly-applicable items, archives items no longer in scope. Preserves all existing statuses and notes. Use after the source checklist's enabled tabs, communication channels, or feature toggles have changed.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+    },
+    async ({ slug }) => {
+      try {
+        const before = await getConfiguratorChecklist(slug, { includeArchived: true });
+        const after = await refreshConfiguratorSnapshot(slug);
+        const beforeMap = new Map(before.items.map((item) => [item.itemId, item]));
+
+        const newlyAdded = after.items
+          .filter((item) => !beforeMap.has(item.itemId))
+          .map((item) => item.itemId);
+        const newlyArchived = after.items
+          .filter((item) => beforeMap.get(item.itemId)?.archived === false && item.archived)
+          .map((item) => item.itemId);
+        const newlyUnarchived = after.items
+          .filter((item) => beforeMap.get(item.itemId)?.archived === true && !item.archived)
+          .map((item) => item.itemId);
+
+        return mcpJson({
+          before: {
+            total: before.snapshotItemIds.length,
+            archived: before.items.filter((item) => item.archived).length,
+          },
+          after: {
+            total: after.snapshotItemIds.length,
+            archived: after.items.filter((item) => item.archived).length,
+          },
+          newlyAdded,
+          newlyArchived,
+          newlyUnarchived,
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
     }
   );
 

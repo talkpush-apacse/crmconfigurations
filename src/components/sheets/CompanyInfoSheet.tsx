@@ -1,14 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { ExampleHint } from "@/components/shared/ExampleHint";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { defaultCompanyInfo } from "@/lib/template-data";
-import type { CompanyInfo } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { BusinessHourEntry, CompanyInfo } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const companyDetailsFields: KeyValueField[] = [
@@ -160,13 +164,41 @@ const recruitmentFields: KeyValueField[] = [
   },
 ];
 
+const DEFAULT_BUSINESS_HOURS: BusinessHourEntry[] = [
+  { day: "Monday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Tuesday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Wednesday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Thursday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Friday", isOpen: true, openTime: "08:00", closeTime: "17:00" },
+  { day: "Saturday", isOpen: false, openTime: "08:00", closeTime: "17:00" },
+  { day: "Sunday", isOpen: false, openTime: "08:00", closeTime: "17:00" },
+];
+
 export function CompanyInfoSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("companyInfo");
-  const companyInfo = (data.companyInfo as CompanyInfo) || defaultCompanyInfo;
+  const storedCompanyInfo = data.companyInfo as CompanyInfo | null;
+  const companyInfo = storedCompanyInfo || defaultCompanyInfo;
+  const businessHours = companyInfo.businessHours ?? DEFAULT_BUSINESS_HOURS;
+
+  useEffect(() => {
+    if (storedCompanyInfo?.businessHours) return;
+    updateField("companyInfo", { ...companyInfo, businessHours: DEFAULT_BUSINESS_HOURS });
+  }, [companyInfo, storedCompanyInfo, updateField]);
 
   const handleChange = (key: string, value: string | boolean) => {
     updateField("companyInfo", { ...companyInfo, [key]: value });
+  };
+
+  const handleBusinessHourChange = (
+    index: number,
+    field: keyof BusinessHourEntry,
+    value: string | boolean
+  ) => {
+    const updatedHours = businessHours.map((entry, entryIndex) =>
+      entryIndex === index ? { ...entry, [field]: value } : entry
+    );
+    updateField("companyInfo", { ...companyInfo, businessHours: updatedHours });
   };
 
   return (
@@ -244,6 +276,60 @@ export function CompanyInfoSheet() {
           data={companyInfo as unknown as Record<string, string | boolean>}
           onChange={handleChange}
         />
+      </div>
+
+      <div className="mb-6">
+        <SectionHeader
+          title="Business Hours"
+          description="Defines the window during which automated messages (autoflows) are sent to candidates. Messages triggered outside these hours are queued and delivered at the next opening time. Manual recruiter messages are not affected by this setting."
+        />
+        <div className="overflow-hidden rounded-lg border">
+          <div className="grid grid-cols-[110px_72px_1fr_1fr] bg-blue-600 text-white sm:grid-cols-[160px_90px_1fr_1fr]">
+            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Day</div>
+            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Open</div>
+            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Opening Time</div>
+            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Closing Time</div>
+          </div>
+          {businessHours.map((entry, idx) => (
+            <div
+              key={entry.day}
+              className={cn(
+                "grid grid-cols-[110px_72px_1fr_1fr] items-center border-b last:border-b-0 sm:grid-cols-[160px_90px_1fr_1fr]",
+                idx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
+                !entry.isOpen ? "text-muted-foreground" : ""
+              )}
+            >
+              <div className="px-3 py-2.5 text-sm font-medium">
+                {entry.day}
+              </div>
+              <div className="flex justify-center px-3 py-2.5">
+                <Checkbox
+                  checked={entry.isOpen}
+                  onCheckedChange={(val) => handleBusinessHourChange(idx, "isOpen", val === true)}
+                  aria-label={`${entry.day} open`}
+                />
+              </div>
+              <div className="px-2 py-1.5">
+                <Input
+                  type="time"
+                  value={entry.openTime}
+                  onChange={(e) => handleBusinessHourChange(idx, "openTime", e.target.value)}
+                  disabled={!entry.isOpen}
+                  className="h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
+                />
+              </div>
+              <div className="px-2 py-1.5">
+                <Input
+                  type="time"
+                  value={entry.closeTime}
+                  onChange={(e) => handleBusinessHourChange(idx, "closeTime", e.target.value)}
+                  disabled={!entry.isOpen}
+                  className="h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
         </>
       )}

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { CustomTab, CustomTabRow, ColumnDef } from "@/lib/types";
 
@@ -54,6 +55,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [deleteFileOpen, setDeleteFileOpen] = useState(false);
 
   const rows = (customTab.rows ?? []) as CustomTabRow[];
   const columns = customTab.columns ?? [];
@@ -213,7 +215,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={handleRemoveFile}
+                      onClick={() => setDeleteFileOpen(true)}
                       title="Remove file"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -251,6 +253,13 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
         accept=".xlsx,.xls,.csv"
         className="hidden"
         onChange={handleFileInputChange}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteFileOpen}
+        onOpenChange={setDeleteFileOpen}
+        fileName={customTab.uploadedFile?.name ?? "this file"}
+        onConfirm={handleRemoveFile}
       />
     </div>
   );
