@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.30",
+    "name": "Version 1.30 - Admin Settings Consolidation",
+    "changes": [
+      "Removed redundant Instance Configuration tab — consolidated into Admin Settings",
+      "Added Account Metadata section to Admin Settings: Server, Key Dates, Assigned SE/CSM",
+      "Dropped instanceConfig DB column via migration (no existing data migration needed)",
+      "Removed update_instance_config MCP tool — metadata now managed via Admin Settings"
+    ],
+    "deployed_at": "2026-04-20"
+  },
+  {
     "version": "1.29",
     "name": "Version 1.29 - Bug Fix Batch",
     "changes": [
