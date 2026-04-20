@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Upload, CheckCircle2 } from "lucide-react";
-import { generateCsvTemplate, parseCsv, downloadCsv } from "@/lib/csv-utils";
+import { generateCsv, generateCsvTemplate, parseCsv, downloadCsv } from "@/lib/csv-utils";
 import type { ColumnDef } from "@/lib/types";
 
 interface CsvToolbarProps {
@@ -12,9 +12,10 @@ interface CsvToolbarProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onImport: (rows: Record<string, any>[]) => void;
   sheetName: string;
+  exportRows?: Record<string, string>[];
 }
 
-export function CsvToolbar({ columns, sampleRow, onImport, sheetName }: CsvToolbarProps) {
+export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows }: CsvToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -26,6 +27,13 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName }: CsvToolb
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDownloadCurrent = () => {
+    if (!exportRows) return;
+    const csv = generateCsv(columns, exportRows);
+    const filename = `${sheetName.toLowerCase().replace(/\s+/g, "-")}.csv`;
+    downloadCsv(csv, filename);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +74,17 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName }: CsvToolb
         <Download className="mr-1 h-3.5 w-3.5" />
         Download CSV Template
       </Button>
+      {exportRows && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadCurrent}
+          className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+        >
+          <Download className="mr-1 h-3.5 w-3.5" />
+          Download CSV
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"

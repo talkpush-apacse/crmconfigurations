@@ -17,6 +17,7 @@ import {
   Briefcase,
   Tags,
   ThumbsDown,
+  PlugZap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +37,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Briefcase,
   Tags,
   ThumbsDown,
+  PlugZap,
 };
 
 interface TabSelectorProps {

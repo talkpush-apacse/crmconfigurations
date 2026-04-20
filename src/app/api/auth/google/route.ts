@@ -1,36 +1,51 @@
-import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
+import { OAuth2Client } from "google-auth-library";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+const GOOGLE_STATE_COOKIE = "admin_google_oauth_state";
+const STATE_MAX_AGE_SECONDS = 10 * 60;
 
-  if (!clientId || !redirectUri) {
-    return NextResponse.json(
-      { error: "Google OAuth is not configured on this server." },
-      { status: 503 }
-    );
+function getGoogleConfig(request: NextRequest) {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const redirectUri =
+    process.env.GOOGLE_REDIRECT_URI?.trim() ||
+    new URL("/api/auth/google/callback", request.url).toString();
+
+  if (!clientId || !clientSecret || !redirectUri) return null;
+  return { clientId, clientSecret, redirectUri };
+}
+
+function redirectToLogin(request: NextRequest, error: string) {
+  const url = new URL("/admin/login", request.url);
+  url.searchParams.set("error", error);
+  return NextResponse.redirect(url);
+}
+
+export async function GET(request: NextRequest) {
+  const config = getGoogleConfig(request);
+  if (!config) {
+    return redirectToLogin(request, "google_config");
   }
 
-  const state = crypto.randomUUID();
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    scope: "openid email profile",
+  const state = randomBytes(32).toString("hex");
+  const client = new OAuth2Client(
+    config.clientId,
+    config.clientSecret,
+    config.redirectUri
+  );
+  const authorizationUrl = client.generateAuthUrl({
+    scope: ["openid", "email", "profile"],
     state,
-    access_type: "online",
   });
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-
-  const response = NextResponse.redirect(googleAuthUrl);
-  response.cookies.set("oauth_state", state, {
+  const response = NextResponse.redirect(authorizationUrl);
+  response.cookies.set(GOOGLE_STATE_COOKIE, state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 600,
-    path: "/",
+    maxAge: STATE_MAX_AGE_SECONDS,
+    path: "/api/auth/google",
   });
 
   return response;

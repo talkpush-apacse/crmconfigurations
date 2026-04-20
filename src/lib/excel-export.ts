@@ -1,7 +1,10 @@
 import ExcelJS from "exceljs";
 import path from "path";
-import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule } from "./types";
+import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule, IntegrationRow } from "./types";
 import { TAB_CONFIG } from "./tab-config";
+import {
+  integrationToCsvRow,
+} from "./integration-utils";
 
 export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
@@ -45,6 +48,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   populateTableSheet(workbook, "Agency Portal Users", data.agencyPortalUsers as Record<string, unknown>[] | null, 12, ["name", "email", "agency", "userAccess"], "C");
 
   addAutoflowsSheet(workbook, data.autoflows);
+  addIntegrationsSheet(workbook, data.integrations);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -255,6 +259,7 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
   ], data.agencyPortalUsers as Record<string, unknown>[] | null);
 
   addAutoflowsSheet(workbook, data.autoflows);
+  addIntegrationsSheet(workbook, data.integrations);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -281,6 +286,70 @@ function addAutoflowsSheet(workbook: ExcelJS.Workbook, autoflows: AutoflowRule[]
   if (autoflows) {
     autoflows.forEach((rule) => sheet.addRow(rule as unknown as Record<string, unknown>));
   }
+}
+
+function addIntegrationsSheet(workbook: ExcelJS.Workbook, integrations: IntegrationRow[] | null | undefined) {
+  const existing = workbook.getWorksheet("Integrations");
+  const sheet = existing ?? workbook.addWorksheet("Integrations");
+  if (sheet.rowCount > 0) {
+    sheet.spliceRows(1, sheet.rowCount);
+  }
+
+  sheet.columns = [
+    { header: "Vendor Name", key: "vendorName", width: 24 },
+    { header: "Category", key: "vendorCategory", width: 20 },
+    { header: "Action Type", key: "actionType", width: 30 },
+    { header: "Trigger Folder", key: "triggerFolder", width: 24 },
+    { header: "Status", key: "status", width: 18 },
+    { header: "Endpoint URL", key: "endpointUrl", width: 40 },
+    { header: "Auth Method", key: "authMethod", width: 24 },
+    { header: "Auth Param / Header", key: "authParamName", width: 24 },
+    { header: "Outbound Payload Mapping", key: "outboundPayloadMapping", width: 45 },
+    { header: "Response Handling", key: "responseHandling", width: 45 },
+    { header: "Inbound Attribute Mapping", key: "inboundAttributeMapping", width: 45 },
+    { header: "Match Key", key: "matchKey", width: 18 },
+    { header: "Document Tag", key: "documentTag", width: 24 },
+    { header: "Target Folder", key: "targetFolder", width: 24 },
+    { header: "Filter Criteria", key: "filterCriteria", width: 35 },
+    { header: "Talkpush API Base URL", key: "talkpushApiBaseUrl", width: 35 },
+    { header: "API Environment", key: "apiEnvironment", width: 18 },
+    { header: "Inbound Auth Method", key: "inboundAuthMethod", width: 24 },
+    { header: "Inbound Auth Param / Header", key: "inboundAuthParamName", width: 28 },
+    { header: "Campaign Scope", key: "campaignScope", width: 22 },
+    { header: "Campaign IDs", key: "campaignIds", width: 28 },
+    { header: "Campaign Names", key: "campaignNames", width: 32 },
+    { header: "Candidate ID Retrieval Method", key: "candidateIdSource", width: 32 },
+    { header: "Candidate ID Field Name", key: "candidateIdFieldName", width: 26 },
+    { header: "Lookup Query Params", key: "lookupQueryParams", width: 40 },
+    { header: "Multi-match Behavior", key: "multiMatchBehavior", width: 24 },
+    { header: "Sample Request", key: "sampleRequest", width: 45 },
+    { header: "Sample Success Response", key: "sampleSuccessResponse", width: 40 },
+    { header: "Sample Error Response", key: "sampleErrorResponse", width: 40 },
+    { header: "Rate Limit Notes", key: "rateLimitNotes", width: 35 },
+    { header: "Retry / Timeout Notes", key: "retryTimeoutNotes", width: 35 },
+    { header: "Idempotency Notes", key: "idempotencyNotes", width: 35 },
+    { header: "UAT Test Candidate", key: "uatTestCandidate", width: 30 },
+    { header: "Expected Talkpush Result", key: "expectedTalkpushResult", width: 35 },
+    { header: "Vendor Contact Name", key: "vendorContactName", width: 24 },
+    { header: "Vendor Contact Email", key: "vendorContactEmail", width: 30 },
+    { header: "Vendor Docs URL", key: "vendorDocsUrl", width: 40 },
+    { header: "Notes", key: "notes", width: 40 },
+  ];
+
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF535FC1" } };
+
+  if (integrations) {
+    integrations.forEach((integration) => {
+      sheet.addRow(integrationToCsvRow(integration));
+    });
+  }
+
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+    });
+  });
 }
 
 /**

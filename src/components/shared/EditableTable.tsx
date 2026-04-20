@@ -33,6 +33,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "./EditableCell";
 import { CsvToolbar } from "./CsvToolbar";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { cn } from "@/lib/utils";
 import { arrayMove } from "@/lib/utils";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -51,13 +52,29 @@ interface EditableTableProps<TRow extends EditableRow> {
   /** Called with the reordered array when a row is dragged to a new position */
   onReorder?: (reorderedData: TRow[]) => void;
   addLabel?: string;
+  hideAddButton?: boolean;
+  emptyMessage?: React.ReactNode;
   renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
+  renderCell?: (args: {
+    row: TRow;
+    rowIdx: number;
+    column: ColumnDef;
+    value: string | boolean | null | undefined;
+    onChange: (value: string | boolean) => void;
+  }) => React.ReactNode;
+  renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
+  deleteConfirmation?: {
+    title?: string;
+    getName?: (row: TRow) => string;
+    getDescription?: (row: TRow) => React.ReactNode;
+  };
   /** Optional pinned sample row shown at the top of the table body (read-only) */
   sampleRow?: Record<string, string>;
   csvConfig?: {
     sampleRow: Record<string, string>;
     onImport: (rows: Record<string, string>[]) => void;
     sheetName: string;
+    exportRows?: Record<string, string>[];
   };
 }
 
@@ -78,7 +95,7 @@ function renderColumnLabel(
   );
 }
 
-function SortableRow({
+function SortableRow<TRow extends EditableRow>({
   row,
   rowIdx,
   columns,
@@ -94,8 +111,11 @@ function SortableRow({
   canReorder,
   rowIsActive,
   renderCellPrefix,
+  renderCell,
+  renderDetail,
+  requestDelete,
 }: {
-  row: EditableRow;
+  row: TRow;
   rowIdx: number;
   columns: ColumnDef[];
   detailColumns?: ColumnDef[];
@@ -110,6 +130,15 @@ function SortableRow({
   canReorder: boolean;
   rowIsActive: boolean;
   renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
+  renderCell?: (args: {
+    row: TRow;
+    rowIdx: number;
+    column: ColumnDef;
+    value: string | boolean | null | undefined;
+    onChange: (value: string | boolean) => void;
+  }) => React.ReactNode;
+  renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
+  requestDelete?: (rowIdx: number) => void;
 }) {
   const rowValues = row as Record<string, string | boolean | null | undefined>;
   const sortableId = row.id || `row-${rowIdx}`;
@@ -137,7 +166,7 @@ function SortableRow({
         className={cn(
           "transition-colors hover:bg-gray-50",
           rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
-          detailColumns && !isExpanded && "border-b border-gray-200",
+          (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
           isDragging && "bg-blue-50 shadow-sm"
         )}
       >
@@ -153,7 +182,7 @@ function SortableRow({
                 <GripVertical className="h-3.5 w-3.5 text-gray-400" />
               </button>
             )}
-            {detailColumns ? (
+            {detailColumns || renderDetail ? (
               <button
                 onClick={toggleRow}
                 className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-gray-100 hover:text-primary transition-colors"
@@ -179,16 +208,26 @@ function SortableRow({
             <div className="flex items-center gap-2">
               {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
               <div className="min-w-0 flex-1">
-                <EditableCell
-                  value={rowValues[col.key] as string | boolean}
-                  type={col.type}
-                  options={col.options}
-                  onChange={(val) => onUpdate(rowIdx, col.key, val)}
-                  placeholder={col.label}
-                  validation={col.validation}
-                  required={col.required}
-                  showRequiredError={rowIsActive}
-                />
+                {renderCell ? (
+                  renderCell({
+                    row,
+                    rowIdx,
+                    column: col,
+                    value: rowValues[col.key],
+                    onChange: (val) => onUpdate(rowIdx, col.key, val),
+                  })
+                ) : (
+                  <EditableCell
+                    value={rowValues[col.key] as string | boolean}
+                    type={col.type}
+                    options={col.options}
+                    onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                    placeholder={col.label}
+                    validation={col.validation}
+                    required={col.required}
+                    showRequiredError={rowIsActive}
+                  />
+                )}
               </div>
             </div>
           </TableCell>
@@ -233,7 +272,7 @@ function SortableRow({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
-                  onClick={() => handleDeleteClick(sortableId, rowIdx)}
+                  onClick={() => requestDelete ? requestDelete(rowIdx) : handleDeleteClick(sortableId, rowIdx)}
                   title="Delete row"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -243,12 +282,15 @@ function SortableRow({
           </TableCell>
         )}
       </TableRow>
-      {detailColumns && isExpanded && (
+      {(detailColumns || renderDetail) && isExpanded && (
         <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
           <TableCell colSpan={columns.length + 2} className="p-0">
             <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
+              {renderDetail ? (
+                renderDetail({ row, rowIdx })
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                {detailColumns.map((col) => {
+                {detailColumns?.map((col) => {
                   const isWide = col.type === "textarea";
                   return (
                     <div
@@ -285,6 +327,7 @@ function SortableRow({
                   );
                 })}
               </div>
+              )}
             </div>
           </TableCell>
         </TableRow>
@@ -303,7 +346,12 @@ export function EditableTable<TRow extends EditableRow>({
   onDuplicate,
   onReorder,
   addLabel = "Add Row",
+  hideAddButton = false,
+  emptyMessage,
   renderCellPrefix,
+  renderCell,
+  renderDetail,
+  deleteConfirmation,
   sampleRow,
   csvConfig,
 }: EditableTableProps<TRow>) {
@@ -314,6 +362,7 @@ export function EditableTable<TRow extends EditableRow>({
   const [collapsedRowIds, setCollapsedRowIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [deleteDialogIndex, setDeleteDialogIndex] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -355,6 +404,9 @@ export function EditableTable<TRow extends EditableRow>({
     [columns, detailColumns]
   );
 
+  const isExpandable = !!detailColumns || !!renderDetail;
+  const deleteDialogRow = deleteDialogIndex === null ? null : data[deleteDialogIndex] ?? null;
+
   const handleDeleteClick = (rowId: string, rowIdx: number) => {
     if (confirmingDeleteId === rowId) {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
@@ -393,6 +445,7 @@ export function EditableTable<TRow extends EditableRow>({
           sampleRow={csvConfig.sampleRow}
           onImport={csvConfig.onImport}
           sheetName={csvConfig.sheetName}
+          exportRows={csvConfig.exportRows}
         />
       )}
     <div className="rounded-lg border">
@@ -400,8 +453,8 @@ export function EditableTable<TRow extends EditableRow>({
         <Table>
           <TableHeader>
             <TableRow className="bg-blue-600">
-              <TableHead className={`${detailColumns ? "w-14" : canReorder ? "w-14" : "w-10"} text-center text-white`}>
-                {detailColumns && data.length > 0 ? (
+              <TableHead className={`${isExpandable ? "w-14" : canReorder ? "w-14" : "w-10"} text-center text-white`}>
+                {isExpandable && data.length > 0 ? (
                   <button
                     onClick={toggleAll}
                     className="inline-flex items-center justify-center rounded p-1 hover:bg-white/20 transition-colors"
@@ -446,7 +499,7 @@ export function EditableTable<TRow extends EditableRow>({
                   colSpan={columns.length + 2}
                   className="h-20 text-center text-muted-foreground"
                 >
-                  No data yet. Click &quot;{addLabel}&quot; to add a row.
+                  {emptyMessage ?? <>No data yet. Click &quot;{addLabel}&quot; to add a row.</>}
                 </TableCell>
               </TableRow>
             )}
@@ -491,12 +544,15 @@ export function EditableTable<TRow extends EditableRow>({
                   )
                 )}
                 renderCellPrefix={renderCellPrefix}
+                renderCell={renderCell}
+                renderDetail={renderDetail}
+                requestDelete={deleteConfirmation ? setDeleteDialogIndex : undefined}
               />
             ))}
           </TableBody>
         </Table>
       </div>
-      {!isReadOnly && (
+      {!isReadOnly && !hideAddButton && (
       <div className="border-t p-2">
         <Button variant="outline" size="sm" onClick={onAdd} className="text-primary border-primary/30 hover:border-primary/60">
           <Plus className="mr-1 h-4 w-4" />
@@ -505,6 +561,26 @@ export function EditableTable<TRow extends EditableRow>({
       </div>
       )}
     </div>
+    {deleteConfirmation && deleteDialogRow && (
+      <ConfirmDeleteDialog
+        open={deleteDialogIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteDialogIndex(null);
+        }}
+        title={deleteConfirmation.title ?? "Delete this row?"}
+        fileName={deleteConfirmation.getName?.(deleteDialogRow) ?? "this row"}
+        description={
+          deleteConfirmation.getDescription?.(deleteDialogRow) ?? (
+            <>
+              <strong>{deleteConfirmation.getName?.(deleteDialogRow) ?? "This row"}</strong> will be permanently removed.
+            </>
+          )
+        }
+        onConfirm={() => {
+          if (deleteDialogIndex !== null) onDelete(deleteDialogIndex);
+        }}
+      />
+    )}
     </div>
   );
 

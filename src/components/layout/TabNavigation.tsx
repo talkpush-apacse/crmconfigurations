@@ -30,6 +30,7 @@ import {
   ThumbsDown,
   Table,
   Shield,
+  PlugZap,
 } from "lucide-react";
 import type { ChecklistData } from "@/lib/types";
 
@@ -53,6 +54,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ThumbsDown,
   Table,
   Shield,
+  PlugZap,
 };
 
 interface TabNavigationProps {

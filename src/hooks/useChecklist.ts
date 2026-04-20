@@ -21,6 +21,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   const lastSavedDataRef = useRef<ChecklistData | null>(null);
   const hasPendingChangesRef = useRef(false);
   const dirtyFieldsRef = useRef<Set<string>>(new Set());
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -200,6 +201,26 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     },
     []
   );
+
+  useEffect(() => {
+    if (!data || dirtyFieldsRef.current.size === 0) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (latestDataRef.current && dirtyFieldsRef.current.size > 0) {
+        save(latestDataRef.current);
+      }
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [data, save]);
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {

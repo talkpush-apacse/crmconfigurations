@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,8 @@ interface ConfirmDeleteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fileName: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
+  title?: string;
   description?: React.ReactNode;
 }
 
@@ -24,31 +26,47 @@ export function ConfirmDeleteDialog({
   onOpenChange,
   fileName,
   onConfirm,
+  title,
   description,
 }: ConfirmDeleteDialogProps) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleConfirm = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setConfirming(true);
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete this file?</AlertDialogTitle>
+          <AlertDialogTitle>{title ?? "Delete this file?"}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div>
               {description ?? (
                 <>
-                  <strong>{fileName}</strong> will be permanently removed from
-                  storage. This action cannot be undone.
+                  <strong>{fileName}</strong> will be permanently removed from storage.
+                  {" "}
+                  This action cannot be undone.
                 </>
               )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={confirming}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={handleConfirm}
+            disabled={confirming}
+            className="bg-destructive text-white hover:bg-destructive/90"
           >
-            Delete
+            {confirming ? "Deleting..." : "Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

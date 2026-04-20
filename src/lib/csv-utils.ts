@@ -25,6 +25,18 @@ export function generateCsvTemplate(
   return [headers.join(","), sampleValues.join(",")].join("\n");
 }
 
+export function generateCsv(
+  columns: ColumnDef[],
+  rows: Record<string, string>[]
+): string {
+  const headers = columns.map((col) => escapeCsvField(col.label));
+  const body = rows.map((row) =>
+    columns.map((col) => escapeCsvField(row[col.key] || "")).join(",")
+  );
+
+  return [headers.join(","), ...body].join("\n");
+}
+
 /**
  * Parses a CSV string into an array of row objects, mapping CSV headers
  * to column keys. Handles quoted fields with commas and escaped quotes.
