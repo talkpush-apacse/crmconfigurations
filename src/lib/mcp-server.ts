@@ -298,6 +298,55 @@ async function appendToSection<T extends { id: string }>(
   return result;
 }
 
+/**
+ * Generic remove-by-id helper — reads current array from a checklist section,
+ * removes the row whose `id` matches, and saves with field-level versioning.
+ * Throws when the checklist slug or the row id cannot be found so callers
+ * can surface a 404.
+ */
+async function removeFromSectionById<T extends { id: string }>(
+  slug: string,
+  sectionField: string,
+  rowId: string
+): Promise<{ removedId: string; totalCount: number; version: number }> {
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<
+      Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
+    >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE slug = ${slug} FOR UPDATE`;
+
+    const current = locked[0];
+    if (!current) {
+      throw new Error(`Checklist with slug "${slug}" not found`);
+    }
+
+    const checklist = await tx.checklist.findUnique({
+      where: { id: current.id },
+      select: { [sectionField]: true } as Record<string, boolean>,
+    });
+
+    const existingData = ((checklist as Record<string, unknown>)?.[sectionField] as T[]) ?? [];
+    const index = existingData.findIndex((row) => row.id === rowId);
+    if (index === -1) {
+      throw new Error(`Row with id "${rowId}" not found in section "${sectionField}"`);
+    }
+
+    const nextRows = [...existingData.slice(0, index), ...existingData.slice(index + 1)];
+    const newVersion = current.version + 1;
+    const fieldVersions = { ...(current.fieldVersions ?? {}), [sectionField]: newVersion };
+
+    await tx.checklist.update({
+      where: { id: current.id },
+      data: {
+        [sectionField]: toPrismaJson(nextRows),
+        version: newVersion,
+        fieldVersions: toPrismaJson(fieldVersions),
+      },
+    });
+
+    return { removedId: rowId, totalCount: nextRows.length, version: newVersion };
+  });
+}
+
 /** Same as appendToSection but for string arrays (rejectionReasons) */
 async function appendStringsToSection(
   slug: string,
@@ -858,6 +907,34 @@ export function createMcpServer(): McpServer {
           },
         ],
       };
+    }
+  );
+
+  server.tool(
+    "delete_message_template",
+    "Delete a single message template from a checklist's messaging section by its ID. Use `get_section` with section='messaging' first to retrieve template IDs, then pass the target ID here. This is permanent and cannot be undone.",
+    {
+      slug: z.string().describe("The checklist URL slug (e.g. 'exl', 'accenture')"),
+      template_id: z.string().describe("The UUID of the message template to delete"),
+    },
+    async ({ slug, template_id }) => {
+      try {
+        const result = await removeFromSectionById<MessagingTemplateRow>(
+          slug,
+          "messaging",
+          template_id
+        );
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Deleted template ${result.removedId}. Remaining: ${result.totalCount}. Version: ${result.version}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return mcpError(error);
+      }
     }
   );
 

@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.31",
+    "name": "Version 1.31 - Delete Message Template",
+    "changes": [
+      "Added delete_message_template MCP tool for removing individual message templates by ID",
+      "Added DELETE /api/checklists/by-slug/[slug]/messaging/[templateId] endpoint",
+      "Added removeFromSectionById helper for versioned single-row removal"
+    ],
+    "deployed_at": "2026-04-21"
+  },
+  {
     "version": "1.30",
     "name": "Version 1.30 - Admin Settings Consolidation",
     "changes": [
