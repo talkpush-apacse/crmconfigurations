@@ -560,7 +560,7 @@ export function EditableTable<TRow extends EditableRow>({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-blue-600">
+            <TableRow className="bg-blue-600 hover:bg-blue-600">
               {bulkEnabled && (
                 <TableHead className="w-10 text-center text-white">
                   <Checkbox

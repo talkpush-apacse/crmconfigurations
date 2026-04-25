@@ -1,5 +1,13 @@
 [
   {
+    "version": "2.6",
+    "name": "Version 2.6 - Header Row Hover Fix",
+    "changes": [
+      "Fixed: blue table header washed out when hovering over the bulk-select checkbox — shadcn's default <TableRow> hover overlay was overriding bg-blue-600. Locked the header row's hover state to keep the same color."
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.5",
     "name": "Version 2.5 - Bulk Select Rollout (12 sections)",
     "changes": [
