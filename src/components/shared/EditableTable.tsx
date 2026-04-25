@@ -3,6 +3,7 @@
 import { useState, Fragment, useMemo, useRef } from "react";
 import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -34,6 +35,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "./EditableCell";
 import { CsvToolbar } from "./CsvToolbar";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { BulkActionBar } from "./BulkActionBar";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { cn } from "@/lib/utils";
 import { arrayMove } from "@/lib/utils";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -76,6 +79,22 @@ interface EditableTableProps<TRow extends EditableRow> {
     sheetName: string;
     exportRows?: Record<string, string>[];
   };
+  /**
+   * Enables the bulk-select column + bulk action bar.
+   * Pass id-based handlers (NOT index-based — indexes drift after filtering).
+   */
+  bulkActions?: {
+    /** Singular noun, e.g. "user" */
+    itemLabel: string;
+    /** Plural noun, e.g. "users" */
+    itemLabelPlural: string;
+    /** Soft-delete by id. Selection is cleared after this resolves. */
+    onBulkDelete: (ids: string[]) => void | Promise<void>;
+    /** Optional bulk duplicate by id. Selection is cleared after this resolves. */
+    onBulkDuplicate?: (ids: string[]) => void | Promise<void>;
+    /** Body shown in the bulk delete confirm dialog. */
+    deleteDialogDescription?: (count: number) => React.ReactNode;
+  };
 }
 
 function hasCellValue(value: unknown): boolean {
@@ -93,6 +112,12 @@ function renderColumnLabel(
       {col.required && <span className={cn("ml-1", markerClassName)}>*</span>}
     </>
   );
+}
+
+interface BulkRowContext {
+  enabled: boolean;
+  isSelected: boolean;
+  onToggle: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 function SortableRow<TRow extends EditableRow>({
@@ -114,6 +139,7 @@ function SortableRow<TRow extends EditableRow>({
   renderCell,
   renderDetail,
   requestDelete,
+  bulkRow,
 }: {
   row: TRow;
   rowIdx: number;
@@ -139,6 +165,7 @@ function SortableRow<TRow extends EditableRow>({
   }) => React.ReactNode;
   renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
   requestDelete?: (rowIdx: number) => void;
+  bulkRow?: BulkRowContext;
 }) {
   const rowValues = row as Record<string, string | boolean | null | undefined>;
   const sortableId = row.id || `row-${rowIdx}`;
@@ -167,9 +194,20 @@ function SortableRow<TRow extends EditableRow>({
           "transition-colors hover:bg-gray-50",
           rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
           (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
-          isDragging && "bg-blue-50 shadow-sm"
+          isDragging && "bg-blue-50 shadow-sm",
+          bulkRow?.isSelected && "bg-teal-50 hover:bg-teal-50"
         )}
       >
+        {bulkRow?.enabled && (
+          <TableCell className="w-10 text-center">
+            <Checkbox
+              checked={bulkRow.isSelected}
+              onClick={bulkRow.onToggle}
+              onCheckedChange={() => {}}
+              aria-label={`Select row ${rowIdx + 1}`}
+            />
+          </TableCell>
+        )}
         <TableCell className="text-center text-xs text-muted-foreground">
           <div className="flex items-center justify-center gap-0.5">
             {canReorder && !isReadOnly && (
@@ -284,7 +322,7 @@ function SortableRow<TRow extends EditableRow>({
       </TableRow>
       {(detailColumns || renderDetail) && isExpanded && (
         <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
-          <TableCell colSpan={columns.length + 2} className="p-0">
+          <TableCell colSpan={columns.length + 2 + (bulkRow?.enabled ? 1 : 0)} className="p-0">
             <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
               {renderDetail ? (
                 renderDetail({ row, rowIdx })
@@ -354,6 +392,7 @@ export function EditableTable<TRow extends EditableRow>({
   deleteConfirmation,
   sampleRow,
   csvConfig,
+  bulkActions,
 }: EditableTableProps<TRow>) {
   const { isReadOnly } = useChecklistContext();
   // Track confirm by stable row ID (not index) so drag-reorder doesn't target the wrong row
@@ -363,6 +402,12 @@ export function EditableTable<TRow extends EditableRow>({
     () => new Set()
   );
   const [deleteDialogIndex, setDeleteDialogIndex] = useState<number | null>(null);
+
+  // ===== Bulk selection =====
+  const bulkSelection = useBulkSelection();
+  const bulkEnabled = !!bulkActions && !isReadOnly;
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -374,6 +419,51 @@ export function EditableTable<TRow extends EditableRow>({
     () => data.map((row, i) => row.id || `row-${i}`),
     [data]
   );
+
+  // Only string ids (with a real `row.id`) participate in bulk select
+  const selectableIds = useMemo(
+    () => data.map((r) => r.id).filter((id): id is string => typeof id === "string" && id.length > 0),
+    [data]
+  );
+
+  const headerChecked = bulkEnabled && bulkSelection.allSelected(selectableIds);
+  const headerIndeterminate = bulkEnabled && bulkSelection.someSelected(selectableIds);
+
+  const runBulkDelete = async () => {
+    if (!bulkActions) return;
+    const ids = Array.from(bulkSelection.selectedIds);
+    if (ids.length === 0) {
+      setBulkDeleteOpen(false);
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      await bulkActions.onBulkDelete(ids);
+      bulkSelection.clear();
+    } finally {
+      setBulkBusy(false);
+      setBulkDeleteOpen(false);
+    }
+  };
+
+  const runBulkDuplicate = async () => {
+    if (!bulkActions?.onBulkDuplicate) return;
+    const ids = Array.from(bulkSelection.selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      await bulkActions.onBulkDuplicate(ids);
+      bulkSelection.clear();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkLabel = bulkActions
+    ? bulkSelection.count === 1
+      ? bulkActions.itemLabel
+      : bulkActions.itemLabelPlural
+    : "";
 
   const toggleRow = (rowId: string) => {
     setCollapsedRowIds((prev) => {
@@ -448,11 +538,38 @@ export function EditableTable<TRow extends EditableRow>({
           exportRows={csvConfig.exportRows}
         />
       )}
+      {bulkEnabled && bulkActions && (
+        <BulkActionBar
+          count={bulkSelection.count}
+          itemLabel={bulkLabel}
+          onDelete={() => setBulkDeleteOpen(true)}
+          onDuplicate={
+            bulkActions.onBulkDuplicate ? runBulkDuplicate : undefined
+          }
+          onClear={bulkSelection.clear}
+          isBusy={bulkBusy}
+        />
+      )}
     <div className="rounded-lg border">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-blue-600">
+              {bulkEnabled && (
+                <TableHead className="w-10 text-center text-white">
+                  <Checkbox
+                    checked={
+                      headerIndeterminate
+                        ? "indeterminate"
+                        : headerChecked
+                    }
+                    onCheckedChange={() => bulkSelection.toggleAll(selectableIds)}
+                    disabled={selectableIds.length === 0}
+                    aria-label="Select all rows"
+                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-600 data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-blue-600"
+                  />
+                </TableHead>
+              )}
               <TableHead className={`${isExpandable ? "w-14" : canReorder ? "w-14" : "w-10"} text-center text-white`}>
                 {isExpandable && data.length > 0 ? (
                   <button
@@ -496,7 +613,7 @@ export function EditableTable<TRow extends EditableRow>({
             {data.length === 0 && !sampleRow && (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length + 2}
+                  colSpan={columns.length + 2 + (bulkEnabled ? 1 : 0)}
                   className="h-20 text-center text-muted-foreground"
                 >
                   {emptyMessage ?? <>No data yet. Click &quot;{addLabel}&quot; to add a row.</>}
@@ -506,6 +623,7 @@ export function EditableTable<TRow extends EditableRow>({
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
               <TableRow className="bg-blue-50 hover:bg-blue-50 border-l-4 border-blue-300">
+                {bulkEnabled && <TableCell className="w-10" />}
                 <TableCell className="text-center py-2">
                   <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
                     SAMPLE
@@ -522,33 +640,52 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableCell />
               </TableRow>
             )}
-            {data.map((row, rowIdx) => (
-              <SortableRow
-                key={row.id || rowIdx}
-                row={row}
-                rowIdx={rowIdx}
-                columns={columns}
-                detailColumns={detailColumns}
-                isExpanded={!collapsedRowIds.has(sortableIds[rowIdx])}
-                toggleRow={() => toggleRow(sortableIds[rowIdx])}
-                onUpdate={onUpdate}
-                onDuplicate={onDuplicate}
-                confirmingDeleteId={confirmingDeleteId}
-                handleDeleteClick={handleDeleteClick}
-                clearConfirmingDelete={clearConfirmingDelete}
-                isReadOnly={isReadOnly}
-                canReorder={canReorder}
-                rowIsActive={allColumns.some((col) =>
-                  hasCellValue(
-                    (row as Record<string, string | boolean | null | undefined>)[col.key]
-                  )
-                )}
-                renderCellPrefix={renderCellPrefix}
-                renderCell={renderCell}
-                renderDetail={renderDetail}
-                requestDelete={deleteConfirmation ? setDeleteDialogIndex : undefined}
-              />
-            ))}
+            {data.map((row, rowIdx) => {
+              const rowId = row.id;
+              const bulkRow: BulkRowContext | undefined =
+                bulkEnabled && rowId
+                  ? {
+                      enabled: true,
+                      isSelected: bulkSelection.isSelected(rowId),
+                      onToggle: (e) =>
+                        bulkSelection.toggle(rowId, {
+                          index: rowIdx,
+                          shiftKey: e.shiftKey,
+                          allIds: selectableIds,
+                        }),
+                    }
+                  : bulkEnabled
+                    ? { enabled: true, isSelected: false, onToggle: () => {} }
+                    : undefined;
+              return (
+                <SortableRow
+                  key={row.id || rowIdx}
+                  row={row}
+                  rowIdx={rowIdx}
+                  columns={columns}
+                  detailColumns={detailColumns}
+                  isExpanded={!collapsedRowIds.has(sortableIds[rowIdx])}
+                  toggleRow={() => toggleRow(sortableIds[rowIdx])}
+                  onUpdate={onUpdate}
+                  onDuplicate={onDuplicate}
+                  confirmingDeleteId={confirmingDeleteId}
+                  handleDeleteClick={handleDeleteClick}
+                  clearConfirmingDelete={clearConfirmingDelete}
+                  isReadOnly={isReadOnly}
+                  canReorder={canReorder}
+                  rowIsActive={allColumns.some((col) =>
+                    hasCellValue(
+                      (row as Record<string, string | boolean | null | undefined>)[col.key]
+                    )
+                  )}
+                  renderCellPrefix={renderCellPrefix}
+                  renderCell={renderCell}
+                  renderDetail={renderDetail}
+                  requestDelete={deleteConfirmation ? setDeleteDialogIndex : undefined}
+                  bulkRow={bulkRow}
+                />
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -579,6 +716,25 @@ export function EditableTable<TRow extends EditableRow>({
         onConfirm={() => {
           if (deleteDialogIndex !== null) onDelete(deleteDialogIndex);
         }}
+      />
+    )}
+    {bulkActions && (
+      <ConfirmDeleteDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!bulkBusy) setBulkDeleteOpen(open);
+        }}
+        title={`Delete ${bulkSelection.count} ${bulkLabel}?`}
+        fileName={`${bulkSelection.count} ${bulkLabel}`}
+        description={
+          bulkActions.deleteDialogDescription?.(bulkSelection.count) ?? (
+            <>
+              These rows will be hidden from the checklist. They can be restored
+              by an admin. Continue?
+            </>
+          )
+        }
+        onConfirm={runBulkDelete}
       />
     )}
     </div>

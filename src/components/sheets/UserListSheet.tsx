@@ -10,6 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultUsers } from "@/lib/template-data";
 import type { ColumnDef, UserRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { duplicateRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user", required: true },
@@ -34,30 +35,73 @@ const referenceData = [
 export function UserListSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("users");
-  const users = (data.users as UserRow[]) || defaultUsers;
+  // Full array (incl. soft-deleted rows) — used for writes
+  const allUsers = (data.users as UserRow[]) || defaultUsers;
+  // Visible array (filtered) — used for display + index-based callbacks
+  const users = allUsers.filter((u) => !u.deletedAt);
+
+  // Map a visible-list index to its position in the full array
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = users[visibleIdx];
+    if (!target) return -1;
+    return allUsers.findIndex((u) => u.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...users];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allUsers];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("users", updated);
   };
 
   const handleAdd = () => {
     updateField("users", [
-      ...users,
+      ...allUsers,
       { id: uid(), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" },
     ]);
   };
 
+  // Per-row delete is also soft — stamps deletedAt so the row is hidden
+  // but recoverable, matching bulk-delete behavior.
   const handleDelete = (index: number) => {
-    updateField("users", users.filter((_, i) => i !== index));
+    const target = users[index];
+    if (!target) return;
+    const now = new Date().toISOString();
+    const updated = allUsers.map((u) =>
+      u.id === target.id ? { ...u, deletedAt: now } : u,
+    );
+    updateField("users", updated);
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...users[index], id: uid() };
-    const updated = [...users];
-    updated.splice(index + 1, 0, clone);
+    const target = users[index];
+    if (!target) return;
+    const [clone] = duplicateRows("users", allUsers, [target]);
+    // Insert immediately after the source in the full array
+    const fullIdx = fullIndexOf(index);
+    const updated = [...allUsers];
+    updated.splice(fullIdx + 1, 0, clone);
     updateField("users", updated);
+  };
+
+  // Bulk soft-delete: stamp deletedAt on matching rows in the full array
+  const handleBulkDelete = (ids: string[]) => {
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const updated = allUsers.map((u) =>
+      idSet.has(u.id) ? { ...u, deletedAt: now } : u,
+    );
+    updateField("users", updated);
+  };
+
+  // Bulk duplicate: append collision-aware copies to the end of the full array
+  const handleBulkDuplicate = (ids: string[]) => {
+    const idSet = new Set(ids);
+    const sources = allUsers.filter((u) => idSet.has(u.id) && !u.deletedAt);
+    if (sources.length === 0) return;
+    const copies = duplicateRows("users", allUsers, sources);
+    updateField("users", [...allUsers, ...copies]);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,7 +111,7 @@ export function UserListSheet() {
       name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "",
       ...row,
     }));
-    updateField("users", [...users, ...newRows]);
+    updateField("users", [...allUsers, ...newRows]);
   };
 
   return (
@@ -119,6 +163,12 @@ export function UserListSheet() {
           sampleRow: { name: "John Doe", accessType: "Manager", email: "john@company.com", phone: "+1234567890", jobTitle: "Recruiter", site: "Main Office", reportsTo: "Jane Smith", comments: "Primary recruiting contact" },
           onImport: handleCsvImport,
           sheetName: "Users",
+        }}
+        bulkActions={{
+          itemLabel: "user",
+          itemLabelPlural: "users",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

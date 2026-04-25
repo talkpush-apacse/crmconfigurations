@@ -1,3 +1,12 @@
+// ===== Soft Delete =====
+// Mixin for row-shaped JSONB entries that support bulk soft-delete.
+// `deletedAt` is the ISO timestamp of deletion; rows with a non-null value are
+// hidden from the UI but kept in the JSON array for restore.
+export interface SoftDeletable {
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+}
+
 // ===== Company Information =====
 export interface CompanyInfo {
   // Company Details
@@ -26,7 +35,7 @@ export interface CompanyInfo {
 }
 
 // ===== User List =====
-export interface UserRow {
+export interface UserRow extends SoftDeletable {
   id: string;
   name: string;
   accessType: string;
@@ -40,7 +49,7 @@ export interface UserRow {
 }
 
 // ===== Campaigns List =====
-export interface CampaignRow {
+export interface CampaignRow extends SoftDeletable {
   id: string;
   campaignId?: string;
   nameInternal: string;
@@ -54,7 +63,7 @@ export interface CampaignRow {
 }
 
 // ===== Sites =====
-export interface SiteRow {
+export interface SiteRow extends SoftDeletable {
   id: string;
   siteName: string;
   internalName: string;
@@ -67,7 +76,7 @@ export interface SiteRow {
 }
 
 // ===== Pre-screening & Follow-up Questions =====
-export interface QuestionRow {
+export interface QuestionRow extends SoftDeletable {
   id: string;
   category: string;
   question: string;
@@ -100,7 +109,7 @@ export interface MessagingTemplateRow {
 }
 
 // ===== Sources =====
-export interface SourceRow {
+export interface SourceRow extends SoftDeletable {
   id: string;
   category: string;
   subcategory: string;
@@ -109,7 +118,7 @@ export interface SourceRow {
 }
 
 // ===== Folders =====
-export interface FolderRow {
+export interface FolderRow extends SoftDeletable {
   id: string;
   folderName: string;
   description: string;
@@ -118,7 +127,7 @@ export interface FolderRow {
 }
 
 // ===== Candidate Attributes =====
-export interface AttributeRow {
+export interface AttributeRow extends SoftDeletable {
   id: string;
   attributeName: string;
   key: string;
@@ -135,7 +144,7 @@ export interface AttributeRow {
 }
 
 // ===== Document Collection =====
-export interface DocumentRow {
+export interface DocumentRow extends SoftDeletable {
   id: string;
   documentName: string;
   applicableCandidates: string;
@@ -186,7 +195,7 @@ export interface AiCallData {
 }
 
 // ===== Agency Portal =====
-export interface AgencyPortalRow {
+export interface AgencyPortalRow extends SoftDeletable {
   id: string;
   agencyName: string;
   contactName: string;
@@ -196,7 +205,7 @@ export interface AgencyPortalRow {
   comments: string;
 }
 
-export interface AgencyPortalUser {
+export interface AgencyPortalUser extends SoftDeletable {
   id: string;
   name: string;
   email: string;
@@ -205,7 +214,7 @@ export interface AgencyPortalUser {
 }
 
 // ===== Labels =====
-export interface LabelRow {
+export interface LabelRow extends SoftDeletable {
   id: string;
   name: string;
   color: string;
@@ -412,7 +421,7 @@ export interface AtsHandoffInfo {
   handoffStatus: AtsHandoffStatus;
 }
 
-export interface AtsIntegration {
+export interface AtsIntegration extends SoftDeletable {
   id: string;
   name: string;
   system: AtsSystem;
@@ -516,7 +525,7 @@ export interface IntegrationAttributeMapping {
   targetAttribute: string;
 }
 
-export interface IntegrationRow {
+export interface IntegrationRow extends SoftDeletable {
   id: string;
   vendorName: string;
   vendorCategory: IntegrationCategory | "";

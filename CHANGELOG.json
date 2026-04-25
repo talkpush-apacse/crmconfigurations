@@ -1,5 +1,18 @@
 [
   {
+    "version": "2.1",
+    "name": "Version 2.1 - Bulk Select (Users)",
+    "changes": [
+      "Added bulk select with checkbox column to the Users tab — select-all in header, indeterminate state, shift-click range select",
+      "Added Bulk Delete and Bulk Duplicate actions in a sticky teal action bar that appears when 1+ rows are selected",
+      "Bulk Duplicate uses collision-aware email suffixes (jolo+copy@, jolo+copy2@) so cloned rows don't collide",
+      "Soft delete: deleted rows are hidden from the UI but preserved in the JSON for future restore (deletedAt timestamp)",
+      "Per-row delete is now also soft, matching bulk delete behavior",
+      "Foundation laid for the remaining 12 sections (campaigns, sites, folders, labels, etc.) — rolling out after Users is verified in production"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.0",
     "name": "Version 2.0 - Snapshots",
     "changes": [
