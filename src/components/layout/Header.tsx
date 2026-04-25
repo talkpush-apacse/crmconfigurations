@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, ChevronRight, Download } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
@@ -21,6 +21,7 @@ interface HeaderProps {
   isReadOnly?: boolean;
   editorToken?: string;
   hasPendingChanges?: boolean;
+  snapshotsHref?: string;
 }
 
 function StatusPill({
@@ -59,6 +60,7 @@ export function Header({
   isReadOnly,
   editorToken,
   hasPendingChanges = false,
+  snapshotsHref,
 }: HeaderProps) {
   const pathname = usePathname();
 
@@ -148,6 +150,17 @@ export function Header({
               </div>
               <span className="font-semibold tabular-nums text-slate-900">{completionPercent}%</span>
             </div>
+
+            {snapshotsHref && (
+              <Link
+                href={snapshotsHref}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
+                title="Manage snapshots / restore previous state"
+              >
+                <History className="h-4 w-4" />
+                Snapshots
+              </Link>
+            )}
 
             <Button
               size="sm"

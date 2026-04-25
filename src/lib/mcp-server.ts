@@ -28,6 +28,13 @@ import {
   refreshConfiguratorSnapshot,
   updateConfiguratorItem,
 } from "./configurator-service";
+import {
+  createSnapshot,
+  getChecklistIdBySlug,
+  listSnapshots,
+  restoreSnapshot,
+  SnapshotServiceError,
+} from "./snapshot-service";
 import type {
   QuestionRow,
   SourceRow,
@@ -1851,6 +1858,93 @@ export function createMcpServer(): McpServer {
           newlyUnarchived,
         });
       } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  // =========================================================================
+  // SNAPSHOT TOOLS (admin-grade backup/restore)
+  // =========================================================================
+
+  server.tool(
+    "create_snapshot",
+    "Create a labeled backup snapshot of the entire current checklist state (all tabs, config, and configurator state). Use this BEFORE any destructive change (e.g. replacing the user list) so you can roll back if it goes wrong. Snapshots without a label are auto-pruned after the 20-most-recent cap; labeled snapshots are sticky.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      label: z.string().optional().describe("Short human-readable label, e.g. 'Pre user-list replace - Nov 24'. Strongly recommended."),
+      description: z.string().optional().describe("Optional longer notes about why this snapshot was taken."),
+    },
+    async ({ slug, label, description }) => {
+      try {
+        const checklistId = await getChecklistIdBySlug(slug);
+        const snapshot = await createSnapshot(checklistId, {
+          label: label ?? null,
+          description: description ?? null,
+          createdBy: "mcp",
+          createdByLabel: "MCP",
+        });
+        return mcpJson({
+          snapshotId: snapshot.id,
+          label: snapshot.label,
+          createdAt: snapshot.createdAt,
+          versionAtSnapshot: snapshot.versionAtSnapshot,
+          summary: snapshot.summary,
+        });
+      } catch (error) {
+        if (error instanceof SnapshotServiceError) return mcpError(error);
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "list_snapshots",
+    "List backup snapshots for a checklist, newest first. Returns lightweight metadata (id, label, createdAt, createdBy, counts summary) without the full payload.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      includeArchived: z.boolean().optional().default(false).describe("Include soft-archived snapshots (default false)"),
+    },
+    async ({ slug, includeArchived }) => {
+      try {
+        const checklistId = await getChecklistIdBySlug(slug);
+        const snapshots = await listSnapshots(checklistId, { includeArchived });
+        return mcpJson({ count: snapshots.length, snapshots });
+      } catch (error) {
+        if (error instanceof SnapshotServiceError) return mcpError(error);
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "restore_snapshot",
+    "DESTRUCTIVE: replace the entire current checklist state with the contents of a previous snapshot. A pre-restore snapshot is auto-created so you can undo the restore. Bumps the checklist version, which will cause any in-flight client edits to fail with a conflict and force a reload. REQUIRES confirmRestore=true to execute.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      snapshotId: z.string().describe("ID of the snapshot to restore (from list_snapshots)"),
+      confirmRestore: z.boolean().describe("Must be set to true to execute. Acts as a safety check."),
+    },
+    async ({ slug, snapshotId, confirmRestore }) => {
+      try {
+        if (confirmRestore !== true) {
+          return mcpError(new Error("Restore aborted: confirmRestore must be true to execute. Restoring a snapshot replaces the current checklist state."));
+        }
+        const checklistId = await getChecklistIdBySlug(slug);
+        const result = await restoreSnapshot(snapshotId, {
+          createdBy: "mcp",
+          createdByLabel: "MCP",
+        });
+        if (result.checklistId !== checklistId) {
+          return mcpError(new Error(`Snapshot ${snapshotId} does not belong to checklist "${slug}"`));
+        }
+        return mcpJson({
+          restored: true,
+          preRestoreSnapshotId: result.preRestoreSnapshotId,
+          newVersion: result.newVersion,
+        });
+      } catch (error) {
+        if (error instanceof SnapshotServiceError) return mcpError(error);
         return mcpError(error);
       }
     }
