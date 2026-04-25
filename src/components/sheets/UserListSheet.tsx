@@ -11,6 +11,7 @@ import { uid, defaultUsers } from "@/lib/template-data";
 import type { ColumnDef, UserRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { duplicateRows } from "@/lib/duplicate-row";
+import { downloadTalkpushUsersCsv } from "@/lib/talkpush-export";
 
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user", required: true },
@@ -163,6 +164,11 @@ export function UserListSheet() {
           sampleRow: { name: "John Doe", accessType: "Manager", email: "john@company.com", phone: "+1234567890", jobTitle: "Recruiter", site: "Main Office", reportsTo: "Jane Smith", comments: "Primary recruiting contact" },
           onImport: handleCsvImport,
           sheetName: "Users",
+          extraExport: {
+            label: "Download Talkpush CSV",
+            title: "Talkpush-ready CSV with columns: name, email, role, phone",
+            onClick: () => downloadTalkpushUsersCsv(allUsers),
+          },
         }}
         bulkActions={{
           itemLabel: "user",

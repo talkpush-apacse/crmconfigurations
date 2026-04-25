@@ -13,9 +13,18 @@ interface CsvToolbarProps {
   onImport: (rows: Record<string, any>[]) => void;
   sheetName: string;
   exportRows?: Record<string, string>[];
+  /**
+   * Optional extra download button (e.g. a vendor-specific format).
+   * Renders alongside the standard CSV controls.
+   */
+  extraExport?: {
+    label: string;
+    onClick: () => void;
+    title?: string;
+  };
 }
 
-export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows }: CsvToolbarProps) {
+export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows, extraExport }: CsvToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -83,6 +92,18 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
         >
           <Download className="mr-1 h-3.5 w-3.5" />
           Download CSV
+        </Button>
+      )}
+      {extraExport && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={extraExport.onClick}
+          title={extraExport.title}
+          className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+        >
+          <Download className="mr-1 h-3.5 w-3.5" />
+          {extraExport.label}
         </Button>
       )}
       <Button

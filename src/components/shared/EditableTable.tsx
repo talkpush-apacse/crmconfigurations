@@ -78,6 +78,11 @@ interface EditableTableProps<TRow extends EditableRow> {
     onImport: (rows: Record<string, string>[]) => void;
     sheetName: string;
     exportRows?: Record<string, string>[];
+    extraExport?: {
+      label: string;
+      onClick: () => void;
+      title?: string;
+    };
   };
   /**
    * Enables the bulk-select column + bulk action bar.
@@ -536,6 +541,7 @@ export function EditableTable<TRow extends EditableRow>({
           onImport={csvConfig.onImport}
           sheetName={csvConfig.sheetName}
           exportRows={csvConfig.exportRows}
+          extraExport={csvConfig.extraExport}
         />
       )}
       {bulkEnabled && bulkActions && (

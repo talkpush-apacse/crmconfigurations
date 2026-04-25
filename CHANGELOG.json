@@ -1,5 +1,26 @@
 [
   {
+    "version": "2.4",
+    "name": "Version 2.4 - Talkpush CSV Export (Users)",
+    "changes": [
+      "Added 'Download Talkpush CSV' button on the Users tab — exports a Talkpush-ready file with columns name, email, role, phone",
+      "accessType maps to role (Owner / Manager / Limited Manager passed through as-is)",
+      "Phone normalized to digits-only with optional leading + (e.g. '+63 917 123 4567' → '+639171234567')",
+      "Soft-deleted rows are excluded; malformed phones are exported as-is for Talkpush to validate on upload"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
+    "version": "2.3",
+    "name": "Version 2.3 - Section Audit Toggle",
+    "changes": [
+      "Added per-section 'Configured' toggle in the Configurator for end-of-config audit",
+      "Section flag is independent of item statuses; records timestamp + admin user",
+      "Configured sections show a green left-border accent for at-a-glance scanning"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.2",
     "name": "Version 2.2 - Bulk Select Contrast Fix",
     "changes": [
