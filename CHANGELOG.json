@@ -3,7 +3,7 @@
     "version": "2.2",
     "name": "Version 2.2 - Bulk Select Contrast Fix",
     "changes": [
-      "Fixed: header bulk-select checkbox was illegible on hover — bumped to a 2px white border with a tinted background that stays readable in all states (unchecked, hover, focus, checked, indeterminate)"
+      "Fixed: header bulk-select checkbox was illegible on hover against the blue table head — switched to a solid white checkbox with gray border in the unchecked state and a deep-blue fill with white check in the checked/indeterminate state, matching the GitHub/Linear/Sheets pattern for table-header bulk select"
     ],
     "deployed_at": "2026-04-25"
   },
