@@ -1,5 +1,13 @@
 [
   {
+    "version": "2.2",
+    "name": "Version 2.2 - Bulk Select Contrast Fix",
+    "changes": [
+      "Fixed: header bulk-select checkbox was illegible on hover — bumped to a 2px white border with a tinted background that stays readable in all states (unchecked, hover, focus, checked, indeterminate)"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.1",
     "name": "Version 2.1 - Bulk Select (Users)",
     "changes": [

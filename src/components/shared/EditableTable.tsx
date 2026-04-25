@@ -566,7 +566,7 @@ export function EditableTable<TRow extends EditableRow>({
                     onCheckedChange={() => bulkSelection.toggleAll(selectableIds)}
                     disabled={selectableIds.length === 0}
                     aria-label="Select all rows"
-                    className="border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-600 data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-blue-600"
+                    className="border-2 border-white bg-white/15 hover:bg-white/35 focus-visible:ring-white/60 data-[state=checked]:bg-white data-[state=checked]:text-blue-600 data-[state=checked]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-blue-600 data-[state=indeterminate]:border-white"
                   />
                 </TableHead>
               )}
