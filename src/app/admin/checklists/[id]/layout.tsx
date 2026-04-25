@@ -137,6 +137,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           totalCount={totalCount}
           isReadOnly={false}
           hasPendingChanges={hasPendingChanges}
+          snapshotsHref={`/admin/checklists/${id}/snapshots`}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (

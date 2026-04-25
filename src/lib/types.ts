@@ -751,6 +751,54 @@ export const CHECKLIST_JSON_FIELDS = [
 
 export type ChecklistJsonField = (typeof CHECKLIST_JSON_FIELDS)[number];
 
+// ===== Snapshot Payload =====
+export const SNAPSHOT_SCHEMA_VERSION = 1;
+
+// Snapshot includes every JSON column on Checklist plus the configurator state
+// and the isCustom flag. Stored as a flat JSON blob keyed by column name.
+export interface SnapshotPayload {
+  schemaVersion: number;
+  isCustom: boolean;
+  configuratorChecklist: unknown;
+  // All CHECKLIST_JSON_FIELDS are captured by name with `unknown` type — the
+  // restore path deep-merges over current schema defaults.
+  [field: string]: unknown;
+}
+
+export interface SnapshotSummary {
+  usersCount: number;
+  campaignsCount: number;
+  sitesCount: number;
+  foldersCount: number;
+  sourcesCount: number;
+  prescreeningCount: number;
+  messagingCount: number;
+  documentsCount: number;
+  attributesCount: number;
+  agencyPortalCount: number;
+  agencyPortalUsersCount: number;
+  labelsCount: number;
+  rejectionReasonsCount: number;
+  atsIntegrationsCount: number;
+  integrationsCount: number;
+  autoflowsCount: number;
+  customTabsCount: number;
+}
+
+export interface SnapshotMetadata {
+  id: string;
+  label: string | null;
+  description: string | null;
+  isLabeled: boolean;
+  versionAtSnapshot: number;
+  createdAt: string;
+  createdBy: string;
+  createdByLabel: string | null;
+  archived: boolean;
+  archivedAt: string | null;
+  summary: SnapshotSummary;
+}
+
 export const FIELD_LABELS: Record<ChecklistJsonField, string> = {
   enabledTabs: "Enabled Tabs",
   tabOrder: "Tab Order",

@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.0",
+    "name": "Version 2.0 - Snapshots",
+    "changes": [
+      "Added Save Version (Snapshots) feature for backing up and restoring full checklist state",
+      "Captures every JSON column on Checklist (all tabs, config flags, configurator state)",
+      "Restore is reversible — auto-creates a labeled pre-restore snapshot before applying",
+      "Restore bumps the checklist version + resets fieldVersions, invalidating in-flight client edits with a clean 409",
+      "Auto-prune cap of 20 active snapshots per checklist — labeled snapshots are sticky and never pruned",
+      "Added MCP tools: create_snapshot, list_snapshots, restore_snapshot (with confirmRestore safety gate)",
+      "Added admin Snapshots tab with type-to-confirm restore, soft archive, and gated hard-delete"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "1.32",
     "name": "Version 1.32 - Editor Link Fix",
     "changes": [

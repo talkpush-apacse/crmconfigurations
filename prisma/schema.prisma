@@ -53,7 +53,32 @@ model Checklist {
   customData     Json?
   customTabs     Json?
 
+  snapshots      ChecklistSnapshot[]
+
   @@index([clientName])
+}
+
+model ChecklistSnapshot {
+  id                String    @id @default(cuid())
+  checklistId       String
+  checklist         Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  label             String?
+  description       String?
+  isLabeled         Boolean   @default(false)
+
+  payload           Json
+  versionAtSnapshot Int
+
+  createdAt         DateTime  @default(now())
+  createdBy         String
+  createdByLabel    String?
+
+  archived          Boolean   @default(false)
+  archivedAt        DateTime?
+
+  @@index([checklistId, createdAt])
+  @@index([checklistId, archived])
 }
 
 model AdminUser {
