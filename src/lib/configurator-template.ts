@@ -32,26 +32,21 @@ export interface ConfiguratorItemState {
   itemId: string;
   status: ConfiguratorStatus | null;
   notes: string | null;
+  // Independent audit flag — separate from `status`. Toggled by a per-step
+  // "Configured" checkbox so SEs can sweep across the page at end-of-config.
+  // Optional/undefined on legacy rows; treat as false when absent.
+  configured?: boolean;
+  configuredAt?: string | null;
+  configuredBy?: string | null;
   createdAt: string;
   updatedAt: string | null;
   updatedBy: string | null;
   archived: boolean;
 }
 
-export interface ConfiguratorSectionState {
-  // exact section name from CONFIGURATOR_TEMPLATE — used as the join key
-  section: string;
-  configured: boolean;
-  configuredAt: string | null;
-  configuredBy: string | null;
-}
-
 export interface ConfiguratorChecklistBlob {
   items: ConfiguratorItemState[];
   snapshotItemIds: string[];
-  // Optional for backwards-compatibility with existing rows in production.
-  // Reads must tolerate undefined and treat all sections as not configured.
-  sectionStates?: ConfiguratorSectionState[];
   generatedAt: string;
   lastSnapshotAt: string;
 }

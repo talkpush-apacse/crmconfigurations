@@ -1,5 +1,15 @@
 [
   {
+    "version": "2.7",
+    "name": "Version 2.7 - Per-Step Configured Toggle",
+    "changes": [
+      "Moved the 'Configured' audit checkbox from per-section to per-step in the Configurator",
+      "Each step now has its own Configured checkbox + timestamp, independent of its status",
+      "Removed the older /api/.../configurator/section route — per-item PATCH now carries an optional configured flag"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.6",
     "name": "Version 2.6 - Header Row Hover Fix",
     "changes": [

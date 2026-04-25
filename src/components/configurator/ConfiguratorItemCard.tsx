@@ -5,6 +5,7 @@ import { MessageSquarePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfiguratorContextBox } from "@/components/configurator/ConfiguratorContextBox";
 import { ConfiguratorSourceContextBox } from "@/components/configurator/ConfiguratorSourceContextBox";
@@ -23,7 +24,20 @@ interface ConfiguratorItemCardProps {
   item: ConfiguratorTemplateItem;
   state: ConfiguratorItemState;
   sourceData: unknown;
-  onUpdate: (itemId: string, patch: { status?: ConfiguratorStatus | null; notes?: string | null }) => void;
+  onUpdate: (
+    itemId: string,
+    patch: { status?: ConfiguratorStatus | null; notes?: string | null; configured?: boolean }
+  ) => void;
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function accentForStatus(status: ConfiguratorStatus | null): string {
@@ -77,6 +91,26 @@ export function ConfiguratorItemCard({ step, item, state, sourceData, onUpdate }
           value={state.status}
           onChange={(status) => onUpdate(state.itemId, { status })}
         />
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+          <label
+            htmlFor={`configured-${state.itemId}`}
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-400"
+          >
+            <Checkbox
+              id={`configured-${state.itemId}`}
+              checked={state.configured ?? false}
+              onCheckedChange={(checked) => onUpdate(state.itemId, { configured: checked === true })}
+            />
+            Configured
+          </label>
+          {state.configured && state.configuredAt && (
+            <span className="text-xs text-slate-500">
+              Configured {formatDateTime(state.configuredAt)}
+              {state.configuredBy ? ` · ${updatedByLabel(state.configuredBy)}` : ""}
+            </span>
+          )}
+        </div>
 
         {notesOpen ? (
           <div className="space-y-2">

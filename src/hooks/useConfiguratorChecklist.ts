@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ConfiguratorChecklistBlob,
   ConfiguratorItemState,
-  ConfiguratorSectionState,
   ConfiguratorStatus,
   ConfiguratorTemplateItem,
 } from "@/lib/configurator-template";
@@ -28,11 +27,9 @@ interface PendingChange {
   itemId: string;
   status: ConfiguratorStatus | null;
   notes: string | null;
-}
-
-interface PendingSectionChange {
-  section: string;
-  configured: boolean;
+  // Tracked separately so absent (undefined) means "don't touch", and false/true
+  // means "set to this value" — matches the server-side semantics.
+  configured?: boolean;
 }
 
 function cloneBlob(blob: ConfiguratorChecklistBlob): ConfiguratorChecklistBlob {
@@ -49,8 +46,6 @@ export function useConfiguratorChecklist(checklistId: string) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const metaRef = useRef<ConfiguratorMeta | null>(null);
   const pendingRef = useRef<Map<string, PendingChange>>(new Map());
-  // Parallel pipeline for section-level "configured" toggles (independent of items).
-  const pendingSectionsRef = useRef<Map<string, PendingSectionChange>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
 
@@ -111,15 +106,22 @@ export function useConfiguratorChecklist(checklistId: string) {
     const current = metaRef.current;
     if (!current?.blob) return;
 
+    // Only include `configured` when the caller actually toggled it — keeps
+    // status/notes-only saves from accidentally resetting the audit flag.
+    const payload: Record<string, unknown> = {
+      itemId: change.itemId,
+      status: change.status,
+      notes: change.notes,
+      version: current.version,
+    };
+    if (change.configured !== undefined) {
+      payload.configured = change.configured;
+    }
+
     const response = await fetch(`/api/checklists/${checklistId}/configurator`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        itemId: change.itemId,
-        status: change.status,
-        notes: change.notes,
-        version: current.version,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (response.status === 409) {
@@ -150,51 +152,6 @@ export function useConfiguratorChecklist(checklistId: string) {
     applyMeta({ ...latest, version: body.version, blob: nextBlob });
   }, [applyMeta, checklistId, fetchMeta]);
 
-  const sendSectionChange = useCallback(async (change: PendingSectionChange, retryOnConflict = true): Promise<void> => {
-    const current = metaRef.current;
-    if (!current?.blob) return;
-
-    const response = await fetch(`/api/checklists/${checklistId}/configurator/section`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        section: change.section,
-        configured: change.configured,
-        version: current.version,
-      }),
-    });
-
-    if (response.status === 409) {
-      const latest = await fetchMeta();
-      if (retryOnConflict && latest.blob) {
-        setSaveStatus("conflict");
-        return sendSectionChange(change, false);
-      }
-      setSaveStatus("conflict");
-      setSaveError("Someone else updated this checklist — refresh to see changes");
-      throw new Error("Conflict");
-    }
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to save section status");
-    }
-
-    const body = await response.json() as { section: ConfiguratorSectionState; version: number };
-    const latest = metaRef.current;
-    if (!latest?.blob) return;
-
-    const nextBlob = cloneBlob(latest.blob);
-    const sectionStates = nextBlob.sectionStates ?? [];
-    const sectionIndex = sectionStates.findIndex((entry) => entry.section === body.section.section);
-    nextBlob.sectionStates =
-      sectionIndex === -1
-        ? [...sectionStates, body.section]
-        : sectionStates.map((entry, index) => (index === sectionIndex ? body.section : entry));
-
-    applyMeta({ ...latest, version: body.version, blob: nextBlob });
-  }, [applyMeta, checklistId, fetchMeta]);
-
   const flushPendingSaves = useCallback(async () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -206,19 +163,14 @@ export function useConfiguratorChecklist(checklistId: string) {
     }
 
     const changes = Array.from(pendingRef.current.values());
-    const sectionChanges = Array.from(pendingSectionsRef.current.values());
-    if (changes.length === 0 && sectionChanges.length === 0) return;
+    if (changes.length === 0) return;
     pendingRef.current.clear();
-    pendingSectionsRef.current.clear();
 
     setSaveStatus("saving");
     setSaveError(null);
     const savePromise = (async () => {
       for (const change of changes) {
         await sendChange(change);
-      }
-      for (const change of sectionChanges) {
-        await sendSectionChange(change);
       }
     })();
 
@@ -234,7 +186,7 @@ export function useConfiguratorChecklist(checklistId: string) {
     } finally {
       inFlightRef.current = null;
     }
-  }, [sendChange, sendSectionChange]);
+  }, [sendChange]);
 
   const scheduleFlush = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -245,7 +197,7 @@ export function useConfiguratorChecklist(checklistId: string) {
 
   const updateItem = useCallback((
     itemId: string,
-    patch: { status?: ConfiguratorStatus | null; notes?: string | null }
+    patch: { status?: ConfiguratorStatus | null; notes?: string | null; configured?: boolean }
   ) => {
     setMeta((current) => {
       if (!current?.blob) return current;
@@ -255,51 +207,38 @@ export function useConfiguratorChecklist(checklistId: string) {
       if (itemIndex === -1) return current;
 
       const existing = nextBlob.items[itemIndex];
-      const nextItem = {
+      const nextItem: ConfiguratorItemState = {
         ...existing,
         status: patch.status !== undefined ? patch.status : existing.status,
         notes: patch.notes !== undefined ? patch.notes : existing.notes,
+        configured: patch.configured !== undefined ? patch.configured : existing.configured,
+        // Optimistic local audit-trail update — server overwrites with the
+        // authoritative timestamp/user once the PATCH lands.
+        configuredAt:
+          patch.configured !== undefined
+            ? patch.configured
+              ? new Date().toISOString()
+              : null
+            : existing.configuredAt,
+        configuredBy:
+          patch.configured !== undefined
+            ? patch.configured
+              ? (existing.configuredBy ?? null)
+              : null
+            : existing.configuredBy,
       };
       nextBlob.items[itemIndex] = nextItem;
 
+      // Coalesce with any prior pending change for the same item — preserves
+      // the most recent value of each field across rapid edits.
+      const prior = pendingRef.current.get(itemId);
       pendingRef.current.set(itemId, {
         itemId,
         status: nextItem.status,
         notes: nextItem.notes,
+        configured:
+          patch.configured !== undefined ? patch.configured : prior?.configured,
       });
-      setSaveStatus("saving");
-      setSaveError(null);
-      scheduleFlush();
-
-      const nextMeta = { ...current, blob: nextBlob };
-      metaRef.current = nextMeta;
-      return nextMeta;
-    });
-  }, [scheduleFlush]);
-
-  const updateSection = useCallback((section: string, configured: boolean) => {
-    setMeta((current) => {
-      if (!current?.blob) return current;
-
-      const nextBlob = cloneBlob(current.blob);
-      const sectionStates = nextBlob.sectionStates ?? [];
-      const sectionIndex = sectionStates.findIndex((entry) => entry.section === section);
-
-      // Optimistic local update — the server will overwrite with authoritative
-      // configuredAt/configuredBy values once the PATCH lands.
-      const optimisticSection: ConfiguratorSectionState = {
-        section,
-        configured,
-        configuredAt: configured ? new Date().toISOString() : null,
-        configuredBy: configured ? (sectionStates[sectionIndex]?.configuredBy ?? null) : null,
-      };
-
-      nextBlob.sectionStates =
-        sectionIndex === -1
-          ? [...sectionStates, optimisticSection]
-          : sectionStates.map((entry, index) => (index === sectionIndex ? optimisticSection : entry));
-
-      pendingSectionsRef.current.set(section, { section, configured });
       setSaveStatus("saving");
       setSaveError(null);
       scheduleFlush();
@@ -326,7 +265,7 @@ export function useConfiguratorChecklist(checklistId: string) {
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingRef.current.size > 0 || pendingSectionsRef.current.size > 0) {
+      if (pendingRef.current.size > 0) {
         flushPendingSaves().catch(() => undefined);
       }
     };
@@ -344,7 +283,6 @@ export function useConfiguratorChecklist(checklistId: string) {
     saveStatus,
     saveError,
     updateItem,
-    updateSection,
     refreshFromSettings,
     flushPendingSaves,
     refetch: fetchMeta,

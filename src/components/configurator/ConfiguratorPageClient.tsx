@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,7 +36,6 @@ export function ConfiguratorPageClient({ checklistId }: ConfiguratorPageClientPr
     saveStatus,
     saveError,
     updateItem,
-    updateSection,
     refreshFromSettings,
     flushPendingSaves,
   } = useConfiguratorChecklist(checklistId);
@@ -175,58 +173,29 @@ export function ConfiguratorPageClient({ checklistId }: ConfiguratorPageClientPr
           </Card>
         ) : (
           <div className="space-y-8">
-            {groupedItems.map(([section, entries]) => {
-              const sectionState = meta.blob!.sectionStates?.find((entry) => entry.section === section);
-              const isConfigured = sectionState?.configured ?? false;
-              const checkboxId = `section-configured-${section.replace(/\s+/g, "-").toLowerCase()}`;
-              return (
-                <section
-                  key={section}
-                  className={`space-y-3 ${
-                    isConfigured ? "border-l-[3px] border-l-green-500 pl-3" : ""
-                  }`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-lg font-semibold text-slate-950">{section}</h2>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-slate-500 tabular-nums">{entries.length} items</span>
-                      <label
-                        htmlFor={checkboxId}
-                        className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-400"
-                      >
-                        <Checkbox
-                          id={checkboxId}
-                          checked={isConfigured}
-                          onCheckedChange={(checked) => updateSection(section, checked === true)}
-                        />
-                        Configured
-                      </label>
-                    </div>
-                  </div>
-                  {isConfigured && sectionState?.configuredAt && (
-                    <p className="text-xs text-slate-500">
-                      Configured {formatDateTime(sectionState.configuredAt)}
-                      {sectionState.configuredBy ? ` · ${sectionState.configuredBy}` : ""}
-                    </p>
-                  )}
-                  <div className="space-y-3">
-                    {entries.map((entry) => {
-                      const step = meta.blob!.snapshotItemIds.indexOf(entry.item.id) + 1;
-                      return (
-                        <ConfiguratorItemCard
-                          key={entry.item.id}
-                          step={step}
-                          item={entry.item}
-                          state={entry.state}
-                          sourceData={meta.sourceData}
-                          onUpdate={updateItem}
-                        />
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
+            {groupedItems.map(([section, entries]) => (
+              <section key={section} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-slate-950">{section}</h2>
+                  <span className="text-sm text-slate-500 tabular-nums">{entries.length} items</span>
+                </div>
+                <div className="space-y-3">
+                  {entries.map((entry) => {
+                    const step = meta.blob!.snapshotItemIds.indexOf(entry.item.id) + 1;
+                    return (
+                      <ConfiguratorItemCard
+                        key={entry.item.id}
+                        step={step}
+                        item={entry.item}
+                        state={entry.state}
+                        sourceData={meta.sourceData}
+                        onUpdate={updateItem}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </main>

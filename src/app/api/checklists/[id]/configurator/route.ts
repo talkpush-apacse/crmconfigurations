@@ -15,6 +15,9 @@ const patchSchema = z.object({
   itemId: z.string().min(1),
   status: statusSchema,
   notes: z.string().nullable(),
+  // Optional per-item audit flag — independent of `status`. When omitted,
+  // the existing `configured` value on the row is preserved.
+  configured: z.boolean().optional(),
   version: z.number().int().nonnegative(),
 });
 
@@ -141,6 +144,7 @@ export async function PATCH(
       itemId: parsed.data.itemId,
       status: parsed.data.status,
       notes: parsed.data.notes,
+      configured: parsed.data.configured,
       updatedBy: auth.userId,
     });
 
