@@ -64,6 +64,7 @@ import type {
   IntegrationRow,
   IntegrationStatus,
 } from "@/lib/types";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const mainColumns: ColumnDef[] = [
   { key: "vendorName", label: "Vendor Name", type: "text", width: "180px" },
@@ -303,13 +304,23 @@ function statusClass(status: IntegrationStatus | "") {
 
 export function IntegrationsSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
-  const integrations = useMemo(
+  const allIntegrations = useMemo(
     () =>
       Array.isArray(data.integrations)
         ? data.integrations.map((row) => normalizeIntegrationRow(row))
         : [],
     [data.integrations]
   );
+  const integrations = useMemo(
+    () => allIntegrations.filter((r) => !r.deletedAt),
+    [allIntegrations]
+  );
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = integrations[visibleIdx];
+    if (!target) return -1;
+    return allIntegrations.findIndex((r) => r.id === target.id);
+  };
 
   const folderOptions = useMemo(
     () =>
@@ -366,8 +377,10 @@ export function IntegrationsSheet() {
     field: K,
     value: IntegrationRow[K]
   ) => {
-    const next = integrations.map((row, rowIndex) =>
-      rowIndex === index ? { ...row, [field]: value } : row
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const next = allIntegrations.map((row, rowIndex) =>
+      rowIndex === fullIdx ? { ...row, [field]: value } : row
     );
     saveIntegrations(next);
   };
@@ -376,11 +389,19 @@ export function IntegrationsSheet() {
     rowId: string,
     updater: (row: IntegrationRow) => IntegrationRow
   ) => {
-    saveIntegrations(integrations.map((row) => (row.id === rowId ? updater(row) : row)));
+    saveIntegrations(allIntegrations.map((row) => (row.id === rowId ? updater(row) : row)));
   };
 
   const addRow = () => {
-    saveIntegrations([...integrations, makeIntegrationRow()]);
+    saveIntegrations([...allIntegrations, makeIntegrationRow()]);
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    saveIntegrations(softDeleteByIds(allIntegrations, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    saveIntegrations(appendBulkDuplicates("integrations", allIntegrations, integrations, ids));
   };
 
   const handleCsvImport = (rows: Record<string, string>[]) => {
@@ -426,7 +447,7 @@ export function IntegrationsSheet() {
         notes: row.notes ?? "",
       })
     );
-    saveIntegrations([...integrations, ...imported]);
+    saveIntegrations([...allIntegrations, ...imported]);
   };
 
   const renderFolderWarning = (row: IntegrationRow) => {
@@ -475,11 +496,17 @@ export function IntegrationsSheet() {
         data={integrations}
         onAdd={addRow}
         hideAddButton
-        onDelete={(index) => saveIntegrations(integrations.filter((_, rowIndex) => rowIndex !== index))}
+        onDelete={(index) => {
+          const target = integrations[index];
+          if (!target) return;
+          saveIntegrations(softDeleteByIds(allIntegrations, [target.id]));
+        }}
         onUpdate={(index, field, value) => {
+          const fullIdx = fullIndexOf(index);
+          if (fullIdx < 0) return;
           saveIntegrations(
-            integrations.map((row, rowIndex) =>
-              rowIndex === index ? { ...row, [field]: value } : row
+            allIntegrations.map((row, rowIndex) =>
+              rowIndex === fullIdx ? { ...row, [field]: value } : row
             )
           );
         }}
@@ -583,6 +610,12 @@ export function IntegrationsSheet() {
             onUpdate={(updater) => updateRowById(row.id, updater)}
           />
         )}
+        bulkActions={{
+          itemLabel: "integration",
+          itemLabelPlural: "integrations",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
+        }}
       />
 
       <SectionFooter />

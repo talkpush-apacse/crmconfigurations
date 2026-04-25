@@ -10,6 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultSites } from "@/lib/template-data";
 import type { ColumnDef, SiteRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "siteName", label: "Site Name", type: "text", description: "Public-facing name of the interview/office site" },
@@ -28,30 +29,48 @@ const detailColumns: ColumnDef[] = [
 export function SitesSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("sites");
-  const sites = (data.sites as SiteRow[]) || defaultSites;
+  const allSites = (data.sites as SiteRow[]) || defaultSites;
+  const sites = allSites.filter((s) => !s.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = sites[visibleIdx];
+    if (!target) return -1;
+    return allSites.findIndex((s) => s.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...sites];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allSites];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("sites", updated);
   };
 
   const handleAdd = () => {
     updateField("sites", [
-      ...sites,
+      ...allSites,
       { id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("sites", sites.filter((_, i) => i !== index));
+    const target = sites[index];
+    if (!target) return;
+    updateField("sites", softDeleteByIds(allSites, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...sites[index], id: uid() };
-    const updated = [...sites];
-    updated.splice(index + 1, 0, clone);
-    updateField("sites", updated);
+    const target = sites[index];
+    if (!target) return;
+    updateField("sites", appendBulkDuplicates("sites", allSites, sites, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("sites", softDeleteByIds(allSites, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("sites", appendBulkDuplicates("sites", allSites, sites, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,7 +80,7 @@ export function SitesSheet() {
       siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "",
       ...row,
     }));
-    updateField("sites", [...sites, ...newRows]);
+    updateField("sites", [...allSites, ...newRows]);
   };
 
   return (
@@ -99,6 +118,12 @@ export function SitesSheet() {
           sampleRow: { siteName: "Main Office", internalName: "HQ", interviewHours: "9AM-5PM", interviewType: "Onsite", fullAddress: "123 Main St, City" },
           onImport: handleCsvImport,
           sheetName: "Sites",
+        }}
+        bulkActions={{
+          itemLabel: "site",
+          itemLabelPlural: "sites",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

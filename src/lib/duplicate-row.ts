@@ -8,6 +8,38 @@ interface BaseRow {
 }
 
 /**
+ * Stamp `deletedAt = now` on every row in `fullArray` whose id is in `ids`.
+ * Returns a new array — does not mutate.
+ */
+export function softDeleteByIds<T extends BaseRow>(
+  fullArray: T[],
+  ids: string[],
+): T[] {
+  const idSet = new Set(ids);
+  const now = new Date().toISOString();
+  return fullArray.map((r) =>
+    r.id && idSet.has(r.id) ? ({ ...r, deletedAt: now } as T) : r,
+  );
+}
+
+/**
+ * Append collision-aware copies of the visible rows whose ids are in `ids` to
+ * the end of `fullArray`. Returns a new array.
+ */
+export function appendBulkDuplicates<T extends BaseRow>(
+  section: BulkSectionKey,
+  fullArray: T[],
+  visibleArray: T[],
+  ids: string[],
+): T[] {
+  const idSet = new Set(ids);
+  const sources = visibleArray.filter((r) => r.id && idSet.has(r.id));
+  if (sources.length === 0) return fullArray;
+  const copies = duplicateRows(section, fullArray, sources);
+  return [...fullArray, ...copies];
+}
+
+/**
  * Build collision-aware copies of the given source rows for one section.
  *
  * - Generates a fresh `id` per copy and clears `deletedAt`/`deletedBy`.

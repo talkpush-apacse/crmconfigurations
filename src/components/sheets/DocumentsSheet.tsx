@@ -10,6 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultDocuments } from "@/lib/template-data";
 import type { ColumnDef, DocumentRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "documentName", label: "Document Name", type: "text", description: "Official name of the document to collect" },
@@ -28,30 +29,48 @@ const detailColumns: ColumnDef[] = [
 export function DocumentsSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("documents");
-  const documents = (data.documents as DocumentRow[]) || defaultDocuments;
+  const allDocuments = (data.documents as DocumentRow[]) || defaultDocuments;
+  const documents = allDocuments.filter((d) => !d.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = documents[visibleIdx];
+    if (!target) return -1;
+    return allDocuments.findIndex((d) => d.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...documents];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allDocuments];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("documents", updated);
   };
 
   const handleAdd = () => {
     updateField("documents", [
-      ...documents,
+      ...allDocuments,
       { id: uid(), documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("documents", documents.filter((_, i) => i !== index));
+    const target = documents[index];
+    if (!target) return;
+    updateField("documents", softDeleteByIds(allDocuments, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...documents[index], id: uid() };
-    const updated = [...documents];
-    updated.splice(index + 1, 0, clone);
-    updateField("documents", updated);
+    const target = documents[index];
+    if (!target) return;
+    updateField("documents", appendBulkDuplicates("documents", allDocuments, documents, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("documents", softDeleteByIds(allDocuments, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("documents", appendBulkDuplicates("documents", allDocuments, documents, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,7 +80,7 @@ export function DocumentsSheet() {
       documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "",
       ...row,
     }));
-    updateField("documents", [...documents, ...newRows]);
+    updateField("documents", [...allDocuments, ...newRows]);
   };
 
   return (
@@ -100,6 +119,12 @@ export function DocumentsSheet() {
           sampleRow: { documentName: "Resume/CV", applicableCandidates: "All", required: "Required", folder: "Inbox" },
           onImport: handleCsvImport,
           sheetName: "Documents",
+        }}
+        bulkActions={{
+          itemLabel: "document",
+          itemLabelPlural: "documents",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

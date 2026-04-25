@@ -9,6 +9,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultSources } from "@/lib/template-data";
 import type { ColumnDef, SourceRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "category", label: "Source Category", type: "text", description: "Category of the sourcing channel (e.g., Social Media, Job Boards, Referral)" },
@@ -20,34 +21,59 @@ const columns: ColumnDef[] = [
 export function SourcesSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("sources");
-  const sources = (data.sources as SourceRow[]) || defaultSources;
+  const allSources = (data.sources as SourceRow[]) || defaultSources;
+  const sources = allSources.filter((s) => !s.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = sources[visibleIdx];
+    if (!target) return -1;
+    return allSources.findIndex((s) => s.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...sources];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allSources];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("sources", updated);
   };
 
   const handleAdd = () => {
     updateField("sources", [
-      ...sources,
+      ...allSources,
       { id: uid(), category: "", subcategory: "", link: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("sources", sources.filter((_, i) => i !== index));
+    const target = sources[index];
+    if (!target) return;
+    updateField("sources", softDeleteByIds(allSources, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...sources[index], id: uid() };
-    const updated = [...sources];
-    updated.splice(index + 1, 0, clone);
-    updateField("sources", updated);
+    const target = sources[index];
+    if (!target) return;
+    updateField("sources", appendBulkDuplicates("sources", allSources, sources, [target.id]));
   };
 
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("sources", softDeleteByIds(allSources, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("sources", appendBulkDuplicates("sources", allSources, sources, ids));
+  };
+
+  // Reorder operates on visible rows; merge back into full array preserving
+  // soft-deleted rows' original slots.
   const handleReorder = (reordered: SourceRow[]) => {
-    updateField("sources", reordered);
+    let visIdx = 0;
+    const merged = allSources.map((row) => {
+      if (row.deletedAt) return row;
+      return reordered[visIdx++] ?? row;
+    });
+    updateField("sources", merged);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +83,7 @@ export function SourcesSheet() {
       category: "", subcategory: "", link: "", comments: "",
       ...row,
     }));
-    updateField("sources", [...sources, ...newRows]);
+    updateField("sources", [...allSources, ...newRows]);
   };
 
   return (
@@ -96,6 +122,12 @@ export function SourcesSheet() {
           sampleRow: { category: "Job Boards", subcategory: "Indeed", link: "https://indeed.com" },
           onImport: handleCsvImport,
           sheetName: "Sources",
+        }}
+        bulkActions={{
+          itemLabel: "source",
+          itemLabelPlural: "sources",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

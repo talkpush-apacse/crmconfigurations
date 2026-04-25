@@ -10,6 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultFolders } from "@/lib/template-data";
 import type { ColumnDef, FolderRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "folderName", label: "Folder Name", type: "text", description: "Name of the workflow stage/folder" },
@@ -21,30 +22,48 @@ const columns: ColumnDef[] = [
 export function FoldersSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("folders");
-  const folders = (data.folders as FolderRow[]) || defaultFolders;
+  const allFolders = (data.folders as FolderRow[]) || defaultFolders;
+  const folders = allFolders.filter((f) => !f.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = folders[visibleIdx];
+    if (!target) return -1;
+    return allFolders.findIndex((f) => f.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...folders];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allFolders];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("folders", updated);
   };
 
   const handleAdd = () => {
     updateField("folders", [
-      ...folders,
+      ...allFolders,
       { id: uid(), folderName: "", description: "", movementType: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("folders", folders.filter((_, i) => i !== index));
+    const target = folders[index];
+    if (!target) return;
+    updateField("folders", softDeleteByIds(allFolders, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...folders[index], id: uid() };
-    const updated = [...folders];
-    updated.splice(index + 1, 0, clone);
-    updateField("folders", updated);
+    const target = folders[index];
+    if (!target) return;
+    updateField("folders", appendBulkDuplicates("folders", allFolders, folders, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("folders", softDeleteByIds(allFolders, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("folders", appendBulkDuplicates("folders", allFolders, folders, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,7 +73,7 @@ export function FoldersSheet() {
       folderName: "", description: "", movementType: "", comments: "",
       ...row,
     }));
-    updateField("folders", [...folders, ...newRows]);
+    updateField("folders", [...allFolders, ...newRows]);
   };
 
   return (
@@ -87,6 +106,12 @@ export function FoldersSheet() {
           sampleRow: { folderName: "Onboarding", description: "Candidates in onboarding process", movementType: "Manual" },
           onImport: handleCsvImport,
           sheetName: "Folders",
+        }}
+        bulkActions={{
+          itemLabel: "folder",
+          itemLabelPlural: "folders",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

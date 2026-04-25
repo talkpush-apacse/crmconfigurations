@@ -1,5 +1,17 @@
 [
   {
+    "version": "2.5",
+    "name": "Version 2.5 - Bulk Select Rollout (12 sections)",
+    "changes": [
+      "Rolled out bulk select + bulk delete + bulk duplicate to 12 more sections: campaigns, sites, folders, sources, attributes, documents, prescreening questions, agency portal, agency portal users, labels, and integrations",
+      "Each section now supports: header select-all checkbox with indeterminate state, shift-click range select, sticky teal action bar with [Duplicate] [Delete] [Clear], collision-aware copy suffixes, and soft delete (deletedAt timestamp — recoverable from JSON)",
+      "Per-row delete is now soft across all 13 sections (matching bulk-delete behavior)",
+      "ATS / HRIS Integrations: per-card delete is now soft for consistency, but bulk-select UI was skipped (accordion layout, not a top-level table)",
+      "Rejection Reasons: bulk-select N/A — stored as plain string array, no per-row IDs to select on (out of scope for this rollout)"
+    ],
+    "deployed_at": "2026-04-25"
+  },
+  {
     "version": "2.4",
     "name": "Version 2.4 - Talkpush CSV Export (Users)",
     "changes": [

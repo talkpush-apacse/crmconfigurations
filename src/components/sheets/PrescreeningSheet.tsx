@@ -10,6 +10,7 @@ import { uid, defaultPrescreening } from "@/lib/template-data";
 import type { ColumnDef, QuestionRow } from "@/lib/types";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   {
@@ -109,27 +110,45 @@ const EMPTY_QUESTION: Omit<QuestionRow, "id"> = {
 export function PrescreeningSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("prescreening");
-  const questions = (data.prescreening as QuestionRow[]) || defaultPrescreening;
+  const allQuestions = (data.prescreening as QuestionRow[]) || defaultPrescreening;
+  const questions = allQuestions.filter((q) => !q.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = questions[visibleIdx];
+    if (!target) return -1;
+    return allQuestions.findIndex((q) => q.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...questions];
-    updated[index] = { ...updated[index], [field]: value as string };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allQuestions];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value as string };
     updateField("prescreening", updated);
   };
 
   const handleAdd = () => {
-    updateField("prescreening", [...questions, { id: uid(), ...EMPTY_QUESTION }]);
+    updateField("prescreening", [...allQuestions, { id: uid(), ...EMPTY_QUESTION }]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("prescreening", questions.filter((_, i) => i !== index));
+    const target = questions[index];
+    if (!target) return;
+    updateField("prescreening", softDeleteByIds(allQuestions, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...questions[index], id: uid() };
-    const updated = [...questions];
-    updated.splice(index + 1, 0, clone);
-    updateField("prescreening", updated);
+    const target = questions[index];
+    if (!target) return;
+    updateField("prescreening", appendBulkDuplicates("prescreening", allQuestions, questions, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("prescreening", softDeleteByIds(allQuestions, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("prescreening", appendBulkDuplicates("prescreening", allQuestions, questions, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,7 +158,7 @@ export function PrescreeningSheet() {
       ...EMPTY_QUESTION,
       ...row,
     }));
-    updateField("prescreening", [...questions, ...newRows]);
+    updateField("prescreening", [...allQuestions, ...newRows]);
   };
 
   return (
@@ -206,6 +225,12 @@ export function PrescreeningSheet() {
           },
           onImport: handleCsvImport,
           sheetName: "Pre-Screening Questions",
+        }}
+        bulkActions={{
+          itemLabel: "question",
+          itemLabelPlural: "questions",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

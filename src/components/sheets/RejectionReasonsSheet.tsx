@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import type { ColumnDef, LabelRow } from "@/lib/types";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const labelColumns: ColumnDef[] = [
   { key: "name", label: "Label name", type: "text", required: true, example: "Priority Candidate" },
@@ -30,8 +31,15 @@ export function RejectionReasonsSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("rejectionReasons");
   const reasons = (data.rejectionReasons as string[]) || defaultRejectionReasons;
-  const labels = (data.labels as LabelRow[] | null) ?? [];
+  const allLabels = (data.labels as LabelRow[] | null) ?? [];
+  const labels = allLabels.filter((l) => !l.deletedAt);
   const [newReason, setNewReason] = useState("");
+
+  const fullLabelIndexOf = (visibleIdx: number) => {
+    const target = labels[visibleIdx];
+    if (!target) return -1;
+    return allLabels.findIndex((l) => l.id === target.id);
+  };
 
   const handleAdd = () => {
     const trimmed = newReason.trim();
@@ -56,20 +64,32 @@ export function RejectionReasonsSheet() {
   };
 
   const handleLabelUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...labels];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullLabelIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allLabels];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("labels", updated);
   };
 
   const handleLabelAdd = () => {
     updateField("labels", [
-      ...labels,
+      ...allLabels,
       { ...emptyLabelRow, id: uid() },
     ]);
   };
 
   const handleLabelDelete = (index: number) => {
-    updateField("labels", labels.filter((_, i) => i !== index));
+    const target = labels[index];
+    if (!target) return;
+    updateField("labels", softDeleteByIds(allLabels, [target.id]));
+  };
+
+  const handleLabelBulkDelete = (ids: string[]) => {
+    updateField("labels", softDeleteByIds(allLabels, ids));
+  };
+
+  const handleLabelBulkDuplicate = (ids: string[]) => {
+    updateField("labels", appendBulkDuplicates("labels", allLabels, labels, ids));
   };
 
   return (
@@ -166,6 +186,12 @@ export function RejectionReasonsSheet() {
             onDelete={handleLabelDelete}
             addLabel="Add Label"
             sampleRow={{ name: "Priority Candidate", color: "#FF5733" }}
+            bulkActions={{
+              itemLabel: "label",
+              itemLabelPlural: "labels",
+              onBulkDelete: handleLabelBulkDelete,
+              onBulkDuplicate: handleLabelBulkDuplicate,
+            }}
             renderCellPrefix={({ column, value }) => {
               if (column.key !== "color" || typeof value !== "string") return null;
 

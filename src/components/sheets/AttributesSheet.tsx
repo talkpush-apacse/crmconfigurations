@@ -10,6 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultAttributes } from "@/lib/template-data";
 import type { ColumnDef, AttributeRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "attributeName", label: "Attribute Name", type: "text", required: true, description: "Display name of the candidate attribute" },
@@ -56,42 +57,60 @@ function toSnakeCase(str: string): string {
 export function AttributesSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("attributes");
-  const attributes = (data.attributes as AttributeRow[]) || defaultAttributes;
+  const allAttributes = (data.attributes as AttributeRow[]) || defaultAttributes;
+  const attributes = allAttributes.filter((a) => !a.deletedAt);
+
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = attributes[visibleIdx];
+    if (!target) return -1;
+    return allAttributes.findIndex((a) => a.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...attributes];
-    const row = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allAttributes];
+    const row = { ...updated[fullIdx], [field]: value };
 
     // Auto-derive key from attribute name if the key hasn't been manually edited
     if (field === "attributeName" && typeof value === "string") {
-      const currentKey = updated[index].key;
-      const previousAutoKey = toSnakeCase(updated[index].attributeName);
+      const currentKey = updated[fullIdx].key;
+      const previousAutoKey = toSnakeCase(updated[fullIdx].attributeName);
       // Only auto-fill if key is empty or matches the previous auto-generated value
       if (!currentKey || currentKey === previousAutoKey) {
         row.key = toSnakeCase(value);
       }
     }
 
-    updated[index] = row;
+    updated[fullIdx] = row;
     updateField("attributes", updated);
   };
 
   const handleAdd = () => {
     updateField("attributes", [
-      ...attributes,
+      ...allAttributes,
       { ...emptyRow, id: uid() },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("attributes", attributes.filter((_, i) => i !== index));
+    const target = attributes[index];
+    if (!target) return;
+    updateField("attributes", softDeleteByIds(allAttributes, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...attributes[index], id: uid() };
-    const updated = [...attributes];
-    updated.splice(index + 1, 0, clone);
-    updateField("attributes", updated);
+    const target = attributes[index];
+    if (!target) return;
+    updateField("attributes", appendBulkDuplicates("attributes", allAttributes, attributes, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("attributes", softDeleteByIds(allAttributes, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("attributes", appendBulkDuplicates("attributes", allAttributes, attributes, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +127,7 @@ export function AttributesSheet() {
       useSuggestedValuesOnly: row.useSuggestedValuesOnly === "true" || row.useSuggestedValuesOnly === true,
       readOnlyMode: row.readOnlyMode === "true" || row.readOnlyMode === true,
     }));
-    updateField("attributes", [...attributes, ...newRows]);
+    updateField("attributes", [...allAttributes, ...newRows]);
   };
 
   return (
@@ -147,6 +166,12 @@ export function AttributesSheet() {
           sampleRow: { attributeName: "AI Call Consent", key: "1_ai_call_consent", dataType: "Text", suggestedValues: "Yes, No" },
           onImport: handleCsvImport,
           sheetName: "Attributes",
+        }}
+        bulkActions={{
+          itemLabel: "attribute",
+          itemLabelPlural: "attributes",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

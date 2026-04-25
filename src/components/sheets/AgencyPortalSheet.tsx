@@ -9,6 +9,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAgencyPortal, defaultAgencyPortalUsers } from "@/lib/template-data";
 import type { ColumnDef, AgencyPortalRow, AgencyPortalUser } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "agencyName", label: "Agency Name", type: "text", description: "Name of the staffing/recruitment agency" },
@@ -43,31 +44,56 @@ const userColumns: ColumnDef[] = [
 export function AgencyPortalSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("agencyPortal");
-  const agencies = (data.agencyPortal as AgencyPortalRow[]) || defaultAgencyPortal;
-  const users = (data.agencyPortalUsers as AgencyPortalUser[]) || defaultAgencyPortalUsers;
+  const allAgencies = (data.agencyPortal as AgencyPortalRow[]) || defaultAgencyPortal;
+  const agencies = allAgencies.filter((a) => !a.deletedAt);
+  const allUsers = (data.agencyPortalUsers as AgencyPortalUser[]) || defaultAgencyPortalUsers;
+  const users = allUsers.filter((u) => !u.deletedAt);
+
+  const fullAgencyIndexOf = (visibleIdx: number) => {
+    const target = agencies[visibleIdx];
+    if (!target) return -1;
+    return allAgencies.findIndex((a) => a.id === target.id);
+  };
+
+  const fullUserIndexOf = (visibleIdx: number) => {
+    const target = users[visibleIdx];
+    if (!target) return -1;
+    return allUsers.findIndex((u) => u.id === target.id);
+  };
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...agencies];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullAgencyIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allAgencies];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("agencyPortal", updated);
   };
 
   const handleAdd = () => {
     updateField("agencyPortal", [
-      ...agencies,
+      ...allAgencies,
       { id: uid(), agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("agencyPortal", agencies.filter((_, i) => i !== index));
+    const target = agencies[index];
+    if (!target) return;
+    updateField("agencyPortal", softDeleteByIds(allAgencies, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...agencies[index], id: uid() };
-    const updated = [...agencies];
-    updated.splice(index + 1, 0, clone);
-    updateField("agencyPortal", updated);
+    const target = agencies[index];
+    if (!target) return;
+    updateField("agencyPortal", appendBulkDuplicates("agencyPortal", allAgencies, agencies, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("agencyPortal", softDeleteByIds(allAgencies, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("agencyPortal", appendBulkDuplicates("agencyPortal", allAgencies, agencies, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,32 +103,43 @@ export function AgencyPortalSheet() {
       agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "",
       ...row,
     }));
-    updateField("agencyPortal", [...agencies, ...newRows]);
+    updateField("agencyPortal", [...allAgencies, ...newRows]);
   };
 
   // --- Agency Portal Users handlers ---
   const handleUserUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...users];
-    updated[index] = { ...updated[index], [field]: value as string };
+    const fullIdx = fullUserIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allUsers];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value as string };
     updateField("agencyPortalUsers", updated);
   };
 
   const handleUserAdd = () => {
     updateField("agencyPortalUsers", [
-      ...users,
+      ...allUsers,
       { id: uid(), name: "", email: "", agency: "", userAccess: "" as AgencyPortalUser["userAccess"] },
     ]);
   };
 
   const handleUserDelete = (index: number) => {
-    updateField("agencyPortalUsers", users.filter((_, i) => i !== index));
+    const target = users[index];
+    if (!target) return;
+    updateField("agencyPortalUsers", softDeleteByIds(allUsers, [target.id]));
   };
 
   const handleUserDuplicate = (index: number) => {
-    const clone = { ...users[index], id: uid() };
-    const updated = [...users];
-    updated.splice(index + 1, 0, clone);
-    updateField("agencyPortalUsers", updated);
+    const target = users[index];
+    if (!target) return;
+    updateField("agencyPortalUsers", appendBulkDuplicates("agencyPortalUsers", allUsers, users, [target.id]));
+  };
+
+  const handleUserBulkDelete = (ids: string[]) => {
+    updateField("agencyPortalUsers", softDeleteByIds(allUsers, ids));
+  };
+
+  const handleUserBulkDuplicate = (ids: string[]) => {
+    updateField("agencyPortalUsers", appendBulkDuplicates("agencyPortalUsers", allUsers, users, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,7 +149,7 @@ export function AgencyPortalSheet() {
       name: "", email: "", agency: "", userAccess: "" as AgencyPortalUser["userAccess"],
       ...row,
     }));
-    updateField("agencyPortalUsers", [...users, ...newRows]);
+    updateField("agencyPortalUsers", [...allUsers, ...newRows]);
   };
 
   return (
@@ -150,6 +187,12 @@ export function AgencyPortalSheet() {
           onImport: handleCsvImport,
           sheetName: "Agency Portal",
         }}
+        bulkActions={{
+          itemLabel: "agency",
+          itemLabelPlural: "agencies",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
+        }}
       />
 
       <div className="mt-10">
@@ -171,6 +214,12 @@ export function AgencyPortalSheet() {
             sampleRow: { name: "Jane Smith", email: "jane@abc.com", agency: "ABC Staffing", userAccess: "Agency Admin" },
             onImport: handleUserCsvImport,
             sheetName: "Agency Portal Users",
+          }}
+          bulkActions={{
+            itemLabel: "agency user",
+            itemLabelPlural: "agency users",
+            onBulkDelete: handleUserBulkDelete,
+            onBulkDuplicate: handleUserBulkDuplicate,
           }}
         />
       </div>

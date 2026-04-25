@@ -11,6 +11,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultCampaigns } from "@/lib/template-data";
 import type { ColumnDef, CampaignRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
+import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "nameInternal", label: "Campaign Name (Internal)", type: "text", description: "Internal name used within Talkpush to identify this campaign" },
@@ -38,7 +39,8 @@ const referenceData = [
 export function CampaignsSheet() {
   const { data, updateField } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("campaigns");
-  const campaigns = (data.campaigns as CampaignRow[]) || defaultCampaigns;
+  const allCampaigns = (data.campaigns as CampaignRow[]) || defaultCampaigns;
+  const campaigns = allCampaigns.filter((c) => !c.deletedAt);
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/editor");
 
@@ -57,33 +59,51 @@ export function CampaignsSheet() {
     [campaigns]
   );
 
+  // Map a visible-list index to its position in the full (incl. soft-deleted) array
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = campaigns[visibleIdx];
+    if (!target) return -1;
+    return allCampaigns.findIndex((c) => c.id === target.id);
+  };
+
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...campaigns];
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allCampaigns];
     if (field === "assignedRecruiters" && typeof value === "string") {
       const arr = value ? value.split(",").map((s) => s.trim()).filter(Boolean) : [];
-      updated[index] = { ...updated[index], assignedRecruiters: arr };
+      updated[fullIdx] = { ...updated[fullIdx], assignedRecruiters: arr };
     } else {
-      updated[index] = { ...updated[index], [field]: value };
+      updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     }
     updateField("campaigns", updated);
   };
 
   const handleAdd = () => {
     updateField("campaigns", [
-      ...campaigns,
+      ...allCampaigns,
       { id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" },
     ]);
   };
 
   const handleDelete = (index: number) => {
-    updateField("campaigns", campaigns.filter((_, i) => i !== index));
+    const target = campaigns[index];
+    if (!target) return;
+    updateField("campaigns", softDeleteByIds(allCampaigns, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...campaigns[index], id: uid() };
-    const updated = [...campaigns];
-    updated.splice(index + 1, 0, clone);
-    updateField("campaigns", updated);
+    const target = campaigns[index];
+    if (!target) return;
+    updateField("campaigns", appendBulkDuplicates("campaigns", allCampaigns, campaigns, [target.id]));
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    updateField("campaigns", softDeleteByIds(allCampaigns, ids));
+  };
+
+  const handleBulkDuplicate = (ids: string[]) => {
+    updateField("campaigns", appendBulkDuplicates("campaigns", allCampaigns, campaigns, ids));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,7 +113,7 @@ export function CampaignsSheet() {
       nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "",
       ...row,
     }));
-    updateField("campaigns", [...campaigns, ...newRows]);
+    updateField("campaigns", [...allCampaigns, ...newRows]);
   };
 
   return (
@@ -145,6 +165,12 @@ export function CampaignsSheet() {
           sampleRow: { nameInternal: "CSR Campaign", jobTitleExternal: "Customer Service Representative", site: "Main Office", jobDescription: "Handle customer inquiries" },
           onImport: handleCsvImport,
           sheetName: "Campaigns",
+        }}
+        bulkActions={{
+          itemLabel: "campaign",
+          itemLabelPlural: "campaigns",
+          onBulkDelete: handleBulkDelete,
+          onBulkDuplicate: handleBulkDuplicate,
         }}
       />
         </>

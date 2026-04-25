@@ -413,9 +413,10 @@ export function AtsIntegrationsSheet() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const integrations = Array.isArray(data.atsIntegrations)
+  const allIntegrations = Array.isArray(data.atsIntegrations)
     ? data.atsIntegrations.map((integration) => normalizeIntegration(integration))
     : [];
+  const integrations = allIntegrations.filter((i) => !i.deletedAt);
   const deleteTarget = integrations.find((integration) => integration.id === deleteTargetId) ?? null;
 
   const saveIntegrations = (next: AtsIntegration[]) => {
@@ -427,7 +428,7 @@ export function AtsIntegrationsSheet() {
     updater: (integration: AtsIntegration) => AtsIntegration
   ) => {
     saveIntegrations(
-      integrations.map((integration) =>
+      allIntegrations.map((integration) =>
         integration.id === integrationId ? updater(integration) : integration
       )
     );
@@ -445,12 +446,20 @@ export function AtsIntegrationsSheet() {
   };
 
   const addIntegration = () => {
-    saveIntegrations([...integrations, makeIntegration()]);
+    saveIntegrations([...allIntegrations, makeIntegration()]);
   };
 
+  // Soft delete: stamp deletedAt instead of removing — consistent with other sections.
   const deleteIntegration = () => {
     if (!deleteTargetId) return;
-    saveIntegrations(integrations.filter((integration) => integration.id !== deleteTargetId));
+    const now = new Date().toISOString();
+    saveIntegrations(
+      allIntegrations.map((integration) =>
+        integration.id === deleteTargetId
+          ? { ...integration, deletedAt: now }
+          : integration
+      )
+    );
   };
 
   const handleCopied = (key: string) => {
