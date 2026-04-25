@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ConfiguratorChecklistBlob,
   ConfiguratorItemState,
+  ConfiguratorSectionState,
   ConfiguratorStatus,
   ConfiguratorTemplateItem,
 } from "@/lib/configurator-template";
@@ -29,6 +30,11 @@ interface PendingChange {
   notes: string | null;
 }
 
+interface PendingSectionChange {
+  section: string;
+  configured: boolean;
+}
+
 function cloneBlob(blob: ConfiguratorChecklistBlob): ConfiguratorChecklistBlob {
   return typeof structuredClone === "function"
     ? structuredClone(blob)
@@ -43,6 +49,8 @@ export function useConfiguratorChecklist(checklistId: string) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const metaRef = useRef<ConfiguratorMeta | null>(null);
   const pendingRef = useRef<Map<string, PendingChange>>(new Map());
+  // Parallel pipeline for section-level "configured" toggles (independent of items).
+  const pendingSectionsRef = useRef<Map<string, PendingSectionChange>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<Promise<void> | null>(null);
 
@@ -142,6 +150,51 @@ export function useConfiguratorChecklist(checklistId: string) {
     applyMeta({ ...latest, version: body.version, blob: nextBlob });
   }, [applyMeta, checklistId, fetchMeta]);
 
+  const sendSectionChange = useCallback(async (change: PendingSectionChange, retryOnConflict = true): Promise<void> => {
+    const current = metaRef.current;
+    if (!current?.blob) return;
+
+    const response = await fetch(`/api/checklists/${checklistId}/configurator/section`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        section: change.section,
+        configured: change.configured,
+        version: current.version,
+      }),
+    });
+
+    if (response.status === 409) {
+      const latest = await fetchMeta();
+      if (retryOnConflict && latest.blob) {
+        setSaveStatus("conflict");
+        return sendSectionChange(change, false);
+      }
+      setSaveStatus("conflict");
+      setSaveError("Someone else updated this checklist — refresh to see changes");
+      throw new Error("Conflict");
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to save section status");
+    }
+
+    const body = await response.json() as { section: ConfiguratorSectionState; version: number };
+    const latest = metaRef.current;
+    if (!latest?.blob) return;
+
+    const nextBlob = cloneBlob(latest.blob);
+    const sectionStates = nextBlob.sectionStates ?? [];
+    const sectionIndex = sectionStates.findIndex((entry) => entry.section === body.section.section);
+    nextBlob.sectionStates =
+      sectionIndex === -1
+        ? [...sectionStates, body.section]
+        : sectionStates.map((entry, index) => (index === sectionIndex ? body.section : entry));
+
+    applyMeta({ ...latest, version: body.version, blob: nextBlob });
+  }, [applyMeta, checklistId, fetchMeta]);
+
   const flushPendingSaves = useCallback(async () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -153,14 +206,19 @@ export function useConfiguratorChecklist(checklistId: string) {
     }
 
     const changes = Array.from(pendingRef.current.values());
-    if (changes.length === 0) return;
+    const sectionChanges = Array.from(pendingSectionsRef.current.values());
+    if (changes.length === 0 && sectionChanges.length === 0) return;
     pendingRef.current.clear();
+    pendingSectionsRef.current.clear();
 
     setSaveStatus("saving");
     setSaveError(null);
     const savePromise = (async () => {
       for (const change of changes) {
         await sendChange(change);
+      }
+      for (const change of sectionChanges) {
+        await sendSectionChange(change);
       }
     })();
 
@@ -176,7 +234,7 @@ export function useConfiguratorChecklist(checklistId: string) {
     } finally {
       inFlightRef.current = null;
     }
-  }, [sendChange]);
+  }, [sendChange, sendSectionChange]);
 
   const scheduleFlush = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -219,6 +277,39 @@ export function useConfiguratorChecklist(checklistId: string) {
     });
   }, [scheduleFlush]);
 
+  const updateSection = useCallback((section: string, configured: boolean) => {
+    setMeta((current) => {
+      if (!current?.blob) return current;
+
+      const nextBlob = cloneBlob(current.blob);
+      const sectionStates = nextBlob.sectionStates ?? [];
+      const sectionIndex = sectionStates.findIndex((entry) => entry.section === section);
+
+      // Optimistic local update — the server will overwrite with authoritative
+      // configuredAt/configuredBy values once the PATCH lands.
+      const optimisticSection: ConfiguratorSectionState = {
+        section,
+        configured,
+        configuredAt: configured ? new Date().toISOString() : null,
+        configuredBy: configured ? (sectionStates[sectionIndex]?.configuredBy ?? null) : null,
+      };
+
+      nextBlob.sectionStates =
+        sectionIndex === -1
+          ? [...sectionStates, optimisticSection]
+          : sectionStates.map((entry, index) => (index === sectionIndex ? optimisticSection : entry));
+
+      pendingSectionsRef.current.set(section, { section, configured });
+      setSaveStatus("saving");
+      setSaveError(null);
+      scheduleFlush();
+
+      const nextMeta = { ...current, blob: nextBlob };
+      metaRef.current = nextMeta;
+      return nextMeta;
+    });
+  }, [scheduleFlush]);
+
   const refreshFromSettings = useCallback(async () => {
     await flushPendingSaves();
     const response = await fetch(`/api/checklists/${checklistId}/configurator/refresh`, {
@@ -235,7 +326,7 @@ export function useConfiguratorChecklist(checklistId: string) {
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingRef.current.size > 0) {
+      if (pendingRef.current.size > 0 || pendingSectionsRef.current.size > 0) {
         flushPendingSaves().catch(() => undefined);
       }
     };
@@ -253,6 +344,7 @@ export function useConfiguratorChecklist(checklistId: string) {
     saveStatus,
     saveError,
     updateItem,
+    updateSection,
     refreshFromSettings,
     flushPendingSaves,
     refetch: fetchMeta,

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { CONFIGURATOR_TEMPLATE, type ConfiguratorChecklistBlob, type ConfiguratorItemState, type ConfiguratorStatus } from "@/lib/configurator-template";
+import { CONFIGURATOR_TEMPLATE, type ConfiguratorChecklistBlob, type ConfiguratorItemState, type ConfiguratorSectionState, type ConfiguratorStatus } from "@/lib/configurator-template";
 import { getApplicableItems } from "@/lib/configurator-filter";
 import { syncConfiguratorState } from "@/lib/configurator-sync";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
@@ -305,6 +305,73 @@ export async function updateConfiguratorItem(
   }
 
   throw new ConfiguratorServiceError("Failed to update configurator checklist", 500);
+}
+
+export async function updateConfiguratorSectionStatus(
+  slug: string,
+  input: {
+    section: string;
+    configured: boolean;
+    updatedBy: string;
+  }
+): Promise<ConfiguratorSectionState> {
+  // Reject section names that aren't in the template — prevents typos from
+  // creating orphan rows that no UI will ever surface.
+  const knownSections = new Set(CONFIGURATOR_TEMPLATE.map((item) => item.section));
+  if (!knownSections.has(input.section)) {
+    throw new ConfiguratorServiceError(`Unknown configurator section "${input.section}"`, 404);
+  }
+
+  let lastConflict = false;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const row = await getConfigRow(slug);
+    const existing = asConfiguratorBlob(row.configuratorChecklist);
+    if (!existing) {
+      throw new ConfiguratorServiceError("Configurator checklist has not been generated", 404);
+    }
+
+    const now = new Date().toISOString();
+    const sectionStates = existing.sectionStates ?? [];
+    const sectionIndex = sectionStates.findIndex((entry) => entry.section === input.section);
+
+    const nextSection: ConfiguratorSectionState = {
+      section: input.section,
+      configured: input.configured,
+      configuredAt: input.configured ? now : null,
+      configuredBy: input.configured ? input.updatedBy : null,
+    };
+
+    const nextSectionStates =
+      sectionIndex === -1
+        ? [...sectionStates, nextSection]
+        : sectionStates.map((entry, index) => (index === sectionIndex ? nextSection : entry));
+
+    const nextBlob: ConfiguratorChecklistBlob = {
+      ...existing,
+      sectionStates: nextSectionStates,
+    };
+
+    const updated = await prisma.checklist.updateMany({
+      where: {
+        id: row.id,
+        version: row.version,
+      },
+      data: {
+        configuratorChecklist: toPrismaJson(nextBlob),
+        version: { increment: 1 },
+      },
+    });
+
+    if (updated.count === 1) return nextSection;
+    lastConflict = true;
+  }
+
+  if (lastConflict) {
+    throw new ConfiguratorServiceError("Version conflict while updating configurator section status", 409);
+  }
+
+  throw new ConfiguratorServiceError("Failed to update configurator section status", 500);
 }
 
 export async function refreshConfiguratorSnapshot(slug: string): Promise<ConfiguratorChecklistBlob> {

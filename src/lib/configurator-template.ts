@@ -38,9 +38,20 @@ export interface ConfiguratorItemState {
   archived: boolean;
 }
 
+export interface ConfiguratorSectionState {
+  // exact section name from CONFIGURATOR_TEMPLATE — used as the join key
+  section: string;
+  configured: boolean;
+  configuredAt: string | null;
+  configuredBy: string | null;
+}
+
 export interface ConfiguratorChecklistBlob {
   items: ConfiguratorItemState[];
   snapshotItemIds: string[];
+  // Optional for backwards-compatibility with existing rows in production.
+  // Reads must tolerate undefined and treat all sections as not configured.
+  sectionStates?: ConfiguratorSectionState[];
   generatedAt: string;
   lastSnapshotAt: string;
 }
