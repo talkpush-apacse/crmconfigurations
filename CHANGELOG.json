@@ -1,5 +1,14 @@
 [
   {
+    "version": "2.8",
+    "name": "Version 2.8 - Icon-Only Configurator Button",
+    "changes": [
+      "Made the 'View Configurator's Checklist' row action icon-only to match the Copy Link and Open Checklist buttons next to it",
+      "Tooltip still shows full label on hover; aria-label preserved for screen readers"
+    ],
+    "deployed_at": "2026-04-26"
+  },
+  {
     "version": "2.7",
     "name": "Version 2.7 - Per-Step Configured Toggle",
     "changes": [

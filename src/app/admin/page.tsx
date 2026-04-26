@@ -829,16 +829,10 @@ export default function AdminDashboard() {
                                     <Link href={`/admin/${c.slug}/configurator`}>
                                       <Button
                                         variant="ghost"
-                                        size="sm"
-                                        className="h-9 rounded-md px-2"
+                                        size="icon"
                                         aria-label={`${c.configuratorChecklist ? "View" : "Generate"} configurator checklist for ${c.clientName}`}
                                       >
                                         <FileText className="h-4 w-4" />
-                                        <span className="hidden xl:inline">
-                                          {c.configuratorChecklist
-                                            ? "View Configurator's Checklist"
-                                            : "Generate Configurator's Checklist"}
-                                        </span>
                                       </Button>
                                     </Link>
                                   </TooltipTrigger>
