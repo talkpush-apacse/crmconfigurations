@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendOwnerNotification } from "@/lib/email";
+import { scheduleNotificationSweep } from "@/lib/notification-sweep";
+import { buildClientTabUrl, getNotificationTabMeta } from "@/lib/notifications";
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -38,9 +41,15 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const rawFolder = (formData.get("folder") as string) || "general";
+    const tabKey = (formData.get("tabKey") as string) || "";
     const folder: AllowedFolder = (ALLOWED_FOLDERS as readonly string[]).includes(rawFolder)
       ? (rawFolder as AllowedFolder)
       : "general";
+    let notificationChecklist: {
+      slug: string;
+      clientName: string;
+      ownerEmail: string | null;
+    } | null = null;
 
     // --- Auth: admin cookie OR valid editor-token / client-slug ---
     //
@@ -75,11 +84,11 @@ export async function POST(request: NextRequest) {
       const checklist = editorToken
         ? await prisma.checklist.findUnique({
             where: { editorToken },
-            select: { id: true },
+            select: { id: true, slug: true, clientName: true, ownerEmail: true },
           })
         : await prisma.checklist.findUnique({
             where: { slug },
-            select: { id: true },
+            select: { id: true, slug: true, clientName: true, ownerEmail: true },
           });
 
       if (!checklist) {
@@ -88,6 +97,12 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
+
+      notificationChecklist = {
+        slug: checklist.slug,
+        clientName: checklist.clientName,
+        ownerEmail: checklist.ownerEmail,
+      };
     }
 
     if (!file) {
@@ -126,7 +141,33 @@ export async function POST(request: NextRequest) {
       .from(STORAGE_BUCKET)
       .getPublicUrl(path);
 
-    return NextResponse.json({ url: urlData.publicUrl });
+    if (!isAdmin && notificationChecklist?.ownerEmail && tabKey) {
+      const tabMeta = getNotificationTabMeta(tabKey);
+      const tabUrl = buildClientTabUrl(process.env.APP_BASE_URL ?? "", notificationChecklist.slug, tabKey);
+
+      if (tabMeta && tabUrl) {
+        const emailResult = await sendOwnerNotification({
+          to: notificationChecklist.ownerEmail,
+          clientName: notificationChecklist.clientName,
+          tabDisplayName: tabMeta.displayName,
+          tabUrl,
+          updateType: "File uploaded",
+          summary: `Uploaded ${file.name}`,
+        });
+
+        if (!emailResult.ok) {
+          console.error("[notifications] upload email failed", {
+            slug: notificationChecklist.slug,
+            tabKey,
+            error: emailResult.error,
+          });
+        }
+      }
+    }
+
+    const response = NextResponse.json({ url: urlData.publicUrl });
+    scheduleNotificationSweep();
+    return response;
   } catch (err) {
     console.error("POST /api/upload error:", err);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });

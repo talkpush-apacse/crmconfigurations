@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { normalizeOwnerEmail } from "@/lib/notifications";
 import { getDefaultChecklistData } from "@/lib/template-data";
 
 function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, configuratorChecklist: true, version: true, isCustom: true, customSchema: true, customTabs: true },
+        select: { id: true, slug: true, editorToken: true, clientName: true, ownerEmail: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, configuratorChecklist: true, version: true, isCustom: true, customSchema: true, customTabs: true },
         take: pageSize,
         skip,
       }),
@@ -75,10 +76,15 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs } = body;
+    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs, ownerEmail } = body;
 
     if (!clientName) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
+    }
+
+    const normalizedOwnerEmail = normalizeOwnerEmail(ownerEmail);
+    if (normalizedOwnerEmail.error) {
+      return NextResponse.json({ error: normalizedOwnerEmail.error }, { status: 400 });
     }
 
     const slug = clientName
@@ -98,6 +104,7 @@ export async function POST(request: NextRequest) {
       slug,
       clientName,
       isCustom: !!isCustom,
+      ownerEmail: normalizedOwnerEmail.value,
     };
 
     if (isCustom) {

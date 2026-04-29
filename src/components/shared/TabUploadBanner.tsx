@@ -101,6 +101,7 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("folder", "tab-uploads");
+        formData.append("tabKey", tabKey);
         if (editorToken) formData.append("editorToken", editorToken);
         if (clientSlug) formData.append("slug", clientSlug);
 

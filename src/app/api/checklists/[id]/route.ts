@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { scheduleNotificationSweep } from "@/lib/notification-sweep";
+import { normalizeOwnerEmail } from "@/lib/notifications";
 import { requireAuth } from "@/lib/api-auth";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 
@@ -8,6 +10,10 @@ const JSON_FIELDS_SET = new Set<string>(CHECKLIST_JSON_FIELDS);
 function toPrismaJson(value: unknown) {
   if (value === undefined) return undefined;
   return JSON.parse(JSON.stringify(value));
+}
+
+function hasOwn(body: unknown, key: string): boolean {
+  return !!body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, key);
 }
 
 export async function GET(
@@ -42,6 +48,11 @@ export async function PUT(
     const { id } = await params;
 
     const body = await request.json();
+    const hasOwnerEmail = hasOwn(body, "ownerEmail");
+    const normalizedOwnerEmail = hasOwnerEmail ? normalizeOwnerEmail(body.ownerEmail) : null;
+    if (normalizedOwnerEmail?.error) {
+      return NextResponse.json({ error: normalizedOwnerEmail.error }, { status: 400 });
+    }
 
     // Payload size guard (5MB limit)
     const bodyStr = JSON.stringify(body);
@@ -60,9 +71,11 @@ export async function PUT(
     }
 
     // --- Field-level merge path (new) ---
-    if (changedFields && Array.isArray(changedFields) && changedFields.length > 0) {
-      const validFields = changedFields.filter((f) => JSON_FIELDS_SET.has(f)) as ChecklistJsonField[];
-      if (validFields.length === 0) {
+    const requestedChangedFields = Array.isArray(changedFields) ? changedFields : [];
+
+    if (requestedChangedFields.length > 0 || hasOwnerEmail) {
+      const validFields = requestedChangedFields.filter((f) => JSON_FIELDS_SET.has(f)) as ChecklistJsonField[];
+      if (validFields.length === 0 && !hasOwnerEmail) {
         return NextResponse.json({ error: "No valid fields in changedFields" }, { status: 400 });
       }
 
@@ -78,6 +91,9 @@ export async function PUT(
         if (!current) return { status: 404 as const };
 
         const currentFieldVersions = (current.fieldVersions ?? {}) as Record<string, number>;
+        if (hasOwnerEmail && validFields.length === 0 && current.version !== version) {
+          return { status: 409 as const, conflictedFields: ["ownerEmail"], currentVersion: current.version };
+        }
 
         // Check for conflicts: fields modified after the client's version
         const conflictedFields: string[] = [];
@@ -101,7 +117,12 @@ export async function PUT(
           updateData[field] = toPrismaJson(body[field]);
           updatedFieldVersions[field] = newVersion;
         }
-        updateData.fieldVersions = toPrismaJson(updatedFieldVersions);
+        if (validFields.length > 0) {
+          updateData.fieldVersions = toPrismaJson(updatedFieldVersions);
+        }
+        if (hasOwnerEmail) {
+          updateData.ownerEmail = normalizedOwnerEmail?.value ?? null;
+        }
 
         const checklist = await tx.checklist.update({
           where: { id },
@@ -125,11 +146,13 @@ export async function PUT(
         );
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         id: result.checklist.id,
         version: result.checklist.version,
         updatedAt: result.checklist.updatedAt,
       });
+      scheduleNotificationSweep();
+      return response;
     }
 
     // --- Legacy whole-document path (backward compatible) ---
@@ -217,14 +240,16 @@ export async function PUT(
         atsIntegrations: toPrismaJson(atsIntegrations),
         integrations: toPrismaJson(integrations),
         tabUploadMeta: toPrismaJson(tabUploadMeta),
+        ownerEmail: hasOwnerEmail ? (normalizedOwnerEmail?.value ?? null) : undefined,
         customSchema: toPrismaJson(customSchema),
         customData: toPrismaJson(customData),
         customTabs: toPrismaJson(customTabs),
         autoflows: toPrismaJson(autoflows),
       },
     });
-
-    return NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
+    const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
+    scheduleNotificationSweep();
+    return response;
   } catch (err) {
     console.error("PUT /api/checklists/[id] error:", err);
     return NextResponse.json({ error: "Failed to update checklist. Check database connection." }, { status: 500 });

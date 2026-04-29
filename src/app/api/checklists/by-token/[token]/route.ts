@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { scheduleNotificationSweep } from "@/lib/notification-sweep";
+import { accumulateNotificationState } from "@/lib/notification-state";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
@@ -10,6 +12,10 @@ const JSON_FIELDS_SET = new Set<string>(PUBLIC_JSON_FIELDS);
 function toPrismaJson(value: unknown) {
   if (value === undefined) return undefined;
   return JSON.parse(JSON.stringify(value));
+}
+
+function hasOwn(body: unknown, key: string): boolean {
+  return !!body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, key);
 }
 
 function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
@@ -109,12 +115,23 @@ export async function PUT(
         const newVersion = current.version + 1;
         const updateData: Record<string, unknown> = { version: newVersion };
         const updatedFieldVersions = { ...currentFieldVersions };
+        const currentChecklist = await tx.checklist.findUnique({ where: { id } });
+        if (!currentChecklist) return { status: 404 as const };
+        const notificationUpdate = accumulateNotificationState({
+          currentState: currentChecklist.notificationState as Parameters<typeof accumulateNotificationState>[0]["currentState"],
+          previousData: currentChecklist as Partial<Record<ChecklistJsonField, unknown>>,
+          nextData: body as Partial<Record<ChecklistJsonField, unknown>>,
+          changedFields: validFields,
+        });
 
         for (const field of validFields) {
           updateData[field] = toPrismaJson(body[field]);
           updatedFieldVersions[field] = newVersion;
         }
         updateData.fieldVersions = toPrismaJson(updatedFieldVersions);
+        if (notificationUpdate.changed) {
+          updateData.notificationState = toPrismaJson(notificationUpdate.notificationState);
+        }
 
         const checklist = await tx.checklist.update({
           where: { id },
@@ -138,11 +155,13 @@ export async function PUT(
         );
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         id: result.checklist.id,
         version: result.checklist.version,
         updatedAt: result.checklist.updatedAt,
       });
+      scheduleNotificationSweep();
+      return response;
     }
 
     // --- Legacy whole-document path ---
@@ -184,7 +203,23 @@ export async function PUT(
 
     const current = await prisma.checklist.findUnique({
       where: { id },
-      select: { version: true },
+      select: {
+        version: true,
+        notificationState: true,
+        companyInfo: true,
+        users: true,
+        campaigns: true,
+        sites: true,
+        prescreening: true,
+        messaging: true,
+        sources: true,
+        folders: true,
+        documents: true,
+        fbWhatsapp: true,
+        instagram: true,
+        aiCallFaqs: true,
+        agencyPortal: true,
+      },
     });
     if (!current) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -200,6 +235,14 @@ export async function PUT(
     for (const f of PUBLIC_JSON_FIELDS) {
       allFieldVersions[f] = version + 1;
     }
+
+    const changedFieldsForNotification = PUBLIC_JSON_FIELDS.filter((field) => hasOwn(body, field));
+    const notificationUpdate = accumulateNotificationState({
+      currentState: current.notificationState as Parameters<typeof accumulateNotificationState>[0]["currentState"],
+      previousData: current as Partial<Record<ChecklistJsonField, unknown>>,
+      nextData: body as Partial<Record<ChecklistJsonField, unknown>>,
+      changedFields: changedFieldsForNotification,
+    });
 
     const checklist = await prisma.checklist.update({
       where: { id },
@@ -230,6 +273,7 @@ export async function PUT(
         labels: toPrismaJson(labels),
         adminSettings: toPrismaJson(adminSettings),
         tabUploadMeta: toPrismaJson(tabUploadMeta),
+        notificationState: notificationUpdate.changed ? toPrismaJson(notificationUpdate.notificationState) : undefined,
         customSchema: toPrismaJson(customSchema),
         customData: toPrismaJson(customData),
         customTabs: toPrismaJson(customTabs),
@@ -237,7 +281,9 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
+    const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
+    scheduleNotificationSweep();
+    return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-token/[token] error:", err);
     return NextResponse.json({ error: "Failed to update checklist. Check database connection." }, { status: 500 });
