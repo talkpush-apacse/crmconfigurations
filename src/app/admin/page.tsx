@@ -46,6 +46,7 @@ import {
   FileText,
   Link2,
   RefreshCw,
+  Mail,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -85,6 +86,7 @@ interface ChecklistSummary {
   slug: string;
   editorToken: string;
   clientName: string;
+  ownerEmail: string | null;
   createdAt: string;
   updatedAt: string;
   enabledTabs: string[] | null;
@@ -100,6 +102,7 @@ interface ChecklistSummary {
 interface EditingState {
   id: string;
   clientName: string;
+  ownerEmail: string;
   tabs: string[];
   channels: CommunicationChannels;
   featureToggles: FeatureToggles;
@@ -268,6 +271,7 @@ export default function AdminDashboard() {
       // 2. Create the new record (config skeleton)
       const newName = `${original.clientName} (Copy)`;
       const createBody: Record<string, unknown> = { clientName: newName };
+      createBody.ownerEmail = original.ownerEmail ?? null;
       if (original.isCustom) {
         createBody.isCustom = true;
         createBody.customSchema = original.customSchema;
@@ -345,6 +349,7 @@ export default function AdminDashboard() {
     setEditing({
       id: c.id,
       clientName: c.clientName,
+      ownerEmail: c.ownerEmail ?? "",
       tabs: c.enabledTabs || getAllSelectableTabSlugs(),
       channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
       featureToggles: (c.featureToggles as FeatureToggles) || defaultFeatureToggles,
@@ -386,6 +391,7 @@ export default function AdminDashboard() {
     try {
       const body: Record<string, unknown> = {
         version: editing.version,
+        ownerEmail: editing.ownerEmail.trim() || null,
         changedFields: editing.isCustom
           ? ["customSchema"]
           : ["enabledTabs", "communicationChannels", "featureToggles", "customTabs"],
@@ -555,6 +561,9 @@ export default function AdminDashboard() {
               onTabsChange={handleEditTabsChange}
               onFeatureTogglesChange={(toggles) =>
                 setEditing((prev) => prev ? { ...prev, featureToggles: toggles } : prev)
+              }
+              onOwnerEmailChange={(ownerEmail) =>
+                setEditing((prev) => prev ? { ...prev, ownerEmail } : prev)
               }
               onCustomSchemaChange={(schema) =>
                 setEditing((prev) => prev ? { ...prev, customSchema: schema } : prev)
@@ -754,6 +763,12 @@ export default function AdminDashboard() {
                                 {c.isCustom && (
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
                                     Custom
+                                  </Badge>
+                                )}
+                                {c.ownerEmail && (
+                                  <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
+                                    <Mail className="h-3 w-3" />
+                                    Owner email
                                   </Badge>
                                 )}
                               </span>

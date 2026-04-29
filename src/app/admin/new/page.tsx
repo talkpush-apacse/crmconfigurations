@@ -19,6 +19,7 @@ import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab }
 export default function NewChecklistPage() {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [customSchema, setCustomSchema] = useState<CustomFieldDef[]>([]);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
@@ -59,7 +60,10 @@ export default function NewChecklistPage() {
     setLoading(true);
 
     try {
-      const body: Record<string, unknown> = { clientName };
+      const body: Record<string, unknown> = {
+        clientName,
+        ownerEmail: ownerEmail.trim() || null,
+      };
 
       if (isCustom) {
         body.isCustom = true;
@@ -121,6 +125,19 @@ export default function NewChecklistPage() {
                   placeholder="e.g., Acme Corporation"
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="ownerEmail">Owner email (notifications)</Label>
+                <Input
+                  id="ownerEmail"
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  placeholder="owner@example.com"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Receives an email when editors make changes or upload files. Leave blank to disable.
+                </p>
               </div>
               {slug && (
                 <div className="rounded-lg bg-gray-100 p-3">

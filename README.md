@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM Config Checklist
+
+Next.js 16 + Prisma + Supabase app for managing CRM configuration checklists.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies, configure env vars, then run:
 
 ```bash
+npm install
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Core app:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `DATABASE_URL`
+- `DATABASE_URL_DIRECT`
+- `ADMIN_SECRET`
 
-## Learn More
+Google admin sign-in:
 
-To learn more about Next.js, take a look at the following resources:
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Owner notifications:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `APP_BASE_URL`
+- `RESEND_API_KEY`
+- `NOTIFICATION_FROM_EMAIL`
 
-## Deploy on Vercel
+Optional external cron:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `CRON_SECRET`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`NOTIFICATION_FROM_EMAIL` must use a verified sending domain in Resend.
+
+## Owner Notifications
+
+Each checklist can optionally define an `ownerEmail`. When present:
+
+- file uploads send an immediate email
+- regular edits are debounced per tab and flush after 5 minutes of inactivity
+- digests are rate-limited to at most 1 email per tab per hour
+- dispatch is self-triggered by successful checklist saves and uploads, so no Vercel cron is required
+
+To disable notifications for a checklist, clear the `ownerEmail` field.
+
+## Known Edge Case
+
+The self-dispatch model only sweeps when some save or upload occurs. If the very last edit in the entire system is never followed by another write, that final digest may remain unsent.
+
+If that becomes a problem, point an external cron at:
+
+```text
+GET /api/cron/notifications
+Authorization: Bearer <CRON_SECRET>
+```
+
+Run it every 5 minutes from any external scheduler such as GitHub Actions or cron-job.org.
+
+## Cron Endpoint
+
+`/api/cron/notifications` runs the same notification sweep used by the self-dispatch path and returns a JSON summary of:
+
+- `scanned`
+- `sent`
+- `failed`
+- `skippedRateLimited`
+- `skippedVersionConflict`

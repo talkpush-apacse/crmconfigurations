@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
@@ -11,6 +13,7 @@ import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab }
 export interface SettingsEditingState {
   id: string;
   clientName: string;
+  ownerEmail: string;
   tabs: string[];
   channels: CommunicationChannels;
   featureToggles: FeatureToggles;
@@ -27,6 +30,7 @@ interface SettingsDialogProps {
   onChannelsChange: (channels: CommunicationChannels) => void;
   onTabsChange: (tabs: string[]) => void;
   onFeatureTogglesChange: (toggles: FeatureToggles) => void;
+  onOwnerEmailChange: (value: string) => void;
   onCustomSchemaChange?: (schema: CustomFieldDef[]) => void;
   onCustomTabsChange?: (tabs: CustomTab[]) => void;
 }
@@ -39,6 +43,7 @@ export function SettingsDialog({
   onChannelsChange,
   onTabsChange,
   onFeatureTogglesChange,
+  onOwnerEmailChange,
   onCustomSchemaChange,
   onCustomTabsChange,
 }: SettingsDialogProps) {
@@ -52,6 +57,19 @@ export function SettingsDialog({
         </DialogHeader>
         {editing && (
           <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="ownerEmail">Owner email (notifications)</Label>
+              <Input
+                id="ownerEmail"
+                type="email"
+                value={editing.ownerEmail}
+                onChange={(event) => onOwnerEmailChange(event.target.value)}
+                placeholder="owner@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                Receives an email when editors make changes or upload files. Leave blank to disable.
+              </p>
+            </div>
             {editing.isCustom ? (
               <CustomFieldBuilder
                 value={editing.customSchema}
