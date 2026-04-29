@@ -1,9 +1,5 @@
 import "server-only";
 
-import { Resend } from "resend";
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -17,6 +13,22 @@ function formatUtcTimestamp(date = new Date()): string {
   return date.toISOString().replace("T", " ").replace("Z", " UTC");
 }
 
+function parseSender(value: string): { name?: string; email: string } | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/^(.*?)<([^>]+)>$/);
+  if (match) {
+    const [, rawName, rawEmail] = match;
+    const email = rawEmail.trim();
+    const name = rawName.trim().replace(/^"|"$/g, "");
+    if (!email) return null;
+    return name ? { name, email } : { email };
+  }
+
+  return { email: trimmed };
+}
+
 export async function sendOwnerNotification(params: {
   to: string;
   clientName: string;
@@ -25,11 +37,13 @@ export async function sendOwnerNotification(params: {
   updateType: "Edited" | "File uploaded";
   summary: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const from = process.env.NOTIFICATION_FROM_EMAIL?.trim();
-  if (!resend) {
-    return { ok: false, error: "RESEND_API_KEY is not configured" };
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  const sender = parseSender(process.env.NOTIFICATION_FROM_EMAIL ?? "");
+
+  if (!apiKey) {
+    return { ok: false, error: "BREVO_API_KEY is not configured" };
   }
-  if (!from) {
+  if (!sender) {
     return { ok: false, error: "NOTIFICATION_FROM_EMAIL is not configured" };
   }
 
@@ -80,15 +94,28 @@ export async function sendOwnerNotification(params: {
   `;
 
   try {
-    const { error } = await resend.emails.send({
-      from,
-      to: params.to,
-      subject,
-      html,
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: params.to }],
+        subject,
+        htmlContent: html,
+      }),
     });
 
-    if (error) {
-      return { ok: false, error: error.message };
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const errorMessage =
+        body && typeof body === "object" && "message" in body && typeof body.message === "string"
+          ? body.message
+          : `Brevo request failed with status ${response.status}`;
+      return { ok: false, error: errorMessage };
     }
 
     return { ok: true };

@@ -29,14 +29,14 @@ Google admin sign-in:
 Owner notifications:
 
 - `APP_BASE_URL`
-- `RESEND_API_KEY`
+- `BREVO_API_KEY`
 - `NOTIFICATION_FROM_EMAIL`
 
 Optional external cron:
 
 - `CRON_SECRET`
 
-`NOTIFICATION_FROM_EMAIL` must use a verified sending domain in Resend.
+`NOTIFICATION_FROM_EMAIL` must be a verified Brevo sender, for example an address under `updates.se-talkpush.com`.
 
 ## Owner Notifications
 
