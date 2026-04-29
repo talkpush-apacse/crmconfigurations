@@ -12,10 +12,12 @@ model Checklist {
   slug        String   @unique
   editorToken String   @unique @default(uuid())
   clientName  String
+  ownerEmail  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   version       Int      @default(0)
   fieldVersions Json?    @default("{}")
+  notificationState Json?
 
   enabledTabs             Json?
   tabOrder                Json?

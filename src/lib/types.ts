@@ -590,6 +590,20 @@ export interface TabUploadMeta {
 
 export type TabUploadMetaMap = Record<string, TabUploadMeta>;
 
+export interface NotificationPendingChanges {
+  rowsChanged?: number;
+  fieldsChanged?: number;
+  summary: string;
+}
+
+export type NotificationState = {
+  [tabId: string]: {
+    lastEditAt: string;
+    lastNotifiedAt: string | null;
+    pendingChanges: NotificationPendingChanges | null;
+  };
+};
+
 // ===== Custom Checklist Types =====
 export type CustomFieldType =
   | 'text'
@@ -673,10 +687,12 @@ export interface ChecklistData {
   slug: string;
   editorToken: string;
   clientName: string;
+  ownerEmail: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
   fieldVersions: Record<string, number> | null;
+  notificationState: NotificationState | null;
   enabledTabs: string[] | null;
   tabOrder: string[] | null;
   tabFilledBy: Record<string, "talkpush" | "client"> | null;
