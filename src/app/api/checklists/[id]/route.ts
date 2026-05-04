@@ -46,6 +46,7 @@ export async function PUT(
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
+    const requestOrigin = new URL(request.url).origin;
 
     const body = await request.json();
     const hasOwnerEmail = hasOwn(body, "ownerEmail");
@@ -151,7 +152,7 @@ export async function PUT(
         version: result.checklist.version,
         updatedAt: result.checklist.updatedAt,
       });
-      scheduleNotificationSweep();
+      scheduleNotificationSweep(requestOrigin);
       return response;
     }
 
@@ -248,7 +249,7 @@ export async function PUT(
       },
     });
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
-    scheduleNotificationSweep();
+    scheduleNotificationSweep(requestOrigin);
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/[id] error:", err);

@@ -29,6 +29,7 @@ export async function PUT(
 ) {
   try {
     const { slug } = await params;
+    const requestOrigin = new URL(request.url).origin;
 
     // Look up checklist by slug
     const existing = await prisma.checklist.findUnique({
@@ -126,7 +127,7 @@ export async function PUT(
         version: result.checklist.version,
         updatedAt: result.checklist.updatedAt,
       });
-      scheduleNotificationSweep();
+      scheduleNotificationSweep(requestOrigin);
       return response;
     }
 
@@ -248,7 +249,7 @@ export async function PUT(
     });
 
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
-    scheduleNotificationSweep();
+    scheduleNotificationSweep(requestOrigin);
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-slug/[slug] error:", err);

@@ -31,6 +31,7 @@ type AllowedFolder = typeof ALLOWED_FOLDERS[number];
 
 export async function POST(request: NextRequest) {
   try {
+    const requestOrigin = new URL(request.url).origin;
     if (!supabase) {
       return NextResponse.json(
         { error: "File uploads not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." },
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ url: urlData.publicUrl });
-    scheduleNotificationSweep();
+    scheduleNotificationSweep(requestOrigin);
     return response;
   } catch (err) {
     console.error("POST /api/upload error:", err);

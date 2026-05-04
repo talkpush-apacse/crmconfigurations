@@ -23,7 +23,7 @@ function parseState(value: unknown): NotificationState | null {
   return value as NotificationState;
 }
 
-export async function sweepAndDispatch(): Promise<{
+export async function sweepAndDispatch(baseUrlOverride?: string): Promise<{
   scanned: number;
   sent: number;
   failed: number;
@@ -89,7 +89,7 @@ export async function sweepAndDispatch(): Promise<{
         }
 
         const tabMeta = getNotificationTabMeta(tabId);
-        const tabUrl = buildClientTabUrl(process.env.APP_BASE_URL ?? "", checklist.slug, tabId);
+        const tabUrl = buildClientTabUrl(baseUrlOverride ?? process.env.APP_BASE_URL ?? "", checklist.slug, tabId);
         if (!tabMeta || !tabUrl) {
           result.failed += 1;
           console.error("[notifications] missing tab metadata or APP_BASE_URL", {
@@ -151,10 +151,10 @@ export async function sweepAndDispatch(): Promise<{
   return result;
 }
 
-export function scheduleNotificationSweep() {
+export function scheduleNotificationSweep(baseUrlOverride?: string) {
   const runSweep = async () => {
     try {
-      await sweepAndDispatch();
+      await sweepAndDispatch(baseUrlOverride);
     } catch (error) {
       console.error("[notifications] sweep failed", error);
     }
