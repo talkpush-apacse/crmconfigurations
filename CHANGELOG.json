@@ -1,5 +1,13 @@
 [
   {
+    "version": "2.9",
+    "name": "Version 2.9 - Keep-Alive Cron",
+    "changes": [
+      "Added Vercel cron job to ping the database every 5 days and prevent Supabase from pausing"
+    ],
+    "deployed_at": "2026-05-04"
+  },
+  {
     "version": "2.8",
     "name": "Version 2.8 - Icon-Only Configurator Button",
     "changes": [
