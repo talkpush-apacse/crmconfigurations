@@ -326,7 +326,7 @@ function HandoffStatusButton({
   const colorClass: Record<AtsHandoffStatus, string> = {
     "Not shared": "border-gray-200 bg-gray-100 text-gray-700",
     "Shared with integration team": "border-amber-200 bg-amber-100 text-amber-800",
-    "Shared with vendor": "border-blue-200 bg-blue-100 text-blue-800",
+    "Shared with vendor": "border-brand-lavender-lighter bg-brand-lavender-lightest text-brand-lavender-darker",
     "Confirmed by vendor": "border-green-200 bg-green-100 text-green-800",
   };
 

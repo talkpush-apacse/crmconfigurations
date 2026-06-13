@@ -49,7 +49,7 @@ export function SectionFooter() {
           All sections complete
         </div>
       ) : nextTab ? (
-        <Button asChild size="sm" className="h-11 gap-2 rounded-xl bg-[#1A73E8] px-4 text-white hover:bg-[#1765cb] active:scale-95">
+        <Button asChild size="sm" className="h-11 gap-2 rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/85 active:scale-95">
           <Link href={`${basePath}/${nextTab.slug}`}>
             Continue to {nextTab.label}
             <ArrowRight className="h-4 w-4" />

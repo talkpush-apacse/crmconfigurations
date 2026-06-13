@@ -199,8 +199,8 @@ function SortableRow<TRow extends EditableRow>({
           "transition-colors hover:bg-gray-50",
           rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/60",
           (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
-          isDragging && "bg-blue-50 shadow-sm",
-          bulkRow?.isSelected && "bg-teal-50 hover:bg-teal-50"
+          isDragging && "bg-brand-lavender-lightest shadow-sm",
+          bulkRow?.isSelected && "bg-brand-sage-lightest hover:bg-brand-sage-lightest"
         )}
       >
         {bulkRow?.enabled && (
@@ -560,7 +560,7 @@ export function EditableTable<TRow extends EditableRow>({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-blue-600 hover:bg-blue-600">
+            <TableRow className="bg-primary hover:bg-primary">
               {bulkEnabled && (
                 <TableHead className="w-10 text-center text-white">
                   <Checkbox
@@ -572,7 +572,7 @@ export function EditableTable<TRow extends EditableRow>({
                     onCheckedChange={() => bulkSelection.toggleAll(selectableIds)}
                     disabled={selectableIds.length === 0}
                     aria-label="Select all rows"
-                    className="bg-white border-gray-400 shadow-sm hover:bg-gray-50 hover:border-gray-500 focus-visible:ring-white/70 data-[state=checked]:bg-blue-700 data-[state=checked]:text-white data-[state=checked]:border-blue-800 data-[state=indeterminate]:bg-blue-700 data-[state=indeterminate]:text-white data-[state=indeterminate]:border-blue-800"
+                    className="bg-white border-gray-400 shadow-sm hover:bg-gray-50 hover:border-gray-500 focus-visible:ring-white/70 data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=checked]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary data-[state=indeterminate]:border-primary-foreground"
                   />
                 </TableHead>
               )}
@@ -628,7 +628,7 @@ export function EditableTable<TRow extends EditableRow>({
             )}
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
-              <TableRow className="bg-blue-50 hover:bg-blue-50 border-l-4 border-blue-300">
+              <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest border-l-4 border-brand-lavender">
                 {bulkEnabled && <TableCell className="w-10" />}
                 <TableCell className="text-center py-2">
                   <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
@@ -637,7 +637,7 @@ export function EditableTable<TRow extends EditableRow>({
                 </TableCell>
                 {columns.map((col) => (
                   <TableCell key={col.key} className="p-2">
-                    <span className="block text-sm text-blue-500 italic px-1">
+                    <span className="block text-sm text-brand-lavender-darker italic px-1">
                       {sampleRow[col.key] || "—"}
                     </span>
                   </TableCell>

@@ -131,13 +131,13 @@ export function HybridPicker({
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => selectValue(option.value)}
                       className={cn(
-                        "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-blue-50",
-                        activeIndex === index && "bg-blue-50"
+                        "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-brand-lavender-lightest",
+                        activeIndex === index && "bg-brand-lavender-lightest"
                       )}
                     >
                       <span className="min-w-0 truncate">{option.label}</span>
                       {normalized(value) === normalized(option.value) && (
-                        <Check className="ml-2 h-4 w-4 shrink-0 text-blue-600" />
+                        <Check className="ml-2 h-4 w-4 shrink-0 text-brand-sage-darker" />
                       )}
                     </button>
                   </div>
@@ -149,8 +149,8 @@ export function HybridPicker({
                   onMouseEnter={() => setActiveIndex(filteredOptions.length)}
                   onClick={() => selectValue(value.trim())}
                   className={cn(
-                    "mt-1 flex w-full items-center rounded border-t px-2 py-1.5 text-left text-sm text-blue-700 hover:bg-blue-50",
-                    activeIndex === filteredOptions.length && "bg-blue-50"
+                    "mt-1 flex w-full items-center rounded border-t px-2 py-1.5 text-left text-sm text-brand-lavender-darker hover:bg-brand-lavender-lightest",
+                    activeIndex === filteredOptions.length && "bg-brand-lavender-lightest"
                   )}
                 >
                   Use custom: <span className="ml-1 min-w-0 truncate font-medium">&quot;{value.trim()}&quot;</span>

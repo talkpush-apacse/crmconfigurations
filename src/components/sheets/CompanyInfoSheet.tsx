@@ -284,7 +284,7 @@ export function CompanyInfoSheet() {
           description="Defines the window during which automated messages (autoflows) are sent to candidates. Messages triggered outside these hours are queued and delivered at the next opening time. Manual recruiter messages are not affected by this setting."
         />
         <div className="overflow-hidden rounded-lg border">
-          <div className="grid grid-cols-[110px_72px_1fr_1fr] bg-blue-600 text-white sm:grid-cols-[160px_90px_1fr_1fr]">
+          <div className="grid grid-cols-[110px_72px_1fr_1fr] bg-primary text-primary-foreground sm:grid-cols-[160px_90px_1fr_1fr]">
             <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Day</div>
             <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Open</div>
             <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Opening Time</div>

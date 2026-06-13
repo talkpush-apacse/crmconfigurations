@@ -144,17 +144,17 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+    <div className="mb-6 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-lavender text-brand-lavender-darker">
             <FileSpreadsheet className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h4 className="text-sm font-semibold text-blue-900">
+            <h4 className="text-sm font-semibold text-foreground">
               Already have your {tabLabel.toLowerCase()} in a spreadsheet?
             </h4>
-            <p className="mt-0.5 text-[13px] text-blue-800/80">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Upload your existing Excel or CSV file and our team will review it.
               You can still fill in the fields below if you prefer.
             </p>
@@ -175,7 +175,7 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="border-blue-300 bg-white text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+            className="border-brand-lavender-lighter bg-white text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker"
           >
             {uploading ? (
               <>
@@ -204,10 +204,10 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
             {uploadedFiles.map((file) => (
               <li
                 key={file.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-[13px]"
+                className="flex items-center justify-between gap-2 rounded-md border border-brand-lavender/40 bg-white px-3 py-2 text-[13px]"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4 shrink-0 text-blue-600" />
+                  <FileSpreadsheet className="h-4 w-4 shrink-0 text-brand-lavender-darker" />
                   <span className="truncate font-medium text-gray-800" title={file.fileName}>
                     {file.fileName}
                   </span>
@@ -220,7 +220,7 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
                     href={file.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-lavender-darker"
                     title="Download file"
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -238,11 +238,11 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
             ))}
           </ul>
 
-          <label className="flex cursor-pointer items-center gap-2 pt-1 text-[13px] text-blue-900">
+          <label className="flex cursor-pointer items-center gap-2 pt-1 text-[13px] text-foreground">
             <Checkbox
               checked={isSkipped}
               onCheckedChange={(v) => setIsSkipped(v === true)}
-              className="border-blue-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+              className="border-brand-lavender data-[state=checked]:bg-brand-sage-darker data-[state=checked]:border-brand-sage-darker"
             />
             <span>
               Skip manual entry — our team will use the uploaded file{uploadedFiles.length > 1 ? "s" : ""}

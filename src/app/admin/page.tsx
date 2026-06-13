@@ -755,7 +755,7 @@ export default function AdminDashboard() {
                                 <Link
                                   href={`/admin/checklists/${c.id}/welcome`}
                                   target="_blank"
-                                  className="text-teal-700 transition-colors hover:text-teal-900 hover:underline"
+                                  className="text-brand-sage-darker transition-colors hover:text-foreground hover:underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {c.clientName}

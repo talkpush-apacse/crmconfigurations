@@ -152,7 +152,7 @@ function CheckboxItem({
     <div
       className={cn(
         "flex items-center gap-3 py-2 px-3 border-b last:border-b-0 transition-colors",
-        checked ? "bg-teal-50/40" : "",
+        checked ? "bg-brand-sage-lightest/60" : "",
         indent ? "pl-10" : ""
       )}
     >
@@ -200,7 +200,7 @@ function RadioField({
               value={opt.value}
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
-              className="h-4 w-4 text-teal-600 border-[#BDBDBD] focus:ring-[#1976D2]"
+              className="h-4 w-4 accent-brand-sage-darker border-[#BDBDBD] focus:ring-brand-lavender-darker"
             />
             <span className="text-sm text-gray-700">{opt.label}</span>
           </label>
@@ -260,7 +260,7 @@ function BusinessHoursEditor({
   return (
     <div className="rounded-lg border overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[120px_60px_1fr_1fr] sm:grid-cols-[160px_60px_1fr_1fr] bg-blue-600 text-white">
+      <div className="grid grid-cols-[120px_60px_1fr_1fr] sm:grid-cols-[160px_60px_1fr_1fr] bg-primary text-primary-foreground">
         <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Day</div>
         <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Active</div>
         <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Start</div>

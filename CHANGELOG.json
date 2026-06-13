@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.0",
+    "name": "Version 3.0 - Talkpush Sign Rebrand",
+    "changes": [
+      "Rebranded full UI to Talkpush Sign design system — warm beige background, multi-chromatic pastel palette",
+      "Replaced blue primary color with near-black; pink, lavender, sage, and amber now serve as brand accents",
+      "Added brand gradient strip (amber → pink → lavender → sage) to the page header",
+      "Swapped fonts to DM Sans (body) and Space Grotesk (display/headings) from Google Fonts",
+      "Updated dark mode to Sign's dark blue-gray surfaces with cream text",
+      "Converted all hardcoded blue and teal color classes to semantic/brand tokens across 30+ components",
+      "Lavender focus rings on all inputs, selects, and textareas replace blue focus glow"
+    ],
+    "deployed_at": "2026-06-13"
+  },
+  {
     "version": "2.9",
     "name": "Version 2.9 - Keep-Alive Cron",
     "changes": [

@@ -209,7 +209,7 @@ function SortableNavItem({
                   <span className="truncate font-medium">{item.label}</span>
                   {item.hasAttachments && (
                     <Paperclip
-                      className="h-3 w-3 shrink-0 text-blue-300"
+                      className="h-3 w-3 shrink-0 text-brand-lavender-darker"
                       aria-label="Has uploaded files"
                     />
                   )}
@@ -429,7 +429,7 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
         <Button
           type="button"
           disabled
-          className="h-11 w-full rounded-2xl bg-[#1A73E8] text-white shadow-[0_18px_32px_-22px_rgba(26,115,232,0.9)] hover:bg-[#1765cb] active:scale-95 disabled:cursor-not-allowed disabled:opacity-90"
+          className="h-11 w-full rounded-2xl bg-primary text-primary-foreground shadow-[0_18px_32px_-22px_oklch(0.12_0.01_240/0.4)] hover:bg-primary/85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-90"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden xl:inline">New Module</span>

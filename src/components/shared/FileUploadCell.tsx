@@ -88,7 +88,7 @@ export function FileUploadCell({
               href={value}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 truncate text-xs text-blue-600 hover:underline"
+              className="flex-1 truncate text-xs text-brand-lavender-darker hover:underline"
               title={value}
             >
               <ExternalLink className="inline h-3 w-3 mr-1" />

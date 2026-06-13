@@ -28,15 +28,15 @@ export function BulkActionBar({
 
   return (
     <div
-      className="sticky top-0 z-20 mb-2 flex items-center justify-between rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 shadow-sm"
+      className="sticky top-0 z-20 mb-2 flex items-center justify-between rounded-lg border border-brand-sage-lighter bg-brand-sage-lightest px-3 py-2 shadow-sm"
       role="toolbar"
       aria-label="Bulk actions"
     >
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center rounded-full bg-teal-600 px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
+        <span className="inline-flex items-center rounded-full bg-brand-sage-darker px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
           {count}
         </span>
-        <span className="text-sm font-medium text-teal-900">
+        <span className="text-sm font-medium text-foreground">
           {count === 1 ? `${itemLabel} selected` : `${itemLabel} selected`}
         </span>
       </div>
@@ -48,7 +48,7 @@ export function BulkActionBar({
             size="sm"
             onClick={onDuplicate}
             disabled={isBusy}
-            className="h-8 border-teal-300 bg-white text-teal-800 hover:bg-teal-100"
+            className="h-8 border-brand-sage-lighter bg-white text-brand-sage-darker hover:bg-brand-sage-lightest"
           >
             <Copy className="mr-1.5 h-3.5 w-3.5" />
             Duplicate
@@ -69,7 +69,7 @@ export function BulkActionBar({
           size="sm"
           onClick={onClear}
           disabled={isBusy}
-          className="h-8 px-2 text-teal-800 hover:bg-teal-100"
+          className="h-8 px-2 text-brand-sage-darker hover:bg-brand-sage-lightest"
           title="Clear selection"
         >
           <X className="h-3.5 w-3.5" />

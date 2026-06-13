@@ -34,7 +34,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
       {/* Column headers — hidden on mobile */}
       <div
         className={cn(
-          "hidden lg:grid bg-blue-600 text-white",
+          "hidden lg:grid bg-primary text-primary-foreground",
           hasSamples
             ? "lg:grid-cols-[180px_minmax(200px,1fr)_200px] xl:grid-cols-[200px_minmax(220px,1fr)_220px]"
             : "lg:grid-cols-[180px_minmax(200px,1fr)] xl:grid-cols-[200px_minmax(220px,1fr)]"
@@ -80,7 +80,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
                       href={field.link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-1 block text-xs text-blue-300 hover:underline"
+                      className="mt-1 block text-xs text-brand-lavender hover:underline"
                     >
                       {field.link.label}
                     </a>

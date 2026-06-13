@@ -338,7 +338,7 @@ export default function SnapshotsPage() {
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="h-9 gap-2 bg-[#1A73E8] hover:bg-[#1765cb]"
+            className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/85"
           >
             <Plus className="h-4 w-4" />
             New snapshot
@@ -385,7 +385,7 @@ export default function SnapshotsPage() {
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="mt-4 gap-2 bg-[#1A73E8] hover:bg-[#1765cb]"
+            className="mt-4 gap-2 bg-primary text-primary-foreground hover:bg-primary/85"
           >
             <Plus className="h-4 w-4" />
             Create first snapshot
@@ -599,7 +599,7 @@ export default function SnapshotsPage() {
             <Button
               onClick={handleCreate}
               disabled={creating}
-              className="bg-[#1A73E8] hover:bg-[#1765cb]"
+              className="bg-primary text-primary-foreground hover:bg-primary/85"
             >
               {creating ? (
                 <>

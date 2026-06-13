@@ -14,8 +14,8 @@ const OPTIONS: Array<{ value: ConfiguratorStatus; label: string; className: stri
   {
     value: "in_progress",
     label: "In Progress",
-    className: "border-blue-200 text-blue-700 hover:bg-blue-50",
-    activeClassName: "bg-blue-700 text-white hover:bg-blue-800",
+    className: "border-brand-lavender-lighter text-brand-lavender-darker hover:bg-brand-lavender-lightest",
+    activeClassName: "bg-brand-lavender-darker text-white hover:bg-brand-lavender-darker/85",
   },
   {
     value: "in_progress_with_dependency",

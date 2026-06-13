@@ -196,7 +196,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                   href={customTab.uploadedFile.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 text-blue-600 hover:underline"
+                  className="shrink-0 text-brand-lavender-darker hover:underline"
                 >
                   <Download className="h-4 w-4" />
                 </a>

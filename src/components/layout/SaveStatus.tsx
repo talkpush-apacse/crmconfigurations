@@ -37,7 +37,7 @@ export function SaveStatus({ status, errorMessage, onRetry, hasPendingChanges = 
 
   if (status === "saving") {
     return (
-      <span className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50/90 px-3 py-1 text-xs font-medium text-blue-700">
+      <span className="flex items-center gap-1.5 rounded-full border border-brand-lavender/40 bg-brand-lavender-lightest px-3 py-1 text-xs font-medium text-brand-lavender-darker">
         <Loader2 className="h-3 w-3 animate-spin" />
         Publishing...
       </span>

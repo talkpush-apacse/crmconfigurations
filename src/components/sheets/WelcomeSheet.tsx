@@ -116,21 +116,21 @@ export function WelcomeSheet() {
         </div>
 
         {/* Important Notes accordion */}
-        <div className="rounded-lg border-l-4 border-blue-600 bg-blue-50">
+        <div className="rounded-lg border-l-4 border-brand-amber bg-brand-amber-lightest">
           <button
             className="flex w-full items-center gap-3 p-4 text-left"
             onClick={handleNotesToggle}
             aria-expanded={notesOpen}
           >
-            <Info className="h-5 w-5 text-blue-600 shrink-0" />
-            <span className="flex-1 text-[15px] font-semibold text-blue-900">Important Notes</span>
+            <Info className="h-5 w-5 text-brand-amber-darker shrink-0" />
+            <span className="flex-1 text-[15px] font-semibold text-foreground">Important Notes</span>
             <ChevronDown
-              className={`h-4 w-4 shrink-0 text-blue-600 transition-transform duration-200 ${notesOpen ? "rotate-180" : ""}`}
+              className={`h-4 w-4 shrink-0 text-brand-amber-darker transition-transform duration-200 ${notesOpen ? "rotate-180" : ""}`}
             />
           </button>
           {notesOpen && (
             <div className="px-4 pb-4 pt-0">
-              <ul className="space-y-1 text-[14px] text-blue-800">
+              <ul className="space-y-1 text-[14px] text-foreground/80">
                 <li>Do not skip sections — complete each tab in order when possible.</li>
                 <li>Dropdown fields have predefined options — select from the list.</li>
                 <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
@@ -147,7 +147,7 @@ export function WelcomeSheet() {
           <div className="flex justify-end pt-2">
             <Link
               href={`${basePath}/${firstContentTab.slug}`}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground hover:bg-primary/85 transition-colors"
             >
               Continue to {firstContentTab.label}
               <ArrowRight className="h-4 w-4" />

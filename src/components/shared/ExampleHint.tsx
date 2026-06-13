@@ -22,7 +22,7 @@ export function ExampleHint({ children }: ExampleHintProps) {
         <CollapsibleTrigger
           role="button"
           aria-expanded={open}
-          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-brand-lavender-darker hover:bg-[#BFDBFE]/40 rounded-t-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-inset"
+          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-brand-lavender-darker hover:bg-brand-lavender-lighter/40 rounded-t-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-lavender-darker focus-visible:ring-inset"
         >
           <Eye className="h-3.5 w-3.5 shrink-0" />
           <span>View Example</span>

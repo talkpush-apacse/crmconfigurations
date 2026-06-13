@@ -150,7 +150,7 @@ export function RejectionReasonsSheet() {
                   onChange={(e) => setNewReason(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a new rejection reason…"
-                  className="max-w-sm border border-gray-300 bg-white placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="max-w-sm border border-gray-300 bg-white placeholder:text-gray-400 focus:border-brand-lavender-darker focus:ring-2 focus:ring-brand-lavender/40 focus:outline-none"
                 />
                 <Button
                   type="button"

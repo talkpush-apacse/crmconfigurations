@@ -37,7 +37,7 @@ function StatusPill({
     <span
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-sm",
-        tone === "blue" && "bg-blue-50 text-blue-700 ring-1 ring-blue-200/70",
+        tone === "blue" && "bg-brand-lavender-lightest text-brand-lavender-darker ring-1 ring-brand-lavender/40",
         tone === "emerald" && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
         tone === "amber" && "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70"
       )}
@@ -86,7 +86,9 @@ export function Header({
     : 0;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/70 bg-white/[0.72] px-4 py-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-white/70 bg-white/[0.72] shadow-[0_14px_40px_-28px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+      <div className="brand-gradient-strip h-1.5 w-full" />
+      <div className="px-4 py-4 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 items-start gap-4">
           {!editorToken && (
@@ -144,7 +146,7 @@ export function Header({
               <span className="font-medium text-slate-600">Completion</span>
               <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
                 <div
-                  className="h-full rounded-full bg-[#1A73E8] transition-all duration-300"
+                  className="h-full rounded-full bg-brand-sage-darker transition-all duration-300"
                   style={{ width: `${completionPercent}%` }}
                 />
               </div>
@@ -165,13 +167,14 @@ export function Header({
             <Button
               size="sm"
               onClick={handleExport}
-              className="h-11 rounded-xl bg-[#1A73E8] px-4 text-white shadow-[0_16px_30px_-18px_rgba(26,115,232,0.85)] hover:bg-[#1765cb] active:scale-95"
+              className="h-11 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_14px_28px_-18px_oklch(0.12_0.01_240/0.5)] hover:bg-primary/85 active:scale-95"
             >
               <Download className="h-4 w-4" />
               Export XLS
             </Button>
           </div>
         </div>
+      </div>
       </div>
     </header>
   );

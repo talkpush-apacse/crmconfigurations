@@ -94,7 +94,7 @@ function SortableTemplateItem({
     <div ref={setNodeRef} style={style}>
       <AccordionItem
         value={template.id || String(idx)}
-        className={`rounded-lg border ${isDragging ? "ring-2 ring-blue-300 bg-blue-50" : ""}`}
+        className={`rounded-lg border ${isDragging ? "ring-2 ring-brand-lavender bg-brand-lavender-lightest" : ""}`}
       >
         <AccordionTrigger className="px-4 py-3 hover:no-underline">
           <div className="flex items-center gap-3 text-left">
@@ -109,7 +109,7 @@ function SortableTemplateItem({
                 <GripVertical className="h-4 w-4 text-gray-400" />
               </button>
             )}
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white font-semibold shrink-0">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-semibold shrink-0">
               {idx + 1}
             </span>
             <div>
@@ -373,8 +373,8 @@ export function MessagingSheet() {
         <p className="mt-1">The 8 pre-populated templates below cover this full flow. Edit them to match your branding and tone.</p>
       </ExampleHint>
 
-      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-        <p className="text-xs text-blue-800">
+      <div className="mb-4 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-3">
+        <p className="text-xs text-foreground/80">
           <strong>Available tokens:</strong>{" "}
           {"<Candidate First Name>, <Candidate Last Name>, <Campaign Name>, <Scheduler URL>, <Company Name>, <Site Name>"}
         </p>

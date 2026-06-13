@@ -7,8 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
   --font-mono: var(--font-geist-mono);
+  --color-brand-gradient-from: var(--brand-amber);
+  --color-brand-gradient-to: var(--brand-sage);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -72,26 +75,25 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
-  /* Brand Accent Palette — Talkpush Design System */
-  --brand-sage:              oklch(0.76 0.06 148);
+  /* Brand Accent Palette — Talkpush Sign Design System */
+  --brand-sage:              oklch(0.76 0.06 148);   /* #ACCDB5 */
   --brand-sage-lightest:     oklch(0.88 0.03 148);
   --brand-sage-lighter:      oklch(0.82 0.05 148);
   --brand-sage-darker:       oklch(0.60 0.09 148);
 
-  --brand-lavender:          oklch(0.82 0.08 258);
+  --brand-lavender:          oklch(0.82 0.08 258);   /* #BBCAF0 */
   --brand-lavender-lightest: oklch(0.93 0.04 258);
   --brand-lavender-lighter:  oklch(0.89 0.06 258);
-  /* P1 contrast fix: table headers use text-gray-900 on this background (~6:1 WCAG AA). Original value preserved. */
   --brand-lavender-darker:   oklch(0.67 0.12 258);
 
-  --brand-pink:              oklch(0.87 0.09 322);
+  --brand-pink:              oklch(0.87 0.09 322);   /* #F1C1F3 */
   --brand-pink-lightest:     oklch(0.94 0.05 322);
   --brand-pink-lighter:      oklch(0.90 0.07 322);
   --brand-pink-darker:       oklch(0.71 0.13 322);
 
-  --brand-amber:             oklch(0.79 0.13 70);
+  --brand-amber:             oklch(0.79 0.13 70);    /* #F2B457 */
   --brand-amber-lightest:    oklch(0.89 0.07 70);
   --brand-amber-lighter:     oklch(0.84 0.10 70);
   --brand-amber-darker:      oklch(0.64 0.17 70);
@@ -101,83 +103,89 @@
   --status-in-progress:  var(--brand-lavender);
   --status-pending:      var(--brand-amber);
   --status-declined:     var(--destructive);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+
+  /* Sign Core Semantic Tokens — light mode */
+  --background: oklch(0.99 0.01 90);          /* warm beige hsl(60,100%,98%) */
+  --foreground: oklch(0.12 0.01 240);          /* near-black hsl(240,10%,8%) */
+  --card: oklch(1 0 0);                        /* white card surfaces */
+  --card-foreground: oklch(0.12 0.01 240);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #1A73E8;
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.12 0.01 240);
+  --primary: oklch(0.12 0.01 240);             /* near-black buttons */
+  --primary-foreground: oklch(0.99 0.01 90);   /* warm cream text on primary */
+  --secondary: oklch(0.97 0.02 90);            /* hsl(60,30%,95%) warm tint */
+  --secondary-foreground: oklch(0.20 0.01 240);
+  --muted: oklch(0.95 0.01 90);               /* hsl(60,20%,93%) */
+  --muted-foreground: oklch(0.45 0.01 240);    /* hsl(240,5%,45%) */
+  --accent: var(--brand-pink);                 /* pink CTA accent */
+  --accent-foreground: oklch(0.12 0.01 240);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: #1A73E8;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #1A73E8;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.87 0.01 240);              /* hsl(240,5%,85%) */
+  --input: oklch(0.87 0.01 240);
+  --ring: var(--brand-lavender-darker);        /* lavender focus rings */
+  --chart-1: var(--brand-amber);
+  --chart-2: var(--brand-sage);
+  --chart-3: var(--brand-lavender);
+  --chart-4: var(--brand-pink);
+  --chart-5: var(--brand-amber-darker);
+  --sidebar: oklch(0.99 0.01 90);
+  --sidebar-foreground: oklch(0.12 0.01 240);
+  --sidebar-primary: oklch(0.12 0.01 240);
+  --sidebar-primary-foreground: oklch(0.99 0.01 90);
+  --sidebar-accent: oklch(0.97 0.02 90);
+  --sidebar-accent-foreground: oklch(0.20 0.01 240);
+  --sidebar-border: oklch(0.87 0.01 240);
+  --sidebar-ring: var(--brand-lavender-darker);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Sign dark mode — dark blue-gray surfaces, cream text, brand hues retained */
+  --background: oklch(0.16 0.02 240);          /* dark blue-gray */
+  --foreground: oklch(0.96 0.01 90);            /* warm cream */
+  --card: oklch(0.21 0.02 240);
+  --card-foreground: oklch(0.96 0.01 90);
+  --popover: oklch(0.21 0.02 240);
+  --popover-foreground: oklch(0.96 0.01 90);
+  --primary: oklch(0.96 0.01 90);              /* cream buttons in dark mode */
+  --primary-foreground: oklch(0.16 0.02 240);
+  --secondary: oklch(0.27 0.02 240);
+  --secondary-foreground: oklch(0.96 0.01 90);
+  --muted: oklch(0.27 0.02 240);
+  --muted-foreground: oklch(0.70 0.01 240);
+  --accent: var(--brand-pink-darker);
+  --accent-foreground: oklch(0.96 0.01 90);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --ring: var(--brand-lavender);
+  --chart-1: var(--brand-amber);
+  --chart-2: var(--brand-sage);
+  --chart-3: var(--brand-lavender);
+  --chart-4: var(--brand-pink);
+  --chart-5: var(--brand-amber-darker);
+  --sidebar: oklch(0.21 0.02 240);
+  --sidebar-foreground: oklch(0.96 0.01 90);
+  --sidebar-primary: oklch(0.96 0.01 90);
+  --sidebar-primary-foreground: oklch(0.16 0.02 240);
+  --sidebar-accent: oklch(0.27 0.02 240);
+  --sidebar-accent-foreground: oklch(0.96 0.01 90);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: var(--brand-lavender);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground font-sans;
+    /* Sign warm beige surface — subtle pastel radials */
     background-image:
-      radial-gradient(circle at top left, rgba(226, 232, 240, 0.55), transparent 32%),
-      linear-gradient(180deg, #f8fafc 0%, #eef2ff 44%, #f8fafc 100%);
+      radial-gradient(circle at top left, oklch(0.93 0.04 258 / 0.35), transparent 35%),
+      radial-gradient(circle at bottom right, oklch(0.94 0.05 322 / 0.25), transparent 35%);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
   }
 }
 
@@ -197,23 +205,22 @@
   background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5);
 }
 
-/* ---- Design System v1.8.0 semantic tokens ---- */
-/* These map to Tailwind equivalents: blue-600, blue-700, green-600, amber-500, etc. */
+/* ---- Talkpush Sign semantic tokens (remapped from v1.8.0 names) ---- */
 :root {
-  --tp-primary:          #1A73E8;
-  --tp-primary-hover:    #1765CB;
-  --tp-primary-subtle:   rgba(26,115,232,0.08);
-  --tp-status-complete:  #16A34A; /* green-600 */
-  --tp-status-progress:  #F59E0B; /* amber-500 */
-  --tp-status-empty:     #9CA3AF; /* gray-400 */
-  --tp-surface:          #FFFFFF;
-  --tp-surface-subtle:   #F8FAFC; /* slate-50 */
-  --tp-border:           #E5E7EB; /* gray-200 */
-  --tp-border-strong:    #D1D5DB; /* gray-300 */
-  --tp-text-primary:     #111827; /* gray-900 */
-  --tp-text-secondary:   #374151; /* gray-700 */
-  --tp-text-muted:       #6B7280; /* gray-500 */
-  --tp-text-placeholder: #9CA3AF; /* gray-400 */
+  --tp-primary:          oklch(0.12 0.01 240);   /* near-black (was blue) */
+  --tp-primary-hover:    oklch(0.20 0.01 240);
+  --tp-primary-subtle:   oklch(0.82 0.08 258 / 0.15); /* lavender tint (was blue tint) */
+  --tp-status-complete:  oklch(0.60 0.09 148);   /* brand-sage-darker */
+  --tp-status-progress:  oklch(0.64 0.17 70);    /* brand-amber-darker */
+  --tp-status-empty:     oklch(0.65 0.00 0);     /* neutral gray */
+  --tp-surface:          oklch(1 0 0);
+  --tp-surface-subtle:   oklch(0.99 0.01 90);    /* warm beige */
+  --tp-border:           oklch(0.91 0.00 0);
+  --tp-border-strong:    oklch(0.85 0.00 0);
+  --tp-text-primary:     oklch(0.12 0.01 240);
+  --tp-text-secondary:   oklch(0.30 0.01 240);
+  --tp-text-muted:       oklch(0.50 0.01 240);
+  --tp-text-placeholder: oklch(0.65 0.00 0);
 }
 
 /* ---- Global Form Field Visibility & Contrast ---- */
@@ -239,8 +246,8 @@ select:not([data-slot]):hover {
 input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]):focus,
 textarea:not([data-slot]):focus,
 select:not([data-slot]):focus {
-  border-color: #1976D2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  border-color: oklch(0.67 0.12 258);  /* brand-lavender-darker */
+  box-shadow: 0 0 0 3px oklch(0.82 0.08 258 / 0.25);
   outline: none;
 }
 

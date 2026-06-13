@@ -294,7 +294,7 @@ function SectionDivider({ title }: { title: string }) {
 function statusClass(status: IntegrationStatus | "") {
   const classes: Record<IntegrationStatus, string> = {
     not_started: "border-gray-300 bg-gray-50 text-gray-700",
-    scoping: "border-blue-200 bg-blue-50 text-blue-800",
+    scoping: "border-brand-lavender-lighter bg-brand-lavender-lightest text-brand-lavender-darker",
     in_development: "border-amber-200 bg-amber-50 text-amber-800",
     uat: "border-purple-200 bg-purple-50 text-purple-800",
     live: "border-green-200 bg-green-50 text-green-800",
