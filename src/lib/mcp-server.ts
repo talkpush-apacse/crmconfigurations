@@ -1950,5 +1950,61 @@ export function createMcpServer(): McpServer {
     }
   );
 
+  // =========================================================================
+  // CHATGPT COMPATIBILITY TOOLS
+  // ChatGPT's MCP Apps connector requires tools named exactly "search" and
+  // "fetch". These wrap the existing read tools so ChatGPT can register
+  // this server. Claude.ai ignores these and uses the richer named tools.
+  // =========================================================================
+
+  server.tool(
+    "search",
+    "Search CRM configuration checklists by client name or slug. Returns matching checklists with their slug, client name, and last updated date.",
+    {
+      query: z.string().describe("Search query — matched against client name and slug"),
+    },
+    async ({ query }) => {
+      const term = query.trim().toLowerCase();
+      const checklists = await prisma.checklist.findMany({
+        select: { clientName: true, slug: true, createdAt: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+        take: 100,
+      });
+
+      const matches = term
+        ? checklists.filter(
+            (c) =>
+              c.clientName.toLowerCase().includes(term) ||
+              c.slug.toLowerCase().includes(term)
+          )
+        : checklists.slice(0, 20);
+
+      return mcpJson({ query, count: matches.length, results: matches });
+    }
+  );
+
+  server.tool(
+    "fetch",
+    "Fetch the full data for a specific CRM configuration checklist. Accepts a slug (e.g. 'acme-corp') or a path like '/checklists/acme-corp'.",
+    {
+      url: z.string().describe("Checklist slug or path such as '/checklists/acme-corp'"),
+    },
+    async ({ url }) => {
+      // Extract slug from path forms like /checklists/acme or acme
+      const slug = url.replace(/^\/+/, "").replace(/^checklists\//, "").split("?")[0].trim();
+
+      const checklist = await prisma.checklist.findUnique({ where: { slug } });
+
+      if (!checklist) {
+        return {
+          content: [{ type: "text" as const, text: `Checklist with slug "${slug}" not found` }],
+          isError: true,
+        };
+      }
+
+      return mcpJson(checklist);
+    }
+  );
+
   return server;
 }
