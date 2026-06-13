@@ -1,5 +1,15 @@
 [
   {
+    "version": "3.1",
+    "name": "Version 3.1 - Light Sidebar",
+    "changes": [
+      "Rebranded sidebar from dark navy to light card surface — white bg, sage-tinted active state, near-black text",
+      "Fixed warm beige background not showing through — removed hardcoded blue-slate gradient override from 3 layout files",
+      "Active nav items now show a soft sage ring accent instead of white-on-dark highlight"
+    ],
+    "deployed_at": "2026-06-13"
+  },
+  {
     "version": "3.0",
     "name": "Version 3.0 - Talkpush Sign Rebrand",
     "changes": [

@@ -111,19 +111,19 @@ function StatusIndicator({ status }: { status: NavItem["status"] }) {
   }
 
   if (status === "not-started") {
-    return <span className="h-2.5 w-2.5 rounded-full border border-slate-400/60 bg-transparent" />;
+    return <span className="h-2.5 w-2.5 rounded-full border border-muted-foreground/40 bg-transparent" />;
   }
 
-  return <span className="h-2.5 w-2.5 rounded-full bg-slate-500/60" />;
+  return <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />;
 }
 
 function GroupHeader({ label }: { label: string }) {
   return (
     <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex first:mt-0">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {label}
       </span>
-      <div className="h-px flex-1 bg-white/10" />
+      <div className="h-px flex-1 bg-border" />
     </div>
   );
 }
@@ -164,7 +164,7 @@ function SortableNavItem({
           <div
             className={cn(
               "group relative rounded-[22px] transition-all",
-              isDragging && "bg-white/[0.12] shadow-[0_20px_36px_-30px_rgba(15,23,42,0.85)]"
+              isDragging && "bg-secondary shadow-[0_12px_24px_-16px_rgba(15,23,42,0.15)]"
             )}
           >
             {canReorder && (
@@ -172,7 +172,7 @@ function SortableNavItem({
                 type="button"
                 {...attributes}
                 {...listeners}
-                className="absolute left-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white active:cursor-grabbing xl:flex xl:opacity-0 xl:group-hover:opacity-100"
+                className="absolute left-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground active:cursor-grabbing xl:flex xl:opacity-0 xl:group-hover:opacity-100"
                 title="Drag to reorder"
               >
                 <GripVertical className="h-3.5 w-3.5" />
@@ -187,15 +187,15 @@ function SortableNavItem({
               className={cn(
                 "relative flex min-h-[52px] items-center justify-center gap-3 rounded-[20px] px-3 py-3 text-sm transition-all duration-200 active:scale-[0.98] xl:justify-start xl:px-4 xl:pl-11",
                 isActive
-                  ? "bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_18px_34px_-26px_rgba(15,23,42,0.9)]"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  ? "bg-brand-sage-lightest text-foreground ring-1 ring-inset ring-brand-sage-darker/25 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
               aria-label={item.label}
             >
               <div
                 className={cn(
-                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]",
-                  isActive && "bg-white/[0.16] border-white/20"
+                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary",
+                  isActive && "bg-brand-sage-lightest border-brand-sage-darker/40"
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -214,7 +214,7 @@ function SortableNavItem({
                     />
                   )}
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                   <StatusIndicator status={item.status} />
                   <span>{getStatusLabel(item.status)}</span>
                 </div>
@@ -360,18 +360,18 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
   const navContent = (
     <aside
       ref={navRef}
-      className="flex h-screen w-16 shrink-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0f172a_0%,#111827_44%,#1e293b_100%)] text-white shadow-[20px_0_50px_-40px_rgba(15,23,42,0.8)] xl:w-64"
+      className="flex h-screen w-16 shrink-0 flex-col overflow-hidden bg-card border-r border-border text-foreground shadow-[4px_0_24px_-8px_rgba(15,23,42,0.07)] xl:w-64"
     >
-      <div className="border-b border-white/[0.08] px-2 py-3 xl:px-4 xl:py-5">
+      <div className="border-b border-border px-2 py-3 xl:px-4 xl:py-5">
         <div className="flex items-center justify-center gap-3 xl:justify-start">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.12] text-sm font-semibold tracking-[0.18em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-secondary text-sm font-semibold tracking-[0.18em] text-foreground">
             TP
           </div>
           <div className="hidden min-w-0 xl:block">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               Workspace
             </p>
-            <p className="truncate text-sm font-medium text-slate-100">
+            <p className="truncate text-sm font-medium text-foreground">
               CRM Modules
             </p>
           </div>
@@ -420,12 +420,12 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
             canScrollDown ? "opacity-100" : "opacity-0"
           )}
         >
-          <div className="h-12 w-full bg-gradient-to-t from-[#1e293b] to-transparent" />
-          <ChevronDown className="absolute bottom-1 h-4 w-4 animate-bounce text-slate-400" />
+          <div className="h-12 w-full bg-gradient-to-t from-card to-transparent" />
+          <ChevronDown className="absolute bottom-1 h-4 w-4 animate-bounce text-muted-foreground" />
         </div>
       </div>
 
-      <div className="border-t border-white/[0.08] p-2 xl:p-4">
+      <div className="border-t border-border p-2 xl:p-4">
         <Button
           type="button"
           disabled
@@ -434,7 +434,7 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
           <Plus className="h-4 w-4" />
           <span className="hidden xl:inline">New Module</span>
         </Button>
-        <p className="mt-2 hidden text-[11px] leading-5 text-slate-400 xl:block">
+        <p className="mt-2 hidden text-[11px] leading-5 text-muted-foreground xl:block">
           Module creation is staged outside this shared configuration editor.
         </p>
       </div>

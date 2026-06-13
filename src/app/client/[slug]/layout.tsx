@@ -107,7 +107,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <ChecklistContext.Provider value={contextValue}>
-      <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(226,232,240,0.9),_transparent_36%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_42%,#f8fafc_100%)] text-slate-950">
+      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
         <Header
           clientName={data.clientName}
           slug={slug}
