@@ -120,3 +120,30 @@ function applySuffix(
   const tag = n === 1 ? "(copy)" : `(copy ${n})`;
   return original ? `${original} ${tag}` : tag;
 }
+
+/**
+ * Folds an edited *visible* row list back into the full array.
+ *
+ * The sheets show `all.filter(r => !r.deletedAt)`, so a batched edit (a paste
+ * from Excel) comes back holding only the visible rows. Rows are matched by id
+ * so soft-deleted entries keep their place, and rows the paste created — which
+ * have ids the full array has never seen — are appended in order.
+ */
+export function mergeVisibleRows<T extends BaseRow>(
+  fullArray: T[],
+  nextVisible: T[],
+): T[] {
+  const byId = new Map<string, T>();
+  for (const row of nextVisible) {
+    if (row.id) byId.set(row.id, row);
+  }
+
+  const merged = fullArray.map((row) =>
+    row.id && byId.has(row.id) ? (byId.get(row.id) as T) : row,
+  );
+
+  const knownIds = new Set(fullArray.map((r) => r.id).filter(Boolean));
+  const added = nextVisible.filter((r) => !r.id || !knownIds.has(r.id));
+
+  return [...merged, ...added];
+}

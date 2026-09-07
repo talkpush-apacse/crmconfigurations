@@ -10,7 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultSites } from "@/lib/template-data";
 import type { ColumnDef, SiteRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "siteName", label: "Site Name", type: "text", description: "Public-facing name of the interview/office site" },
@@ -83,6 +83,12 @@ export function SitesSheet() {
     updateField("sites", [...allSites, ...newRows]);
   };
 
+  // A pasted block arrives as the full next visible list, in one update —
+  // per-cell writes would each see a stale array and only the last would stick.
+  const handlePasteApply = (sitesNext: SiteRow[]) => {
+    updateField("sites", mergeVisibleRows(allSites, sitesNext));
+  };
+
   return (
     <div>
       <SectionHeader
@@ -112,6 +118,10 @@ export function SitesSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        pasteConfig={{
+          onApply: handlePasteApply,
+          createRow: () => ({ id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" }),
+        }}
         addLabel="Add Site"
         sampleRow={{ siteName: "Makati Main", internalName: "MKT-HQ", interviewType: "Onsite" }}
         csvConfig={{

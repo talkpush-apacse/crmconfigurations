@@ -1,4 +1,4 @@
-import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData, IntegrationRow } from "./types";
+import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData, CustomTab, IntegrationRow } from "./types";
 
 export type SectionState = "complete" | "in-progress" | "not-started";
 
@@ -140,9 +140,10 @@ export function getSectionState(
 }
 
 /**
- * Computes the completion state of a custom tab based on its fields and customData.
+ * Computes the completion state of a form-based custom tab (CustomTab.fields
+ * + the shared customData bag).
  */
-export function getCustomTabSectionState(
+function getCustomFieldTabState(
   fields: CustomFieldDef[],
   customData: CustomData | null,
 ): SectionState {
@@ -161,4 +162,47 @@ export function getCustomTabSectionState(
 
   if (filledFields === 0) return "not-started";
   return filledFields >= totalFields ? "complete" : "in-progress";
+}
+
+/**
+ * Computes the completion state of a table-based custom tab (CustomTab.columns
+ * + CustomTab.rows). A row counts as active once any of its cells has a value;
+ * the tab is complete when every active row has all its required columns filled.
+ * An attached reference spreadsheet alone counts as in-progress, matching how
+ * tab uploads are treated elsewhere.
+ */
+function getCustomTableTabState(tab: CustomTab): SectionState {
+  const columns = tab.columns ?? [];
+  const rows = tab.rows ?? [];
+  if (columns.length === 0) return "not-started";
+
+  const activeRows = rows.filter((row) =>
+    columns.some((col) => hasMeaningfulValue(row[col.key])),
+  );
+
+  if (activeRows.length === 0) {
+    return tab.uploadedFile ? "in-progress" : "not-started";
+  }
+
+  const requiredColumns = columns.filter((col) => col.required);
+  const allRequiredFilled = activeRows.every((row) =>
+    requiredColumns.every((col) => hasMeaningfulValue(row[col.key])),
+  );
+
+  return allRequiredFilled ? "complete" : "in-progress";
+}
+
+/**
+ * Computes the completion state of a custom tab, whichever shape it takes.
+ *
+ * Table-based tabs (created via MCP or spreadsheet import) carry `columns`;
+ * form-based tabs (created in the admin Settings dialog) carry `fields` and
+ * store their values in the shared `customData` bag.
+ */
+export function getCustomTabSectionState(
+  tab: CustomTab,
+  customData: CustomData | null,
+): SectionState {
+  if (tab.columns !== undefined) return getCustomTableTabState(tab);
+  return getCustomFieldTabState(tab.fields ?? [], customData);
 }

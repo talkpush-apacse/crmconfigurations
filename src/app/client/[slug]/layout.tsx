@@ -71,7 +71,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     : tabsWithData.filter((t) => {
         if (t.customTabId) {
           const ct = customTabs?.find((c) => c.id === t.customTabId);
-          return ct ? getCustomTabSectionState(ct.fields, customData) !== "not-started" : false;
+          return ct ? getCustomTabSectionState(ct, customData) !== "not-started" : false;
         }
         const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
         return getSectionState(val, t.dataKey) !== "not-started";
@@ -84,7 +84,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     let status: NavItem["status"] = null;
     if (tab.customTabId) {
       const ct = customTabs?.find((c) => c.id === tab.customTabId);
-      if (ct) status = getCustomTabSectionState(ct.fields, customData);
+      if (ct) status = getCustomTabSectionState(ct, customData);
     } else if (tab.dataKey && data) {
       status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData], tab.dataKey);
     }

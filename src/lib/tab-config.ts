@@ -119,3 +119,38 @@ export function getEnabledTabs(
 
   return allTabs;
 }
+
+// ===== Custom tab slug helpers =====
+//
+// Shared by the admin UI and the spreadsheet importer so both apply the same
+// rule as the MCP `add_custom_tab` tool.
+
+/** Slugs owned by the standard tabs — a custom tab must not shadow one. */
+const FIXED_TAB_SLUGS = new Set(TAB_CONFIG.map((t) => t.slug));
+
+export function customTabSlugFromLabel(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Returns a human-readable reason the slug can't be used, or null when it's
+ * free. `ignoreTabId` lets an existing tab keep its own slug while editing.
+ */
+export function customTabSlugConflict(
+  slug: string,
+  existingTabs: CustomTab[] | null | undefined,
+  ignoreTabId?: string,
+): string | null {
+  if (!slug) return null;
+  if (FIXED_TAB_SLUGS.has(slug)) {
+    return "That name collides with a standard tab. Choose a different name.";
+  }
+  const clash = (existingTabs ?? []).some(
+    (t) => t.slug === slug && t.id !== ignoreTabId,
+  );
+  if (clash) return "A custom tab with that name already exists.";
+  return null;
+}

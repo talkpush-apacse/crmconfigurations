@@ -90,6 +90,7 @@ export function SettingsDialog({
                 <CustomTabManager
                   value={editing.customTabs}
                   onChange={(tabs) => onCustomTabsChange?.(tabs)}
+                  checklistId={editing.id}
                 />
               </>
             )}

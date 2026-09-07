@@ -635,9 +635,22 @@ export type CustomData = Record<string, unknown>;
 export interface CustomTabColumn {
   key: string;            // unique column identifier (snake_case)
   label: string;          // display label
-  type: "text" | "textarea" | "number" | "date" | "select" | "email" | "url" | "checkbox";
+  type:
+    | "text"
+    | "textarea"
+    | "number"
+    | "date"
+    | "select"
+    | "multiselect"
+    | "email"
+    | "url"
+    | "checkbox";
   required?: boolean;
-  options?: string[];     // only for type: "select"
+  /**
+   * Choices for "select" and "multiselect". Multi-select values are stored
+   * comma-joined in the row, so a cell stays a plain string.
+   */
+  options?: string[];
   width?: string;         // optional Tailwind width class
 }
 
@@ -732,7 +745,7 @@ export interface ColumnDef {
   key: string;
   label: string;
   description?: string;
-  type: "text" | "textarea" | "dropdown" | "boolean" | "readonly";
+  type: "text" | "textarea" | "dropdown" | "multiselect" | "boolean" | "readonly";
   options?: string[];
   width?: string;
   validation?: "email" | "url" | "phone";

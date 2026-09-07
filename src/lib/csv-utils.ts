@@ -87,7 +87,15 @@ export function parseCsv(
 
 /**
  * Parses CSV text into a 2D array, properly handling quoted fields.
+ *
+ * Exported as `parseCsvGrid` for callers that need the raw grid rather than
+ * rows mapped onto a known column set (e.g. custom-tab spreadsheet import,
+ * where the columns are not known until the header row is read).
  */
+export function parseCsvGrid(csvText: string): string[][] {
+  return parseCsvLines(csvText);
+}
+
 function parseCsvLines(csvText: string): string[][] {
   const lines: string[][] = [];
   let current: string[] = [];

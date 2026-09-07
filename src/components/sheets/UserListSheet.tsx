@@ -10,7 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultUsers } from "@/lib/template-data";
 import type { ColumnDef, UserRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { duplicateRows } from "@/lib/duplicate-row";
+import { duplicateRows, mergeVisibleRows } from "@/lib/duplicate-row";
 import { downloadTalkpushUsersCsv } from "@/lib/talkpush-export";
 
 const columns: ColumnDef[] = [
@@ -115,6 +115,12 @@ export function UserListSheet() {
     updateField("users", [...allUsers, ...newRows]);
   };
 
+  // A pasted block arrives as the full next visible list, in one update —
+  // per-cell writes would each see a stale array and only the last would stick.
+  const handlePasteApply = (usersNext: UserRow[]) => {
+    updateField("users", mergeVisibleRows(allUsers, usersNext));
+  };
+
   return (
     <div>
       <SectionHeader
@@ -158,6 +164,10 @@ export function UserListSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        pasteConfig={{
+          onApply: handlePasteApply,
+          createRow: () => ({ id: uid(), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" }),
+        }}
         addLabel="Add User"
         sampleRow={{ name: "Maria Santos", accessType: "Manager", email: "maria@company.com", phone: "+63 917 123 4567", jobTitle: "HR Manager", site: "BGC Office", reportsTo: "John dela Cruz" }}
         csvConfig={{

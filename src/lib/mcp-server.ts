@@ -1535,13 +1535,15 @@ export function createMcpServer(): McpServer {
             key: z.string().describe("Unique snake_case column identifier (e.g. 'document_name')"),
             label: z.string().describe("Column display label"),
             type: z
-              .enum(["text", "textarea", "number", "date", "select", "email", "url", "checkbox"])
+              .enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"])
               .describe("Column data type"),
             required: z.boolean().optional().default(false),
             options: z
               .array(z.string())
               .optional()
-              .describe("Dropdown choices — only for type: select"),
+              .describe(
+                "Choices — for type: select or multiselect. Multi-select cell values are stored comma-joined."
+              ),
           })
         )
         .describe("Column definitions for the tab table"),
@@ -1624,7 +1626,7 @@ export function createMcpServer(): McpServer {
           z.object({
             key: z.string(),
             label: z.string(),
-            type: z.enum(["text", "textarea", "number", "date", "select", "email", "url", "checkbox"]),
+            type: z.enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"]),
             required: z.boolean().optional().default(false),
             options: z.array(z.string()).optional(),
           })

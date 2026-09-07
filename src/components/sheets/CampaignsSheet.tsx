@@ -11,7 +11,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultCampaigns } from "@/lib/template-data";
 import type { ColumnDef, CampaignRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "nameInternal", label: "Campaign Name (Internal)", type: "text", description: "Internal name used within Talkpush to identify this campaign" },
@@ -116,6 +116,25 @@ export function CampaignsSheet() {
     updateField("campaigns", [...allCampaigns, ...newRows]);
   };
 
+  // A pasted block arrives as the full next visible list, in one update —
+  // per-cell writes would each see a stale array and only the last would stick.
+  //
+  // The table is fed `campaignsForTable`, where assignedRecruiters has been
+  // flattened to a comma string, so it is restored to an array on the way back
+  // rather than persisting the display shape.
+  const handlePasteApply = (campaignsNext: CampaignRow[]) => {
+    const restored = campaignsNext.map((c) => ({
+      ...c,
+      assignedRecruiters: Array.isArray(c.assignedRecruiters)
+        ? c.assignedRecruiters
+        : String(c.assignedRecruiters ?? "")
+            .split(",")
+            .map((r) => r.trim())
+            .filter(Boolean),
+    }));
+    updateField("campaigns", mergeVisibleRows(allCampaigns, restored));
+  };
+
   return (
     <div>
       <SectionHeader
@@ -159,6 +178,10 @@ export function CampaignsSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        pasteConfig={{
+          onApply: handlePasteApply,
+          createRow: () => ({ id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" }),
+        }}
         addLabel="Add Campaign"
         sampleRow={{ nameInternal: "CSR - Makati", jobTitleExternal: "Customer Service Representative", site: "Makati Office" }}
         csvConfig={{
