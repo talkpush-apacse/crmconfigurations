@@ -205,6 +205,7 @@ export function PrescreeningSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        spreadsheetMode
         addLabel="Add Question"
         sampleRow={{
           category: "Pre-screening",

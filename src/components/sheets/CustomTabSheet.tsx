@@ -281,6 +281,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onReorder={handleReorder}
+        spreadsheetMode
         addLabel="Add Row"
         pasteConfig={{
           onApply: handlePasteApply,

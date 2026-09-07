@@ -17,6 +17,13 @@ import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 export type MoveDirection = "up" | "down" | "left" | "right";
 
 export interface GridNavValue {
+  /**
+   * Whether this table opted into spreadsheet behaviour. Cells read it to
+   * decide between a live input and the click-to-edit affordance, and it is
+   * carried on the context (rather than derived from having coordinates) so
+   * that detail-panel fields follow their table's mode too.
+   */
+  spreadsheetMode: boolean;
   registerCell: (row: number, col: number, el: HTMLElement | null) => void;
   /** Focuses a cell and selects its contents. Returns false if it isn't there. */
   focusCell: (row: number, col: number) => boolean;
@@ -39,6 +46,7 @@ export function useGridNav(): GridNavValue | null {
 }
 
 interface GridNavProviderProps {
+  spreadsheetMode: boolean;
   rowCount: number;
   columnCount: number;
   onPasteGrid?: (row: number, col: number, grid: string[][]) => void;
@@ -46,6 +54,7 @@ interface GridNavProviderProps {
 }
 
 export function GridNavProvider({
+  spreadsheetMode,
   rowCount,
   columnCount,
   onPasteGrid,
@@ -105,13 +114,14 @@ export function GridNavProvider({
 
   const value = useMemo<GridNavValue>(
     () => ({
+      spreadsheetMode,
       registerCell,
       focusCell,
       moveFocus,
       pasteGrid,
       canPasteGrid: !!onPasteGrid,
     }),
-    [registerCell, focusCell, moveFocus, pasteGrid, onPasteGrid]
+    [spreadsheetMode, registerCell, focusCell, moveFocus, pasteGrid, onPasteGrid]
   );
 
   return <GridNavContext.Provider value={value}>{children}</GridNavContext.Provider>;

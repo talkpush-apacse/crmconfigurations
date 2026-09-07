@@ -180,6 +180,7 @@ export function AgencyPortalSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        spreadsheetMode
         addLabel="Add Agency"
         sampleRow={{ agencyName: "Staff Alliance Inc.", contactName: "Maria Reyes", email: "maria@staffalliance.ph", phone: "+63 2 8888 1234", country: "Philippines", comments: "Primary agency" }}
         csvConfig={{
@@ -208,6 +209,7 @@ export function AgencyPortalSheet() {
           onAdd={handleUserAdd}
           onDelete={handleUserDelete}
           onDuplicate={handleUserDuplicate}
+          spreadsheetMode
           addLabel="Add User"
           sampleRow={{ name: "Maria Reyes", email: "maria@staffalliance.ph", agency: "Staff Alliance Inc.", userAccess: "Agency Admin" }}
           csvConfig={{

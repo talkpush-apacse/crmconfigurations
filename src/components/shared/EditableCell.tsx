@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,7 +70,17 @@ export function EditableCell({
   const currentValue = draftValue ?? committedValue;
 
   const grid = useGridNav();
-  const inGrid = grid !== null && gridRow !== undefined && gridCol !== undefined;
+  // Spreadsheet behaviours (live input, empty-cell tint, compact textarea)
+  // follow the table's mode. Keyboard navigation and paste additionally need
+  // grid coordinates, which only main-grid cells carry.
+  const spreadsheetMode = grid?.spreadsheetMode ?? false;
+  const inGrid =
+    spreadsheetMode && grid !== null && gridRow !== undefined && gridCol !== undefined;
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
 
   // Register with the grid so navigation and paste can reach this cell.
   useEffect(() => {
@@ -310,7 +320,9 @@ export function EditableCell({
         className={cn(
           // Compact in the grid, roomy in a detail panel.
           inGrid ? "min-h-[36px] resize-y text-sm" : "min-h-[80px] resize-y text-sm",
-          currentValue.trim() === "" && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
+          spreadsheetMode &&
+            currentValue.trim() === "" &&
+            "bg-slate-50/70 placeholder:text-[#9AA0A6]",
           errorMessage && "border-red-400 focus-visible:ring-red-400",
           className
         )}
@@ -319,17 +331,52 @@ export function EditableCell({
     );
   }
 
-  // Default: text. Always a live input — a click-to-edit gate would cost a
-  // second interaction per cell and make Tab skip the cell entirely.
+  // Default: text.
+  //
+  // In spreadsheet mode this is always a live input: a click-to-edit gate
+  // costs a second interaction per cell and makes Tab skip the cell entirely.
+  // Tabs that did not opt in keep the original click-to-edit affordance.
   const isEmpty = currentValue.trim() === "";
+
+  if (!spreadsheetMode && !editing) {
+    return wrapWithValidation(
+      <div
+        className={cn(
+          "group flex cursor-text items-center justify-between rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
+          !currentValue && "text-[#757575]",
+          errorMessage && "border-red-400 bg-red-50/50",
+          className
+        )}
+        onClick={() => {
+          setDraftValue(committedValue);
+          setEditing(true);
+        }}
+      >
+        <span className="min-w-0 flex-1 truncate">
+          {currentValue || placeholder || "Click to edit"}
+        </span>
+        <Pencil className="ml-2 h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+      </div>
+    );
+  }
 
   return wrapWithValidation(
     <Input
       ref={inputRef as React.RefObject<HTMLInputElement>}
       value={currentValue}
       onChange={(e) => setDraftValue(e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={handleGridKeyDown}
+      onBlur={() => {
+        setEditing(false);
+        handleBlur();
+      }}
+      onKeyDown={(e) => {
+        // Outside spreadsheet mode, Enter/Escape close the editor rather than
+        // moving between rows.
+        if (!spreadsheetMode && (e.key === "Enter" || e.key === "Escape")) {
+          setEditing(false);
+        }
+        handleGridKeyDown(e);
+      }}
       onPaste={handleGridPaste}
       placeholder={placeholder}
       aria-invalid={!!errorMessage}
@@ -337,7 +384,7 @@ export function EditableCell({
         "h-9 text-sm",
         // An unfilled cell reads as unfilled, rather than looking answered by
         // its own placeholder.
-        isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
+        spreadsheetMode && isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
         errorMessage && "border-red-400 focus-visible:ring-red-400",
         className
       )}

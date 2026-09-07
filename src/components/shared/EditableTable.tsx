@@ -75,6 +75,15 @@ interface EditableTableProps<TRow extends EditableRow> {
   /** Optional pinned sample row shown at the top of the table body (read-only) */
   sampleRow?: Record<string, string>;
   /**
+   * Opts this table into spreadsheet behaviour: pinned header, frozen leading
+   * columns, detail panels closed by default with a filled/total badge, live
+   * inputs, keyboard grid navigation and paste-from-Excel.
+   *
+   * Off by default — only the tabs that are genuinely spreadsheet-shaped want
+   * it, and the rest keep the original form-style layout.
+   */
+  spreadsheetMode?: boolean;
+  /**
    * Enables pasting a block copied from Excel/Sheets across cells.
    *
    * A multi-cell paste has to be applied as ONE update: calling the per-cell
@@ -204,6 +213,7 @@ function SortableRow<TRow extends EditableRow>({
   bulkRow,
   numColLeft,
   firstDataColLeft,
+  stickyColumns,
   detailFilledCount,
 }: {
   row: TRow;
@@ -234,6 +244,8 @@ function SortableRow<TRow extends EditableRow>({
   /** Left offsets, in px, for the frozen leading columns. */
   numColLeft: number;
   firstDataColLeft: number;
+  /** Whether the leading columns are frozen (spreadsheet mode only). */
+  stickyColumns: boolean;
   /** Filled / total detail fields, for the collapsed-row badge. */
   detailFilledCount?: { filled: number; total: number };
 }) {
@@ -262,9 +274,14 @@ function SortableRow<TRow extends EditableRow>({
         style={style}
         className={cn(
           "transition-colors hover:bg-gray-50",
-          // Fully opaque: the frozen columns inherit this, and a translucent
-          // background would let scrolled cells show through them.
-          rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50",
+          // Frozen columns inherit the row background, and a translucent one
+          // would let scrolled cells show through — so spreadsheet mode needs
+          // it fully opaque. Other tabs keep the original softer shade.
+          rowIdx % 2 === 0
+            ? "bg-white"
+            : stickyColumns
+              ? "bg-slate-50"
+              : "bg-slate-50/60",
           (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
           isDragging && "bg-brand-lavender-lightest shadow-sm",
           bulkRow?.isSelected && "bg-brand-sage-lightest hover:bg-brand-sage-lightest"
@@ -272,8 +289,10 @@ function SortableRow<TRow extends EditableRow>({
       >
         {bulkRow?.enabled && (
           <TableCell
-            className="sticky left-0 z-10 w-10 bg-inherit text-center"
-            style={{ left: 0 }}
+            className={cn(
+              "w-10 text-center",
+              stickyColumns && "sticky left-0 z-10 bg-inherit"
+            )}
           >
             <Checkbox
               checked={bulkRow.isSelected}
@@ -284,8 +303,11 @@ function SortableRow<TRow extends EditableRow>({
           </TableCell>
         )}
         <TableCell
-          className="sticky z-10 bg-inherit text-center text-xs text-muted-foreground"
-          style={{ left: numColLeft }}
+          className={cn(
+            "text-center text-xs text-muted-foreground",
+            stickyColumns && "sticky z-10 bg-inherit"
+          )}
+          style={stickyColumns ? { left: numColLeft } : undefined}
         >
           <div className="flex items-center justify-center gap-0.5">
             {canReorder && !isReadOnly && (
@@ -343,9 +365,13 @@ function SortableRow<TRow extends EditableRow>({
                 : col.type === "text"
                   ? "min-w-[120px]"
                   : "",
-              colIdx === 0 && "sticky z-10 bg-inherit"
+              stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
             )}
-            style={colIdx === 0 ? { left: firstDataColLeft } : undefined}
+            style={
+              stickyColumns && colIdx === 0
+                ? { left: firstDataColLeft }
+                : undefined
+            }
           >
             <div className="flex items-center gap-2">
               {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
@@ -497,6 +523,7 @@ export function EditableTable<TRow extends EditableRow>({
   renderDetail,
   deleteConfirmation,
   sampleRow,
+  spreadsheetMode = false,
   pasteConfig,
   csvConfig,
   bulkActions,
@@ -505,11 +532,18 @@ export function EditableTable<TRow extends EditableRow>({
   // Track confirm by stable row ID (not index) so drag-reorder doesn't target the wrong row
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Detail panels start CLOSED. Expanded-by-default made one row ~400px tall,
-  // so two rows could never be compared side by side.
-  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(
+  // Rows whose open/closed state differs from the mode's default. Tracking the
+  // difference rather than the state itself keeps both defaults correct without
+  // having to re-seed the set when the data changes.
+  //
+  // Spreadsheet mode defaults to CLOSED: expanded-by-default made one row
+  // ~400px tall, so two rows could never be compared side by side. Other tabs
+  // keep their original expanded-by-default behaviour.
+  const [toggledRowIds, setToggledRowIds] = useState<Set<string>>(
     () => new Set()
   );
+  const isRowExpanded = (rowId: string) =>
+    spreadsheetMode ? toggledRowIds.has(rowId) : !toggledRowIds.has(rowId);
   const [deleteDialogIndex, setDeleteDialogIndex] = useState<number | null>(null);
   // Transient confirmation after a multi-cell paste, so a paste that was
   // capped or partly out of range doesn't fail silently.
@@ -595,7 +629,7 @@ export function EditableTable<TRow extends EditableRow>({
     : "";
 
   const toggleRow = (rowId: string) => {
-    setExpandedRowIds((prev) => {
+    setToggledRowIds((prev) => {
       const next = new Set(prev);
       if (next.has(rowId)) {
         next.delete(rowId);
@@ -606,15 +640,14 @@ export function EditableTable<TRow extends EditableRow>({
     });
   };
 
-  const expandedCount = sortableIds.filter((id) => expandedRowIds.has(id)).length;
+  const expandedCount = sortableIds.filter(isRowExpanded).length;
 
   const toggleAll = () => {
     // When anything is open, close everything; otherwise open everything.
-    if (expandedCount > 0) {
-      setExpandedRowIds(new Set());
-    } else {
-      setExpandedRowIds(new Set(sortableIds));
-    }
+    const closeAll = expandedCount > 0;
+    // In spreadsheet mode the set holds the OPEN rows; otherwise the closed ones.
+    const shouldFill = spreadsheetMode ? !closeAll : closeAll;
+    setToggledRowIds(shouldFill ? new Set(sortableIds) : new Set());
   };
 
   // Merge columns for CSV and row activity checks (includes all user-editable fields)
@@ -661,7 +694,7 @@ export function EditableTable<TRow extends EditableRow>({
   // Applies a pasted block with its top-left corner at the focused cell,
   // growing the table when the block is taller than what's there.
   const handlePasteGrid = useMemo(() => {
-    if (!pasteConfig || isReadOnly) return undefined;
+    if (!spreadsheetMode || !pasteConfig || isReadOnly) return undefined;
     const { onApply, createRow, maxNewRows = 200 } = pasteConfig;
 
     return (startRow: number, startCol: number, grid: string[][]) => {
@@ -717,7 +750,7 @@ export function EditableTable<TRow extends EditableRow>({
         );
       }
     };
-  }, [pasteConfig, isReadOnly, data, columns, showPasteNotice]);
+  }, [spreadsheetMode, pasteConfig, isReadOnly, data, columns, showPasteNotice]);
 
   // ===== Sticky panes =====
   //
@@ -754,13 +787,15 @@ export function EditableTable<TRow extends EditableRow>({
 
   const numColLeft = stickyOffsets.num;
   const firstDataColLeft = stickyOffsets.firstData;
+  // Frozen columns and the pinned header are spreadsheet-mode only.
+  const stickyColumns = spreadsheetMode;
 
   const stickyLeftFor = (colIdx: number): number | undefined =>
-    colIdx === 0 ? firstDataColLeft : undefined;
+    stickyColumns && colIdx === 0 ? firstDataColLeft : undefined;
 
   // Only give the table its own scroll viewport once there's enough content to
   // warrant it — a short table shouldn't grow an inner scrollbar.
-  const useStickyViewport = data.length > 8;
+  const useStickyViewport = spreadsheetMode && data.length > 8;
 
   const tableContent = (
     <div>
@@ -815,7 +850,10 @@ export function EditableTable<TRow extends EditableRow>({
             <TableRow ref={headerRowRef} className="bg-primary hover:bg-primary">
               {bulkEnabled && (
                 <TableHead
-                  className="sticky left-0 top-0 z-30 w-10 bg-primary text-center text-white"
+                  className={cn(
+                    "w-10 text-center text-white",
+                    stickyColumns && "sticky left-0 top-0 z-30 bg-primary"
+                  )}
                 >
                   <Checkbox
                     checked={
@@ -832,10 +870,11 @@ export function EditableTable<TRow extends EditableRow>({
               )}
               <TableHead
                 className={cn(
-                  "sticky top-0 z-30 bg-primary text-center text-white",
-                  isExpandable || canReorder ? "w-14" : "w-10"
+                  "text-center text-white",
+                  isExpandable || canReorder ? "w-14" : "w-10",
+                  stickyColumns && "sticky top-0 z-30 bg-primary"
                 )}
-                style={{ left: numColLeft }}
+                style={stickyColumns ? { left: numColLeft } : undefined}
               >
                 {isExpandable && data.length > 0 ? (
                   <button
@@ -857,11 +896,14 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableHead
                   key={col.key}
                   className={cn(
-                    "sticky top-0 bg-primary text-white text-[12px] font-semibold uppercase tracking-[0.05em]",
-                    // Border-collapse drops borders on sticky cells, so the
-                    // header/body separator is drawn as an inset shadow.
-                    "shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)]",
-                    colIdx === 0 ? "z-30" : "z-20"
+                    "text-white text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    stickyColumns && [
+                      "sticky top-0 bg-primary",
+                      // Border-collapse drops borders on sticky cells, so the
+                      // header/body separator is drawn as an inset shadow.
+                      "shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)]",
+                      colIdx === 0 ? "z-30" : "z-20",
+                    ]
                   )}
                   style={{ width: col.width, left: stickyLeftFor(colIdx) }}
                 >
@@ -882,7 +924,12 @@ export function EditableTable<TRow extends EditableRow>({
                 </TableHead>
               ))}
               {!isReadOnly && (
-                <TableHead className="sticky top-0 z-20 w-10 bg-primary text-white" />
+                <TableHead
+                  className={cn(
+                    "w-10 text-white",
+                    stickyColumns && "sticky top-0 z-20 bg-primary"
+                  )}
+                />
               )}
             </TableRow>
           </TableHeader>
@@ -902,11 +949,19 @@ export function EditableTable<TRow extends EditableRow>({
             {sampleRow && (
               <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest border-l-4 border-brand-lavender">
                 {bulkEnabled && (
-                  <TableCell className="sticky left-0 z-10 w-10 bg-inherit" />
+                  <TableCell
+                    className={cn(
+                      "w-10",
+                      stickyColumns && "sticky left-0 z-10 bg-inherit"
+                    )}
+                  />
                 )}
                 <TableCell
-                  className="sticky z-10 bg-inherit py-2 text-center"
-                  style={{ left: numColLeft }}
+                  className={cn(
+                    "py-2 text-center",
+                    stickyColumns && "sticky z-10 bg-inherit"
+                  )}
+                  style={stickyColumns ? { left: numColLeft } : undefined}
                 >
                   <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
                     SAMPLE
@@ -915,8 +970,15 @@ export function EditableTable<TRow extends EditableRow>({
                 {columns.map((col, colIdx) => (
                   <TableCell
                     key={col.key}
-                    className={cn("p-2", colIdx === 0 && "sticky z-10 bg-inherit")}
-                    style={colIdx === 0 ? { left: firstDataColLeft } : undefined}
+                    className={cn(
+                      "p-2",
+                      stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
+                    )}
+                    style={
+                      stickyColumns && colIdx === 0
+                        ? { left: firstDataColLeft }
+                        : undefined
+                    }
                   >
                     <span className="block text-sm text-brand-lavender-darker italic px-1">
                       {sampleRow[col.key] || "—"}
@@ -951,7 +1013,7 @@ export function EditableTable<TRow extends EditableRow>({
                   rowIdx={rowIdx}
                   columns={columns}
                   detailColumns={detailColumns}
-                  isExpanded={expandedRowIds.has(sortableIds[rowIdx])}
+                  isExpanded={isRowExpanded(sortableIds[rowIdx])}
                   toggleRow={() => toggleRow(sortableIds[rowIdx])}
                   onUpdate={onUpdate}
                   onDuplicate={onDuplicate}
@@ -972,6 +1034,7 @@ export function EditableTable<TRow extends EditableRow>({
                   bulkRow={bulkRow}
                   numColLeft={numColLeft}
                   firstDataColLeft={firstDataColLeft}
+                  stickyColumns={stickyColumns}
                   detailFilledCount={
                     detailColumns
                       ? {
@@ -1044,6 +1107,7 @@ export function EditableTable<TRow extends EditableRow>({
   // fields sit outside this and keep ordinary browser behaviour.
   const grid = (
     <GridNavProvider
+      spreadsheetMode={spreadsheetMode}
       rowCount={data.length}
       columnCount={columns.length}
       onPasteGrid={handlePasteGrid}

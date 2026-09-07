@@ -182,6 +182,7 @@ export function CampaignsSheet() {
           onApply: handlePasteApply,
           createRow: () => ({ id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" }),
         }}
+        spreadsheetMode
         addLabel="Add Campaign"
         sampleRow={{ nameInternal: "CSR - Makati", jobTitleExternal: "Customer Service Representative", site: "Makati Office" }}
         csvConfig={{
