@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import path from "path";
-import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule, IntegrationRow } from "./types";
+import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule, IntegrationRow, CustomTab, CustomData } from "./types";
 import { TAB_CONFIG } from "./tab-config";
 import {
   integrationToCsvRow,
@@ -12,8 +12,15 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
 
   try {
     await workbook.xlsx.readFile(templatePath);
-  } catch {
-    // If template doesn't load, create a fresh workbook
+  } catch (error) {
+    // The branded template IS the deliverable, so failing to read it is a real
+    // problem — not a routine fallback. This was silent for months after the
+    // template was re-saved by openpyxl; see scripts/repair-template.mjs.
+    console.error(
+      `[excel-export] Could not read ${templatePath}. Falling back to unbranded generation. ` +
+        `If the template was re-exported from openpyxl or Google Sheets, run: node scripts/repair-template.mjs`,
+      error
+    );
     return generateFreshExcel(data);
   }
 
@@ -26,33 +33,292 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
     setCellSafe(companySheet, "D10", info.rehiresAllowed);
   }
 
-  // Populate tabular sheets
-  populateTableSheet(workbook, "User List", data.users as Record<string, unknown>[] | null, 19, ["name", "accessType", "email", "phone", "jobTitle", "site", "reportsTo", "comments"], "C");
-  // Flatten assignedRecruiters arrays to comma-separated strings for export
-  const campaignsForExport = data.campaigns?.map((c) => ({
-    ...c,
-    assignedRecruiters: Array.isArray(c.assignedRecruiters) ? c.assignedRecruiters.join(", ") : (c.assignedRecruiters ?? ""),
-  })) ?? null;
-  populateTableSheet(workbook, "Campaigns List", campaignsForExport as Record<string, unknown>[] | null, 12, ["campaignId", "nameInternal", "jobTitleExternal", "site", "jobDescription", "googleMapsLink", "zoomLink", "assignedRecruiters", "comments"], "C");
-  populateTableSheet(workbook, "Sites", data.sites as Record<string, unknown>[] | null, 12, ["siteName", "internalName", "interviewHours", "interviewType", "fullAddress", "documentsToRring", "googleMapsLink", "comments"], "C");
-  populateTableSheet(workbook, "Sources", data.sources as Record<string, unknown>[] | null, 12, ["category", "subcategory", "link", "comments"], "C");
-  populateTableSheet(workbook, "Folders", data.folders as Record<string, unknown>[] | null, 12, ["folderName", "description", "movementType", "comments"], "C");
-  populateTableSheet(workbook, "Document Collection", data.documents as Record<string, unknown>[] | null, 12, ["documentName", "applicableCandidates", "required", "blankTemplateLink", "applicableCampaigns", "accessPermissions", "folder", "comments"], "C");
-  populateTableSheet(workbook, "Attributes", data.attributes as Record<string, unknown>[] | null, 12, ["attributeName", "key", "description", "dataType", "suggestedValues", "addToAllFutureCandidates", "showAcrossApplications", "markDataPrivate", "restrictToOwners", "hideAttributeCompliance", "useSuggestedValuesOnly", "readOnlyMode"], "C");
-  // Handle both old array and new object format for AI Call
-  const aiCallFaqRows = Array.isArray(data.aiCallFaqs)
-    ? data.aiCallFaqs
-    : (data.aiCallFaqs as AiCallData)?.faqs ?? null;
-  populateTableSheet(workbook, "AI Call FAQs", aiCallFaqRows as unknown as Record<string, unknown>[] | null, 4, ["faq", "example", "faqResponse"], "A");
-  populateTableSheet(workbook, "Agency Portal", data.agencyPortal as Record<string, unknown>[] | null, 12, ["agencyName", "contactName", "email", "phone", "country", "comments"], "C");
-  populateTableSheet(workbook, "Agency Portal Users", data.agencyPortalUsers as Record<string, unknown>[] | null, 12, ["name", "email", "agency", "userAccess"], "C");
+  for (const spec of TEMPLATE_TABLES) {
+    populateTemplateTable(workbook, spec, selectRows(data, spec));
+  }
+
+  // The template has no sheet for these, so they are appended in the same style
+  // as the other generated sheets.
+  addStyledSheet(workbook, "Attributes", ATTRIBUTE_COLUMNS, data.attributes as Record<string, unknown>[] | null);
+  addStyledSheet(workbook, "Agency Portal Users", AGENCY_USER_COLUMNS, data.agencyPortalUsers as Record<string, unknown>[] | null);
 
   addAutoflowsSheet(workbook, data.autoflows);
   addIntegrationsSheet(workbook, data.integrations);
+  addCustomTabSheets(workbook, data.customTabs, data.customData as CustomData | null);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
+}
+
+/**
+ * Where each field goes in public/template.xlsx.
+ *
+ * Row and column positions are read off the template, not inferred — the
+ * sheets are hand-designed, so a table's data does not start immediately below
+ * its header and the columns are not contiguous (several sheets interleave
+ * "For Talkpush only" columns). `guardCol`/`guardText` make a layout change
+ * fail loudly instead of silently writing into the wrong cells.
+ */
+export interface TemplateTableSpec {
+  /** Worksheet name. */
+  sheet: string;
+  /** Row holding the column headers. */
+  headerRow: number;
+  /** Header cell checked before writing, to catch template drift. */
+  guardCol: string;
+  guardText: string;
+  /** First row written — below the header and the template's "Example" row. */
+  firstDataRow: number;
+  /**
+   * Last row occupied by the template's own sample/default content. Cleared
+   * (in the mapped columns only) before writing so the delivered file shows
+   * the client's answers rather than a mix of answers and Talkpush samples.
+   */
+  clearThroughRow: number;
+  /** Column holding the running row number, where the sheet has one. */
+  numberCol?: string;
+  /** Field name on the data row -> column letter. */
+  columns: Record<string, string>;
+}
+
+export const TEMPLATE_TABLES: TemplateTableSpec[] = [
+  {
+    sheet: "User List", headerRow: 17, guardCol: "C", guardText: "Name",
+    firstDataRow: 19, clearThroughRow: 19, numberCol: "B",
+    columns: {
+      name: "C", accessType: "D", email: "E", phone: "F",
+      jobTitle: "G", site: "H", reportsTo: "I", comments: "J",
+    },
+  },
+  {
+    sheet: "Campaigns List", headerRow: 17, guardCol: "C", guardText: "Campaign Name (Internal)",
+    firstDataRow: 19, clearThroughRow: 19, numberCol: "B",
+    columns: {
+      nameInternal: "C", jobTitleExternal: "D", site: "E", jobDescription: "F",
+      googleMapsLink: "G", zoomLink: "H", comments: "I",
+      // J/K/M are "For Talkpush only" and deliberately left untouched.
+      campaignId: "L", assignedRecruiters: "N",
+    },
+  },
+  {
+    sheet: "Sites", headerRow: 11, guardCol: "C", guardText: "Site Name",
+    firstDataRow: 13, clearThroughRow: 13, numberCol: "B",
+    columns: {
+      siteName: "C", internalName: "D", interviewHours: "E", interviewType: "F",
+      fullAddress: "G", documentsToRing: "H", googleMapsLink: "I", comments: "K",
+    },
+  },
+  {
+    sheet: "Pre-screening & Follow-up Quest", headerRow: 17, guardCol: "C", guardText: "Question",
+    firstDataRow: 19, clearThroughRow: 27, numberCol: "B",
+    columns: {
+      question: "C", questionType: "D", answerOptions: "E", applicableCampaigns: "F",
+      autoReject: "G", rejectCondition: "H", rejectReason: "I", comments: "J",
+      category: "M",
+    },
+  },
+  {
+    sheet: "Messaging Templates", headerRow: 12, guardCol: "C", guardText: "Template Name",
+    firstDataRow: 13, clearThroughRow: 35, numberCol: "B",
+    columns: {
+      name: "C", purpose: "D", language: "E", folder: "F",
+      // emailSubject is folded into the Email Template cell as a "Subject:"
+      // line, matching how the template's own default templates are written.
+      emailTemplate: "G", emailActive: "H",
+      smsTemplate: "I", smsActive: "J",
+      whatsappTemplate: "K", whatsappActive: "L",
+      messengerTemplate: "M", messengerActive: "N",
+      comments: "O",
+    },
+  },
+  {
+    sheet: "Sources", headerRow: 11, guardCol: "C", guardText: "Source Category",
+    firstDataRow: 13, clearThroughRow: 18, numberCol: "B",
+    columns: { category: "C", subcategory: "D", link: "E", comments: "F" },
+  },
+  {
+    sheet: "Folders", headerRow: 11, guardCol: "C", guardText: "Folder Name",
+    firstDataRow: 12, clearThroughRow: 28, numberCol: "B",
+    columns: { folderName: "C", description: "D", movementType: "E", comments: "F" },
+  },
+  {
+    sheet: "Document Collection", headerRow: 11, guardCol: "C", guardText: "Official Name of Document",
+    firstDataRow: 13, clearThroughRow: 16, numberCol: "B",
+    columns: {
+      documentName: "C", applicableCandidates: "D", required: "E", blankTemplateLink: "F",
+      applicableCampaigns: "G", accessPermissions: "H", folder: "I", comments: "J",
+    },
+  },
+  {
+    sheet: "AI Call FAQs", headerRow: 3, guardCol: "A", guardText: "FAQ",
+    firstDataRow: 4, clearThroughRow: 38,
+    columns: { faq: "A", example: "B", faqResponse: "C" },
+  },
+  {
+    sheet: "Agency Portal", headerRow: 11, guardCol: "C", guardText: "Agency Name",
+    firstDataRow: 12, clearThroughRow: 15, numberCol: "B",
+    columns: {
+      agencyName: "C", contactName: "D", email: "E", phone: "F",
+      country: "G", comments: "J",
+    },
+  },
+];
+
+/** Pulls the rows for a spec out of the checklist, normalising shape per sheet. */
+function selectRows(data: ChecklistData, spec: TemplateTableSpec): Record<string, unknown>[] | null {
+  switch (spec.sheet) {
+    case "User List":
+      return data.users as unknown as Record<string, unknown>[] | null;
+    case "Campaigns List":
+      return (data.campaigns ?? null) && data.campaigns!.map((c) => ({
+        ...c,
+        assignedRecruiters: Array.isArray(c.assignedRecruiters)
+          ? c.assignedRecruiters.join(", ")
+          : c.assignedRecruiters ?? "",
+      })) as unknown as Record<string, unknown>[];
+    case "Sites":
+      return data.sites as unknown as Record<string, unknown>[] | null;
+    case "Pre-screening & Follow-up Quest":
+      return data.prescreening as unknown as Record<string, unknown>[] | null;
+    case "Messaging Templates":
+      return (data.messaging ?? null) && data.messaging!.map((t) => ({
+        ...t,
+        emailTemplate: joinSubject(t.emailSubject, t.emailTemplate),
+      })) as unknown as Record<string, unknown>[];
+    case "Sources":
+      return data.sources as unknown as Record<string, unknown>[] | null;
+    case "Folders":
+      return data.folders as unknown as Record<string, unknown>[] | null;
+    case "Document Collection":
+      return data.documents as unknown as Record<string, unknown>[] | null;
+    case "AI Call FAQs": {
+      // Older checklists stored a bare array; newer ones nest it under `faqs`.
+      const faqs = Array.isArray(data.aiCallFaqs)
+        ? data.aiCallFaqs
+        : (data.aiCallFaqs as AiCallData | null)?.faqs ?? null;
+      return faqs as unknown as Record<string, unknown>[] | null;
+    }
+    case "Agency Portal":
+      return data.agencyPortal as unknown as Record<string, unknown>[] | null;
+    default:
+      return null;
+  }
+}
+
+/** The template writes email templates with the subject as a leading line. */
+function joinSubject(subject: string | undefined, body: string | undefined): string {
+  const s = (subject ?? "").trim();
+  const b = (body ?? "").trim();
+  if (!s) return b;
+  return b ? `Subject: ${s}\n\n${b}` : `Subject: ${s}`;
+}
+
+const colNum = (letter: string) => letter.charCodeAt(0) - 64;
+
+function cellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    const rich = value as { richText?: { text: string }[]; text?: string };
+    if (Array.isArray(rich.richText)) return rich.richText.map((t) => t.text).join("");
+    if (typeof rich.text === "string") return rich.text;
+    return "";
+  }
+  return String(value);
+}
+
+function toCellValue(value: unknown): ExcelJS.CellValue {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value;
+  return value as ExcelJS.CellValue;
+}
+
+function populateTemplateTable(
+  workbook: ExcelJS.Workbook,
+  spec: TemplateTableSpec,
+  rows: Record<string, unknown>[] | null | undefined
+) {
+  // No client answers: leave the template's examples and defaults in place,
+  // so an untouched tab still reads as guidance rather than a blank table.
+  if (!rows || rows.length === 0) return;
+
+  const sheet = workbook.getWorksheet(spec.sheet);
+  if (!sheet) {
+    console.error(`[excel-export] Template is missing the "${spec.sheet}" sheet; skipped ${rows.length} row(s).`);
+    return;
+  }
+
+  const header = cellText(sheet.getCell(spec.headerRow, colNum(spec.guardCol)).value);
+  if (!header.startsWith(spec.guardText)) {
+    console.error(
+      `[excel-export] "${spec.sheet}" layout changed: expected ${spec.guardCol}${spec.headerRow} to start with ` +
+        `"${spec.guardText}" but found "${header.slice(0, 40)}". Skipping this sheet rather than writing ` +
+        `${rows.length} row(s) into the wrong cells.`
+    );
+    return;
+  }
+
+  const owned = Object.values(spec.columns).map(colNum);
+  if (spec.numberCol) owned.push(colNum(spec.numberCol));
+
+  const lastRow = Math.max(spec.clearThroughRow, spec.firstDataRow + rows.length - 1);
+  for (let r = spec.firstDataRow; r <= lastRow; r++) {
+    for (const c of owned) sheet.getCell(r, c).value = null;
+  }
+
+  rows.forEach((row, i) => {
+    const r = spec.firstDataRow + i;
+    if (spec.numberCol) sheet.getCell(r, colNum(spec.numberCol)).value = i + 1;
+    for (const [field, letter] of Object.entries(spec.columns)) {
+      sheet.getCell(r, colNum(letter)).value = toCellValue(row[field]);
+    }
+  });
+}
+
+type StyledColumn = { header: string; key: string; width: number };
+
+const ATTRIBUTE_COLUMNS: StyledColumn[] = [
+  { header: "Attribute Name", key: "attributeName", width: 25 },
+  { header: "Key", key: "key", width: 20 },
+  { header: "Description", key: "description", width: 40 },
+  { header: "Data Type", key: "dataType", width: 15 },
+  { header: "Suggested Values", key: "suggestedValues", width: 30 },
+  { header: "Add to All Future Candidates", key: "addToAllFutureCandidates", width: 26 },
+  { header: "Show Across Applications", key: "showAcrossApplications", width: 24 },
+  { header: "Mark Data Private", key: "markDataPrivate", width: 20 },
+  { header: "Restrict to Owners", key: "restrictToOwners", width: 20 },
+  { header: "Hide Attribute (Compliance)", key: "hideAttributeCompliance", width: 26 },
+  { header: "Use Suggested Values Only", key: "useSuggestedValuesOnly", width: 24 },
+  { header: "Read-only Mode", key: "readOnlyMode", width: 18 },
+];
+
+const AGENCY_USER_COLUMNS: StyledColumn[] = [
+  { header: "Name", key: "name", width: 25 },
+  { header: "Email", key: "email", width: 30 },
+  { header: "Agency", key: "agency", width: 25 },
+  { header: "User Access", key: "userAccess", width: 20 },
+];
+
+/** Appends a sheet in the same style as the other generated sheets. */
+function addStyledSheet(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  cols: StyledColumn[],
+  rows: Record<string, unknown>[] | null | undefined
+) {
+  if (workbook.getWorksheet(name)) return;
+  const sheet = workbook.addWorksheet(name);
+  sheet.columns = cols;
+  if (rows) {
+    rows.forEach((row) => {
+      const out: Record<string, unknown> = {};
+      cols.forEach((c) => { out[c.key] = toCellValue(row[c.key]); });
+      sheet.addRow(out);
+    });
+  }
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF535FC1" } };
 }
 
 function setCellSafe(sheet: ExcelJS.Worksheet, ref: string, value: unknown) {
@@ -62,34 +328,6 @@ function setCellSafe(sheet: ExcelJS.Worksheet, ref: string, value: unknown) {
   } catch {
     // Skip if cell reference is invalid
   }
-}
-
-function populateTableSheet(
-  workbook: ExcelJS.Workbook,
-  sheetName: string,
-  rows: Record<string, unknown>[] | null,
-  startRow: number,
-  fields: string[],
-  startCol: string
-) {
-  if (!rows || rows.length === 0) return;
-  const sheet = workbook.getWorksheet(sheetName);
-  if (!sheet) return;
-
-  const startColNum = startCol.charCodeAt(0) - 64; // A=1, B=2, C=3...
-
-  rows.forEach((row, i) => {
-    const rowNum = startRow + i;
-    fields.forEach((field, j) => {
-      const colNum = startColNum + j;
-      try {
-        const cell = sheet.getCell(rowNum, colNum);
-        cell.value = (row[field] as ExcelJS.CellValue) ?? "";
-      } catch {
-        // Skip
-      }
-    });
-  });
 }
 
 async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
@@ -158,7 +396,7 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Interview Hours", key: "interviewHours", width: 20 },
     { header: "Interview Type", key: "interviewType", width: 15 },
     { header: "Full Address", key: "fullAddress", width: 40 },
-    { header: "Documents to Bring", key: "documentsToRring", width: 30 },
+    { header: "Documents to Bring", key: "documentsToRing", width: 30 },
     { header: "Google Maps Link", key: "googleMapsLink", width: 30 },
     { header: "Comments", key: "comments", width: 30 },
   ], data.sites as Record<string, unknown>[] | null);
@@ -260,6 +498,7 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
 
   addAutoflowsSheet(workbook, data.autoflows);
   addIntegrationsSheet(workbook, data.integrations);
+  addCustomTabSheets(workbook, data.customTabs, data.customData as CustomData | null);
   addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -405,4 +644,153 @@ function addTabUploadsSheet(
     fgColor: { argb: "FF1A73E8" },
   };
   rows.forEach((r) => sheet.addRow(r));
+}
+
+// =============================================================================
+// Custom tabs
+// =============================================================================
+
+const HEADER_FILL_CUSTOM = "FF7C6BB5";
+
+/**
+ * Excel worksheet names are capped at 31 characters and cannot contain
+ * : \ / ? * [ ] — so a client-authored tab label has to be sanitized before it
+ * can be used. Returns a name that is both legal and unique within `workbook`.
+ */
+function toUniqueSheetName(workbook: ExcelJS.Workbook, label: string): string {
+  const cleaned = label.replace(/[:\\/?*[\]]/g, " ").replace(/\s+/g, " ").trim();
+  const base = (cleaned || "Custom Tab").slice(0, 31);
+
+  if (!workbook.getWorksheet(base)) return base;
+
+  // Suffix until unique, trimming the base so the result still fits in 31 chars.
+  for (let n = 2; n < 100; n++) {
+    const suffix = ` (${n})`;
+    const candidate = base.slice(0, 31 - suffix.length) + suffix;
+    if (!workbook.getWorksheet(candidate)) return candidate;
+  }
+  return base.slice(0, 27) + ` (${Date.now() % 100})`;
+}
+
+/** Booleans render as Yes/No so the sheet reads the way the in-app checkbox does. */
+function customCellValue(value: unknown): ExcelJS.CellValue {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return value as ExcelJS.CellValue;
+}
+
+/** Notes the attached reference spreadsheet, if the client uploaded one. */
+function appendUploadedFileNote(sheet: ExcelJS.Worksheet, tab: CustomTab) {
+  if (!tab.uploadedFile) return;
+  sheet.addRow([]);
+  const noteRow = sheet.addRow(["Reference spreadsheet:", tab.uploadedFile.name]);
+  noteRow.getCell(1).font = { bold: true };
+  sheet.addRow(["File URL:", tab.uploadedFile.url]);
+}
+
+/** Table-based custom tab → one worksheet, one column per defined column. */
+function addCustomTableTabSheet(
+  workbook: ExcelJS.Workbook,
+  tab: CustomTab
+) {
+  const columns = tab.columns ?? [];
+  if (columns.length === 0) return;
+
+  const sheet = workbook.addWorksheet(toUniqueSheetName(workbook, tab.label));
+  sheet.columns = columns.map((col) => ({
+    header: col.label,
+    key: col.key,
+    width: col.type === "textarea" ? 45 : 25,
+  }));
+
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: HEADER_FILL_CUSTOM },
+  };
+
+  for (const row of tab.rows ?? []) {
+    const rowData: Record<string, ExcelJS.CellValue> = {};
+    for (const col of columns) {
+      rowData[col.key] = customCellValue(row[col.key]);
+    }
+    sheet.addRow(rowData);
+  }
+
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+    });
+  });
+
+  appendUploadedFileNote(sheet, tab);
+}
+
+/**
+ * Form-based custom tab → a Field/Value worksheet. Values live in the shared
+ * `customData` bag keyed by field id, not on the tab itself.
+ */
+function addCustomFieldTabSheet(
+  workbook: ExcelJS.Workbook,
+  tab: CustomTab,
+  customData: CustomData | null
+) {
+  const fields = tab.fields ?? [];
+  if (fields.length === 0) return;
+
+  const sheet = workbook.addWorksheet(toUniqueSheetName(workbook, tab.label));
+  sheet.columns = [
+    { header: "Field", key: "field", width: 35 },
+    { header: "Value", key: "value", width: 60 },
+  ];
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: HEADER_FILL_CUSTOM },
+  };
+
+  for (const field of fields) {
+    sheet.addRow({
+      field: field.label,
+      value: customCellValue(customData?.[field.id]),
+    });
+  }
+
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "top", wrapText: true };
+    });
+  });
+
+  appendUploadedFileNote(sheet, tab);
+}
+
+/**
+ * Adds one worksheet per custom tab. Without this, anything a client entered
+ * into a custom tab is absent from the exported workbook.
+ */
+function addCustomTabSheets(
+  workbook: ExcelJS.Workbook,
+  customTabs: CustomTab[] | null | undefined,
+  customData: CustomData | null
+) {
+  if (!customTabs || customTabs.length === 0) return;
+
+  // Respect the in-app tab ordering.
+  const ordered = [...customTabs].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+  );
+
+  for (const tab of ordered) {
+    if (tab.columns !== undefined) {
+      addCustomTableTabSheet(workbook, tab);
+    } else {
+      addCustomFieldTabSheet(workbook, tab, customData);
+    }
+  }
 }

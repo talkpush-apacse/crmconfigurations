@@ -11,7 +11,9 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:setup": "npx prisma migrate dev && npx tsx prisma/seed.ts",
     "vercel-build": "next build",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "verify:template": "tsx scripts/verify-template.ts",
+    "repair:template": "node scripts/repair-template.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
