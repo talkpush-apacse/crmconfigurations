@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle, Info, ArrowRight, ChevronDown } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useChecklistContext } from "@/lib/checklist-context";
-import { getEnabledTabs } from "@/lib/tab-config";
+import { getEnabledTabs, excludeTalkpushTabs, isClientView } from "@/lib/tab-config";
 import { getSectionState } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
 
@@ -53,7 +53,21 @@ export function WelcomeSheet() {
     });
   };
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, !!includeAdminTabs);
+  // `tabFilledBy` has to be passed here: without it this reads the TAB_CONFIG
+  // defaults and the chips below disagree with the sidebar on any checklist
+  // where a tab was moved between the client and Talkpush groups.
+  const allTabs = getEnabledTabs(
+    data?.enabledTabs ?? null,
+    !!includeAdminTabs,
+    data?.tabOrder ?? null,
+    null,
+    (data?.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+  );
+  // On the client route, hide the tabs Talkpush fills in — otherwise this page
+  // advertises sections the client can't open from the sidebar.
+  const enabledTabs = isClientView(basePath)
+    ? excludeTalkpushTabs(allTabs)
+    : allTabs;
   const contentTabs = enabledTabs.filter((t) => t.dataKey);
 
   const completedCount = contentTabs.filter((t) => {

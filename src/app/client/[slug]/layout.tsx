@@ -7,7 +7,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
-import { getEnabledTabs } from "@/lib/tab-config";
+import { getEnabledTabs, excludeTalkpushTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
 import type { ChecklistData, CustomTab, CustomData, TabUploadMetaMap } from "@/lib/types";
 import type { NavItem } from "@/components/layout/TopNav";
@@ -55,14 +55,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
   const customData = (data.customData as CustomData | null) ?? null;
 
+  // Tabs Talkpush fills in are hidden from the client-facing checklist — the
+  // client should only see what is being asked of them. They remain visible in
+  // the editor and admin views. This also keeps them out of the completion
+  // count below, so the percentage reflects only the client's own work.
   const enabledTabs = isCustom
     ? []
-    : getEnabledTabs(
-        data.enabledTabs ?? null,
-        false,
-        data.tabOrder ?? null,
-        customTabs,
-        (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+    : excludeTalkpushTabs(
+        getEnabledTabs(
+          data.enabledTabs ?? null,
+          false,
+          data.tabOrder ?? null,
+          customTabs,
+          (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+        ),
       );
 
   const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);

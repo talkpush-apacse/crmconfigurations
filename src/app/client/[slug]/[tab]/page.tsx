@@ -2,7 +2,12 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
+import {
+  getTabBySlug,
+  getEnabledTabs,
+  getCustomTabBySlug,
+  excludeTalkpushTabs,
+} from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
@@ -59,7 +64,20 @@ export default function TabPage() {
   const tabConfig = isCustom ? null : getTabBySlug(tab);
   const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
 
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, false, undefined, data?.customTabs);
+  // Mirrors the sidebar: Talkpush-filled tabs aren't reachable from the client
+  // route, so a bookmarked or hand-typed URL redirects rather than rendering a
+  // tab the client isn't meant to see.
+  const enabledTabs = isCustom
+    ? []
+    : excludeTalkpushTabs(
+        getEnabledTabs(
+          data?.enabledTabs ?? null,
+          false,
+          data?.tabOrder ?? null,
+          data?.customTabs,
+          (data?.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+        ),
+      );
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled

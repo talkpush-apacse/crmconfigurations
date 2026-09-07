@@ -275,6 +275,11 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
     () => [...clientItems, ...talkpushItems],
     [clientItems, talkpushItems]
   );
+
+  // The group labels only mean something as a contrast between the two groups.
+  // With one group — the client view, where Talkpush tabs are hidden — the
+  // header labels nothing, so it is dropped.
+  const showGroupHeaders = clientItems.length > 0 && talkpushItems.length > 0;
   const combinedIds = useMemo(
     () => combinedItems.map((item) => item.slug || item.href),
     [combinedItems]
@@ -384,13 +389,15 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
             <SortableContext items={combinedIds} strategy={verticalListSortingStrategy}>
               {clientItems.length > 0 && (
                 <>
-                  <GroupHeader label={`Filled Up by ${clientName}`} />
+                  {showGroupHeaders && (
+                    <GroupHeader label={`Filled Up by ${clientName}`} />
+                  )}
                   {renderGroup(clientItems)}
                 </>
               )}
               {talkpushItems.length > 0 && (
                 <>
-                  <GroupHeader label="Filled Up by Talkpush" />
+                  {showGroupHeaders && <GroupHeader label="Filled Up by Talkpush" />}
                   {renderGroup(talkpushItems)}
                 </>
               )}
@@ -399,13 +406,15 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
             <>
               {clientItems.length > 0 && (
                 <>
-                  <GroupHeader label={`Filled Up by ${clientName}`} />
+                  {showGroupHeaders && (
+                    <GroupHeader label={`Filled Up by ${clientName}`} />
+                  )}
                   {renderGroup(clientItems)}
                 </>
               )}
               {talkpushItems.length > 0 && (
                 <>
-                  <GroupHeader label="Filled Up by Talkpush" />
+                  {showGroupHeaders && <GroupHeader label="Filled Up by Talkpush" />}
                   {renderGroup(talkpushItems)}
                 </>
               )}

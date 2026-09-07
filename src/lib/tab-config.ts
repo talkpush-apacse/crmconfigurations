@@ -154,3 +154,25 @@ export function customTabSlugConflict(
   if (clash) return "A custom tab with that name already exists.";
   return null;
 }
+
+// ===== Client-facing visibility =====
+
+/**
+ * Tabs Talkpush fills in are hidden from the client-facing checklist.
+ *
+ * A client filling out the form should only see what is actually being asked
+ * of them; the Talkpush-side tabs are working notes for the SE. They stay
+ * visible in the editor and admin views.
+ *
+ * Pass tabs that already carry their per-checklist `filledBy` overrides —
+ * i.e. the output of `getEnabledTabs` with `tabFilledByOverrides` supplied —
+ * otherwise this filters on the defaults and will disagree with the sidebar.
+ */
+export function excludeTalkpushTabs(tabs: TabConfig[]): TabConfig[] {
+  return tabs.filter((tab) => tab.filledBy !== "talkpush");
+}
+
+/** True for the client-facing checklist route, which hides Talkpush tabs. */
+export function isClientView(basePath: string | null | undefined): boolean {
+  return !!basePath && basePath.startsWith("/client/");
+}
