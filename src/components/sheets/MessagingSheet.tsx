@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef } from "react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -349,30 +348,17 @@ export function MessagingSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Messaging Templates"
         description="Configure message templates for each communication channel. Use tokens like <Candidate First Name> or <Scheduler URL> for personalization."
       />
 
-      <TabUploadBanner tabKey="messaging" tabLabel="Messaging Templates" />
+      <TabUploadBanner tabKey="messaging" tabLabel="Messaging Templates" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Typical messaging flow:</p>
-        <ol className="list-decimal pl-4 space-y-0.5">
-          <li><strong>Invitation to Apply</strong> &mdash; First outreach to candidates via SMS/WhatsApp</li>
-          <li><strong>Application Acknowledgment</strong> &mdash; Confirm receipt of their application</li>
-          <li><strong>Invite to Book Interview</strong> &mdash; Ask shortlisted candidates to schedule</li>
-          <li><strong>Invite to AI Interview</strong> &mdash; Direct candidates to complete AI screening</li>
-          <li><strong>Follow-ups</strong> &mdash; Reminders for incomplete applications, unbooked schedules, or pending AI interviews</li>
-          <li><strong>Schedule Confirmation</strong> &mdash; Confirm interview date, time, and location</li>
-        </ol>
-        <p className="mt-1">The 8 pre-populated templates below cover this full flow. Edit them to match your branding and tone.</p>
-      </ExampleHint>
-
       <div className="mb-4 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-3">
         <p className="text-xs text-foreground/80">
           <strong>Available tokens:</strong>{" "}

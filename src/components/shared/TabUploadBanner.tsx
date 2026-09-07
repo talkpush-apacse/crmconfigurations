@@ -25,6 +25,15 @@ interface TabUploadBannerProps {
   tabKey: string;
   /** Display name shown in the banner copy ("Already have your <tabLabel> in a spreadsheet?") */
   tabLabel: string;
+  /**
+   * Renders as a single line instead of a full-width panel.
+   *
+   * The roomy version cost ~200px above the table on every tab, competing with
+   * the fields for attention. Compact keeps the offer available without
+   * pushing the inputs off the first screen. The uploaded-file list is
+   * unchanged — once files exist they are worth showing.
+   */
+  compact?: boolean;
 }
 
 const ACCEPT =
@@ -57,7 +66,7 @@ function generateId(): string {
   return `tu_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
+export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUploadBannerProps) {
   const { uploadedFiles, isSkipped, setUploadedFiles, setIsSkipped } =
     useTabUpload(tabKey);
   const { basePath } = useChecklistContext();
@@ -144,24 +153,42 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-lavender text-brand-lavender-darker">
-            <FileSpreadsheet className="h-5 w-5" />
+    <div
+      className={
+        compact
+          ? "mb-3"
+          : "mb-6 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-4"
+      }
+    >
+      <div
+        className={
+          compact
+            ? "flex flex-wrap items-center gap-2"
+            : "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+        }
+      >
+        {compact ? (
+          <p className="text-[13px] text-muted-foreground">
+            Already have your {tabLabel.toLowerCase()} in a spreadsheet?
+          </p>
+        ) : (
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-lavender text-brand-lavender-darker">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-sm font-semibold text-foreground">
+                Already have your {tabLabel.toLowerCase()} in a spreadsheet?
+              </h4>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
+                Upload your existing Excel or CSV file and our team will review it.
+                You can still fill in the fields below if you prefer.
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h4 className="text-sm font-semibold text-foreground">
-              Already have your {tabLabel.toLowerCase()} in a spreadsheet?
-            </h4>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
-              Upload your existing Excel or CSV file and our team will review it.
-              You can still fill in the fields below if you prefer.
-            </p>
-          </div>
-        </div>
+        )}
 
-        <div className="shrink-0 sm:pl-3">
+        <div className={compact ? "shrink-0" : "shrink-0 sm:pl-3"}>
           <input
             ref={fileInputRef}
             type="file"
@@ -171,11 +198,15 @@ export function TabUploadBanner({ tabKey, tabLabel }: TabUploadBannerProps) {
             multiple
           />
           <Button
-            variant="outline"
+            variant={compact ? "ghost" : "outline"}
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="border-brand-lavender-lighter bg-white text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker"
+            className={
+              compact
+                ? "h-7 px-2 text-xs text-brand-lavender-darker hover:bg-brand-lavender-lightest"
+                : "border-brand-lavender-lighter bg-white text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker"
+            }
           >
             {uploading ? (
               <>

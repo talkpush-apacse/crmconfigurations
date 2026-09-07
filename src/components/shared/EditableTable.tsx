@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck } from "lucide-react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -468,20 +468,27 @@ function SortableRow<TRow extends EditableRow>({
                       className={isWide ? "col-span-2" : "col-span-1"}
                     >
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {col.description ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/70">
-                                {renderColumnLabel(col, "text-red-500")}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-xs">
-                              <p className="text-xs">{col.description}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          renderColumnLabel(col, "text-red-500")
-                        )}
+                        <span className="inline-flex items-center gap-1">
+                          {renderColumnLabel(col, "text-red-500")}
+                          {col.description && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex shrink-0 cursor-help items-center rounded-full text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
+                                  aria-label={`About ${col.label}`}
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-sm">
+                                <div className="space-y-1 text-xs leading-relaxed">
+                                  {col.description}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </span>
                       </label>
                       <EditableCell
                         value={rowValues[col.key] as string | boolean}
@@ -907,20 +914,33 @@ export function EditableTable<TRow extends EditableRow>({
                   )}
                   style={{ width: col.width, left: stickyLeftFor(colIdx) }}
                 >
-                  {col.description ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-white/60">
-                          {renderColumnLabel(col, "text-red-200")}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs bg-slate-800 text-slate-50">
-                        <p className="text-xs">{col.description}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    renderColumnLabel(col, "text-red-200")
-                  )}
+                  <span className="inline-flex items-center gap-1">
+                    {renderColumnLabel(col, "text-red-200")}
+                    {col.description && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            // A dotted underline on white text over a dark
+                            // header is nearly invisible; an explicit icon is
+                            // discoverable and keyboard-reachable.
+                            className="inline-flex shrink-0 cursor-help items-center rounded-full text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70"
+                            aria-label={`About ${col.label}`}
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          className="max-w-sm bg-slate-800 text-slate-50"
+                        >
+                          <div className="space-y-1 text-xs leading-relaxed">
+                            {col.description}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </span>
                 </TableHead>
               ))}
               {!isReadOnly && (
@@ -934,17 +954,6 @@ export function EditableTable<TRow extends EditableRow>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {/* Empty state — only show when there is no data AND no sample row */}
-            {data.length === 0 && !sampleRow && (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + 2 + (bulkEnabled ? 1 : 0)}
-                  className="h-20 text-center text-muted-foreground"
-                >
-                  {emptyMessage ?? <>No data yet. Click &quot;{addLabel}&quot; to add a row.</>}
-                </TableCell>
-              </TableRow>
-            )}
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
               <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest border-l-4 border-brand-lavender">
@@ -987,6 +996,41 @@ export function EditableTable<TRow extends EditableRow>({
                 ))}
                 {/* No action buttons in the sample row */}
                 <TableCell />
+              </TableRow>
+            )}
+            {/*
+              Empty state. Previously this was skipped entirely whenever a
+              sample row was present, so a client opened the tab to a greyed-out
+              example and a small button at the bottom of the table — with
+              nothing obvious to type into and no signal that a row had to be
+              added first. Now the prompt always shows, below the sample.
+            */}
+            {data.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={columns.length + 2 + (bulkEnabled ? 1 : 0)}
+                  className="py-8 text-center"
+                >
+                  {emptyMessage ?? (
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Nothing here yet
+                        {sampleRow ? " — the row above is an example, not your data." : "."}
+                      </p>
+                      {!isReadOnly && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={onAdd}
+                          className="border-primary/40 text-primary hover:border-primary/70"
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          {addLabel}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </TableCell>
               </TableRow>
             )}
             {data.map((row, rowIdx) => {

@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -11,6 +10,20 @@ import type { ColumnDef, QuestionRow } from "@/lib/types";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+
+// Question type definitions, shown in the Question Type column tooltip.
+const referenceData = [
+  { type: "Text", description: "Free-form text response from the candidate." },
+  { type: "Number", description: "Numeric input only." },
+  { type: "Multiple Choice", description: "Candidate picks one or more from predefined options." },
+  { type: "Dropdown", description: "Single selection from a dropdown list of options." },
+  { type: "Audio", description: "Candidate records a voice response." },
+  { type: "Audio or Text", description: "Candidate can respond with voice or text." },
+  { type: "Video", description: "Candidate records a video response." },
+  { type: "File Upload", description: "Candidate uploads a file (resume, ID, etc.)." },
+  { type: "Play Media", description: "Plays a media file to the candidate (no response collected)." },
+  { type: "Geolocation", description: "Captures the candidate's GPS location." },
+];
 
 const columns: ColumnDef[] = [
   {
@@ -34,7 +47,16 @@ const columns: ColumnDef[] = [
     type: "dropdown",
     options: [...DROPDOWN_OPTIONS.questionTypes],
     required: true,
-    description: "The input format candidates will use to answer",
+    description: (
+      <>
+        <p>The input format candidates will use to answer.</p>
+        {referenceData.map((r) => (
+          <p key={r.type}>
+            <strong>{r.type}</strong> — {r.description}
+          </p>
+        ))}
+      </>
+    ),
   },
 ];
 
@@ -48,9 +70,9 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "applicableCampaigns",
-    label: "Applicable Campaigns",
+    label: "Applicable Jobs/Roles",
     type: "text",
-    description: "Comma-separated campaign names. Leave blank to apply globally.",
+    description: "Which role/job/account will this question apply for?",
     example: "CSR - Makati, TSR - BGC Night",
   },
   {
@@ -80,19 +102,6 @@ const detailColumns: ColumnDef[] = [
     type: "textarea",
     description: "Internal notes for reviewers or implementation guidance",
   },
-];
-
-const referenceData = [
-  { type: "Text", description: "Free-form text response from the candidate." },
-  { type: "Number", description: "Numeric input only." },
-  { type: "Multiple Choice", description: "Candidate picks one or more from predefined options." },
-  { type: "Dropdown", description: "Single selection from a dropdown list of options." },
-  { type: "Audio", description: "Candidate records a voice response." },
-  { type: "Audio or Text", description: "Candidate can respond with voice or text." },
-  { type: "Video", description: "Candidate records a video response." },
-  { type: "File Upload", description: "Candidate uploads a file (resume, ID, etc.)." },
-  { type: "Play Media", description: "Plays a media file to the candidate (no response collected)." },
-  { type: "Geolocation", description: "Captures the candidate's GPS location." },
 ];
 
 const EMPTY_QUESTION: Omit<QuestionRow, "id"> = {
@@ -163,40 +172,17 @@ export function PrescreeningSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Pre-Screening Questions"
         description="Define the questions candidates will answer during the screening process. Use answer options for Multiple Choice and Dropdown types."
       />
 
-      <TabUploadBanner tabKey="prescreening" tabLabel="Pre-Screening Questions" />
+      <TabUploadBanner tabKey="prescreening" tabLabel="Pre-Screening Questions" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample questions:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Are you willing to work night shifts?</strong> | Multiple Choice | Yes, No | Auto-reject if &quot;No&quot;</li>
-          <li><strong>How many years of BPO experience do you have?</strong> | Number | No options needed</li>
-          <li><strong>Please upload your latest resume</strong> | File Upload | Follow-up question</li>
-        </ul>
-      </ExampleHint>
-
-      <div className="mb-6 rounded-lg border border-gray-200 bg-slate-50 overflow-hidden">
-        <div className="bg-slate-100 border-b border-gray-200 px-4 py-2.5 text-[13px] font-semibold text-gray-700">
-          Question Type Reference
-        </div>
-        <div className="divide-y divide-gray-200">
-          {referenceData.map((r) => (
-            <div key={r.type} className="grid px-4 py-2.5" style={{ gridTemplateColumns: "160px 1fr" }}>
-              <span className="text-[14px] font-medium text-gray-900">{r.type}</span>
-              <span className="text-[14px] text-gray-500">{r.description}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <EditableTable
         columns={columns}
         detailColumns={detailColumns}

@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -91,25 +90,17 @@ export function SitesSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Sites"
         description="Configure interview and office locations where candidates may be directed."
       />
 
-      <TabUploadBanner tabKey="sites" tabLabel="Sites" />
+      <TabUploadBanner tabKey="sites" tabLabel="Sites" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample sites:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Makati Main</strong> | MKT-HQ | Mon-Fri 9AM-5PM | Onsite | 5F Ayala Tower, Ayala Ave, Makati City | Valid ID, NBI Clearance</li>
-          <li><strong>BGC Hub</strong> | BGC-01 | Mon-Sat 8AM-8PM | Hybrid | 10F High Street South, BGC, Taguig | Valid ID, SSS E1</li>
-        </ul>
-      </ExampleHint>
-
       <EditableTable
         columns={columns}
         detailColumns={detailColumns}

@@ -1,3 +1,4 @@
+import type React from "react";
 // ===== Soft Delete =====
 // Mixin for row-shaped JSONB entries that support bulk soft-delete.
 // `deletedAt` is the ISO timestamp of deletion; rows with a non-null value are
@@ -744,7 +745,12 @@ export interface ChecklistData {
 export interface ColumnDef {
   key: string;
   label: string;
-  description?: string;
+  /**
+   * Help text shown in the column-header tooltip. Accepts nodes so that
+   * reference material (role definitions, question types) can live here
+   * instead of as a separate block above the table.
+   */
+  description?: React.ReactNode;
   type: "text" | "textarea" | "dropdown" | "multiselect" | "boolean" | "readonly";
   options?: string[];
   width?: string;

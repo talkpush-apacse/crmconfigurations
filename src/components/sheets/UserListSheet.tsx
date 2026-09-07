@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -13,9 +12,25 @@ import { SectionFooter } from "@/components/shared/SectionFooter";
 import { duplicateRows, mergeVisibleRows } from "@/lib/duplicate-row";
 import { downloadTalkpushUsersCsv } from "@/lib/talkpush-export";
 
+// Role definitions, shown in the Access Type column tooltip.
+const referenceData = [
+  { role: "Owner", description: "Full platform access — can manage users, campaigns, settings, and all data." },
+  { role: "Manager", description: "Standard access — can manage candidates, campaigns, and view reports." },
+  { role: "Limited Manager", description: "Read-only access — can view data but cannot make changes." },
+];
+
 const columns: ColumnDef[] = [
   { key: "name", label: "Name", type: "text", description: "Full name of the user", required: true },
-  { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: "Role determining platform access level", required: true },
+  { key: "accessType", label: "Access Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.userRoles], description: (
+      <>
+        <p>Role determining platform access level</p>
+        {referenceData.map((r) => (
+          <p key={r.role}>
+            <strong>{r.role}</strong> — {r.description}
+          </p>
+        ))}
+      </>
+    ), required: true },
   { key: "email", label: "Email", type: "text", description: "User's email address for login", validation: "email", required: true },
   { key: "phone", label: "Phone", type: "text", description: "Contact phone number", validation: "phone", required: true },
 ];
@@ -25,12 +40,6 @@ const detailColumns: ColumnDef[] = [
   { key: "site", label: "Site", type: "text", description: "Assigned site/location" },
   { key: "reportsTo", label: "Reports To", type: "text", description: "Direct manager or supervisor" },
   { key: "comments", label: "Comments", type: "textarea" },
-];
-
-const referenceData = [
-  { role: "Owner", description: "Full platform access — can manage users, campaigns, settings, and all data." },
-  { role: "Manager", description: "Standard access — can manage candidates, campaigns, and view reports." },
-  { role: "Limited Manager", description: "Read-only access — can view data but cannot make changes." },
 ];
 
 export function UserListSheet() {
@@ -123,39 +132,17 @@ export function UserListSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="User List"
         description="Define the users who will have access to the Talkpush CRM platform."
       />
 
-      <TabUploadBanner tabKey="users" tabLabel="User List" />
+      <TabUploadBanner tabKey="users" tabLabel="User List" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample user list:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Maria Santos</strong> | Owner | maria@company.com | +63 917 123 4567 | HR Director | BGC Office</li>
-          <li><strong>Juan dela Cruz</strong> | Manager | juan@company.com | +63 918 765 4321 | Recruiter | Makati Office</li>
-        </ul>
-      </ExampleHint>
-
-      <div className="mb-6 rounded-lg border border-gray-200 bg-slate-50 overflow-hidden">
-        <div className="bg-slate-100 border-b border-gray-200 px-4 py-2.5 text-[13px] font-semibold text-gray-700">
-          Role Reference
-        </div>
-        <div className="divide-y divide-gray-200">
-          {referenceData.map((r) => (
-            <div key={r.role} className="grid px-4 py-2.5 last:border-0" style={{ gridTemplateColumns: "160px 1fr" }}>
-              <span className="text-[14px] font-medium text-gray-900">{r.role}</span>
-              <span className="text-[14px] text-gray-500">{r.description}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <EditableTable
         columns={columns}
         detailColumns={detailColumns}

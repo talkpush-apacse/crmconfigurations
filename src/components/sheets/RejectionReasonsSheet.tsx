@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { X, Plus } from "lucide-react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -17,8 +16,23 @@ import type { ColumnDef, LabelRow } from "@/lib/types";
 import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
 
 const labelColumns: ColumnDef[] = [
-  { key: "name", label: "Label name", type: "text", required: true, example: "Priority Candidate" },
-  { key: "color", label: "Color", type: "text", example: "#FF5733" },
+  {
+    key: "name",
+    label: "Label name",
+    type: "text",
+    required: true,
+    example: "Priority Candidate",
+    description:
+      "The tag recruiters will see and apply to candidates. Keep it short — it appears as a chip on the candidate record.",
+  },
+  {
+    key: "color",
+    label: "Color",
+    type: "text",
+    example: "#FF5733",
+    description:
+      "Optional hex colour for the chip, e.g. #FF5733. Leave blank to use the default grey.",
+  },
 ];
 
 const emptyLabelRow: LabelRow = {
@@ -94,26 +108,17 @@ export function RejectionReasonsSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Rejection Reasons"
         description="Define the standard rejection reasons that recruiters can select when rejecting a candidate. These will appear as options in the CRM."
       />
 
-      <TabUploadBanner tabKey="rejectionReasons" tabLabel="Rejection Reasons" />
+      <TabUploadBanner tabKey="rejectionReasons" tabLabel="Rejection Reasons" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-          <ExampleHint>
-            <p>
-              Add all the rejection reasons your team uses. Common examples include
-              &quot;Not Qualified&quot;, &quot;Salary Expectations&quot;, and
-              &quot;Wrong Location&quot;. Recruiters will pick from this list when
-              moving candidates to Rejected.
-            </p>
-          </ExampleHint>
-
           <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
             {/* Tag cloud */}
             <div className="flex flex-wrap gap-2">
@@ -173,7 +178,7 @@ export function RejectionReasonsSheet() {
 
           <Separator className="my-8" />
 
-          <SectionHeader
+          <SheetIntro
             title="Labels"
             description="Labels are tags you can apply to candidates in Talkpush CRM to mark status, priority, or any custom classification. Each label can have a color for quick visual identification."
           />

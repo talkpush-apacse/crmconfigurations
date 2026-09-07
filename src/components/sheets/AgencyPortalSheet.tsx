@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -154,25 +153,17 @@ export function AgencyPortalSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Agency Portal"
         description="Manage staffing agencies and their contact information."
       />
 
-      <TabUploadBanner tabKey="agencyPortal" tabLabel="Agency Portal" />
+      <TabUploadBanner tabKey="agencyPortal" tabLabel="Agency Portal" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample agency entries:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Staff Alliance Inc.</strong> | Maria Reyes | maria@staffalliance.ph | +63 2 8888 1234 | Philippines</li>
-          <li><strong>JobStreet Staffing</strong> | John Torres | john@jobstreet.com.ph | +63 917 555 6789 | Philippines</li>
-        </ul>
-      </ExampleHint>
-
       <EditableTable
         columns={columns}
         data={agencies}
@@ -197,7 +188,7 @@ export function AgencyPortalSheet() {
       />
 
       <div className="mt-10">
-        <SectionHeader
+        <SheetIntro
           title="Agency Portal Users"
           description="List all users that need to be created in the Agency Portal. Specify their role/access level."
         />
