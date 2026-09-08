@@ -21,6 +21,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
     saveStatus,
     saveError,
     hasPendingChanges,
+    lastSavedAt,
     updateField,
     retrySave,
     publishChanges,
@@ -116,6 +117,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
         saveStatus,
         saveError,
         hasPendingChanges,
+        lastSavedAt,
         retrySave,
         publishChanges,
         discardChanges,
@@ -137,6 +139,8 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           totalCount={totalCount}
           isReadOnly={false}
           hasPendingChanges={hasPendingChanges}
+          lastSavedAt={lastSavedAt}
+          onSave={publishChanges}
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
         />
         <div className="flex flex-1 overflow-hidden">

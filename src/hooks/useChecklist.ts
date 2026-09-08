@@ -17,6 +17,8 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  // When the last successful save landed, so the UI can say how long ago.
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const latestDataRef = useRef<ChecklistData | null>(null);
   const lastSavedDataRef = useRef<ChecklistData | null>(null);
   const hasPendingChangesRef = useRef(false);
@@ -128,6 +130,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
         };
 
         lastSavedDataRef.current = cloneChecklistData(persistedSnapshot);
+        setLastSavedAt(Date.now());
 
         const nextData = latestData
           ? {
@@ -242,6 +245,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     saveStatus,
     saveError,
     hasPendingChanges,
+    lastSavedAt,
     updateField,
     retrySave,
     publishChanges,

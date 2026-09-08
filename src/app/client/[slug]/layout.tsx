@@ -22,6 +22,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     saveStatus,
     saveError,
     hasPendingChanges,
+    lastSavedAt,
     updateField,
     retrySave,
     publishChanges,
@@ -108,8 +109,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   });
 
   const contextValue = useMemo(() => ({
-    data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, isReadOnly: false as const, userRole: null, basePath: `/client/${slug}`,
-  }), [data, updateField, saveStatus, saveError, hasPendingChanges, retrySave, publishChanges, discardChanges, slug]);
+    data, updateField, saveStatus, saveError, hasPendingChanges, lastSavedAt, retrySave, publishChanges, discardChanges, isReadOnly: false as const, userRole: null, basePath: `/client/${slug}`,
+  }), [data, updateField, saveStatus, saveError, hasPendingChanges, lastSavedAt, retrySave, publishChanges, discardChanges, slug]);
 
   return (
     <ChecklistContext.Provider value={contextValue}>
@@ -124,6 +125,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           filledCount={filledCount}
           totalCount={totalCount}
           hasPendingChanges={hasPendingChanges}
+          lastSavedAt={lastSavedAt}
+          onSave={publishChanges}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (

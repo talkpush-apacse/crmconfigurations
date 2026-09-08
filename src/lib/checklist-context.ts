@@ -9,6 +9,8 @@ interface ChecklistContextType {
   saveStatus: "saved" | "saving" | "error";
   saveError: string | null;
   hasPendingChanges: boolean;
+  /** Epoch ms of the last successful save, or null if nothing has saved yet. */
+  lastSavedAt?: number | null;
   retrySave: () => void;
   publishChanges: () => void;
   discardChanges: () => void;

@@ -31,6 +31,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     saveStatus,
     saveError,
     hasPendingChanges,
+    lastSavedAt,
     updateField,
     retrySave,
     publishChanges,
@@ -127,6 +128,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
         saveStatus,
         saveError,
         hasPendingChanges,
+        lastSavedAt,
         retrySave,
         publishChanges,
         discardChanges,
@@ -149,6 +151,8 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
           isReadOnly={false}
           editorToken={token}
           hasPendingChanges={hasPendingChanges}
+          lastSavedAt={lastSavedAt}
+          onSave={publishChanges}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (

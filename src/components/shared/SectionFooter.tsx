@@ -6,12 +6,24 @@ import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { SaveButton } from "@/components/shared/SaveButton";
 
 /** Renders Prev / Continue navigation at the bottom of each content sheet. */
 export function SectionFooter() {
   const params = useParams();
   const currentTab = params.tab as string;
-  const { data, basePath, includeAdminTabs } = useChecklistContext();
+  const {
+    data,
+    basePath,
+    includeAdminTabs,
+    saveStatus,
+    saveError,
+    hasPendingChanges,
+    lastSavedAt,
+    publishChanges,
+    retrySave,
+    isReadOnly,
+  } = useChecklistContext();
 
   const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, !!includeAdminTabs, data?.tabOrder ?? null);
   // Exclude welcome from prev/next — it is not a content section
@@ -40,6 +52,21 @@ export function SectionFooter() {
         </Link>
       ) : (
         <span />
+      )}
+
+      {/* Save — repeated here so it is reachable after a long table */}
+      {!isReadOnly && (
+        <div className="sm:ml-auto sm:mr-3">
+          <SaveButton
+            status={saveStatus}
+            hasPendingChanges={hasPendingChanges}
+            lastSavedAt={lastSavedAt}
+            errorMessage={saveError}
+            onSave={publishChanges}
+            onRetry={retrySave}
+            variant="full"
+          />
+        </div>
       )}
 
       {/* Next / Complete button */}

@@ -7,7 +7,7 @@ import { ArrowLeft, ChevronRight, Download, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
-import { SaveStatus } from "./SaveStatus";
+import { SaveButton } from "@/components/shared/SaveButton";
 
 interface HeaderProps {
   clientName: string;
@@ -21,6 +21,10 @@ interface HeaderProps {
   isReadOnly?: boolean;
   editorToken?: string;
   hasPendingChanges?: boolean;
+  /** Epoch ms of the last successful save. */
+  lastSavedAt?: number | null;
+  /** Saves now, rather than waiting for the autosave debounce. */
+  onSave?: () => void;
   snapshotsHref?: string;
 }
 
@@ -60,6 +64,8 @@ export function Header({
   isReadOnly,
   editorToken,
   hasPendingChanges = false,
+  lastSavedAt = null,
+  onSave,
   snapshotsHref,
 }: HeaderProps) {
   const pathname = usePathname();
@@ -131,12 +137,17 @@ export function Header({
 
         <div className="flex flex-col gap-3 xl:items-end">
           <div className="flex flex-wrap items-center gap-2">
-            <SaveStatus
-              status={saveStatus}
-              errorMessage={saveError}
-              onRetry={onRetrySave}
-              hasPendingChanges={hasPendingChanges}
-            />
+            {isReadOnly ? null : (
+              <SaveButton
+                status={saveStatus}
+                hasPendingChanges={hasPendingChanges}
+                lastSavedAt={lastSavedAt}
+                errorMessage={saveError}
+                onSave={onSave ?? (() => {})}
+                onRetry={onRetrySave}
+                variant="compact"
+              />
+            )}
             <StatusPill label="Complete" value={completeCount} tone="emerald" />
             <StatusPill label="In Progress" value={inProgressCount} tone="amber" />
           </div>
