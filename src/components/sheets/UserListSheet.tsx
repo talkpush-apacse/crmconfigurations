@@ -156,6 +156,7 @@ export function UserListSheet() {
           createRow: () => ({ id: uid(), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" }),
         }}
         spreadsheetMode
+        tableId="users"
         addLabel="Add User"
         sampleRow={{ name: "Maria Santos", accessType: "Manager", email: "maria@company.com", phone: "+63 917 123 4567", jobTitle: "HR Manager", site: "BGC Office", reportsTo: "John dela Cruz" }}
         csvConfig={{

@@ -358,6 +358,37 @@ export function inferColumnType(rawValues: string[]): TypeGuess {
   return { type: "text", confidence: "high" };
 }
 
+/**
+ * Starting width, in px, for an imported column.
+ *
+ * Without this the grid falls back to type defaults, which is fine — but an
+ * imported sheet often has one long-text column (a job description) and
+ * several short ones, and giving the long one room up front avoids the client
+ * having to resize before they can read their own data.
+ */
+export function defaultWidthForType(type: ColumnType): number {
+  switch (type) {
+    case "textarea":
+      return 320;
+    case "checkbox":
+      return 90;
+    case "select":
+      return 170;
+    case "multiselect":
+      return 200;
+    case "date":
+      return 140;
+    case "number":
+      return 120;
+    case "url":
+      return 240;
+    case "email":
+      return 220;
+    default:
+      return 190;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Proposal assembly
 // ---------------------------------------------------------------------------

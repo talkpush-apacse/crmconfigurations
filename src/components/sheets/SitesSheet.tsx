@@ -114,6 +114,7 @@ export function SitesSheet() {
           createRow: () => ({ id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" }),
         }}
         spreadsheetMode
+        tableId="sites"
         addLabel="Add Site"
         sampleRow={{ siteName: "Makati Main", internalName: "MKT-HQ", interviewType: "Onsite" }}
         csvConfig={{

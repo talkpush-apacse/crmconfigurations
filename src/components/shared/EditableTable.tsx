@@ -84,6 +84,15 @@ interface EditableTableProps<TRow extends EditableRow> {
    */
   spreadsheetMode?: boolean;
   /**
+   * Stable identifier for this table, used to remember column widths.
+   *
+   * Widths are kept per viewer in localStorage rather than on the checklist:
+   * storing them server-side would need a new column, and one person's drag
+   * would silently change the layout for everyone else. Omit it and resizing
+   * still works, it just isn't remembered.
+   */
+  tableId?: string;
+  /**
    * Enables pasting a block copied from Excel/Sheets across cells.
    *
    * A multi-cell paste has to be applied as ONE update: calling the per-cell
@@ -127,6 +136,38 @@ interface EditableTableProps<TRow extends EditableRow> {
     deleteDialogDescription?: (count: number) => React.ReactNode;
   };
 }
+
+/**
+ * Default width per column type, in px.
+ *
+ * Without these the table runs on the browser's `auto` layout, where widths
+ * follow content: one column holding a paragraph claims a huge share and
+ * starves the rest. A required "Job Name" ended up ~60px wide — too narrow to
+ * read its own value — while a job description spanned over 1000px.
+ *
+ * Spreadsheet mode therefore uses a fixed layout with these widths, so the
+ * grid is predictable and long text is capped rather than unbounded.
+ */
+function defaultColumnWidth(col: ColumnDef): number {
+  switch (col.type) {
+    case "textarea":
+      return 300;
+    case "boolean":
+      return 90;
+    case "dropdown":
+      return 170;
+    case "multiselect":
+      return 200;
+    case "readonly":
+      return 150;
+    default:
+      return 190;
+  }
+}
+
+/** Resizing is clamped so a column can't be dragged to unusable extremes. */
+const MIN_COLUMN_WIDTH = 80;
+const MAX_COLUMN_WIDTH = 720;
 
 /**
  * Shapes a value pasted from a spreadsheet for the column it lands in, so a
@@ -334,7 +375,11 @@ function SortableRow<TRow extends EditableRow>({
                   )}
                   <span>{rowIdx + 1}</span>
                 </span>
-                {/* Collapsed rows would otherwise hide their own emptiness. */}
+                {/*
+                  Collapsed rows would otherwise hide their own emptiness. In
+                  spreadsheet mode nothing is hidden, so isExpandable is false
+                  and this never renders.
+                */}
                 {!isExpanded && detailFilledCount && detailFilledCount.total > 0 && (
                   <span
                     className={cn(
@@ -360,11 +405,14 @@ function SortableRow<TRow extends EditableRow>({
             key={col.key}
             className={cn(
               "p-1.5",
-              col.type === "textarea"
-                ? "min-w-[180px]"
-                : col.type === "text"
-                  ? "min-w-[120px]"
-                  : "",
+              // In spreadsheet mode the header row's declared widths govern the
+              // fixed layout, so per-cell minimums would only fight them.
+              !stickyColumns &&
+                (col.type === "textarea"
+                  ? "min-w-[180px]"
+                  : col.type === "text"
+                    ? "min-w-[120px]"
+                    : ""),
               stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
             )}
             style={
@@ -531,6 +579,7 @@ export function EditableTable<TRow extends EditableRow>({
   deleteConfirmation,
   sampleRow,
   spreadsheetMode = false,
+  tableId,
   pasteConfig,
   csvConfig,
   bulkActions,
@@ -663,7 +712,17 @@ export function EditableTable<TRow extends EditableRow>({
     [columns, detailColumns]
   );
 
-  const isExpandable = !!detailColumns || !!renderDetail;
+  /**
+   * Spreadsheet mode shows every field as a real column and scrolls sideways.
+   *
+   * The old split kept half the fields behind a disclosure chevron, which hid
+   * from the client exactly what was being asked of them — and made those
+   * fields unreachable by paste, since paste only writes visible columns.
+   */
+  const gridColumns = spreadsheetMode ? allColumns : columns;
+
+  // No drawer in spreadsheet mode, so no expand control and no detail row.
+  const isExpandable = !spreadsheetMode && (!!detailColumns || !!renderDetail);
   const deleteDialogRow = deleteDialogIndex === null ? null : data[deleteDialogIndex] ?? null;
 
   const handleDeleteClick = (rowId: string, rowIdx: number) => {
@@ -723,7 +782,7 @@ export function EditableTable<TRow extends EditableRow>({
           return;
         }
         line.forEach((rawValue, c) => {
-          const column = columns[startCol + c];
+          const column = gridColumns[startCol + c];
           if (!column) {
             // The pasted block is wider than the table.
             droppedColumns++;
@@ -757,7 +816,151 @@ export function EditableTable<TRow extends EditableRow>({
         );
       }
     };
-  }, [spreadsheetMode, pasteConfig, isReadOnly, data, columns, showPasteNotice]);
+  }, [spreadsheetMode, pasteConfig, isReadOnly, data, gridColumns, showPasteNotice]);
+
+  // ===== Horizontal overflow cue =====
+  //
+  // Sideways overflow is far easier to miss than vertical. Without a cue a
+  // client can leave columns unfilled simply because they never saw them.
+  const scrollBoxRef = useRef<HTMLDivElement | null>(null);
+  const [moreColumnsRight, setMoreColumnsRight] = useState(false);
+
+  // ===== Column widths =====
+  const widthStorageKey = tableId ? `tp_colwidths_${tableId}` : null;
+
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+
+  // Read after mount, not in a lazy useState initializer: this component is
+  // server-rendered, so the initializer runs with no `window`, and the empty
+  // object it returns is what hydration keeps — stored widths were silently
+  // ignored on every page load.
+  useEffect(() => {
+    if (!widthStorageKey) return;
+    try {
+      const stored = window.localStorage.getItem(widthStorageKey);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Record<string, number>;
+      // Ignore anything that isn't a usable number, so a corrupt entry can't
+      // collapse the grid.
+      const clean: Record<string, number> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          clean[key] = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, value));
+        }
+      }
+      if (Object.keys(clean).length > 0) setColumnWidths(clean);
+    } catch {
+      // Private browsing and blocked site data both throw here.
+    }
+  }, [widthStorageKey]);
+
+  const persistWidths = useCallback(
+    (next: Record<string, number>) => {
+      if (!widthStorageKey) return;
+      try {
+        window.localStorage.setItem(widthStorageKey, JSON.stringify(next));
+      } catch {
+        // Not being able to remember a width is not worth surfacing.
+      }
+    },
+    [widthStorageKey]
+  );
+
+  const widthFor = useCallback(
+    (col: ColumnDef): number =>
+      columnWidths[col.key] ??
+      // An explicit width from the column definition wins over the type default.
+      (typeof col.width === "number" ? col.width : undefined) ??
+      defaultColumnWidth(col),
+    [columnWidths]
+  );
+
+  /** Drag state lives in a ref so pointer moves don't re-render on every pixel. */
+  const resizeRef = useRef<{ key: string; startX: number; startWidth: number } | null>(
+    null
+  );
+  const [resizingKey, setResizingKey] = useState<string | null>(null);
+
+  const beginResize = useCallback(
+    (col: ColumnDef, e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeRef.current = { key: col.key, startX: e.clientX, startWidth: widthFor(col) };
+      setResizingKey(col.key);
+
+      const onMove = (ev: PointerEvent) => {
+        const drag = resizeRef.current;
+        if (!drag) return;
+        const next = Math.min(
+          MAX_COLUMN_WIDTH,
+          Math.max(MIN_COLUMN_WIDTH, drag.startWidth + (ev.clientX - drag.startX))
+        );
+        setColumnWidths((prev) =>
+          prev[drag.key] === next ? prev : { ...prev, [drag.key]: next }
+        );
+      };
+
+      const onUp = () => {
+        resizeRef.current = null;
+        setResizingKey(null);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        setColumnWidths((prev) => {
+          persistWidths(prev);
+          return prev;
+        });
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [widthFor, persistWidths]
+  );
+
+  /** Double-click a divider to drop back to this column's default width. */
+  const resetColumnWidth = useCallback(
+    (col: ColumnDef) => {
+      setColumnWidths((prev) => {
+        if (!(col.key in prev)) return prev;
+        const next = { ...prev };
+        delete next[col.key];
+        persistWidths(next);
+        return next;
+      });
+    },
+    [persistWidths]
+  );
+
+  // The table is as wide as its columns need; the container scrolls.
+  const totalGridWidth = useMemo(() => {
+    if (!spreadsheetMode) return 0;
+    const leading = (bulkEnabled ? 44 : 0) + (isExpandable || canReorder ? 56 : 44);
+    const actions = isReadOnly ? 0 : 44;
+    return (
+      leading + actions + gridColumns.reduce((sum, col) => sum + widthFor(col), 0)
+    );
+  }, [spreadsheetMode, bulkEnabled, isExpandable, canReorder, isReadOnly, gridColumns, widthFor]);
+
+  useEffect(() => {
+    const box = scrollBoxRef.current;
+    if (!box || !spreadsheetMode) {
+      setMoreColumnsRight(false);
+      return;
+    }
+    const update = () => {
+      setMoreColumnsRight(
+        box.scrollWidth - box.clientWidth - box.scrollLeft > 4
+      );
+    };
+    update();
+    box.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    return () => {
+      box.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [spreadsheetMode, gridColumns.length, columnWidths, data.length]);
 
   // ===== Sticky panes =====
   //
@@ -847,11 +1050,31 @@ export function EditableTable<TRow extends EditableRow>({
         />
       )}
     <div className="rounded-lg border">
-      <div>
+      <div className="relative">
+        {spreadsheetMode && moreColumnsRight && (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-white to-transparent"
+            />
+            <span className="pointer-events-none absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full bg-slate-900/70 p-0.5 text-white">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </span>
+          </>
+        )}
         <Table
+          containerRef={scrollBoxRef}
           containerClassName={cn(
             useStickyViewport && "max-h-[70vh] overflow-y-auto"
           )}
+          // Fixed layout so declared widths are honoured instead of the
+          // browser redistributing them by content length.
+          className={cn(spreadsheetMode && "table-fixed")}
+          style={
+            spreadsheetMode
+              ? { width: Math.max(totalGridWidth, 0) || undefined }
+              : undefined
+          }
         >
           <TableHeader>
             <TableRow ref={headerRowRef} className="bg-primary hover:bg-primary">
@@ -899,11 +1122,12 @@ export function EditableTable<TRow extends EditableRow>({
                   "#"
                 )}
               </TableHead>
-              {columns.map((col, colIdx) => (
+              {gridColumns.map((col, colIdx) => (
                 <TableHead
                   key={col.key}
                   className={cn(
                     "text-white text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    spreadsheetMode && "relative",
                     stickyColumns && [
                       "sticky top-0 bg-primary",
                       // Border-collapse drops borders on sticky cells, so the
@@ -912,7 +1136,10 @@ export function EditableTable<TRow extends EditableRow>({
                       colIdx === 0 ? "z-30" : "z-20",
                     ]
                   )}
-                  style={{ width: col.width, left: stickyLeftFor(colIdx) }}
+                  style={{
+                    width: spreadsheetMode ? widthFor(col) : col.width,
+                    left: stickyLeftFor(colIdx),
+                  }}
                 >
                   <span className="inline-flex items-center gap-1">
                     {renderColumnLabel(col, "text-red-200")}
@@ -941,6 +1168,21 @@ export function EditableTable<TRow extends EditableRow>({
                       </Tooltip>
                     )}
                   </span>
+                  {spreadsheetMode && !isReadOnly && (
+                    <span
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize ${col.label}`}
+                      onPointerDown={(e) => beginResize(col, e)}
+                      onDoubleClick={() => resetColumnWidth(col)}
+                      title="Drag to resize · double-click to reset"
+                      className={cn(
+                        "absolute right-0 top-0 z-10 flex h-full w-2 cursor-col-resize touch-none items-center justify-center",
+                        "before:h-1/2 before:w-px before:bg-white/30 before:transition-colors hover:before:bg-white",
+                        resizingKey === col.key && "before:bg-white"
+                      )}
+                    />
+                  )}
                 </TableHead>
               ))}
               {!isReadOnly && (
@@ -976,7 +1218,7 @@ export function EditableTable<TRow extends EditableRow>({
                     SAMPLE
                   </span>
                 </TableCell>
-                {columns.map((col, colIdx) => (
+                {gridColumns.map((col, colIdx) => (
                   <TableCell
                     key={col.key}
                     className={cn(
@@ -1008,7 +1250,7 @@ export function EditableTable<TRow extends EditableRow>({
             {data.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell
-                  colSpan={columns.length + 2 + (bulkEnabled ? 1 : 0)}
+                  colSpan={gridColumns.length + 2 + (bulkEnabled ? 1 : 0)}
                   className="py-8 text-center"
                 >
                   {emptyMessage ?? (
@@ -1055,8 +1297,8 @@ export function EditableTable<TRow extends EditableRow>({
                   key={row.id || rowIdx}
                   row={row}
                   rowIdx={rowIdx}
-                  columns={columns}
-                  detailColumns={detailColumns}
+                  columns={gridColumns}
+                  detailColumns={spreadsheetMode ? undefined : detailColumns}
                   isExpanded={isRowExpanded(sortableIds[rowIdx])}
                   toggleRow={() => toggleRow(sortableIds[rowIdx])}
                   onUpdate={onUpdate}
@@ -1073,14 +1315,14 @@ export function EditableTable<TRow extends EditableRow>({
                   )}
                   renderCellPrefix={renderCellPrefix}
                   renderCell={renderCell}
-                  renderDetail={renderDetail}
+                  renderDetail={spreadsheetMode ? undefined : renderDetail}
                   requestDelete={deleteConfirmation ? setDeleteDialogIndex : undefined}
                   bulkRow={bulkRow}
                   numColLeft={numColLeft}
                   firstDataColLeft={firstDataColLeft}
                   stickyColumns={stickyColumns}
                   detailFilledCount={
-                    detailColumns
+                    detailColumns && !spreadsheetMode
                       ? {
                           filled: countFilledDetails(
                             row as Record<string, unknown>,
@@ -1153,7 +1395,7 @@ export function EditableTable<TRow extends EditableRow>({
     <GridNavProvider
       spreadsheetMode={spreadsheetMode}
       rowCount={data.length}
-      columnCount={columns.length}
+      columnCount={gridColumns.length}
       onPasteGrid={handlePasteGrid}
     >
       {tableContent}

@@ -7,10 +7,16 @@ import { cn } from "@/lib/utils"
 function Table({
   className,
   containerClassName,
+  containerRef,
   ...props
-}: React.ComponentProps<"table"> & { containerClassName?: string }) {
+}: React.ComponentProps<"table"> & {
+  containerClassName?: string
+  /** Access to the scroll container, e.g. to detect horizontal overflow. */
+  containerRef?: React.Ref<HTMLDivElement>
+}) {
   return (
     <div
+      ref={containerRef}
       data-slot="table-container"
       // The scroll container. Callers can add a max-height here to turn the
       // table into its own scroll viewport, which is what makes a sticky

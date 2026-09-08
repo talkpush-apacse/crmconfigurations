@@ -173,6 +173,7 @@ export function CampaignsSheet() {
           createRow: () => ({ id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" }),
         }}
         spreadsheetMode
+        tableId="campaigns"
         addLabel="Add Campaign"
         sampleRow={{ nameInternal: "CSR - Makati", jobTitleExternal: "Customer Service Representative", site: "Makati Office" }}
         csvConfig={{

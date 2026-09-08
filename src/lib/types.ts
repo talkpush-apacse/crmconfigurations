@@ -652,7 +652,11 @@ export interface CustomTabColumn {
    * comma-joined in the row, so a cell stays a plain string.
    */
   options?: string[];
-  width?: string;         // optional Tailwind width class
+  /**
+   * Starting column width. A number is px (what the grid uses); the legacy
+   * string form is a Tailwind class and is still accepted.
+   */
+  width?: number | string;
 }
 
 export interface CustomTabRow {
@@ -753,7 +757,8 @@ export interface ColumnDef {
   description?: React.ReactNode;
   type: "text" | "textarea" | "dropdown" | "multiselect" | "boolean" | "readonly";
   options?: string[];
-  width?: string;
+  /** Starting column width — px when a number. Resizable in spreadsheet mode. */
+  width?: number | string;
   validation?: "email" | "url" | "phone";
   required?: boolean;
   example?: string;

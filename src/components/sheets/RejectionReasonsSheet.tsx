@@ -190,6 +190,7 @@ export function RejectionReasonsSheet() {
             onAdd={handleLabelAdd}
             onDelete={handleLabelDelete}
             spreadsheetMode
+            tableId="labels"
             addLabel="Add Label"
             sampleRow={{ name: "Priority Candidate", color: "#FF5733" }}
             bulkActions={{

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { customTabSlugConflict, customTabSlugFromLabel } from "@/lib/tab-config";
 import type { CustomTab, CustomTabColumn, CustomTabRow } from "@/lib/types";
+import { defaultWidthForType } from "@/lib/spreadsheet-infer";
 import type { ColumnType, SpreadsheetProposal } from "@/lib/spreadsheet-infer";
 
 const COLUMN_TYPE_OPTIONS: { value: ColumnType; label: string }[] = [
@@ -212,6 +213,9 @@ export function CustomTabImportDialog({
         label: col.label.trim() || col.key,
         type: col.type,
         required: col.required,
+        // A starting width so an imported tab is readable immediately rather
+        // than letting one long-text column starve the others.
+        width: defaultWidthForType(col.type),
         ...(options && options.length > 0 ? { options } : {}),
       };
     });

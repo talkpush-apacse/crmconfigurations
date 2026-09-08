@@ -192,6 +192,7 @@ export function PrescreeningSheet() {
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
         spreadsheetMode
+        tableId="prescreening"
         addLabel="Add Question"
         sampleRow={{
           category: "Pre-screening",
