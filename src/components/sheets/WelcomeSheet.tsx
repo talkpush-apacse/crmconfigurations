@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Info, ArrowRight, ChevronDown } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { useStoredPreference } from "@/hooks/useStoredPreference";
 import { getEnabledTabs, excludeTalkpushTabs, isClientView } from "@/lib/tab-config";
 import { getSectionState } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
@@ -38,20 +38,14 @@ function StatusChip({
 export function WelcomeSheet() {
   const { data, basePath, includeAdminTabs } = useChecklistContext();
 
-  // Lazy initializer reads localStorage once on mount — avoids setState-in-effect pattern
-  const [notesOpen, setNotesOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true; // SSR safe default
-    const stored = localStorage.getItem("talkpush_welcome_notes_seen");
-    return stored === null ? true : stored !== "false";
-  });
+  // Stored per viewer. See useStoredPreference for why this can't be a lazy
+  // useState initializer — under SSR the stored value was being discarded.
+  const [notesOpen, setNotesOpen] = useStoredPreference(
+    "talkpush_welcome_notes_seen",
+    true
+  );
 
-  const handleNotesToggle = () => {
-    setNotesOpen((v) => {
-      const next = !v;
-      localStorage.setItem("talkpush_welcome_notes_seen", String(next));
-      return next;
-    });
-  };
+  const handleNotesToggle = () => setNotesOpen(!notesOpen);
 
   // `tabFilledBy` has to be passed here: without it this reads the TAB_CONFIG
   // defaults and the chips below disagree with the sidebar on any checklist

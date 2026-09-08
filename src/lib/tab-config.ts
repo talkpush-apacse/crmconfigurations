@@ -29,6 +29,10 @@ export const TAB_CONFIG: TabConfig[] = [
   { slug: "ai-call-faqs", label: "AI Call", dataKey: "aiCallFaqs", icon: "Phone", filledBy: "client" },
   { slug: "rejection-reasons", label: "Rejection Reasons", dataKey: "rejectionReasons", icon: "ThumbsDown", filledBy: "client" },
   { slug: "agency-portal", label: "Agency Portal", dataKey: "agencyPortal", icon: "Briefcase", filledBy: "client" },
+  // Talkpush-filled, so the client-facing checklist hides it (see
+  // excludeTalkpushTabs). Labels are an internal CRM concern, not something
+  // the client is being asked to supply.
+  { slug: "labels", label: "Labels", dataKey: "labels", icon: "Tags", filledBy: "talkpush" },
   { slug: "admin-settings", label: "Admin Settings", dataKey: "adminSettings", icon: "Shield", filledBy: "talkpush", adminOnly: true },
   { slug: "autoflows", label: "Autoflows", dataKey: "autoflows", icon: "Zap", filledBy: "talkpush", adminOnly: true },
   { slug: "integrations", label: "Integrations", dataKey: "integrations", icon: "PlugZap", filledBy: "talkpush", adminOnly: true },

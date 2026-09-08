@@ -3,7 +3,6 @@
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
-import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
@@ -141,6 +140,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
           onSave={publishChanges}
+          onDiscard={discardChanges}
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
         />
         <div className="flex flex-1 overflow-hidden">
@@ -159,12 +159,6 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
             </main>
           </div>
         </div>
-        <FloatingActionBar
-          visible={hasPendingChanges}
-          isSaving={saveStatus === "saving"}
-          onDiscard={discardChanges}
-          onPublish={publishChanges}
-        />
       </div>
     </ChecklistContext.Provider>
   );

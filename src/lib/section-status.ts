@@ -118,11 +118,31 @@ export function getSectionState(
 
   if (Array.isArray(val)) {
     if (val.length === 0) return "not-started";
-    const nonEmpty = val.filter((item) =>
+
+    // Rows the user removed or marked not applicable are not work in progress.
+    //
+    // Soft-deleted rows were being counted as filled: `deletedAt` is itself a
+    // value, so a deleted row looked "non-empty" and kept inflating the count
+    // for every section that soft-deletes.
+    const live = val.filter(
+      (item) =>
+        !(
+          typeof item === "object" &&
+          item !== null &&
+          ((item as Record<string, unknown>).deletedAt ||
+            (item as Record<string, unknown>).notApplicable)
+        )
+    );
+    if (live.length === 0) return "not-started";
+
+    const nonEmpty = live.filter((item) =>
       typeof item === "object" && item !== null
-        ? getObjectValues(item as Record<string, unknown>, ["id"]).some(
-            hasMeaningfulValue
-          )
+        ? getObjectValues(item as Record<string, unknown>, [
+            "id",
+            "deletedAt",
+            "deletedBy",
+            "notApplicable",
+          ]).some(hasMeaningfulValue)
         : hasMeaningfulValue(item)
     );
     return nonEmpty.length >= 3 ? "complete" : "in-progress";

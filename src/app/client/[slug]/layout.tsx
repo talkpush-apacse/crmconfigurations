@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
-import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs, excludeTalkpushTabs } from "@/lib/tab-config";
@@ -127,6 +126,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
           onSave={publishChanges}
+          onDiscard={discardChanges}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (
@@ -138,12 +138,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             </main>
           </div>
         </div>
-        <FloatingActionBar
-          visible={hasPendingChanges}
-          isSaving={saveStatus === "saving"}
-          onDiscard={discardChanges}
-          onPublish={publishChanges}
-        />
       </div>
     </ChecklistContext.Provider>
   );

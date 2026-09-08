@@ -30,6 +30,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { arrayMove } from "@/lib/utils";
 import type { MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
+import { softDeleteByIds } from "@/lib/duplicate-row";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 
 const allChannels = [
@@ -72,8 +73,11 @@ function SortableTemplateItem({
     }
   };
 
-  const nameEmpty = !isReadOnly && !template.name.trim();
-  const purposeEmpty = !isReadOnly && !template.purpose.trim();
+  const notApplicable = template.notApplicable === true;
+  // A template marked not applicable isn't incomplete — it's out of scope, so
+  // it stops being flagged for missing name/purpose.
+  const nameEmpty = !isReadOnly && !notApplicable && !template.name.trim();
+  const purposeEmpty = !isReadOnly && !notApplicable && !template.purpose.trim();
   const {
     attributes,
     listeners,
@@ -93,32 +97,78 @@ function SortableTemplateItem({
     <div ref={setNodeRef} style={style}>
       <AccordionItem
         value={template.id || String(idx)}
-        className={`rounded-lg border ${isDragging ? "ring-2 ring-brand-lavender bg-brand-lavender-lightest" : ""}`}
+        className={`rounded-lg border ${isDragging ? "ring-2 ring-brand-lavender bg-brand-lavender-lightest" : ""} ${notApplicable ? "bg-slate-50/80" : ""}`}
       >
-        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        {/*
+          The drag handle sits beside the trigger, not inside it. AccordionTrigger
+          renders a <button>, so nesting another button inside it is invalid HTML
+          and was failing hydration on every load of this tab — React discarded
+          the server markup and re-rendered the whole list on the client.
+        */}
+        <div className="flex items-stretch">
+          {!isReadOnly && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing rounded p-1 pl-4 transition-colors hover:bg-gray-200 touch-none"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4 text-gray-400" />
+            </button>
+          )}
+        <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline">
           <div className="flex items-center gap-3 text-left">
-            {!isReadOnly && (
-              <button
-                {...attributes}
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-200 transition-colors touch-none"
-                title="Drag to reorder"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <GripVertical className="h-4 w-4 text-gray-400" />
-              </button>
-            )}
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-semibold shrink-0">
+            <span
+              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold shrink-0 ${
+                notApplicable
+                  ? "bg-slate-300 text-slate-600"
+                  : "bg-primary text-primary-foreground"
+              }`}
+            >
               {idx + 1}
             </span>
-            <div>
-              <p className="font-medium">{template.name || "Untitled Template"}</p>
-              <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">{template.purpose || "No purpose set"}</p>
+            <div className={notApplicable ? "opacity-60" : undefined}>
+              <p className="flex items-center gap-2 font-medium">
+                <span className={notApplicable ? "line-through" : undefined}>
+                  {template.name || "Untitled Template"}
+                </span>
+                {notApplicable && (
+                  <span className="rounded-full border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    Not applicable
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">
+                {template.purpose || "No purpose set"}
+              </p>
             </div>
           </div>
         </AccordionTrigger>
+        </div>
         <AccordionContent className="px-4 pb-4">
           <div className="space-y-4">
+            {/*
+              Marking a template not applicable keeps the row and its purpose
+              text — which is the reference for what it was for — while taking
+              it out of scope. Deleting is still available below for templates
+              a client genuinely never wants to see again.
+            */}
+            {!isReadOnly && (
+              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2">
+                <Checkbox
+                  checked={notApplicable}
+                  onCheckedChange={(checked) =>
+                    handleUpdate(idx, "notApplicable", checked === true)
+                  }
+                />
+                <span className="text-xs text-gray-700">
+                  Not applicable to us — leave this template out of the build
+                </span>
+              </label>
+            )}
+
+            <div className={notApplicable ? "pointer-events-none opacity-50" : undefined}>
+            <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs">Template Name <span className="text-red-500">*</span></Label>
@@ -223,6 +273,9 @@ function SortableTemplateItem({
               />
             </div>
 
+            </div>
+            </div>
+
             {!isReadOnly && (
               <div className="flex justify-end gap-2">
                 <Button
@@ -256,7 +309,16 @@ function SortableTemplateItem({
 export function MessagingSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("messaging");
-  const templates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
+  const allTemplates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
+  const templates = allTemplates.filter((t) => !t.deletedAt);
+
+  // The visible list hides soft-deleted rows, so an index from the UI has to be
+  // mapped back to the full array before writing.
+  const fullIndexOf = (visibleIdx: number) => {
+    const target = templates[visibleIdx];
+    if (!target) return -1;
+    return allTemplates.findIndex((t) => t.id === target.id);
+  };
 
   // Filter channels based on communication channels setting (fall back to defaults for old checklists)
   const enabledChannels = (data.communicationChannels as CommunicationChannels | null) ?? defaultCommunicationChannels;
@@ -277,15 +339,17 @@ export function MessagingSheet() {
   );
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
-    const updated = [...templates];
-    updated[index] = { ...updated[index], [field]: value };
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const updated = [...allTemplates];
+    updated[fullIdx] = { ...updated[fullIdx], [field]: value };
     updateField("messaging", updated);
   };
 
   const handleAdd = () => {
     if (hasValidationErrors) return;
     updateField("messaging", [
-      ...templates,
+      ...allTemplates,
       {
         id: uid(),
         name: "",
@@ -307,13 +371,17 @@ export function MessagingSheet() {
   };
 
   const handleDelete = (index: number) => {
-    updateField("messaging", templates.filter((_, i) => i !== index));
+    const target = templates[index];
+    if (!target) return;
+    updateField("messaging", softDeleteByIds(allTemplates, [target.id]));
   };
 
   const handleDuplicate = (index: number) => {
-    const clone = { ...templates[index], id: uid() };
-    const updated = [...templates];
-    updated.splice(index + 1, 0, clone);
+    const fullIdx = fullIndexOf(index);
+    if (fullIdx < 0) return;
+    const clone = { ...allTemplates[fullIdx], id: uid() };
+    const updated = [...allTemplates];
+    updated.splice(fullIdx + 1, 0, clone);
     updateField("messaging", updated);
   };
 
@@ -325,7 +393,12 @@ export function MessagingSheet() {
     const newIndex = sortableIds.indexOf(over.id as string);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    updateField("messaging", arrayMove(templates, oldIndex, newIndex));
+    // mergeVisibleRows keeps the full array's own order, so it can't express a
+    // reorder. The new visible order is written out in full, with soft-deleted
+    // rows kept on the end where they stay out of the way but recoverable.
+    const reordered = arrayMove(templates, oldIndex, newIndex);
+    const removed = allTemplates.filter((t) => t.deletedAt);
+    updateField("messaging", [...reordered, ...removed]);
   };
 
   const accordionContent = (

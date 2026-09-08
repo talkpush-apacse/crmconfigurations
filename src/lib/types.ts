@@ -91,8 +91,16 @@ export interface QuestionRow extends SoftDeletable {
 }
 
 // ===== Messaging Templates =====
-export interface MessagingTemplateRow {
+export interface MessagingTemplateRow extends SoftDeletable {
   id: string;
+  /**
+   * The client has marked this template as not applicable to them.
+   *
+   * The eight defaults are pre-seeded, and a client who doesn't use one — an
+   * AI interview invite, say — needs to say so without deleting the row and
+   * losing the reference to what it was for.
+   */
+  notApplicable?: boolean;
   name: string;
   purpose: string;
   language: string;

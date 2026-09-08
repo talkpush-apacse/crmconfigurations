@@ -4,7 +4,6 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
-import { FloatingActionBar } from "@/components/layout/FloatingActionBar";
 import { Header } from "@/components/layout/Header";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
@@ -153,6 +152,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
           onSave={publishChanges}
+          onDiscard={discardChanges}
         />
         <div className="flex flex-1 overflow-hidden">
           {!isCustom && (
@@ -170,12 +170,6 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
             </main>
           </div>
         </div>
-        <FloatingActionBar
-          visible={hasPendingChanges}
-          isSaving={saveStatus === "saving"}
-          onDiscard={discardChanges}
-          onPublish={publishChanges}
-        />
       </div>
     </ChecklistContext.Provider>
   );

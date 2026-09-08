@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, ChevronRight, Download, History } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
@@ -25,6 +25,8 @@ interface HeaderProps {
   lastSavedAt?: number | null;
   /** Saves now, rather than waiting for the autosave debounce. */
   onSave?: () => void;
+  /** Reverts unsaved edits back to the last saved state. */
+  onDiscard?: () => void;
   snapshotsHref?: string;
 }
 
@@ -66,6 +68,7 @@ export function Header({
   hasPendingChanges = false,
   lastSavedAt = null,
   onSave,
+  onDiscard,
   snapshotsHref,
 }: HeaderProps) {
   const pathname = usePathname();
@@ -137,6 +140,30 @@ export function Header({
 
         <div className="flex flex-col gap-3 xl:items-end">
           <div className="flex flex-wrap items-center gap-2">
+            {/*
+              Discard sits beside Save, and only while there is something to
+              discard — a destructive action does not need to be permanently
+              on screen next to the button people actually press.
+            */}
+            {!isReadOnly && hasPendingChanges && onDiscard && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Discard your unsaved changes? They cannot be recovered."
+                    )
+                  ) {
+                    onDiscard();
+                  }
+                }}
+                className="h-7 gap-1.5 border-slate-200 bg-white px-2.5 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                <X className="h-3 w-3" />
+                Discard
+              </Button>
+            )}
             {isReadOnly ? null : (
               <SaveButton
                 status={saveStatus}
