@@ -4,13 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run verify:template && next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:setup": "npx prisma migrate dev && npx tsx prisma/seed.ts",
-    "vercel-build": "next build",
+    "vercel-build": "npm run build",
     "postinstall": "prisma generate",
     "verify:template": "tsx scripts/verify-template.ts",
     "repair:template": "node scripts/repair-template.mjs"
