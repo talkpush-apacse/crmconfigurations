@@ -267,7 +267,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
           onOpenChange={setImportOpen}
           checklistId={checklistId}
           existingTabs={value}
-          onCreate={(tab) => onChange([...value, tab])}
+          onCreate={(tabs) => onChange([...value, ...tabs])}
         />
       )}
 

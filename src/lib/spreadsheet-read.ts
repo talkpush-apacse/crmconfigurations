@@ -15,6 +15,9 @@ export const MAX_SPREADSHEET_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const SPREADSHEET_EXTENSIONS = [".xlsx", ".xlsm", ".csv"];
 
+/** A workbook with more sheets than this has the extras reported as skipped. */
+export const MAX_SHEETS = 20;
+
 /** Rows are read past the cap so the true total can be reported. */
 const READ_ROW_LIMIT = MAX_IMPORT_ROWS * 20;
 
@@ -30,30 +33,38 @@ export type ReadResult =
   | { ok: true; grid: RawGrid }
   | { ok: false; status: 400 | 422; error: string };
 
-export async function readSpreadsheet(
-  file: UploadLike | null,
-  requestedSheet?: string
-): Promise<ReadResult> {
+/** Extension and size checks shared by both readers. */
+function validateUpload(
+  file: UploadLike | null
+): { ok: false; status: 400; error: string } | null {
   if (!file) {
     return { ok: false, status: 400, error: "No file provided" };
   }
   if (file.size > MAX_SPREADSHEET_BYTES) {
     return { ok: false, status: 400, error: "File too large. Maximum size is 5 MB." };
   }
-
-  const lowerName = file.name.toLowerCase();
-  if (!SPREADSHEET_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
+  if (!SPREADSHEET_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
     return {
       ok: false,
       status: 400,
       error: "Unsupported file. Upload a .csv, .xlsx or .xlsm file.",
     };
   }
+  return null;
+}
+
+export async function readSpreadsheet(
+  file: UploadLike | null,
+  requestedSheet?: string
+): Promise<ReadResult> {
+  const guard = validateUpload(file);
+  if (guard) return guard;
+  const lowerName = (file as UploadLike).name.toLowerCase();
 
   try {
     const grid = lowerName.endsWith(".csv")
-      ? readCsv(await file.text())
-      : await readWorkbook(await file.arrayBuffer(), requestedSheet);
+      ? readCsv(await (file as UploadLike).text())
+      : await readWorkbook(await (file as UploadLike).arrayBuffer(), requestedSheet);
     return { ok: true, grid };
   } catch (err) {
     // A corrupt or password-protected file is a user problem, not a 500.
@@ -90,6 +101,93 @@ async function readWorkbook(
     (requestedSheet ? workbook.getWorksheet(requestedSheet) : undefined) ??
     workbook.worksheets[0];
 
+  return gridFromWorksheet(sheet, sheetNames);
+}
+
+/**
+ * Reads EVERY worksheet in a workbook, one grid each.
+ *
+ * A client's workbook usually holds several related lists on separate tabs —
+ * jobs on one, account names on another — and importing only the first quietly
+ * dropped the rest. Sheets with no header row (a blank "Sheet3", say) are
+ * reported as skipped rather than failing the whole upload.
+ */
+export async function readAllSheets(
+  file: UploadLike | null
+): Promise<
+  | { ok: true; grids: RawGrid[]; skipped: Array<{ name: string; reason: string }> }
+  | { ok: false; status: 400 | 422; error: string }
+> {
+  const guard = validateUpload(file);
+  if (guard) return guard;
+
+  const upload = file as UploadLike;
+
+  // A CSV is a single unnamed sheet; reuse the single-grid path.
+  if (upload.name.toLowerCase().endsWith(".csv")) {
+    try {
+      return { ok: true, grids: [readCsv(await upload.text())], skipped: [] };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "could not be read";
+      return { ok: false, status: 422, error: `Could not read that file: ${message}` };
+    }
+  }
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await upload.arrayBuffer());
+
+    const sheetNames = workbook.worksheets.map((ws) => ws.name);
+    if (sheetNames.length === 0) {
+      return {
+        ok: false,
+        status: 422,
+        error: "Could not read that file: the workbook has no worksheets.",
+      };
+    }
+
+    const grids: RawGrid[] = [];
+    const skipped: Array<{ name: string; reason: string }> = [];
+
+    for (const sheet of workbook.worksheets.slice(0, MAX_SHEETS)) {
+      try {
+        grids.push(gridFromWorksheet(sheet, sheetNames));
+      } catch (err) {
+        skipped.push({
+          name: sheet.name,
+          reason: err instanceof Error ? err.message : "could not be read",
+        });
+      }
+    }
+
+    for (const sheet of workbook.worksheets.slice(MAX_SHEETS)) {
+      skipped.push({
+        name: sheet.name,
+        reason: `only the first ${MAX_SHEETS} worksheets are read`,
+      });
+    }
+
+    if (grids.length === 0) {
+      return {
+        ok: false,
+        status: 422,
+        error:
+          "No worksheet had a header row. The first row of each sheet should hold the column names.",
+      };
+    }
+
+    return { ok: true, grids, skipped };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "could not be read";
+    return { ok: false, status: 422, error: `Could not read that file: ${message}` };
+  }
+}
+
+/** Builds the grid for one worksheet. Throws when it has no header row. */
+function gridFromWorksheet(
+  sheet: ExcelJS.Worksheet,
+  sheetNames: string[]
+): RawGrid {
   const header: unknown[] = [];
   const rows: unknown[][] = [];
   // Column index (zero-based) → the dropdown options Excel has on that column.

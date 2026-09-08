@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { buildProposal, type SpreadsheetProposal } from "@/lib/spreadsheet-infer";
-import { readSpreadsheet } from "@/lib/spreadsheet-read";
+import { readAllSheets } from "@/lib/spreadsheet-read";
 
 /**
  * Reads an uploaded CSV/XLSX and returns a *proposed* custom-tab schema.
@@ -32,27 +32,41 @@ export async function POST(
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const requestedSheet = (formData.get("sheet") as string) || undefined;
 
-    const read = await readSpreadsheet(file, requestedSheet);
+    // Every worksheet is analyzed, not just the first: a client's workbook
+    // usually holds several related lists on separate sheets, and importing
+    // only one silently dropped the rest.
+    const read = await readAllSheets(file);
     if (!read.ok) {
       return NextResponse.json({ error: read.error }, { status: read.status });
     }
 
-    const proposal: SpreadsheetProposal = buildProposal(read.grid);
+    const skipped = [...read.skipped];
+    const sheets: SpreadsheetProposal[] = [];
 
-    if (proposal.columns.length === 0) {
+    for (const grid of read.grids) {
+      const proposal = buildProposal(grid);
+      if (proposal.columns.length === 0) {
+        skipped.push({
+          name: grid.sheetName,
+          reason: "no column headers in the first row",
+        });
+        continue;
+      }
+      sheets.push(proposal);
+    }
+
+    if (sheets.length === 0) {
       return NextResponse.json(
         {
           error:
-            proposal.warnings[0] ??
-            "No column headers found. The first row of the sheet should hold the column names.",
+            "No worksheet had usable column headers. The first row of each sheet should hold the column names.",
         },
         { status: 422 }
       );
     }
 
-    return NextResponse.json(proposal);
+    return NextResponse.json({ sheets, skipped });
   } catch (err) {
     console.error("POST /api/checklists/[id]/custom-tabs/infer error:", err);
     return NextResponse.json({ error: "Could not process the file" }, { status: 500 });

@@ -4,6 +4,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
   FileSpreadsheet,
   Info,
   Loader2,
@@ -11,7 +13,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,9 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { customTabSlugConflict, customTabSlugFromLabel } from "@/lib/tab-config";
-import type { CustomTab, CustomTabColumn, CustomTabRow } from "@/lib/types";
 import { defaultWidthForType } from "@/lib/spreadsheet-infer";
+import type { CustomTab, CustomTabColumn, CustomTabRow } from "@/lib/types";
 import type { ColumnType, SpreadsheetProposal } from "@/lib/spreadsheet-infer";
 
 const COLUMN_TYPE_OPTIONS: { value: ColumnType; label: string }[] = [
@@ -44,7 +46,9 @@ const COLUMN_TYPE_OPTIONS: { value: ColumnType; label: string }[] = [
   { value: "url", label: "Link" },
 ];
 
-const SOURCE_LABEL: Record<SpreadsheetProposal["columns"][number]["source"], string> = {
+type ColumnSource = SpreadsheetProposal["columns"][number]["source"];
+
+const SOURCE_LABEL: Record<ColumnSource, string> = {
   declared: "From header",
   validation: "From Excel dropdown",
   inferred: "Detected",
@@ -58,25 +62,57 @@ interface DraftColumn {
   required: boolean;
   /** Comma-separated while editing; split on create. */
   optionsText: string;
-  source: SpreadsheetProposal["columns"][number]["source"];
+  source: ColumnSource;
   confidence: "high" | "low";
   include: boolean;
+}
+
+/** One worksheet, as a candidate tab. */
+interface DraftSheet {
+  sheetName: string;
+  include: boolean;
+  tabName: string;
+  importRows: boolean;
+  expanded: boolean;
+  columns: DraftColumn[];
+  rows: Record<string, unknown>[];
+  warnings: string[];
+  totalRowsInFile: number;
+  truncated: boolean;
+}
+
+interface InferResponse {
+  sheets: SpreadsheetProposal[];
+  skipped: Array<{ name: string; reason: string }>;
 }
 
 function needsOptions(type: ColumnType): boolean {
   return type === "select" || type === "multiselect";
 }
 
-function toDraftColumns(proposal: SpreadsheetProposal): DraftColumn[] {
-  return proposal.columns.map((col) => ({
-    key: col.key,
-    label: col.label,
-    type: col.type,
-    required: col.required,
-    optionsText: (col.options ?? []).join(", "),
-    source: col.source,
-    confidence: col.confidence,
+function toDraftSheets(sheets: SpreadsheetProposal[]): DraftSheet[] {
+  return sheets.map((sheet, index) => ({
+    sheetName: sheet.sheetName,
+    // Everything is included by default — the point is to stop losing sheets.
     include: true,
+    tabName: sheet.sheetName === "CSV" ? "" : sheet.sheetName,
+    importRows: true,
+    // Only the first is open, so a five-sheet workbook isn't a wall of tables.
+    expanded: index === 0,
+    rows: sheet.rows,
+    warnings: sheet.warnings,
+    totalRowsInFile: sheet.totalRowsInFile,
+    truncated: sheet.truncated,
+    columns: sheet.columns.map((col) => ({
+      key: col.key,
+      label: col.label,
+      type: col.type,
+      required: col.required,
+      optionsText: (col.options ?? []).join(", "),
+      source: col.source,
+      confidence: col.confidence,
+      include: true,
+    })),
   }));
 }
 
@@ -87,7 +123,7 @@ interface CustomTabImportDialogProps {
   checklistId: string;
   /** Existing tabs, for the slug collision check. */
   existingTabs: CustomTab[];
-  onCreate: (tab: CustomTab) => void;
+  onCreate: (tabs: CustomTab[]) => void;
 }
 
 export function CustomTabImportDialog({
@@ -98,22 +134,18 @@ export function CustomTabImportDialog({
   onCreate,
 }: CustomTabImportDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<SpreadsheetProposal | null>(null);
-  const [columns, setColumns] = useState<DraftColumn[]>([]);
-  const [tabName, setTabName] = useState("");
-  const [importRows, setImportRows] = useState(true);
+  const [sheets, setSheets] = useState<DraftSheet[] | null>(null);
+  const [skipped, setSkipped] = useState<Array<{ name: string; reason: string }>>([]);
 
   const reset = useCallback(() => {
-    setFile(null);
+    setFileName(null);
     setLoading(false);
     setError(null);
-    setProposal(null);
-    setColumns([]);
-    setTabName("");
-    setImportRows(true);
+    setSheets(null);
+    setSkipped([]);
   }, []);
 
   const handleClose = (next: boolean) => {
@@ -121,49 +153,30 @@ export function CustomTabImportDialog({
     onOpenChange(next);
   };
 
-  /**
-   * Uploads the file for parsing. Nothing is saved until Create Tab.
-   *
-   * `keepOnError` is set when re-analyzing an already-reviewed file (a
-   * worksheet switch) so a failure surfaces as a message rather than throwing
-   * the reviewer back to the upload step and discarding their edits.
-   */
+  /** Uploads the file for parsing. Nothing is saved until Create. */
   const analyze = useCallback(
-    async (selected: File, sheet?: string, keepOnError = false) => {
+    async (selected: File) => {
       setLoading(true);
       setError(null);
       try {
         const formData = new FormData();
         formData.append("file", selected);
-        if (sheet) formData.append("sheet", sheet);
 
         const res = await fetch(
           `/api/checklists/${checklistId}/custom-tabs/infer`,
           { method: "POST", body: formData }
         );
         const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Could not read that file");
 
-        if (!res.ok) {
-          throw new Error(body.error || "Could not read that file");
-        }
-
-        const next = body as SpreadsheetProposal;
-        setProposal(next);
-        setColumns(toDraftColumns(next));
-        setFile(selected);
-        // Default the tab name to the sheet name, falling back to the filename.
-        setTabName((current) => {
-          if (current) return current;
-          const fromSheet =
-            next.sheetName && next.sheetName !== "CSV" ? next.sheetName : "";
-          return fromSheet || selected.name.replace(/\.[^.]+$/, "");
-        });
+        const next = body as InferResponse;
+        setSheets(toDraftSheets(next.sheets));
+        setSkipped(next.skipped ?? []);
+        setFileName(selected.name);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not read that file");
-        if (!keepOnError) {
-          setProposal(null);
-          setColumns([]);
-        }
+        setSheets(null);
+        setSkipped([]);
       } finally {
         setLoading(false);
       }
@@ -177,92 +190,158 @@ export function CustomTabImportDialog({
     if (selected) analyze(selected);
   };
 
-  const updateColumn = (index: number, patch: Partial<DraftColumn>) => {
-    setColumns((prev) =>
-      prev.map((col, i) => (i === index ? { ...col, ...patch } : col))
+  const patchSheet = (index: number, patch: Partial<DraftSheet>) => {
+    setSheets((prev) =>
+      prev
+        ? prev.map((sheet, i) => (i === index ? { ...sheet, ...patch } : sheet))
+        : prev
     );
   };
 
-  const includedColumns = columns.filter((c) => c.include);
+  const patchColumn = (
+    sheetIndex: number,
+    colIndex: number,
+    patch: Partial<DraftColumn>
+  ) => {
+    setSheets((prev) =>
+      prev
+        ? prev.map((sheet, i) =>
+            i === sheetIndex
+              ? {
+                  ...sheet,
+                  columns: sheet.columns.map((col, j) =>
+                    j === colIndex ? { ...col, ...patch } : col
+                  ),
+                }
+              : sheet
+          )
+        : prev
+    );
+  };
 
-  const slugError = useMemo(() => {
-    const slug = customTabSlugFromLabel(tabName);
-    return customTabSlugConflict(slug, existingTabs);
-  }, [tabName, existingTabs]);
-
-  const missingOptions = includedColumns.filter(
-    (c) => needsOptions(c.type) && c.optionsText.trim() === ""
+  const included = useMemo(
+    () => (sheets ?? []).filter((s) => s.include),
+    [sheets]
   );
 
+  /**
+   * Per-sheet blocking problems. Slugs are checked against the existing tabs
+   * AND against the other sheets in this same import, since several tabs are
+   * created in one go.
+   */
+  const problems = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!sheets) return map;
+
+    const slugCounts = new Map<string, number>();
+    for (const sheet of sheets) {
+      if (!sheet.include) continue;
+      const slug = customTabSlugFromLabel(sheet.tabName);
+      if (slug) slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+    }
+
+    for (const sheet of sheets) {
+      if (!sheet.include) continue;
+      const slug = customTabSlugFromLabel(sheet.tabName);
+
+      if (!sheet.tabName.trim()) {
+        map.set(sheet.sheetName, "Give this tab a name.");
+        continue;
+      }
+      const conflict = customTabSlugConflict(slug, existingTabs);
+      if (conflict) {
+        map.set(sheet.sheetName, conflict);
+        continue;
+      }
+      if ((slugCounts.get(slug) ?? 0) > 1) {
+        map.set(
+          sheet.sheetName,
+          "Two sheets in this import would create the same tab name."
+        );
+        continue;
+      }
+      const missing = sheet.columns.filter(
+        (c) => c.include && needsOptions(c.type) && c.optionsText.trim() === ""
+      );
+      if (missing.length > 0) {
+        map.set(
+          sheet.sheetName,
+          `Add choices for: ${missing.map((c) => c.label || c.key).join(", ")}`
+        );
+        continue;
+      }
+      if (!sheet.columns.some((c) => c.include)) {
+        map.set(sheet.sheetName, "Include at least one column.");
+      }
+    }
+    return map;
+  }, [sheets, existingTabs]);
+
   const canCreate =
-    !!proposal &&
-    !!tabName.trim() &&
-    !slugError &&
-    includedColumns.length > 0 &&
-    missingOptions.length === 0;
+    !!sheets && included.length > 0 && problems.size === 0 && !loading;
 
   const handleCreate = () => {
-    if (!proposal || !canCreate) return;
+    if (!sheets || !canCreate) return;
 
-    const tabColumns: CustomTabColumn[] = includedColumns.map((col) => {
-      const options = needsOptions(col.type)
-        ? col.optionsText.split(",").map((o) => o.trim()).filter(Boolean)
-        : undefined;
+    const created: CustomTab[] = included.map((sheet, order) => {
+      const tabColumns: CustomTabColumn[] = sheet.columns
+        .filter((c) => c.include)
+        .map((col) => {
+          const options = needsOptions(col.type)
+            ? col.optionsText.split(",").map((o) => o.trim()).filter(Boolean)
+            : undefined;
+          return {
+            key: col.key,
+            label: col.label.trim() || col.key,
+            type: col.type,
+            required: col.required,
+            width: defaultWidthForType(col.type),
+            ...(options && options.length > 0 ? { options } : {}),
+          };
+        });
+
+      // Row values were shaped for the types the server detected. Anything the
+      // reviewer re-typed is re-shaped so the stored cell matches its editor.
+      const tabRows: CustomTabRow[] = sheet.importRows
+        ? sheet.rows.map((row) => {
+            const next: CustomTabRow = { id: crypto.randomUUID() };
+            for (const col of tabColumns) {
+              next[col.key] = reshapeValue(row[col.key], col);
+            }
+            return next;
+          })
+        : [];
+
       return {
-        key: col.key,
-        label: col.label.trim() || col.key,
-        type: col.type,
-        required: col.required,
-        // A starting width so an imported tab is readable immediately rather
-        // than letting one long-text column starve the others.
-        width: defaultWidthForType(col.type),
-        ...(options && options.length > 0 ? { options } : {}),
+        id: `ct_${crypto.randomUUID()}`,
+        slug: customTabSlugFromLabel(sheet.tabName),
+        label: sheet.tabName.trim(),
+        icon: "Table",
+        fields: [], // table-based tab
+        columns: tabColumns,
+        rows: tabRows,
+        uploadedFile: null,
+        sortOrder: existingTabs.length + order,
+        createdAt: new Date().toISOString(),
       };
     });
 
-    // Row values were shaped for the *detected* types on the server. Anything
-    // the reviewer re-typed here is re-shaped so the stored cell matches its
-    // editor (checkbox → boolean, multi-select → comma-joined string).
-    const tabRows: CustomTabRow[] = importRows
-      ? proposal.rows.map((row) => {
-          const next: CustomTabRow = { id: crypto.randomUUID() };
-          for (const col of tabColumns) {
-            next[col.key] = reshapeValue(row[col.key], col);
-          }
-          return next;
-        })
-      : [];
-
-    onCreate({
-      id: `ct_${crypto.randomUUID()}`,
-      slug: customTabSlugFromLabel(tabName),
-      label: tabName.trim(),
-      icon: "Table",
-      fields: [], // table-based tab
-      columns: tabColumns,
-      rows: tabRows,
-      uploadedFile: null,
-      sortOrder: existingTabs.length,
-      createdAt: new Date().toISOString(),
-    });
-
+    onCreate(created);
     reset();
     onOpenChange(false);
   };
 
-  const previewRows = proposal?.rows.slice(0, 5) ?? [];
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[85vh] w-full max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[88vh] w-full max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {proposal ? "Review Imported Columns" : "Import Tab from Spreadsheet"}
+            {sheets ? "Review Worksheets" : "Import Tabs from Spreadsheet"}
           </DialogTitle>
         </DialogHeader>
 
         {/* ---------- Step 1: pick a file ---------- */}
-        {!proposal && (
+        {!sheets && (
           <div className="space-y-4">
             <div className="rounded-lg border border-dashed bg-slate-50 p-6 text-center">
               <FileSpreadsheet className="mx-auto h-8 w-8 text-muted-foreground" />
@@ -270,9 +349,10 @@ export function CustomTabImportDialog({
                 Upload a CSV or Excel file
               </p>
               <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
-                The first row is read as the column headers. Each column&apos;s input
-                type is detected from its values — you can correct anything on the
-                next step before the tab is created.
+                Every worksheet becomes its own tab. The first row of each sheet
+                is read as its column headers, and each column&apos;s input type is
+                detected from its values — you can correct anything on the next
+                step before the tabs are created.
               </p>
               <Button
                 variant="outline"
@@ -322,253 +402,302 @@ export function CustomTabImportDialog({
           </div>
         )}
 
-        {/* ---------- Step 2: review ---------- */}
-        {proposal && (
+        {/* ---------- Step 2: review each worksheet ---------- */}
+        {sheets && (
           <div className="space-y-4">
-            {/* Source + sheet picker */}
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[220px] flex-1">
-                <Label htmlFor="import-tab-name">Tab Name</Label>
-                <Input
-                  id="import-tab-name"
-                  value={tabName}
-                  onChange={(e) => setTabName(e.target.value)}
-                  placeholder="e.g., Pre-boarding Documents"
-                  aria-invalid={!!slugError}
-                />
-                {slugError ? (
-                  <p className="mt-1 text-xs text-red-600">{slugError}</p>
-                ) : tabName.trim() ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Slug:{" "}
-                    <span className="font-mono">
-                      custom-{customTabSlugFromLabel(tabName)}
-                    </span>
-                  </p>
-                ) : null}
-              </div>
-
-              {proposal.sheetNames.length > 1 && (
-                <div className="min-w-[180px]">
-                  <Label htmlFor="import-sheet">Worksheet</Label>
-                  <Select
-                    value={proposal.sheetName}
-                    onValueChange={(sheet) => {
-                      if (file) analyze(file, sheet, true);
-                    }}
-                  >
-                    <SelectTrigger id="import-sheet">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {proposal.sheetNames.map((name) => (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-gray-800">{fileName}</span> —{" "}
+                {sheets.length} worksheet{sheets.length !== 1 ? "s" : ""} found,{" "}
+                {included.length} selected
+              </p>
             </div>
 
-            {/* Warnings from the parse */}
-            {proposal.warnings.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-900">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Worth checking
+            {skipped.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium text-gray-700">
+                  Skipped {skipped.length} worksheet
+                  {skipped.length !== 1 ? "s" : ""}
                 </p>
                 <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                  {proposal.warnings.map((w, i) => (
-                    <li key={i} className="text-xs text-amber-800">
-                      {w}
+                  {skipped.map((s) => (
+                    <li key={s.name} className="text-xs text-muted-foreground">
+                      <span className="font-medium">{s.name}</span> — {s.reason}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Column review table */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <Label className="text-sm font-medium">Columns</Label>
-                <span className="text-xs text-muted-foreground">
-                  {includedColumns.length} of {columns.length} included
-                </span>
-              </div>
+            <div className="space-y-3">
+              {sheets.map((sheet, sheetIndex) => {
+                const problem = problems.get(sheet.sheetName);
+                const includedCols = sheet.columns.filter((c) => c.include);
+                return (
+                  <div
+                    key={sheet.sheetName}
+                    className={cn(
+                      "rounded-lg border",
+                      sheet.include ? "bg-white" : "bg-slate-50/70",
+                      problem && "border-red-300"
+                    )}
+                  >
+                    {/* Sheet summary row */}
+                    <div className="flex flex-wrap items-center gap-3 p-3">
+                      <Checkbox
+                        checked={sheet.include}
+                        onCheckedChange={(checked) =>
+                          patchSheet(sheetIndex, { include: checked === true })
+                        }
+                        aria-label={`Import ${sheet.sheetName}`}
+                      />
 
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-100 text-left text-xs uppercase tracking-wide text-gray-600">
-                      <th className="w-10 p-2" />
-                      <th className="p-2 font-semibold">Column</th>
-                      <th className="p-2 font-semibold">Type</th>
-                      <th className="p-2 font-semibold">Options</th>
-                      <th className="w-20 p-2 text-center font-semibold">Required</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {columns.map((col, index) => (
-                      <tr
-                        key={col.key}
-                        className={col.include ? "bg-white" : "bg-slate-50/70 opacity-60"}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          patchSheet(sheetIndex, { expanded: !sheet.expanded })
+                        }
+                        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                        aria-label={sheet.expanded ? "Hide columns" : "Show columns"}
                       >
-                        <td className="p-2 text-center">
-                          <Checkbox
-                            checked={col.include}
-                            onCheckedChange={(checked) =>
-                              updateColumn(index, { include: checked === true })
-                            }
-                            aria-label={`Include ${col.label}`}
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            value={col.label}
-                            onChange={(e) =>
-                              updateColumn(index, { label: e.target.value })
-                            }
-                            className="h-8 text-sm"
-                            disabled={!col.include}
-                          />
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <Badge
-                              variant="outline"
-                              className={
-                                col.confidence === "low"
-                                  ? "border-amber-300 text-[10px] text-amber-700"
-                                  : "text-[10px]"
-                              }
-                            >
-                              {SOURCE_LABEL[col.source]}
-                            </Badge>
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              {col.key}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <Select
-                            value={col.type}
-                            onValueChange={(v) =>
-                              updateColumn(index, { type: v as ColumnType })
-                            }
-                            disabled={!col.include}
-                          >
-                            <SelectTrigger className="h-8 w-[150px] text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {COLUMN_TYPE_OPTIONS.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
+                        {sheet.expanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {sheet.sheetName}
+                      </Badge>
+
+                      <div className="min-w-[200px] flex-1">
+                        <Input
+                          value={sheet.tabName}
+                          onChange={(e) =>
+                            patchSheet(sheetIndex, { tabName: e.target.value })
+                          }
+                          placeholder="Tab name"
+                          className="h-8 text-sm"
+                          disabled={!sheet.include}
+                          aria-invalid={!!problem}
+                          aria-label={`Tab name for ${sheet.sheetName}`}
+                        />
+                      </div>
+
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {includedCols.length} column
+                        {includedCols.length !== 1 ? "s" : ""} ·{" "}
+                        {sheet.rows.length} row{sheet.rows.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    {problem && (
+                      <p className="px-3 pb-2 text-xs text-red-600">{problem}</p>
+                    )}
+
+                    {sheet.include && sheet.tabName.trim() && !problem && (
+                      <p className="px-3 pb-2 text-xs text-muted-foreground">
+                        Slug:{" "}
+                        <span className="font-mono">
+                          custom-{customTabSlugFromLabel(sheet.tabName)}
+                        </span>
+                      </p>
+                    )}
+
+                    {/* Column review */}
+                    {sheet.expanded && (
+                      <div className="space-y-3 border-t p-3">
+                        {sheet.warnings.length > 0 && (
+                          <div className="rounded-md border border-amber-200 bg-amber-50 p-2">
+                            <ul className="list-disc space-y-0.5 pl-4">
+                              {sheet.warnings.map((w, i) => (
+                                <li key={i} className="text-xs text-amber-800">
+                                  {w}
+                                </li>
                               ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-2">
-                          {needsOptions(col.type) ? (
-                            <Input
-                              value={col.optionsText}
-                              onChange={(e) =>
-                                updateColumn(index, { optionsText: e.target.value })
-                              }
-                              placeholder="Comma-separated choices"
-                              className="h-8 min-w-[200px] text-sm"
-                              disabled={!col.include}
-                              aria-invalid={
-                                col.include && col.optionsText.trim() === ""
-                              }
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="p-2 text-center">
-                          <Checkbox
-                            checked={col.required}
-                            onCheckedChange={(checked) =>
-                              updateColumn(index, { required: checked === true })
-                            }
-                            disabled={!col.include}
-                            aria-label={`${col.label} required`}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            </ul>
+                          </div>
+                        )}
 
-              {missingOptions.length > 0 && (
-                <p className="mt-2 text-xs text-red-600">
-                  Add choices for:{" "}
-                  {missingOptions.map((c) => c.label || c.key).join(", ")}
-                </p>
-              )}
+                        <div className="overflow-x-auto rounded-md border">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-100 text-left text-xs uppercase tracking-wide text-gray-600">
+                                <th className="w-10 p-2" />
+                                <th className="p-2 font-semibold">Column</th>
+                                <th className="p-2 font-semibold">Type</th>
+                                <th className="p-2 font-semibold">Options</th>
+                                <th className="w-20 p-2 text-center font-semibold">
+                                  Required
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {sheet.columns.map((col, colIndex) => (
+                                <tr
+                                  key={col.key}
+                                  className={
+                                    col.include ? "bg-white" : "bg-slate-50/70 opacity-60"
+                                  }
+                                >
+                                  <td className="p-2 text-center">
+                                    <Checkbox
+                                      checked={col.include}
+                                      onCheckedChange={(checked) =>
+                                        patchColumn(sheetIndex, colIndex, {
+                                          include: checked === true,
+                                        })
+                                      }
+                                      aria-label={`Include ${col.label}`}
+                                    />
+                                  </td>
+                                  <td className="p-2">
+                                    <Input
+                                      value={col.label}
+                                      onChange={(e) =>
+                                        patchColumn(sheetIndex, colIndex, {
+                                          label: e.target.value,
+                                        })
+                                      }
+                                      className="h-8 text-sm"
+                                      disabled={!col.include}
+                                    />
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          col.confidence === "low"
+                                            ? "border-amber-300 text-[10px] text-amber-700"
+                                            : "text-[10px]"
+                                        }
+                                      >
+                                        {SOURCE_LABEL[col.source]}
+                                      </Badge>
+                                      <span className="font-mono text-[10px] text-muted-foreground">
+                                        {col.key}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <Select
+                                      value={col.type}
+                                      onValueChange={(v) =>
+                                        patchColumn(sheetIndex, colIndex, {
+                                          type: v as ColumnType,
+                                        })
+                                      }
+                                      disabled={!col.include}
+                                    >
+                                      <SelectTrigger className="h-8 w-[150px] text-sm">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {COLUMN_TYPE_OPTIONS.map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </td>
+                                  <td className="p-2">
+                                    {needsOptions(col.type) ? (
+                                      <Input
+                                        value={col.optionsText}
+                                        onChange={(e) =>
+                                          patchColumn(sheetIndex, colIndex, {
+                                            optionsText: e.target.value,
+                                          })
+                                        }
+                                        placeholder="Comma-separated choices"
+                                        className="h-8 min-w-[180px] text-sm"
+                                        disabled={!col.include}
+                                        aria-invalid={
+                                          col.include && col.optionsText.trim() === ""
+                                        }
+                                      />
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    <Checkbox
+                                      checked={col.required}
+                                      onCheckedChange={(checked) =>
+                                        patchColumn(sheetIndex, colIndex, {
+                                          required: checked === true,
+                                        })
+                                      }
+                                      disabled={!col.include}
+                                      aria-label={`${col.label} required`}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Data preview */}
+                        {sheet.rows.length > 0 && (
+                          <>
+                            <div className="overflow-x-auto rounded-md border">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-slate-100 text-left">
+                                    {includedCols.map((col) => (
+                                      <th
+                                        key={col.key}
+                                        className="whitespace-nowrap p-2 font-semibold text-gray-600"
+                                      >
+                                        {col.label || col.key}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {sheet.rows.slice(0, 3).map((row, i) => (
+                                    <tr key={i} className="bg-white">
+                                      {includedCols.map((col) => (
+                                        <td
+                                          key={col.key}
+                                          className="max-w-[200px] truncate p-2 text-gray-700"
+                                        >
+                                          {formatPreviewValue(row[col.key])}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <label className="flex cursor-pointer items-center gap-2">
+                              <Checkbox
+                                checked={sheet.importRows}
+                                onCheckedChange={(checked) =>
+                                  patchSheet(sheetIndex, {
+                                    importRows: checked === true,
+                                  })
+                                }
+                                disabled={!sheet.include}
+                              />
+                              <span className="text-xs text-gray-700">
+                                Import these {sheet.rows.length} row
+                                {sheet.rows.length !== 1 ? "s" : ""} as starting data
+                              </span>
+                            </label>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-
-            {/* Data preview */}
-            {previewRows.length > 0 && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <Label className="text-sm font-medium">Data Preview</Label>
-                  <span className="text-xs text-muted-foreground">
-                    first {previewRows.length} of {proposal.rows.length} row
-                    {proposal.rows.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-slate-100 text-left">
-                        {includedColumns.map((col) => (
-                          <th
-                            key={col.key}
-                            className="whitespace-nowrap p-2 font-semibold text-gray-600"
-                          >
-                            {col.label || col.key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {previewRows.map((row, i) => (
-                        <tr key={i} className="bg-white">
-                          {includedColumns.map((col) => (
-                            <td
-                              key={col.key}
-                              className="max-w-[220px] truncate p-2 text-gray-700"
-                            >
-                              {formatPreviewValue(row[col.key])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <label className="mt-3 flex cursor-pointer items-center gap-2">
-                  <Checkbox
-                    checked={importRows}
-                    onCheckedChange={(checked) => setImportRows(checked === true)}
-                  />
-                  <span className="text-sm text-gray-700">
-                    Import these {proposal.rows.length} row
-                    {proposal.rows.length !== 1 ? "s" : ""} as starting data
-                  </span>
-                </label>
-                {!importRows && (
-                  <p className="mt-1 pl-6 text-xs text-muted-foreground">
-                    The tab will be created empty, with just the columns above.
-                  </p>
-                )}
-              </div>
-            )}
 
             {error && (
               <p className="flex items-start gap-1.5 text-sm text-red-600">
@@ -586,8 +715,10 @@ export function CustomTabImportDialog({
                 <Button variant="outline" onClick={() => handleClose(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!canCreate || loading}>
-                  Create Tab
+                <Button onClick={handleCreate} disabled={!canCreate}>
+                  {included.length > 1
+                    ? `Create ${included.length} Tabs`
+                    : "Create Tab"}
                 </Button>
               </div>
             </div>
