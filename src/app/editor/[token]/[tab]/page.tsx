@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
@@ -26,6 +26,7 @@ import { AutoflowsSheet } from "@/components/sheets/AutoflowsSheet";
 import { AtsIntegrationsSheet } from "@/components/sheets/AtsIntegrationsSheet";
 import { IntegrationsSheet } from "@/components/sheets/IntegrationsSheet";
 import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
+import { CustomTabSheet } from "@/components/sheets/CustomTabSheet";
 
 const sheetComponents: Record<string, React.ComponentType> = {
   welcome: WelcomeSheet,
@@ -64,7 +65,18 @@ export default function EditorTabPage() {
   const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
 
   // Admin users see admin-only tabs; editor link holders do not
-  const enabledTabs = isCustom ? [] : getEnabledTabs(data?.enabledTabs ?? null, userRole === "admin", undefined, data?.customTabs);
+  const enabledTabs = useMemo(
+    () =>
+      isCustom
+        ? []
+        : getEnabledTabs(
+            data?.enabledTabs ?? null,
+            userRole === "admin",
+            data?.tabOrder ?? null,
+            data?.customTabs,
+          ),
+    [isCustom, userRole, data?.enabledTabs, data?.tabOrder, data?.customTabs]
+  );
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
@@ -92,6 +104,13 @@ export default function EditorTabPage() {
 
   // Custom tab on a standard checklist
   if (customTab) {
+    // Table-based tabs (created via MCP or spreadsheet import) have columns
+    // defined. Without this branch they fell through to the form renderer and
+    // showed "No fields have been defined" on the editor link, even though the
+    // same tab rendered correctly in the client and admin views.
+    if (customTab.columns !== undefined) {
+      return <CustomTabSheet customTab={customTab} />;
+    }
     return <CustomChecklistForm customTabId={customTab.id} />;
   }
 

@@ -29,6 +29,43 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     hasPendingChangesRef,
   } = useChecklist(slug);
 
+  // Hooks must run in the same order on every render, so this sits above the
+  // loading and error guards below. With it underneath them, the first render
+  // (still loading) returned early and skipped the hook, and the next render
+  // called one hook more than the previous one — React treats that as fatal and
+  // the whole client-facing checklist died with a client-side exception.
+  const contextValue = useMemo(
+    () =>
+      data
+        ? {
+            data,
+            updateField,
+            saveStatus,
+            saveError,
+            hasPendingChanges,
+            lastSavedAt,
+            retrySave,
+            publishChanges,
+            discardChanges,
+            isReadOnly: false as const,
+            userRole: null,
+            basePath: `/client/${slug}`,
+          }
+        : null,
+    [
+      data,
+      updateField,
+      saveStatus,
+      saveError,
+      hasPendingChanges,
+      lastSavedAt,
+      retrySave,
+      publishChanges,
+      discardChanges,
+      slug,
+    ]
+  );
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -40,7 +77,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !contextValue) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -106,10 +143,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       hasAttachments,
     };
   });
-
-  const contextValue = useMemo(() => ({
-    data, updateField, saveStatus, saveError, hasPendingChanges, lastSavedAt, retrySave, publishChanges, discardChanges, isReadOnly: false as const, userRole: null, basePath: `/client/${slug}`,
-  }), [data, updateField, saveStatus, saveError, hasPendingChanges, lastSavedAt, retrySave, publishChanges, discardChanges, slug]);
 
   return (
     <ChecklistContext.Provider value={contextValue}>
