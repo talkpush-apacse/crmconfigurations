@@ -96,6 +96,18 @@ const tableResolvers: Partial<Record<ChecklistJsonField, ArrayResolver>> = {
     if (!value || typeof value !== "object") return [];
     return normalizeArray((value as Record<string, unknown>).faqs);
   },
+  // Every custom tab shares the one `customTabs` field, so an edit to a custom
+  // tab would otherwise be diffed as a single opaque object and reported as
+  // "1 field updated". Flattening the rows across tabs gives the owner an
+  // accurate row count in the notification digest.
+  customTabs: (value) => {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((tab) => {
+      if (!tab || typeof tab !== "object") return [];
+      const rows = (tab as Record<string, unknown>).rows;
+      return normalizeArray(rows);
+    });
+  },
 };
 
 const formTabs = new Set<ChecklistJsonField>([

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useChecklistContext } from "@/lib/checklist-context";
@@ -40,6 +41,11 @@ function buildColumnDefs(columns: NonNullable<CustomTab["columns"]>): ColumnDef[
     return {
       key: col.key,
       label: col.label,
+      // Help text rides along as the column-header tooltip — a custom tab has no
+      // hand-written intro copy to lean on, so the instruction for a column has
+      // to live on the column itself. Column examples are surfaced through the
+      // pinned sample row below, which is what the grid actually renders.
+      description: col.description,
       type: mapped.type,
       validation: mapped.validation,
       required: col.required,
@@ -58,6 +64,12 @@ type CustomColumn = NonNullable<CustomTab["columns"]>[number];
 function buildSampleRow(columns: CustomColumn[]): Record<string, string> {
   const sample: Record<string, string> = {};
   for (const col of columns) {
+    // An example written for this specific column always beats a generic one
+    // derived from the type.
+    if (col.example) {
+      sample[col.key] = col.example;
+      continue;
+    }
     switch (col.type) {
       case "checkbox":
         sample[col.key] = "Yes";
@@ -121,6 +133,14 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   // Memoised so the row handlers below keep stable identities across renders.
   const columns = useMemo(() => customTab.columns ?? [], [customTab.columns]);
   const columnDefs = useMemo(() => buildColumnDefs(columns), [columns]);
+  const sampleRow = useMemo(() => buildSampleRow(columns), [columns]);
+  // The pinned example row is only worth the vertical space when someone wrote
+  // real examples for this tab; a row of generic "10" / "2026-01-31" filler
+  // would show up on every custom tab and read as data.
+  const hasAuthoredExamples = useMemo(
+    () => columns.some((col) => !!col.example),
+    [columns]
+  );
 
   // Helper: update this tab in the full customTabs array and persist
   const updateTab = useCallback(
@@ -259,20 +279,25 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
 
   if (columns.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1 py-20 text-center">
-        <p className="text-sm font-medium text-gray-800">
-          This tab isn&apos;t set up yet
-        </p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          No columns have been defined for {customTab.label}. Your Talkpush contact
-          can add them — nothing is needed from you until then.
-        </p>
+      <div>
+        <SheetIntro title={customTab.label} description={customTab.description} />
+        <div className="flex flex-col items-center justify-center gap-1 py-20 text-center">
+          <p className="text-sm font-medium text-gray-800">
+            This tab isn&apos;t set up yet
+          </p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            No columns have been defined for {customTab.label}. Your Talkpush
+            contact can add them — nothing is needed from you until then.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <SheetIntro title={customTab.label} description={customTab.description} />
+
       {/* Table */}
       <EditableTable
         columns={columnDefs}
@@ -288,8 +313,9 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
           onApply: handlePasteApply,
           createRow: createEmptyRow,
         }}
+        sampleRow={hasAuthoredExamples ? sampleRow : undefined}
         csvConfig={{
-          sampleRow: buildSampleRow(columns),
+          sampleRow,
           onImport: handleCsvImport,
           sheetName: customTab.label,
           exportRows: rowsForCsvExport(rows, columns),
