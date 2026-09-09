@@ -661,6 +661,13 @@ export interface CustomTabColumn {
    */
   options?: string[];
   /**
+   * Help text shown in the column-header tooltip, so the instruction for a
+   * column lives on the column instead of in a separate email to the client.
+   */
+  description?: string;
+  /** Sample value shown as the cell placeholder. */
+  example?: string;
+  /**
    * Starting column width. A number is px (what the grid uses); the legacy
    * string form is a Tailwind class and is still accepted.
    */
@@ -682,6 +689,8 @@ export interface CustomTab {
   id: string;
   slug: string;
   label: string;           // display name (used by tab-config and navigation)
+  /** What the tab is for — rendered next to the title for whoever fills it in. */
+  description?: string;
   icon: string;
   fields: CustomFieldDef[]; // form-based custom tabs (legacy/admin-created)
   // Table-based custom tab fields (MCP-created, optional for backward compat)

@@ -9,9 +9,24 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { getSectionState, type SectionState } from "./section-status";
+import {
+  getCustomTabSectionState,
+  getSectionState,
+  type SectionState,
+} from "./section-status";
 import { CHECKLIST_JSON_FIELDS, FIELD_LABELS, type ChecklistJsonField } from "./types";
 import { TAB_CONFIG } from "./tab-config";
+import {
+  assertTableTab,
+  CUSTOM_TAB_COLUMN_TYPES,
+  CustomTabError,
+  describeColumns,
+  normalizeColumns,
+  normalizeRows,
+  renderPreviewTable,
+  summarizeTab,
+  type ColumnSpec,
+} from "./custom-tab-service";
 import { CONFIGURATOR_TEMPLATE } from "./configurator-template";
 import {
   getAttachmentTabKeys,
@@ -47,8 +62,8 @@ import type {
   AgencyPortalRow,
   UserRow,
   CustomTab,
-  CustomTabColumn,
   CustomTabRow,
+  CustomData,
   LabelRow,
   AtsIntegration,
   AtsTriggerRow,
@@ -583,6 +598,15 @@ export function createMcpServer(): McpServer {
         const label = FIELD_LABELS[field as ChecklistJsonField] ?? field;
         const value = (checklist as Record<string, unknown>)[field];
         progress[label] = getSectionState(value, field as ChecklistJsonField);
+      }
+
+      // Custom tabs live in one JSON blob rather than their own column, so they
+      // are reported per tab here instead of by the loop above. A client filling
+      // in a custom tab is doing real work on the checklist and it should show.
+      const customTabs = (checklist.customTabs ?? []) as unknown as CustomTab[];
+      const customData = (checklist.customData ?? null) as CustomData | null;
+      for (const tab of customTabs) {
+        progress[`${tab.label} (custom)`] = getCustomTabSectionState(tab, customData);
       }
 
       return {
@@ -1481,13 +1505,35 @@ export function createMcpServer(): McpServer {
     return !existingTabs.some((t) => t.slug === slug);
   }
 
+  type CustomTabFilledBy = "talkpush" | "client";
+
+  interface CustomTabMutationContext {
+    tabs: CustomTab[];
+    tabOrder: string[] | null;
+    tabFilledBy: Record<string, CustomTabFilledBy> | null;
+  }
+
+  interface CustomTabMutationOutcome {
+    tabs: CustomTab[];
+    result: Record<string, unknown>;
+    /** Full replacement sidebar order. Omit to leave the stored order alone. */
+    tabOrder?: string[] | null;
+    /** Full replacement filled-by map. Omit to leave the stored map alone. */
+    tabFilledBy?: Record<string, CustomTabFilledBy> | null;
+  }
+
   /**
-   * Read + write the customTabs array for a checklist inside a transaction with
+   * Read + write a checklist's custom tabs inside a transaction with a
    * row-level lock to prevent race conditions.
+   *
+   * A tab's position and its filled-by flag live outside `customTabs` (in
+   * `tabOrder` / `tabFilledBy`), so the mutator can return those too and they
+   * are written in the same transaction — otherwise creating a Talkpush-only
+   * tab would briefly expose it to the client between two writes.
    */
   async function mutateCustomTabs(
     slug: string,
-    mutator: (tabs: CustomTab[]) => { tabs: CustomTab[]; result: Record<string, unknown> }
+    mutator: (ctx: CustomTabMutationContext) => CustomTabMutationOutcome
   ): Promise<{ result: Record<string, unknown>; version: number }> {
     return prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<
@@ -1499,225 +1545,865 @@ export function createMcpServer(): McpServer {
 
       const checklist = await tx.checklist.findUnique({
         where: { id: current.id },
-        select: { customTabs: true },
+        select: { customTabs: true, tabOrder: true, tabFilledBy: true },
       });
 
-      const existingTabs = ((checklist?.customTabs ?? []) as unknown as CustomTab[]);
-      const { tabs: newTabs, result } = mutator(existingTabs);
+      const outcome = mutator({
+        tabs: (checklist?.customTabs ?? []) as unknown as CustomTab[],
+        tabOrder: (checklist?.tabOrder ?? null) as string[] | null,
+        tabFilledBy: (checklist?.tabFilledBy ?? null) as Record<string, CustomTabFilledBy> | null,
+      });
 
       const newVersion = current.version + 1;
-      const fieldVersions = { ...(current.fieldVersions ?? {}), customTabs: newVersion };
+      const fieldVersions: Record<string, number> = {
+        ...(current.fieldVersions ?? {}),
+        customTabs: newVersion,
+      };
 
-      await tx.checklist.update({
-        where: { id: current.id },
-        data: {
-          customTabs: JSON.parse(JSON.stringify(newTabs)),
-          version: newVersion,
-          fieldVersions,
-        },
-      });
+      const data: Prisma.ChecklistUpdateInput = {
+        customTabs: toPrismaJson(JSON.parse(JSON.stringify(outcome.tabs))),
+        version: newVersion,
+      };
 
-      return { result, version: newVersion };
+      if (outcome.tabOrder !== undefined) {
+        data.tabOrder = toPrismaJson(outcome.tabOrder ?? []);
+        fieldVersions.tabOrder = newVersion;
+      }
+      if (outcome.tabFilledBy !== undefined) {
+        data.tabFilledBy = toPrismaJson(outcome.tabFilledBy ?? {});
+        fieldVersions.tabFilledBy = newVersion;
+      }
+      data.fieldVersions = toPrismaJson(fieldVersions);
+
+      await tx.checklist.update({ where: { id: current.id }, data });
+
+      return { result: outcome.result, version: newVersion };
     });
   }
+
+  /**
+   * The sidebar order of every tab, standard and custom.
+   *
+   * `tabOrder` may be null (natural order) or hold a stale list from before a
+   * tab existed, so the stored list is only used to sort the current full set
+   * rather than trusted as the set itself.
+   */
+  function buildFullTabOrder(
+    storedOrder: string[] | null,
+    tabs: CustomTab[]
+  ): string[] {
+    const all = [
+      ...TAB_CONFIG.map((t) => t.slug),
+      ...tabs.map((t) => `custom-${t.slug}`),
+    ];
+    if (!storedOrder || storedOrder.length === 0) return all;
+    const rank = new Map(storedOrder.map((slug, i) => [slug, i]));
+    return all
+      .map((slug, i) => ({ slug, rank: rank.get(slug) ?? Infinity, i }))
+      .sort((a, b) => a.rank - b.rank || a.i - b.i)
+      .map((entry) => entry.slug);
+  }
+
+  /** Moves `slug` to sit directly after `placeAfter` in the sidebar. */
+  function placeTabAfter(
+    storedOrder: string[] | null,
+    tabs: CustomTab[],
+    slug: string,
+    placeAfter: string
+  ): string[] {
+    const order = buildFullTabOrder(storedOrder, tabs);
+    const target = placeAfter.trim();
+    const targetIndex = order.indexOf(target);
+    if (targetIndex === -1) {
+      throw new CustomTabError(
+        `Can't place the tab after "${target}" — no such tab. Valid values: ${order.join(", ")}.`
+      );
+    }
+    const without = order.filter((entry) => entry !== slug);
+    const insertAt = without.indexOf(target) + 1;
+    without.splice(insertAt, 0, slug);
+    return without;
+  }
+
+  /** Turns a service-layer validation failure into a readable tool error. */
+  function customTabToolError(error: unknown) {
+    if (error instanceof CustomTabError) {
+      return {
+        content: [{ type: "text" as const, text: error.message }],
+        isError: true as const,
+      };
+    }
+    throw error;
+  }
+
+  /** Shared zod shape for a column definition across the custom-tab tools. */
+  const customTabColumnSchema = z.object({
+    key: z
+      .string()
+      .optional()
+      .describe("Unique snake_case identifier. Derived from the label when omitted."),
+    label: z.string().describe("Column header shown to whoever fills the tab in"),
+    type: z
+      .enum(CUSTOM_TAB_COLUMN_TYPES)
+      .describe(
+        "Column data type. 'select'/'multiselect' require options; multiselect cells are stored comma-joined."
+      ),
+    required: z.boolean().optional().default(false),
+    options: z
+      .array(z.string())
+      .optional()
+      .describe("Choices — required for type 'select' and 'multiselect'."),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        "Help text shown in the column-header tooltip. Use this for the instruction the client would otherwise need emailed to them."
+      ),
+    example: z.string().optional().describe("Sample value shown as the cell placeholder"),
+    width: z.number().optional().describe("Starting column width in pixels"),
+  });
+
+  const filledBySchema = z
+    .enum(["client", "talkpush"])
+    .optional()
+    .describe(
+      "Who fills this tab in. 'talkpush' hides it from the client-facing checklist (still visible in the editor and admin views). Defaults to 'client'."
+    );
+
+  const placeAfterSchema = z
+    .string()
+    .optional()
+    .describe(
+      "Slug of the tab this one should sit after in the sidebar, e.g. 'documents' or 'custom-pre-boarding'. Defaults to last."
+    );
 
   // --- add_custom_tab ---
   server.tool(
     "add_custom_tab",
-    "Add a custom table tab to a checklist with defined columns and optional initial rows. Custom tabs appear in the client UI alongside standard tabs.",
+    "Create a custom table tab on a checklist: column definitions, per-column help text, and optional starting rows. " +
+      "Use this when the standard tabs don't fit what a client needs to give us, instead of forcing the data into an unrelated tab. " +
+      "Call preview_custom_tab first to confirm the shape with the user — this tool writes immediately and the tab becomes visible to the client (unless filled_by is 'talkpush').",
     {
       slug: z.string().describe("The checklist URL slug"),
       tab_name: z.string().describe("Display name for the tab (e.g. 'Pre-boarding Documents')"),
+      tab_description: z
+        .string()
+        .optional()
+        .describe(
+          "One or two sentences on what the tab is for, shown next to the title. Without it the client opens a bare grid with no explanation."
+        ),
       tab_icon: z.string().optional().default("Table").describe("Lucide icon name (default: 'Table')"),
-      columns: z
-        .array(
-          z.object({
-            key: z.string().describe("Unique snake_case column identifier (e.g. 'document_name')"),
-            label: z.string().describe("Column display label"),
-            type: z
-              .enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"])
-              .describe("Column data type"),
-            required: z.boolean().optional().default(false),
-            options: z
-              .array(z.string())
-              .optional()
-              .describe(
-                "Choices — for type: select or multiselect. Multi-select cell values are stored comma-joined."
-              ),
-          })
-        )
-        .describe("Column definitions for the tab table"),
+      filled_by: filledBySchema,
+      place_after: placeAfterSchema,
+      columns: z.array(customTabColumnSchema).describe("Column definitions for the tab table"),
       rows: z
         .array(z.record(z.string(), z.unknown()))
         .optional()
         .default([])
-        .describe("Optional initial data rows (each row is a key→value object matching column keys)"),
+        .describe("Optional starting rows (each row is a key→value object matching column keys)"),
     },
-    async ({ slug, tab_name, tab_icon, columns, rows }) => {
-      const tabSlug = generateSlug(tab_name);
-
-      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
-        if (!isSlugAvailable(tabSlug, existingTabs)) {
-          throw new Error(
-            `Slug "${tabSlug}" is already in use by another tab. Choose a different tab name.`
+    async ({ slug, tab_name, tab_description, tab_icon, filled_by, place_after, columns, rows }) => {
+      try {
+        const tabSlug = generateSlug(tab_name);
+        if (!tabSlug) {
+          throw new CustomTabError(
+            `"${tab_name}" doesn't produce a usable tab slug. Use a name with letters or numbers in it.`
           );
         }
 
-        const tabColumns: CustomTabColumn[] = columns.map((c) => ({
-          key: c.key,
-          label: c.label,
-          type: c.type,
-          required: c.required,
-          options: c.options,
-        }));
+        const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
+          columns as ColumnSpec[]
+        );
+        const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
+          tabColumns,
+          (rows ?? []) as Array<Record<string, unknown>>,
+          { makeId: uuid }
+        );
 
-        const tabRows: CustomTabRow[] = (rows ?? []).map((r) => ({
-          ...r,
-          id: uuid(),
-        }));
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          if (!isSlugAvailable(tabSlug, ctx.tabs)) {
+            throw new CustomTabError(
+              `Slug "${tabSlug}" is already in use by another tab. Choose a different tab name.`
+            );
+          }
 
-        const newTab: CustomTab = {
-          id: `ct_${uuid()}`,
-          slug: tabSlug,
-          label: tab_name,
-          icon: tab_icon || "Table",
-          fields: [], // empty — this is a table-based tab
-          columns: tabColumns,
-          rows: tabRows,
-          uploadedFile: null,
-          sortOrder: existingTabs.length,
-          createdAt: new Date().toISOString(),
-        };
-
-        return {
-          tabs: [...existingTabs, newTab],
-          result: {
-            id: newTab.id,
+          const newTab: CustomTab = {
+            id: `ct_${uuid()}`,
             slug: tabSlug,
-            url_slug: `custom-${tabSlug}`,
-            columnCount: tabColumns.length,
-            rowCount: tabRows.length,
-          },
-        };
-      });
+            label: tab_name,
+            ...(tab_description?.trim() ? { description: tab_description.trim() } : {}),
+            icon: tab_icon || "Table",
+            fields: [], // empty — this is a table-based tab
+            columns: tabColumns,
+            rows: tabRows,
+            uploadedFile: null,
+            sortOrder: ctx.tabs.length,
+            createdAt: new Date().toISOString(),
+          };
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Created custom tab "${tab_name}" (id: ${result.id}, slug: custom-${result.slug}). ${result.columnCount} column(s), ${result.rowCount} initial row(s). Version: ${version}`,
-          },
-        ],
-      };
+          const nextTabs = [...ctx.tabs, newTab];
+          const urlSlug = `custom-${tabSlug}`;
+
+          const outcome: CustomTabMutationOutcome = {
+            tabs: nextTabs,
+            result: {
+              id: newTab.id,
+              slug: tabSlug,
+              url_slug: urlSlug,
+              columnCount: tabColumns.length,
+              rowCount: tabRows.length,
+            },
+          };
+
+          if (filled_by) {
+            outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
+          }
+          if (place_after) {
+            outcome.tabOrder = placeTabAfter(ctx.tabOrder, nextTabs, urlSlug, place_after);
+          }
+
+          return outcome;
+        });
+
+        const notes = [...columnWarnings, ...rowWarnings];
+        const text = [
+          `Created custom tab "${tab_name}" on ${slug}.`,
+          ``,
+          `- id: ${result.id}`,
+          `- tab URL: /client/${slug}/${result.url_slug}`,
+          `- filled by: ${filled_by ?? "client"}${filled_by === "talkpush" ? " (hidden from the client view)" : ""}`,
+          `- ${result.columnCount} column(s), ${result.rowCount} starting row(s)`,
+          `- checklist version: ${version}`,
+          ``,
+          describeColumns(tabColumns),
+          ...(notes.length > 0 ? ["", "Notes:", ...notes.map((n) => `- ${n}`)] : []),
+        ].join("\n");
+
+        return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
     }
   );
 
   // --- update_custom_tab ---
   server.tool(
     "update_custom_tab",
-    "Update an existing custom tab's name, icon, or column definitions. Column data is a full replacement — existing row values for removed columns are retained in storage but won't render.",
+    "Update an existing custom tab's name, description, icon, columns, sidebar position, or who fills it in. " +
+      "Columns are a full replacement — cell values under a removed column stay in storage but stop rendering, so removals are reported back. " +
+      "Use edit_custom_tab_rows to change row data.",
     {
       slug: z.string().describe("The checklist URL slug"),
       tab_id: z.string().describe("The custom tab ID (e.g. 'ct_abc123')"),
       tab_name: z.string().optional().describe("New display name for the tab"),
+      tab_description: z
+        .string()
+        .optional()
+        .describe("New description. Pass an empty string to clear it."),
       tab_icon: z.string().optional().describe("New Lucide icon name"),
+      filled_by: filledBySchema,
+      place_after: placeAfterSchema,
       columns: z
-        .array(
-          z.object({
-            key: z.string(),
-            label: z.string(),
-            type: z.enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"]),
-            required: z.boolean().optional().default(false),
-            options: z.array(z.string()).optional(),
-          })
-        )
+        .array(customTabColumnSchema)
         .optional()
         .describe("Full replacement of column definitions (omit to keep existing columns)"),
     },
-    async ({ slug, tab_id, tab_name, tab_icon, columns }) => {
-      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
-        const idx = existingTabs.findIndex((t) => t.id === tab_id);
-        if (idx === -1) throw new Error(`Custom tab with id "${tab_id}" not found`);
+    async ({ slug, tab_id, tab_name, tab_description, tab_icon, filled_by, place_after, columns }) => {
+      try {
+        const normalized = columns
+          ? normalizeColumns(columns as ColumnSpec[])
+          : null;
 
-        const existing = existingTabs[idx];
-
-        // Slug collision check if renaming
-        let newSlug = existing.slug;
-        let newLabel = existing.label;
-        if (tab_name && tab_name !== existing.label) {
-          newSlug = generateSlug(tab_name);
-          newLabel = tab_name;
-          const otherTabs = existingTabs.filter((_, i) => i !== idx);
-          if (!isSlugAvailable(newSlug, otherTabs)) {
-            throw new Error(
-              `Slug "${newSlug}" is already in use. Choose a different tab name.`
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          const idx = ctx.tabs.findIndex((t) => t.id === tab_id);
+          if (idx === -1) {
+            throw new CustomTabError(
+              `Custom tab with id "${tab_id}" not found on ${slug}. Use list_custom_tabs to see the ids.`
             );
           }
-        }
 
-        const updatedTab: CustomTab = {
-          ...existing,
-          label: newLabel,
-          slug: newSlug,
-          icon: tab_icon ?? existing.icon,
-          columns: columns
-            ? columns.map((c) => ({
-                key: c.key,
-                label: c.label,
-                type: c.type,
-                required: c.required,
-                options: c.options,
-              }))
-            : existing.columns,
-        };
+          const existing = ctx.tabs[idx];
+          const previousColumns = existing.columns ?? [];
 
-        const newTabs = [...existingTabs];
-        newTabs[idx] = updatedTab;
+          // Slug collision check if renaming. The slug itself is kept so that
+          // bookmarked tab URLs stay valid across a rename.
+          let newLabel = existing.label;
+          if (tab_name && tab_name !== existing.label) {
+            newLabel = tab_name;
+          }
 
-        return {
-          tabs: newTabs,
-          result: { id: updatedTab.id, slug: updatedTab.slug, label: updatedTab.label },
-        };
-      });
+          let description = existing.description;
+          if (tab_description !== undefined) {
+            const trimmed = tab_description.trim();
+            description = trimmed === "" ? undefined : trimmed;
+          }
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Updated custom tab "${result.label}" (id: ${result.id}, slug: custom-${result.slug}). Version: ${version}`,
-          },
-        ],
-      };
+          const nextColumns = normalized ? normalized.columns : existing.columns;
+
+          const droppedKeys = normalized
+            ? previousColumns
+                .map((column) => column.key)
+                .filter((key) => !normalized.columns.some((column) => column.key === key))
+                .filter((key) => (existing.rows ?? []).some((row) => {
+                  const value = row[key];
+                  return value !== "" && value !== false && value != null;
+                }))
+            : [];
+
+          const updatedTab: CustomTab = {
+            ...existing,
+            label: newLabel,
+            icon: tab_icon ?? existing.icon,
+            columns: nextColumns,
+          };
+          if (description) updatedTab.description = description;
+          else delete updatedTab.description;
+
+          const nextTabs = [...ctx.tabs];
+          nextTabs[idx] = updatedTab;
+          const urlSlug = `custom-${updatedTab.slug}`;
+
+          const outcome: CustomTabMutationOutcome = {
+            tabs: nextTabs,
+            result: {
+              id: updatedTab.id,
+              slug: updatedTab.slug,
+              url_slug: urlSlug,
+              label: updatedTab.label,
+              columnCount: (nextColumns ?? []).length,
+              droppedKeys,
+            },
+          };
+
+          if (filled_by) {
+            outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
+          }
+          if (place_after) {
+            outcome.tabOrder = placeTabAfter(ctx.tabOrder, nextTabs, urlSlug, place_after);
+          }
+
+          return outcome;
+        });
+
+        const dropped = result.droppedKeys as string[];
+        const text = [
+          `Updated custom tab "${result.label}" (${result.id}) on ${slug}.`,
+          `- tab URL: /client/${slug}/${result.url_slug}`,
+          `- ${result.columnCount} column(s)`,
+          ...(filled_by ? [`- filled by: ${filled_by}`] : []),
+          ...(place_after ? [`- moved after: ${place_after}`] : []),
+          `- checklist version: ${version}`,
+          ...(dropped.length > 0
+            ? [
+                ``,
+                `Heads up: ${dropped.length} removed column(s) still hold data that will no longer render — ${dropped.join(", ")}. Re-add the column to see those values again.`,
+              ]
+            : []),
+          ...(normalized && normalized.warnings.length > 0
+            ? ["", "Notes:", ...normalized.warnings.map((n) => `- ${n}`)]
+            : []),
+        ].join("\n");
+
+        return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
     }
   );
 
   // --- delete_custom_tab ---
   server.tool(
     "delete_custom_tab",
-    "Remove a custom tab and all its data from a checklist. This is permanent.",
+    "Remove a custom tab and all its data from a checklist. This is permanent — create_snapshot first if the rows matter.",
     {
       slug: z.string().describe("The checklist URL slug"),
       tab_id: z.string().describe("The custom tab ID to delete (e.g. 'ct_abc123')"),
     },
     async ({ slug, tab_id }) => {
-      const { result, version } = await mutateCustomTabs(slug, (existingTabs) => {
-        const tab = existingTabs.find((t) => t.id === tab_id);
-        if (!tab) throw new Error(`Custom tab with id "${tab_id}" not found`);
+      try {
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          const tab = ctx.tabs.find((t) => t.id === tab_id);
+          if (!tab) {
+            throw new CustomTabError(
+              `Custom tab with id "${tab_id}" not found on ${slug}. Use list_custom_tabs to see the ids.`
+            );
+          }
+
+          const urlSlug = `custom-${tab.slug}`;
+          const nextTabs = ctx.tabs.filter((t) => t.id !== tab_id);
+
+          // Leave no orphan entries pointing at a tab that no longer exists.
+          const nextFilledBy = { ...(ctx.tabFilledBy ?? {}) };
+          const hadFilledBy = urlSlug in nextFilledBy;
+          delete nextFilledBy[urlSlug];
+
+          const hadOrder = !!ctx.tabOrder?.includes(urlSlug);
+
+          return {
+            tabs: nextTabs,
+            result: { label: tab.label, slug: tab.slug, rowCount: (tab.rows ?? []).length },
+            ...(hadFilledBy ? { tabFilledBy: nextFilledBy } : {}),
+            ...(hadOrder
+              ? { tabOrder: (ctx.tabOrder ?? []).filter((entry) => entry !== urlSlug) }
+              : {}),
+          };
+        });
 
         return {
-          tabs: existingTabs.filter((t) => t.id !== tab_id),
-          result: { label: tab.label, slug: tab.slug },
+          content: [
+            {
+              type: "text" as const,
+              text: `Deleted custom tab "${result.label}" (slug: custom-${result.slug}) and its ${result.rowCount} row(s) from ${slug}. Version: ${version}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  // --- design_custom_tab (prompt) ---
+  //
+  // The interview, not a tool. The standard tabs don't fit every
+  // implementation, and the failure mode when an SE asks for a custom tab is a
+  // model that guesses the columns and writes them straight to a live client
+  // checklist. This makes the questions explicit and puts the preview step
+  // before the write.
+  server.prompt(
+    "design_custom_tab",
+    "Interview the user about a new custom checklist tab, then build it once they approve.",
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: [
+              "I want to add a custom tab to a CRM config checklist. Custom tabs exist because the standard tabs don't fit every implementation — don't try to bend my requirement into an existing tab.",
+              "",
+              "Work through this in order:",
+              "",
+              "1. Ask me these, in one message, and wait for my answers:",
+              "   - Which checklist (client name or slug)? Use list_checklists if I'm vague.",
+              "   - What is this tab collecting, in plain terms?",
+              "   - What does ONE ROW represent? (one document, one site, one shift, one approver…)",
+              "   - Who fills it in: the client, or Talkpush internally?",
+              "",
+              "2. Propose the columns yourself based on my answers — don't ask me to list them. For each column give a label, a type (text, textarea, number, date, select, multiselect, email, url, checkbox), whether it's required, dropdown options where it's a choice, and one line of help text aimed at whoever fills it in. Add an example value for any column where the expected format isn't obvious.",
+              "",
+              "3. Call preview_custom_tab with your proposal, including 2-3 realistic sample rows. Show me the rendered table. Nothing is written at this step.",
+              "",
+              "4. Let me iterate. Re-run preview_custom_tab after each change. Do NOT call add_custom_tab until I explicitly approve.",
+              "",
+              "5. On my approval, call add_custom_tab with the approved shape — set filled_by from my answer, and place_after if I said where it should sit. Then tell me the tab URL and whether the client can see it yet.",
+              "",
+              "Two rules: don't invent dropdown options I didn't agree to, and if a tab like this already exists on another client's checklist, offer clone_custom_tab instead of rebuilding it from scratch.",
+            ].join("\n"),
+          },
+        },
+      ],
+    })
+  );
+
+  // --- list_custom_tabs ---
+  server.tool(
+    "list_custom_tabs",
+    "List a checklist's custom tabs with their ids, column keys, row counts, position and who fills them in. " +
+      "Use this before update_custom_tab, edit_custom_tab_rows or clone_custom_tab — it returns the ids and column keys those tools need, without pulling the whole checklist.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      include_rows: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Include every row's data. Off by default to keep the response small."),
+    },
+    async ({ slug, include_rows }) => {
+      const checklist = await prisma.checklist.findUnique({
+        where: { slug },
+        select: { customTabs: true, tabOrder: true, tabFilledBy: true, customData: true },
+      });
+
+      if (!checklist) {
+        return {
+          content: [{ type: "text" as const, text: `Checklist with slug "${slug}" not found` }],
+          isError: true,
+        };
+      }
+
+      const tabs = (checklist.customTabs ?? []) as unknown as CustomTab[];
+      if (tabs.length === 0) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `${slug} has no custom tabs yet. Use preview_custom_tab to design one, then add_custom_tab to create it.`,
+            },
+          ],
+        };
+      }
+
+      const filledBy = (checklist.tabFilledBy ?? {}) as Record<string, string>;
+      const order = (checklist.tabOrder ?? []) as string[];
+      const customData = (checklist.customData ?? null) as CustomData | null;
+
+      const payload = tabs.map((tab) => {
+        const urlSlug = `custom-${tab.slug}`;
+        return {
+          ...summarizeTab(tab),
+          filledBy: filledBy[urlSlug] ?? "client",
+          sidebarPosition: order.indexOf(urlSlug) === -1 ? null : order.indexOf(urlSlug),
+          status: getCustomTabSectionState(tab, customData),
+          ...(include_rows ? { rows: tab.rows ?? [] } : {}),
         };
       });
 
       return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Deleted custom tab "${result.label}" (slug: custom-${result.slug}). Version: ${version}`,
-          },
-        ],
+        content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
       };
+    }
+  );
+
+  // --- preview_custom_tab ---
+  server.tool(
+    "preview_custom_tab",
+    "Validate a proposed custom tab and render it as a table WITHOUT writing anything. " +
+      "Use this to agree the shape with the user before calling add_custom_tab: it reports column problems, bad dropdown values and slug collisions, and shows what the tab will look like. Nothing is saved.",
+    {
+      slug: z
+        .string()
+        .optional()
+        .describe("Checklist slug to check the tab name against for collisions. Optional."),
+      tab_name: z.string().describe("Proposed display name for the tab"),
+      tab_description: z.string().optional().describe("Proposed description"),
+      columns: z.array(customTabColumnSchema).describe("Proposed column definitions"),
+      rows: z
+        .array(z.record(z.string(), z.unknown()))
+        .optional()
+        .default([])
+        .describe("Proposed starting rows"),
+    },
+    async ({ slug, tab_name, tab_description, columns, rows }) => {
+      try {
+        const tabSlug = generateSlug(tab_name);
+        const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
+          columns as ColumnSpec[]
+        );
+        const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
+          tabColumns,
+          (rows ?? []) as Array<Record<string, unknown>>,
+          { makeId: uuid }
+        );
+
+        const collisions: string[] = [];
+        if (!tabSlug) {
+          collisions.push(
+            `"${tab_name}" doesn't produce a usable tab slug — use a name with letters or numbers.`
+          );
+        }
+        if (slug) {
+          const checklist = await prisma.checklist.findUnique({
+            where: { slug },
+            select: { customTabs: true },
+          });
+          if (!checklist) {
+            collisions.push(`Checklist "${slug}" not found — the name couldn't be checked.`);
+          } else {
+            const existing = (checklist.customTabs ?? []) as unknown as CustomTab[];
+            if (tabSlug && !isSlugAvailable(tabSlug, existing)) {
+              collisions.push(
+                `Slug "${tabSlug}" is already taken on ${slug} — pick a different tab name.`
+              );
+            }
+          }
+        }
+
+        const notes = [...columnWarnings, ...rowWarnings];
+        const text = [
+          `Preview only — nothing has been saved.`,
+          ``,
+          `**${tab_name}**${tabSlug ? ` (would live at custom-${tabSlug})` : ""}`,
+          ...(tab_description ? [tab_description] : []),
+          ``,
+          describeColumns(tabColumns),
+          ``,
+          renderPreviewTable(tabColumns, tabRows),
+          ...(collisions.length > 0 ? ["", "Blocking:", ...collisions.map((c) => `- ${c}`)] : []),
+          ...(notes.length > 0 ? ["", "Notes:", ...notes.map((n) => `- ${n}`)] : []),
+          ``,
+          collisions.length > 0
+            ? `Fix the blocking item(s) above before creating this tab.`
+            : `Looks valid. Confirm with the user, then call add_custom_tab with the same arguments to create it.`,
+        ].join("\n");
+
+        return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  // --- edit_custom_tab_rows ---
+  server.tool(
+    "edit_custom_tab_rows",
+    "Add, replace, update or delete rows on an existing custom table tab. " +
+      "Modes: 'append' adds rows; 'replace' swaps the entire row list (destructive); 'update' patches named rows by id, leaving unnamed columns untouched; 'delete' removes rows by id. " +
+      "Cell values are validated against the column types, so a value that isn't one of a dropdown's options comes back as an error rather than a blank cell. Use list_custom_tabs with include_rows=true to get row ids.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab_id: z.string().describe("The custom tab ID (e.g. 'ct_abc123')"),
+      mode: z
+        .enum(["append", "replace", "update", "delete"])
+        .describe("What to do with the rows supplied"),
+      rows: z
+        .array(z.record(z.string(), z.unknown()))
+        .optional()
+        .describe(
+          "Rows for append/replace/update. For 'update' each row must include its `id`; only the keys you pass are changed."
+        ),
+      row_ids: z
+        .array(z.string())
+        .optional()
+        .describe("Row ids to remove — for mode 'delete'."),
+      confirm_replace: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Required for mode 'replace', which discards every existing row."),
+    },
+    async ({ slug, tab_id, mode, rows, row_ids, confirm_replace }) => {
+      try {
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          const idx = ctx.tabs.findIndex((t) => t.id === tab_id);
+          if (idx === -1) {
+            throw new CustomTabError(
+              `Custom tab with id "${tab_id}" not found on ${slug}. Use list_custom_tabs to see the ids.`
+            );
+          }
+
+          const tab = ctx.tabs[idx];
+          const columns = assertTableTab(tab);
+          const existingRows = (tab.rows ?? []) as CustomTabRow[];
+          const supplied = (rows ?? []) as Array<Record<string, unknown>>;
+
+          let nextRows: CustomTabRow[];
+          const warnings: string[] = [];
+          let changed = 0;
+
+          if (mode === "append") {
+            if (supplied.length === 0) {
+              throw new CustomTabError("Mode 'append' needs at least one row in `rows`.");
+            }
+            const normalized = normalizeRows(columns, supplied, {
+              makeId: uuid,
+              rowOffset: existingRows.length + 1,
+            });
+            warnings.push(...normalized.warnings);
+            nextRows = [...existingRows, ...normalized.rows];
+            changed = normalized.rows.length;
+          } else if (mode === "replace") {
+            if (!confirm_replace) {
+              throw new CustomTabError(
+                `Mode 'replace' discards all ${existingRows.length} existing row(s) on "${tab.label}". Re-run with confirm_replace=true once the user has agreed, or use mode 'append'.`
+              );
+            }
+            const normalized = normalizeRows(columns, supplied, { makeId: uuid });
+            warnings.push(...normalized.warnings);
+            nextRows = normalized.rows;
+            changed = normalized.rows.length;
+          } else if (mode === "update") {
+            if (supplied.length === 0) {
+              throw new CustomTabError("Mode 'update' needs at least one row in `rows`.");
+            }
+            const missingId = supplied.findIndex(
+              (row) => typeof row.id !== "string" || !row.id.trim()
+            );
+            if (missingId !== -1) {
+              throw new CustomTabError(
+                `Row ${missingId + 1} has no \`id\`. Mode 'update' patches rows by id — get them from list_custom_tabs with include_rows=true.`
+              );
+            }
+
+            const byId = new Map(existingRows.map((row) => [row.id, row]));
+            const unknownIds = supplied
+              .map((row) => String(row.id))
+              .filter((id) => !byId.has(id));
+            if (unknownIds.length > 0) {
+              throw new CustomTabError(
+                `No row(s) with id ${unknownIds.map((id) => `"${id}"`).join(", ")} on "${tab.label}".`
+              );
+            }
+
+            const patched = normalizeRows(columns, supplied, {
+              makeId: uuid,
+              preserveIds: true,
+              partial: true,
+            });
+            warnings.push(...patched.warnings);
+
+            const patchById = new Map(patched.rows.map((row) => [row.id, row]));
+            nextRows = existingRows.map((row) => {
+              const patch = patchById.get(row.id);
+              return patch ? { ...row, ...patch } : row;
+            });
+            changed = patchById.size;
+          } else {
+            const ids = (row_ids ?? []).map((id) => id.trim()).filter(Boolean);
+            if (ids.length === 0) {
+              throw new CustomTabError("Mode 'delete' needs at least one id in `row_ids`.");
+            }
+            const present = new Set(existingRows.map((row) => row.id));
+            const unknownIds = ids.filter((id) => !present.has(id));
+            if (unknownIds.length > 0) {
+              throw new CustomTabError(
+                `No row(s) with id ${unknownIds.map((id) => `"${id}"`).join(", ")} on "${tab.label}".`
+              );
+            }
+            const removing = new Set(ids);
+            nextRows = existingRows.filter((row) => !removing.has(row.id));
+            changed = existingRows.length - nextRows.length;
+          }
+
+          const nextTabs = [...ctx.tabs];
+          nextTabs[idx] = { ...tab, rows: nextRows };
+
+          return {
+            tabs: nextTabs,
+            result: {
+              label: tab.label,
+              changed,
+              totalRows: nextRows.length,
+              warnings,
+              preview: renderPreviewTable(columns, nextRows),
+            },
+          };
+        });
+
+        const warnings = result.warnings as string[];
+        const text = [
+          `${mode} on "${result.label}" (${slug}): ${result.changed} row(s) affected, ${result.totalRows} row(s) total. Version: ${version}`,
+          ``,
+          result.preview as string,
+          ...(warnings.length > 0 ? ["", "Notes:", ...warnings.map((n) => `- ${n}`)] : []),
+        ].join("\n");
+
+        return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  // --- clone_custom_tab ---
+  server.tool(
+    "clone_custom_tab",
+    "Copy a custom tab's structure (columns, help text, description, icon) from one checklist to another. " +
+      "Rows are left out unless include_rows is true, so a tab designed for one client can be reused as a starting point for the next without carrying their data across.",
+    {
+      from_slug: z.string().describe("Checklist slug to copy the tab from"),
+      tab_id: z.string().describe("The custom tab ID on the source checklist"),
+      to_slug: z.string().describe("Checklist slug to copy the tab into"),
+      tab_name: z
+        .string()
+        .optional()
+        .describe("New display name on the target. Defaults to the source tab's name."),
+      include_rows: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Copy the source tab's row data too. Off by default — rows are usually client-specific."),
+      filled_by: filledBySchema,
+      place_after: placeAfterSchema,
+    },
+    async ({ from_slug, tab_id, to_slug, tab_name, include_rows, filled_by, place_after }) => {
+      try {
+        const source = await prisma.checklist.findUnique({
+          where: { slug: from_slug },
+          select: { customTabs: true },
+        });
+        if (!source) {
+          throw new CustomTabError(`Source checklist "${from_slug}" not found.`);
+        }
+
+        const sourceTabs = (source.customTabs ?? []) as unknown as CustomTab[];
+        const sourceTab = sourceTabs.find((t) => t.id === tab_id);
+        if (!sourceTab) {
+          throw new CustomTabError(
+            `Custom tab with id "${tab_id}" not found on ${from_slug}. Use list_custom_tabs to see the ids.`
+          );
+        }
+        const sourceColumns = assertTableTab(sourceTab);
+
+        const label = (tab_name ?? sourceTab.label).trim();
+        const tabSlug = generateSlug(label);
+        if (!tabSlug) {
+          throw new CustomTabError(
+            `"${label}" doesn't produce a usable tab slug. Pass a different tab_name.`
+          );
+        }
+
+        const clonedRows: CustomTabRow[] = include_rows
+          ? (sourceTab.rows ?? []).map((row) => ({ ...row, id: uuid() }))
+          : [];
+
+        const { result, version } = await mutateCustomTabs(to_slug, (ctx) => {
+          if (!isSlugAvailable(tabSlug, ctx.tabs)) {
+            throw new CustomTabError(
+              `Slug "${tabSlug}" is already in use on ${to_slug}. Pass a different tab_name.`
+            );
+          }
+
+          const newTab: CustomTab = {
+            id: `ct_${uuid()}`,
+            slug: tabSlug,
+            label,
+            ...(sourceTab.description ? { description: sourceTab.description } : {}),
+            icon: sourceTab.icon || "Table",
+            fields: [],
+            columns: sourceColumns.map((column) => ({ ...column })),
+            rows: clonedRows,
+            uploadedFile: null,
+            sortOrder: ctx.tabs.length,
+            createdAt: new Date().toISOString(),
+          };
+
+          const nextTabs = [...ctx.tabs, newTab];
+          const urlSlug = `custom-${tabSlug}`;
+
+          const outcome: CustomTabMutationOutcome = {
+            tabs: nextTabs,
+            result: {
+              id: newTab.id,
+              url_slug: urlSlug,
+              label,
+              columnCount: sourceColumns.length,
+              rowCount: clonedRows.length,
+            },
+          };
+
+          if (filled_by) {
+            outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
+          }
+          if (place_after) {
+            outcome.tabOrder = placeTabAfter(ctx.tabOrder, nextTabs, urlSlug, place_after);
+          }
+
+          return outcome;
+        });
+
+        const text = [
+          `Cloned "${sourceTab.label}" from ${from_slug} to ${to_slug} as "${result.label}".`,
+          `- id: ${result.id}`,
+          `- tab URL: /client/${to_slug}/${result.url_slug}`,
+          `- ${result.columnCount} column(s), ${result.rowCount} row(s) copied`,
+          `- checklist version: ${version}`,
+        ].join("\n");
+
+        return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
     }
   );
 
