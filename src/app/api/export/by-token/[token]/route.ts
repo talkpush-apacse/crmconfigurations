@@ -16,27 +16,10 @@ export async function GET(
 
     const checklist = await prisma.checklist.findUnique({
       where: { editorToken: token },
-      select: {
-        id: true,
-        slug: true,
-        clientName: true,
-        companyInfo: true,
-        users: true,
-        campaigns: true,
-        sites: true,
-        prescreening: true,
-        messaging: true,
-        sources: true,
-        folders: true,
-        documents: true,
-        fbWhatsapp: true,
-        instagram: true,
-        aiCallFaqs: true,
-        agencyPortal: true,
-        agencyPortalUsers: true,
-        communicationChannels: true,
-        featureToggles: true,
-      },
+    // No `select`: the export reads eighteen different fields, and hand-listing
+    // them meant anything added to the workbook was silently dropped here.
+    // Custom tab sheets, Attributes, Autoflows, Integrations and Tab Uploads
+    // were all missing from every export for exactly this reason.
     });
     if (!checklist) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
