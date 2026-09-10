@@ -25,6 +25,16 @@ function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
   delete publicChecklist.configuratorChecklist;
   // editorToken is already known to the caller; don't echo it back
   delete publicChecklist.editorToken;
+  // A real person's email address — this endpoint needs no auth beyond
+  // knowing the token, so anyone holding an editor link (including, until a
+  // recent fix, every client — /client/<slug> used to redirect straight
+  // here) was handed it in the response. Not rendered anywhere in the editor
+  // UI; found by diffing this route's live response against its own field
+  // list while fixing the equivalent gap in the slug-based GET.
+  delete publicChecklist.ownerEmail;
+  // Per-tab edit/notify timestamps for the owner-email feature — internal
+  // bookkeeping, not shown in any tab's UI.
+  delete publicChecklist.notificationState;
   return publicChecklist;
 }
 
