@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info } from "lucide-react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,11 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HelpTip } from "./HelpTip";
 import {
   DndContext,
   closestCenter,
@@ -67,6 +63,12 @@ interface EditableTableProps<TRow extends EditableRow> {
     onChange: (value: string | boolean) => void;
   }) => React.ReactNode;
   renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
+  /**
+   * Extra classes for a row, by row — for a state the cells can't express on
+   * their own, such as a messaging template the client has marked as out of
+   * scope, which should read as struck through rather than merely empty.
+   */
+  rowClassName?: (row: TRow) => string | undefined;
   deleteConfirmation?: {
     title?: string;
     getName?: (row: TRow) => string;
@@ -226,6 +228,21 @@ function renderColumnLabel(
   );
 }
 
+/**
+ * Column-header typography, carrying the required/optional distinction.
+ *
+ * Every label used to be uppercase white-on-near-black at the same weight, so
+ * a required column and an optional one were identical apart from a small
+ * asterisk. A required column now holds full-strength text; an optional one
+ * steps back a shade and a weight. That is the whole hierarchy — no extra
+ * badges, rules or colour.
+ */
+function columnLabelClass(col: ColumnDef): string {
+  return col.required
+    ? "text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-700"
+    : "text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500";
+}
+
 interface BulkRowContext {
   enabled: boolean;
   isSelected: boolean;
@@ -250,6 +267,7 @@ function SortableRow<TRow extends EditableRow>({
   renderCellPrefix,
   renderCell,
   renderDetail,
+  rowClassName,
   requestDelete,
   bulkRow,
   numColLeft,
@@ -280,6 +298,7 @@ function SortableRow<TRow extends EditableRow>({
     onChange: (value: string | boolean) => void;
   }) => React.ReactNode;
   renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
+  rowClassName?: string;
   requestDelete?: (rowIdx: number) => void;
   bulkRow?: BulkRowContext;
   /** Left offsets, in px, for the frozen leading columns. */
@@ -305,7 +324,11 @@ function SortableRow<TRow extends EditableRow>({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    // Only set opacity while actually dragging. An unconditional `opacity: 1`
+    // here is an inline style, so it silently outranked every opacity class —
+    // which is why a row dimmed through `rowClassName` (a messaging template
+    // marked out of scope) rendered at full strength.
+    ...(isDragging ? { opacity: 0.5 } : {}),
   };
 
   return (
@@ -314,24 +337,27 @@ function SortableRow<TRow extends EditableRow>({
         ref={setNodeRef}
         style={style}
         className={cn(
-          "transition-colors hover:bg-gray-50",
-          // Frozen columns inherit the row background, and a translucent one
-          // would let scrolled cells show through — so spreadsheet mode needs
-          // it fully opaque. Other tabs keep the original softer shade.
-          rowIdx % 2 === 0
-            ? "bg-white"
-            : stickyColumns
-              ? "bg-slate-50"
-              : "bg-slate-50/60",
-          (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
+          "transition-colors hover:bg-slate-50/70",
+          /*
+            No zebra striping. Alternating row fills plus grid rules plus a
+            tint on every unfilled cell is three separating devices doing one
+            job — and the stripe fought the empty-cell tint, so a half-filled
+            row read as two different states. The rules separate rows now, and
+            rows are opaque white so frozen columns can't let scrolled cells
+            show through underneath them.
+          */
+          "bg-white",
+          stickyColumns && "h-10",
+          "border-b border-grid-line",
           isDragging && "bg-brand-lavender-lightest shadow-sm",
-          bulkRow?.isSelected && "bg-brand-sage-lightest hover:bg-brand-sage-lightest"
+          bulkRow?.isSelected && "bg-brand-sage-lightest hover:bg-brand-sage-lightest",
+          rowClassName
         )}
       >
         {bulkRow?.enabled && (
           <TableCell
             className={cn(
-              "w-10 text-center",
+              "w-10 border-r border-grid-line p-1 text-center",
               stickyColumns && "sticky left-0 z-10 bg-inherit"
             )}
           >
@@ -345,7 +371,7 @@ function SortableRow<TRow extends EditableRow>({
         )}
         <TableCell
           className={cn(
-            "text-center text-xs text-muted-foreground",
+            "border-r border-grid-line p-1 text-center text-xs text-muted-foreground",
             stickyColumns && "sticky z-10 bg-inherit"
           )}
           style={stickyColumns ? { left: numColLeft } : undefined}
@@ -404,7 +430,10 @@ function SortableRow<TRow extends EditableRow>({
           <TableCell
             key={col.key}
             className={cn(
-              "p-1.5",
+              // 4px in the grid, where the cell itself is borderless and the
+              // rules do the separating; the old 6px was sized for a cell that
+              // contained a bordered box.
+              stickyColumns ? "border-r border-grid-line p-1" : "p-1.5",
               // In spreadsheet mode the header row's declared widths govern the
               // fixed layout, so per-cell minimums would only fight them.
               !stickyColumns &&
@@ -451,7 +480,7 @@ function SortableRow<TRow extends EditableRow>({
           </TableCell>
         ))}
         {!isReadOnly && (
-          <TableCell className="p-1.5">
+          <TableCell className={stickyColumns ? "p-1" : "p-1.5"}>
             <div className="flex items-center gap-0.5">
               {onDuplicate && (
                 <Button
@@ -515,26 +544,13 @@ function SortableRow<TRow extends EditableRow>({
                       key={col.key}
                       className={isWide ? "col-span-2" : "col-span-1"}
                     >
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="mb-1 block text-sm font-medium text-foreground">
                         <span className="inline-flex items-center gap-1">
-                          {renderColumnLabel(col, "text-red-500")}
+                          {renderColumnLabel(col, "text-destructive")}
                           {col.description && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex shrink-0 cursor-help items-center rounded-full text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
-                                  aria-label={`About ${col.label}`}
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" className="max-w-sm">
-                                <div className="space-y-1 text-xs leading-relaxed">
-                                  {col.description}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                            <HelpTip label={col.label} size={14}>
+                              {col.description}
+                            </HelpTip>
                           )}
                         </span>
                       </label>
@@ -576,6 +592,7 @@ export function EditableTable<TRow extends EditableRow>({
   renderCellPrefix,
   renderCell,
   renderDetail,
+  rowClassName,
   deleteConfirmation,
   sampleRow,
   spreadsheetMode = false,
@@ -721,8 +738,18 @@ export function EditableTable<TRow extends EditableRow>({
    */
   const gridColumns = spreadsheetMode ? allColumns : columns;
 
-  // No drawer in spreadsheet mode, so no expand control and no detail row.
-  const isExpandable = !spreadsheetMode && (!!detailColumns || !!renderDetail);
+  /**
+   * Whether rows get an expand chevron and a drawer.
+   *
+   * `detailColumns` are ordinary fields, so spreadsheet mode flattens them
+   * into the grid (above) and there is nothing left to expand. A
+   * `renderDetail` panel is different: it is custom content precisely because
+   * it does not fit in a cell — message bodies that run to paragraphs, a
+   * per-channel block — so it keeps its drawer even in spreadsheet mode.
+   * Flattening those would mean either paragraph-tall rows or unreachable
+   * fields.
+   */
+  const isExpandable = !!renderDetail || (!spreadsheetMode && !!detailColumns);
   const deleteDialogRow = deleteDialogIndex === null ? null : data[deleteDialogIndex] ?? null;
 
   const handleDeleteClick = (rowId: string, rowIdx: number) => {
@@ -1077,12 +1104,22 @@ export function EditableTable<TRow extends EditableRow>({
           }
         >
           <TableHeader>
-            <TableRow ref={headerRowRef} className="bg-primary hover:bg-primary">
+            {/*
+              A light header. This was `bg-primary` — a near-black bar with
+              white uppercase labels, which made the column names the heaviest
+              thing on the page and left the client's own data looking
+              secondary to them. It also made the help icons (white at 70% on
+              near-black) effectively invisible.
+            */}
+            <TableRow
+              ref={headerRowRef}
+              className="border-b border-grid-line-strong bg-grid-header hover:bg-grid-header"
+            >
               {bulkEnabled && (
                 <TableHead
                   className={cn(
-                    "w-10 text-center text-white",
-                    stickyColumns && "sticky left-0 top-0 z-30 bg-primary"
+                    "h-9 w-10 border-r border-grid-line text-center",
+                    stickyColumns && "sticky left-0 top-0 z-30 bg-grid-header"
                   )}
                 >
                   <Checkbox
@@ -1094,22 +1131,21 @@ export function EditableTable<TRow extends EditableRow>({
                     onCheckedChange={() => bulkSelection.toggleAll(selectableIds)}
                     disabled={selectableIds.length === 0}
                     aria-label="Select all rows"
-                    className="bg-white border-gray-400 shadow-sm hover:bg-gray-50 hover:border-gray-500 focus-visible:ring-white/70 data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=checked]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary data-[state=indeterminate]:border-primary-foreground"
                   />
                 </TableHead>
               )}
               <TableHead
                 className={cn(
-                  "text-center text-white",
+                  "h-9 border-r border-grid-line text-center text-[11px] font-medium text-slate-500",
                   isExpandable || canReorder ? "w-14" : "w-10",
-                  stickyColumns && "sticky top-0 z-30 bg-primary"
+                  stickyColumns && "sticky top-0 z-30 bg-grid-header"
                 )}
                 style={stickyColumns ? { left: numColLeft } : undefined}
               >
                 {isExpandable && data.length > 0 ? (
                   <button
                     onClick={toggleAll}
-                    className="inline-flex items-center justify-center rounded p-1 hover:bg-white/20 transition-colors"
+                    className="inline-flex items-center justify-center rounded p-1 text-slate-500 transition-colors hover:bg-black/5 hover:text-slate-900"
                     title={expandedCount > 0 ? "Collapse all" : "Expand all"}
                   >
                     {expandedCount > 0 ? (
@@ -1126,13 +1162,14 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableHead
                   key={col.key}
                   className={cn(
-                    "text-white text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    "h-9 border-r border-grid-line",
+                    columnLabelClass(col),
                     spreadsheetMode && "relative",
                     stickyColumns && [
-                      "sticky top-0 bg-primary",
+                      "sticky top-0 bg-grid-header",
                       // Border-collapse drops borders on sticky cells, so the
                       // header/body separator is drawn as an inset shadow.
-                      "shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)]",
+                      "shadow-[inset_0_-1px_0_var(--grid-line-strong)]",
                       colIdx === 0 ? "z-30" : "z-20",
                     ]
                   )}
@@ -1142,30 +1179,11 @@ export function EditableTable<TRow extends EditableRow>({
                   }}
                 >
                   <span className="inline-flex items-center gap-1">
-                    {renderColumnLabel(col, "text-red-200")}
+                    {renderColumnLabel(col, "text-destructive")}
                     {col.description && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            // A dotted underline on white text over a dark
-                            // header is nearly invisible; an explicit icon is
-                            // discoverable and keyboard-reachable.
-                            className="inline-flex shrink-0 cursor-help items-center rounded-full text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70"
-                            aria-label={`About ${col.label}`}
-                          >
-                            <Info className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="bottom"
-                          className="max-w-sm bg-slate-800 text-slate-50"
-                        >
-                          <div className="space-y-1 text-xs leading-relaxed">
-                            {col.description}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
+                      <HelpTip label={col.label} size={13}>
+                        {col.description}
+                      </HelpTip>
                     )}
                   </span>
                   {spreadsheetMode && !isReadOnly && (
@@ -1178,8 +1196,8 @@ export function EditableTable<TRow extends EditableRow>({
                       title="Drag to resize · double-click to reset"
                       className={cn(
                         "absolute right-0 top-0 z-10 flex h-full w-2 cursor-col-resize touch-none items-center justify-center",
-                        "before:h-1/2 before:w-px before:bg-white/30 before:transition-colors hover:before:bg-white",
-                        resizingKey === col.key && "before:bg-white"
+                        "before:h-1/2 before:w-px before:bg-slate-400/50 before:transition-colors hover:before:bg-slate-600",
+                        resizingKey === col.key && "before:bg-slate-600"
                       )}
                     />
                   )}
@@ -1188,8 +1206,8 @@ export function EditableTable<TRow extends EditableRow>({
               {!isReadOnly && (
                 <TableHead
                   className={cn(
-                    "w-10 text-white",
-                    stickyColumns && "sticky top-0 z-20 bg-primary"
+                    "h-9 w-10",
+                    stickyColumns && "sticky top-0 z-20 bg-grid-header"
                   )}
                 />
               )}
@@ -1198,31 +1216,37 @@ export function EditableTable<TRow extends EditableRow>({
           <TableBody>
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
-              <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest border-l-4 border-brand-lavender">
+              /*
+                Quieter than it was: the 4px lavender bar down the left edge
+                and an off-palette blue chip (#DBEAFE on #1D4ED8) made the one
+                row that is NOT the client's data the loudest row in the table.
+                A tint and a brand-coloured chip are enough to mark it.
+              */
+              <TableRow className="h-10 border-b border-grid-line bg-brand-lavender-lightest/50 hover:bg-brand-lavender-lightest/50">
                 {bulkEnabled && (
                   <TableCell
                     className={cn(
-                      "w-10",
+                      "w-10 border-r border-grid-line",
                       stickyColumns && "sticky left-0 z-10 bg-inherit"
                     )}
                   />
                 )}
                 <TableCell
                   className={cn(
-                    "py-2 text-center",
+                    "border-r border-grid-line p-1 text-center",
                     stickyColumns && "sticky z-10 bg-inherit"
                   )}
                   style={stickyColumns ? { left: numColLeft } : undefined}
                 >
-                  <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
-                    SAMPLE
+                  <span className="inline-flex items-center rounded bg-brand-lavender-lighter px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-brand-lavender-darker">
+                    Sample
                   </span>
                 </TableCell>
                 {gridColumns.map((col, colIdx) => (
                   <TableCell
                     key={col.key}
                     className={cn(
-                      "p-2",
+                      "border-r border-grid-line p-1",
                       stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
                     )}
                     style={
@@ -1231,7 +1255,7 @@ export function EditableTable<TRow extends EditableRow>({
                         : undefined
                     }
                   >
-                    <span className="block text-sm text-brand-lavender-darker italic px-1">
+                    <span className="block truncate px-2 text-sm text-brand-lavender-darker">
                       {sampleRow[col.key] || "—"}
                     </span>
                   </TableCell>
@@ -1315,7 +1339,8 @@ export function EditableTable<TRow extends EditableRow>({
                   )}
                   renderCellPrefix={renderCellPrefix}
                   renderCell={renderCell}
-                  renderDetail={spreadsheetMode ? undefined : renderDetail}
+                  renderDetail={renderDetail}
+                  rowClassName={rowClassName?.(row)}
                   requestDelete={deleteConfirmation ? setDeleteDialogIndex : undefined}
                   bulkRow={bulkRow}
                   numColLeft={numColLeft}
