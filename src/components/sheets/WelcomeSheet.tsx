@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { CheckCircle, Info, ArrowRight, ChevronDown } from "lucide-react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { useStoredPreference } from "@/hooks/useStoredPreference";
 import { getEnabledTabs, excludeTalkpushTabs, isClientView } from "@/lib/tab-config";
@@ -40,9 +39,14 @@ export function WelcomeSheet() {
 
   // Stored per viewer. See useStoredPreference for why this can't be a lazy
   // useState initializer — under SSR the stored value was being discarded.
+  //
+  // Starts CLOSED. Open by default, this was a six-line amber block that was
+  // the largest thing on a client's first screen, and most of it explained
+  // mechanics they would meet anyway ("use the Add Row button"). The heading
+  // stays visible so the notes are one click away.
   const [notesOpen, setNotesOpen] = useStoredPreference(
     "talkpush_welcome_notes_seen",
-    true
+    false
   );
 
   const handleNotesToggle = () => setNotesOpen(!notesOpen);
@@ -76,14 +80,18 @@ export function WelcomeSheet() {
 
   return (
     <div>
-      <SectionHeader title="Welcome" />
+      {/*
+        No SectionHeader above this. The page used to open with a "Welcome"
+        card and then this h1 immediately underneath — two titles, stacked,
+        saying the same thing. The h1 is the real one.
+      */}
       <div className="space-y-5">
         {/* Hero — left-aligned, no wrapping card */}
         <div>
-          <h1 className="text-[22px] font-semibold text-gray-900">
+          <h1 className="text-[22px] font-semibold text-foreground">
             Talkpush CRM Configuration Checklist
           </h1>
-          <p className="mt-1 text-[14px] text-gray-500">
+          <p className="mt-1 text-[14px] text-muted-foreground">
             Complete each section to configure your Talkpush CRM platform.
           </p>
         </div>
@@ -138,13 +146,17 @@ export function WelcomeSheet() {
           </button>
           {notesOpen && (
             <div className="px-4 pb-4 pt-0">
+              {/*
+                Trimmed from six lines to three. "Use the Add Row button",
+                "delete rows with the trash icon" and "dropdowns have
+                predefined options" all described controls that are visible on
+                screen and self-evident on contact — they were teaching the UI
+                rather than telling the client anything about the work.
+              */}
               <ul className="space-y-1 text-[14px] text-foreground/80">
-                <li>Do not skip sections — complete each tab in order when possible.</li>
-                <li>Dropdown fields have predefined options — select from the list.</li>
-                <li>For tables, use the &quot;Add Row&quot; button to create new entries.</li>
-                <li>You can delete rows using the trash icon on the right side.</li>
-                <li>Hover over the ⓘ icon next to field labels for detailed descriptions.</li>
-                <li>Export your completed checklist using the &quot;Export XLS&quot; button in the header.</li>
+                <li>Work through the sections in order where you can — later ones often reuse earlier answers.</li>
+                <li>Hover the ⓘ beside any label for guidance on what that field expects.</li>
+                <li>Your answers save automatically; nothing is submitted until you tell your Talkpush contact you are done.</li>
               </ul>
             </div>
           )}

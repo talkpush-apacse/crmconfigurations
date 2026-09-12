@@ -1,7 +1,7 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
+import { SubSectionHeader } from "@/components/shared/SubSectionHeader";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
@@ -87,26 +87,17 @@ export function FacebookWhatsAppSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Facebook Messenger & WhatsApp"
         description="Configure your Facebook Messenger and WhatsApp chatbot integration."
       />
 
-      <TabUploadBanner tabKey="fbWhatsapp" tabLabel="Facebook & WhatsApp" />
+      <TabUploadBanner tabKey="fbWhatsapp" tabLabel="Facebook & WhatsApp" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample configuration:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Phone Number:</strong> +63 917 000 1234 (must NOT be registered on WhatsApp already)</li>
-          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; short, friendly name candidates will see</li>
-          <li><strong>Chatbot Persona:</strong> Professional and helpful &mdash; guides candidates through application</li>
-        </ul>
-      </ExampleHint>
-
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Setup Requirements</div>
         <div className="p-4">
@@ -130,11 +121,13 @@ export function FacebookWhatsAppSheet() {
       />
 
       <div className="mt-8">
-        <SectionHeader
+        <SubSectionHeader
           title="Chatbot FAQs"
           description="Define frequently asked questions and responses for the Facebook Messenger and WhatsApp chatbot."
         />
         <EditableTable
+          spreadsheetMode
+          tableId="fb-whatsapp"
           columns={faqColumns}
           data={faqs}
           onUpdate={handleFaqUpdate}

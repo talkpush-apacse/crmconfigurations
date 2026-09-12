@@ -1,7 +1,7 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
+import { SubSectionHeader } from "@/components/shared/SubSectionHeader";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
@@ -84,26 +84,17 @@ export function InstagramSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Instagram Chatbot"
         description="Configure your Instagram chatbot integration."
       />
 
-      <TabUploadBanner tabKey="instagram" tabLabel="Instagram Chatbot" />
+      <TabUploadBanner tabKey="instagram" tabLabel="Instagram Chatbot" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample configuration:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Instagram Account:</strong> @companyph_careers</li>
-          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; same name across all channels for consistency</li>
-          <li><strong>Chatbot Persona:</strong> Friendly and conversational &mdash; matches Instagram&apos;s casual tone</li>
-        </ul>
-      </ExampleHint>
-
       <div className="mb-6 rounded-lg border">
         <div className="bg-gray-100 px-4 py-2 text-sm font-medium">Setup Requirements</div>
         <div className="p-4">
@@ -127,11 +118,13 @@ export function InstagramSheet() {
       />
 
       <div className="mt-8">
-        <SectionHeader
+        <SubSectionHeader
           title="Chatbot FAQs"
           description="Define frequently asked questions and responses for the Instagram chatbot."
         />
         <EditableTable
+          spreadsheetMode
+          tableId="instagram"
           columns={faqColumns}
           data={faqs}
           onUpdate={handleFaqUpdate}

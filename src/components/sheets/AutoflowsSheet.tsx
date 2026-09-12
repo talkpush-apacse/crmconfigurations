@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import type { AutoflowRule, ColumnDef } from "@/lib/types";
 
 const autoflowColumns: ColumnDef[] = [
@@ -109,6 +109,8 @@ function GroupSection({ groupName, rules, allRules, onUpdate }: GroupSectionProp
       <CollapsibleContent>
         <div className="rounded-b-lg border border-t-0 overflow-hidden">
           <EditableTable
+            spreadsheetMode
+            tableId="autoflows"
             columns={autoflowColumns}
             data={rules}
             onUpdate={handleUpdate}
@@ -157,7 +159,7 @@ export function AutoflowsSheet({ isAdmin }: AutoflowsSheetProps) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
+      <SheetIntro
         title="Autoflows"
         description="Configure automation rules that trigger folder movements, messages, and other actions based on candidate activity."
       />

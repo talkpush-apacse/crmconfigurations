@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditableTable } from "@/components/shared/EditableTable";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid } from "@/lib/template-data";
@@ -40,6 +41,7 @@ function buildColumnDefs(columns: NonNullable<CustomTab["columns"]>): ColumnDef[
     return {
       key: col.key,
       label: col.label,
+      description: col.description,
       type: mapped.type,
       validation: mapped.validation,
       required: col.required,
@@ -273,6 +275,22 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
 
   return (
     <div className="space-y-6">
+      {/*
+        Custom tabs used to render with no heading at all — a client opened
+        "Accounts Name" or "B2B Jobs" to a CSV toolbar and a bare table, with
+        nothing naming the tab or offering help. They now carry the same title
+        line as every built-in tab.
+      */}
+      <SheetIntro
+        title={customTab.label}
+        description={
+          <p>
+            Rows you add here are sent to Talkpush as-is. Hover the ⓘ on a
+            column for guidance on what it expects.
+          </p>
+        }
+      />
+
       {/* Table */}
       <EditableTable
         columns={columnDefs}

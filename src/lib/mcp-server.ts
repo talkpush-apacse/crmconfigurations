@@ -1534,6 +1534,12 @@ export function createMcpServer(): McpServer {
           z.object({
             key: z.string().describe("Unique snake_case column identifier (e.g. 'document_name')"),
             label: z.string().describe("Column display label"),
+            description: z
+              .string()
+              .optional()
+              .describe(
+                "Guidance shown when the client hovers the column's info icon. Say what the column expects and give an example — a client-specific column is one nobody outside the account can guess the meaning of, so supply this wherever the label alone is not self-explanatory."
+              ),
             type: z
               .enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"])
               .describe("Column data type"),
@@ -1566,6 +1572,7 @@ export function createMcpServer(): McpServer {
         const tabColumns: CustomTabColumn[] = columns.map((c) => ({
           key: c.key,
           label: c.label,
+          description: c.description,
           type: c.type,
           required: c.required,
           options: c.options,
@@ -1626,6 +1633,12 @@ export function createMcpServer(): McpServer {
           z.object({
             key: z.string(),
             label: z.string(),
+            description: z
+              .string()
+              .optional()
+              .describe(
+                "Guidance shown when the client hovers the column's info icon. Because this tool replaces the column list wholesale, omitting it drops any description that column already had."
+              ),
             type: z.enum(["text", "textarea", "number", "date", "select", "multiselect", "email", "url", "checkbox"]),
             required: z.boolean().optional().default(false),
             options: z.array(z.string()).optional(),
@@ -1664,6 +1677,12 @@ export function createMcpServer(): McpServer {
             ? columns.map((c) => ({
                 key: c.key,
                 label: c.label,
+                // Falls back to whatever this column already carried, so a
+                // caller updating types or options doesn't silently wipe the
+                // guidance a client depends on.
+                description:
+                  c.description ??
+                  existing.columns?.find((prev) => prev.key === c.key)?.description,
                 type: c.type,
                 required: c.required,
                 options: c.options,

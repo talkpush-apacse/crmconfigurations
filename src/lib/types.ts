@@ -644,6 +644,18 @@ export type CustomData = Record<string, unknown>;
 export interface CustomTabColumn {
   key: string;            // unique column identifier (snake_case)
   label: string;          // display label
+  /**
+   * Guidance shown in the column-header tooltip, the same as ColumnDef's.
+   *
+   * Custom tabs previously had no way to carry help text at all, so the tabs
+   * built for one specific client — exactly the ones whose columns nobody else
+   * can guess the meaning of — were the only tabs in the app offering no
+   * guidance whatsoever.
+   *
+   * Optional, and stored inside the existing `customTabs` JSON column, so no
+   * migration and older tabs keep working with it absent.
+   */
+  description?: string;
   type:
     | "text"
     | "textarea"

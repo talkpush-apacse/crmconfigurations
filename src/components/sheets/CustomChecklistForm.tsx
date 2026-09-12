@@ -56,6 +56,8 @@ function TableField({
 
   return (
     <EditableTable
+      spreadsheetMode
+      tableId="custom-checklist"
       columns={columns}
       data={value}
       onUpdate={handleUpdate}
