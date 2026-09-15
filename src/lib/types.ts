@@ -88,6 +88,10 @@ export interface QuestionRow extends SoftDeletable {
   rejectCondition: string;
   rejectReason: string;
   comments: string;
+  /** Client sign-off on this question — distinct from `comments`, which is internal SE notes. */
+  approved?: boolean;
+  /** Client-facing comments on this question, shown alongside `approved`. */
+  clientComments?: string;
 }
 
 // ===== Messaging Templates =====
@@ -632,7 +636,16 @@ export interface CustomFieldDef {
   required: boolean;
   placeholder?: string;
   options?: string[];
+  /** Legacy: plain column headers for a `table`-type field — every column renders as text. */
   columns?: string[];
+  /**
+   * Typed column definitions for a `table`-type field, reusing the same column-type
+   * union MCP-created table tabs use (`CustomTabColumn`, defined below). Takes
+   * precedence over `columns` when present, so a table field can have a real
+   * checkbox/select/etc. column instead of plain text. Additive — existing fields
+   * saved with only `columns` keep rendering exactly as before.
+   */
+  tableColumns?: CustomTabColumn[];
 }
 
 export type CustomSchema = CustomFieldDef[];

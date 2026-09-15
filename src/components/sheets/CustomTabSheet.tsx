@@ -8,52 +8,8 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid } from "@/lib/template-data";
-import type { CustomTab, CustomTabRow, ColumnDef } from "@/lib/types";
-
-// Map CustomTabColumn.type → ColumnDef.type + optional validation
-function mapColumnType(
-  type: NonNullable<CustomTab["columns"]>[number]["type"]
-): Pick<ColumnDef, "type" | "validation"> {
-  switch (type) {
-    case "textarea":
-      return { type: "textarea" };
-    case "checkbox":
-      return { type: "boolean" };
-    case "select":
-      return { type: "dropdown" };
-    case "multiselect":
-      return { type: "multiselect" };
-    case "email":
-      return { type: "text", validation: "email" };
-    case "url":
-      return { type: "text", validation: "url" };
-    case "text":
-    case "number":
-    case "date":
-    default:
-      return { type: "text" };
-  }
-}
-
-function buildColumnDefs(columns: NonNullable<CustomTab["columns"]>): ColumnDef[] {
-  return columns.map((col) => {
-    const mapped = mapColumnType(col.type);
-    return {
-      key: col.key,
-      label: col.label,
-      // Help text rides along as the column-header tooltip — a custom tab has no
-      // hand-written intro copy to lean on, so the instruction for a column has
-      // to live on the column itself. Column examples are surfaced through the
-      // pinned sample row below, which is what the grid actually renders.
-      description: col.description,
-      type: mapped.type,
-      validation: mapped.validation,
-      required: col.required,
-      options: col.options,
-      width: col.width,
-    };
-  });
-}
+import type { CustomTab, CustomTabRow } from "@/lib/types";
+import { buildColumnDefs, defaultCellValue } from "@/lib/custom-tab-columns";
 
 type CustomColumn = NonNullable<CustomTab["columns"]>[number];
 
@@ -167,7 +123,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
     updateTab((tab) => {
       const emptyRow: CustomTabRow = { id: crypto.randomUUID() };
       for (const col of columns) {
-        emptyRow[col.key] = col.type === "checkbox" ? false : "";
+        emptyRow[col.key] = defaultCellValue(col.type);
       }
       return { ...tab, rows: [...(tab.rows ?? []), emptyRow] };
     });
@@ -201,7 +157,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   const createEmptyRow = useCallback((): CustomTabRow => {
     const row: CustomTabRow = { id: crypto.randomUUID() };
     for (const col of columns) {
-      row[col.key] = col.type === "checkbox" ? false : "";
+      row[col.key] = defaultCellValue(col.type);
     }
     return row;
   }, [columns]);

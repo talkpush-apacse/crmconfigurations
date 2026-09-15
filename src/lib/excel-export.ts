@@ -411,6 +411,8 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Reject Condition", key: "rejectCondition", width: 25 },
     { header: "Reject Reason", key: "rejectReason", width: 25 },
     { header: "Comments", key: "comments", width: 25 },
+    { header: "Approved?", key: "approved", width: 12 },
+    { header: "Client Comments", key: "clientComments", width: 25 },
   ], data.prescreening as Record<string, unknown>[] | null);
 
   addTableSheet("Messaging Templates", [

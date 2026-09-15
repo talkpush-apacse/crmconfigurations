@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import type { CustomFieldDef, CustomFieldType } from "@/lib/types";
+import { parseTableColumnsInput, formatTableColumnsInput } from "@/lib/custom-tab-columns";
 
 const FIELD_TYPE_OPTIONS: { value: CustomFieldType; label: string }[] = [
   { value: "text", label: "Text" },
@@ -76,7 +77,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
       required: field.required,
       placeholder: field.placeholder ?? "",
       options: field.options?.join(", ") ?? "",
-      columns: field.columns?.join(", ") ?? "",
+      columns: formatTableColumnsInput(field),
     });
     setEditingIndex(index);
     setDialogOpen(true);
@@ -95,7 +96,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
         ? { options: form.options.split(",").map((o) => o.trim()).filter(Boolean) }
         : {}),
       ...(form.type === "table" && form.columns.trim()
-        ? { columns: form.columns.split(",").map((c) => c.trim()).filter(Boolean) }
+        ? parseTableColumnsInput(form.columns)
         : {}),
     };
 
@@ -300,8 +301,12 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                   onChange={(e) =>
                     setForm({ ...form, columns: e.target.value })
                   }
-                  placeholder="e.g., Name, Email, Phone"
+                  placeholder="e.g., Name, Approved?:checkbox, Notes:textarea"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  A bare header is plain text. Add <code>:type</code> to make a column something
+                  else — checkbox, textarea, number, date, select, multiselect, email, or url.
+                </p>
               </div>
             )}
 
