@@ -12,7 +12,7 @@
  * error, not a silently blank cell in front of the client.
  */
 
-import type { CustomTab, CustomTabColumn, CustomTabRow } from "./types";
+import type { CustomFieldDef, CustomFieldType, CustomTab, CustomTabColumn, CustomTabRow } from "./types";
 
 export const CUSTOM_TAB_COLUMN_TYPES = [
   "text",
@@ -513,10 +513,25 @@ export interface CustomTabSummary {
   rowCount: number;
   uploadedFile: string | null;
   createdAt: string | null;
+  /** Only present for kind "form" — the field ids a caller needs to preserve values across update_custom_tab. */
+  fields?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+    tableColumns?: string[];
+    /** The field's current value from customData, when the caller supplied it (see includeFieldValues). */
+    value?: unknown;
+  }>;
 }
 
-export function summarizeTab(tab: CustomTab): CustomTabSummary {
+export function summarizeTab(
+  tab: CustomTab,
+  customData?: Record<string, unknown> | null
+): CustomTabSummary {
   const columns = tab.columns ?? [];
+  const isForm = tab.columns === undefined;
   return {
     id: tab.id,
     slug: tab.slug,
@@ -524,7 +539,7 @@ export function summarizeTab(tab: CustomTab): CustomTabSummary {
     label: tab.label,
     description: tab.description ?? null,
     icon: tab.icon,
-    kind: tab.columns !== undefined ? "table" : "form",
+    kind: isForm ? "form" : "table",
     columns: columns.map((column) => ({
       key: column.key,
       label: column.label,
@@ -537,6 +552,21 @@ export function summarizeTab(tab: CustomTab): CustomTabSummary {
     rowCount: (tab.rows ?? []).length,
     uploadedFile: tab.uploadedFile?.name ?? null,
     createdAt: tab.createdAt ?? null,
+    ...(isForm
+      ? {
+          fields: tab.fields.map((field) => ({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: !!field.required,
+            ...(field.options?.length ? { options: field.options } : {}),
+            ...(field.tableColumns?.length
+              ? { tableColumns: field.tableColumns.map((c) => c.label) }
+              : {}),
+            ...(customData && field.id in customData ? { value: customData[field.id] } : {}),
+          })),
+        }
+      : {}),
   };
 }
 
@@ -544,9 +574,231 @@ export function summarizeTab(tab: CustomTab): CustomTabSummary {
 export function assertTableTab(tab: CustomTab): CustomTabColumn[] {
   if (tab.columns === undefined) {
     throw new CustomTabError(
-      `Custom tab "${tab.label}" is a form-based tab created in the admin UI, not a table. ` +
+      `Custom tab "${tab.label}" is a document-style tab (fields), not a table. ` +
         `Row and column tools don't apply to it.`
     );
   }
   return tab.columns;
+}
+
+/** A form-based tab is the only kind that has `fields` to rewrite. */
+export function assertFormTab(tab: CustomTab): CustomFieldDef[] {
+  if (tab.columns !== undefined) {
+    throw new CustomTabError(
+      `Custom tab "${tab.label}" is a table-based tab (columns/rows). Field tools don't apply to it.`
+    );
+  }
+  return tab.fields;
+}
+
+// ---------------------------------------------------------------------------
+// Form fields (document-style custom tabs — Main Script, sign-off notes, etc.)
+// ---------------------------------------------------------------------------
+
+export const CUSTOM_FIELD_TYPES = [
+  "text",
+  "textarea",
+  "richtext",
+  "number",
+  "date",
+  "select",
+  "checkbox",
+  "file",
+  "table",
+] as const;
+
+// Compile-time check that the list above stays in sync with CustomFieldType.
+const _typeCheck: readonly CustomFieldType[] = CUSTOM_FIELD_TYPES;
+void _typeCheck;
+
+/** Field types whose initial value is coerced via the same rules a table cell uses. */
+const SHIM_COERCED_TYPES = new Set<CustomFieldType>(["checkbox", "number", "date", "select"]);
+
+export interface FieldSpec {
+  /**
+   * Preserves an existing field's identity (and its customData) across an
+   * update — pass a field's current id back to keep it, omit for a new field.
+   * `update_custom_tab` is a full replacement, so a field whose id isn't
+   * carried over is treated as removed (its customData is orphaned, same as a
+   * dropped table column).
+   */
+  id?: string;
+  label: string;
+  type: CustomFieldType;
+  required?: boolean;
+  placeholder?: string;
+  /** Choices — required for type "select". */
+  options?: string[];
+  /** Column definitions — required for type "table". */
+  tableColumns?: ColumnSpec[];
+  /**
+   * Starting value. Shape depends on `type`: a string for
+   * text/textarea/richtext/file, a boolean for checkbox, a plain value for
+   * number/date/select (coerced the same way a table cell is), or an array of
+   * row objects (matching tableColumns' keys) for "table".
+   */
+  initialValue?: unknown;
+}
+
+export interface NormalizedFields {
+  fields: CustomFieldDef[];
+  /** Keyed by each field's generated id — merge this into the checklist's customData. */
+  initialData: Record<string, unknown>;
+  warnings: string[];
+}
+
+export interface NormalizeFieldsOptions {
+  /** Generates ids for fields, and for rows inside any "table"-type field. */
+  makeId: () => string;
+}
+
+interface FieldValueResult {
+  value: unknown;
+  warning?: string;
+  error?: string;
+}
+
+function coerceFieldInitialValue(
+  type: CustomFieldType,
+  tableColumns: CustomTabColumn[] | undefined,
+  fieldOptions: string[] | undefined,
+  raw: unknown,
+  makeId: () => string
+): FieldValueResult {
+  if (type === "table") {
+    if (!Array.isArray(raw)) {
+      return { value: [], error: `initialValue for a "table" field must be an array of row objects.` };
+    }
+    if (!tableColumns) return { value: [] };
+    const { rows, warnings } = normalizeRows(tableColumns, raw as Array<Record<string, unknown>>, {
+      makeId,
+    });
+    return { value: rows, warning: warnings[0] };
+  }
+
+  if (SHIM_COERCED_TYPES.has(type)) {
+    // Reuse the table-cell coercion rules — a scalar form field behaves the
+    // same as a scalar table column for checkbox/number/date/select.
+    const shim: CustomTabColumn = {
+      key: "_value",
+      label: "value",
+      type: type as CustomTabColumn["type"],
+      ...(type === "select" ? { options: fieldOptions ?? [] } : {}),
+    };
+    return coerceCellValue(shim, raw);
+  }
+
+  // text / textarea / richtext / file: stored as plain text, no coercion.
+  return { value: raw === null || raw === undefined ? "" : String(raw) };
+}
+
+/**
+ * Validates a proposed field list (a form-based/document-style tab) and
+ * returns it in storage shape, alongside the initial `customData` values those
+ * fields should carry — field *values* live in the checklist's top-level
+ * customData map keyed by field id, not on the tab itself, so a caller wanting
+ * pre-filled content needs both halves written together.
+ */
+export function normalizeFields(
+  specs: FieldSpec[],
+  options: NormalizeFieldsOptions
+): NormalizedFields {
+  const { makeId } = options;
+  const issues: string[] = [];
+  const warnings: string[] = [];
+
+  if (!Array.isArray(specs) || specs.length === 0) {
+    throw new CustomTabError("A document-style custom tab needs at least one field.");
+  }
+  if (specs.length > MAX_CUSTOM_TAB_COLUMNS) {
+    throw new CustomTabError(
+      `A custom tab can have at most ${MAX_CUSTOM_TAB_COLUMNS} fields (got ${specs.length}).`
+    );
+  }
+
+  const fields: CustomFieldDef[] = [];
+  const initialData: Record<string, unknown> = {};
+
+  specs.forEach((spec, index) => {
+    const position = `field ${index + 1}`;
+    const label = String(spec?.label ?? "").trim();
+    if (!label) {
+      issues.push(`${position}: label is required.`);
+      return;
+    }
+
+    const type = spec?.type;
+    if (!CUSTOM_FIELD_TYPES.includes(type)) {
+      issues.push(
+        `${position} ("${label}"): type "${String(type)}" is not one of ${CUSTOM_FIELD_TYPES.join(", ")}.`
+      );
+      return;
+    }
+
+    const cleanedOptions = cleanOptions(spec.options);
+    if (type === "select" && cleanedOptions.length === 0) {
+      issues.push(`${position} ("${label}"): type "select" needs at least one entry in options.`);
+      return;
+    }
+
+    let tableColumns: CustomTabColumn[] | undefined;
+    if (type === "table") {
+      if (!spec.tableColumns || spec.tableColumns.length === 0) {
+        issues.push(`${position} ("${label}"): type "table" needs at least one entry in tableColumns.`);
+        return;
+      }
+      try {
+        const normalized = normalizeColumns(spec.tableColumns);
+        tableColumns = normalized.columns;
+        warnings.push(...normalized.warnings.map((w) => `${position} ("${label}"): ${w}`));
+      } catch (error) {
+        const message = error instanceof CustomTabError ? error.message : String(error);
+        issues.push(`${position} ("${label}"): ${message}`);
+        return;
+      }
+    }
+
+    const id = optionalText(spec.id) ?? makeId();
+    const field: CustomFieldDef = {
+      id,
+      label,
+      type,
+      required: !!spec.required,
+    };
+    const placeholder = optionalText(spec.placeholder);
+    if (placeholder) field.placeholder = placeholder;
+    if (type === "select") field.options = cleanedOptions;
+    if (tableColumns) field.tableColumns = tableColumns;
+
+    if (spec.initialValue !== undefined) {
+      const coerced = coerceFieldInitialValue(type, tableColumns, cleanedOptions, spec.initialValue, makeId);
+      if (coerced.error) {
+        issues.push(`${position} ("${label}"): ${coerced.error}`);
+        return;
+      }
+      if (coerced.warning) warnings.push(`${position} ("${label}"): ${coerced.warning}`);
+      initialData[id] = coerced.value;
+    }
+
+    fields.push(field);
+  });
+
+  if (issues.length > 0) {
+    throw new CustomTabError("The field definitions have problems:", issues);
+  }
+
+  return { fields, initialData, warnings };
+}
+
+/** One line per field, for confirming the shape before writing it. */
+export function describeFields(fields: CustomFieldDef[]): string {
+  return fields
+    .map((field) => {
+      const bits: string[] = [field.type];
+      if (field.required) bits.push("required");
+      if (field.options?.length) bits.push(`options: ${field.options.join(" / ")}`);
+      if (field.tableColumns?.length) bits.push(`table columns: ${field.tableColumns.map((c) => c.label).join(", ")}`);
+      return `- ${field.label} — ${bits.join("; ")}`;
+    })
+    .join("\n");
 }

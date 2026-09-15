@@ -18,14 +18,18 @@ import { CHECKLIST_JSON_FIELDS, FIELD_LABELS, type ChecklistJsonField } from "./
 import { TAB_CONFIG } from "./tab-config";
 import {
   assertTableTab,
+  CUSTOM_FIELD_TYPES,
   CUSTOM_TAB_COLUMN_TYPES,
   CustomTabError,
   describeColumns,
+  describeFields,
   normalizeColumns,
+  normalizeFields,
   normalizeRows,
   renderPreviewTable,
   summarizeTab,
   type ColumnSpec,
+  type FieldSpec,
 } from "./custom-tab-service";
 import { CONFIGURATOR_TEMPLATE } from "./configurator-template";
 import {
@@ -777,6 +781,8 @@ export function createMcpServer(): McpServer {
             rejectCondition: z.string().optional().default("").describe("Condition for auto-reject"),
             rejectReason: z.string().optional().default("").describe("Rejection reason shown to candidate"),
             comments: z.string().optional().default(""),
+            approved: z.boolean().optional().default(false).describe("Client sign-off on this question"),
+            clientComments: z.string().optional().default("").describe("Client-facing comments, distinct from the internal 'comments' field"),
           })
         )
         .describe("Array of questions to add"),
@@ -793,6 +799,8 @@ export function createMcpServer(): McpServer {
         rejectCondition: q.rejectCondition,
         rejectReason: q.rejectReason,
         comments: q.comments,
+        approved: q.approved,
+        clientComments: q.clientComments,
       }));
 
       const result = await appendToSection<QuestionRow>(slug, "prescreening", rows);
@@ -1511,6 +1519,8 @@ export function createMcpServer(): McpServer {
     tabs: CustomTab[];
     tabOrder: string[] | null;
     tabFilledBy: Record<string, CustomTabFilledBy> | null;
+    /** Values for every form-based tab's fields, keyed by field id — a shared bag across all tabs. */
+    customData: Record<string, unknown>;
   }
 
   interface CustomTabMutationOutcome {
@@ -1520,6 +1530,13 @@ export function createMcpServer(): McpServer {
     tabOrder?: string[] | null;
     /** Full replacement filled-by map. Omit to leave the stored map alone. */
     tabFilledBy?: Record<string, CustomTabFilledBy> | null;
+    /**
+     * Merged (not replaced) into the checklist's customData — field values for
+     * every form-based tab live in that one shared map, so a full replacement
+     * here would wipe out every other tab's client-entered data. Omit when a
+     * mutation doesn't touch any field's value.
+     */
+    customDataPatch?: Record<string, unknown>;
   }
 
   /**
@@ -1529,7 +1546,10 @@ export function createMcpServer(): McpServer {
    * A tab's position and its filled-by flag live outside `customTabs` (in
    * `tabOrder` / `tabFilledBy`), so the mutator can return those too and they
    * are written in the same transaction — otherwise creating a Talkpush-only
-   * tab would briefly expose it to the client between two writes.
+   * tab would briefly expose it to the client between two writes. Likewise, a
+   * form-based tab's field *values* live in the checklist's top-level
+   * `customData`, not on the tab itself, so creating one with starting content
+   * needs `customData` written atomically alongside `customTabs` too.
    */
   async function mutateCustomTabs(
     slug: string,
@@ -1545,13 +1565,16 @@ export function createMcpServer(): McpServer {
 
       const checklist = await tx.checklist.findUnique({
         where: { id: current.id },
-        select: { customTabs: true, tabOrder: true, tabFilledBy: true },
+        select: { customTabs: true, tabOrder: true, tabFilledBy: true, customData: true },
       });
+
+      const existingCustomData = (checklist?.customData ?? {}) as Record<string, unknown>;
 
       const outcome = mutator({
         tabs: (checklist?.customTabs ?? []) as unknown as CustomTab[],
         tabOrder: (checklist?.tabOrder ?? null) as string[] | null,
         tabFilledBy: (checklist?.tabFilledBy ?? null) as Record<string, CustomTabFilledBy> | null,
+        customData: existingCustomData,
       });
 
       const newVersion = current.version + 1;
@@ -1572,6 +1595,12 @@ export function createMcpServer(): McpServer {
       if (outcome.tabFilledBy !== undefined) {
         data.tabFilledBy = toPrismaJson(outcome.tabFilledBy ?? {});
         fieldVersions.tabFilledBy = newVersion;
+      }
+      if (outcome.customDataPatch && Object.keys(outcome.customDataPatch).length > 0) {
+        data.customData = toPrismaJson(
+          JSON.parse(JSON.stringify({ ...existingCustomData, ...outcome.customDataPatch }))
+        );
+        fieldVersions.customData = newVersion;
       }
       data.fieldVersions = toPrismaJson(fieldVersions);
 
@@ -1663,6 +1692,42 @@ export function createMcpServer(): McpServer {
     width: z.number().optional().describe("Starting column width in pixels"),
   });
 
+  /**
+   * Shared zod shape for a form field, across the custom-tab tools — a
+   * document-style tab (Main Script, sign-off notes, etc.) instead of a flat
+   * table. Give a tab either `columns`/`rows` or `fields`, never both.
+   */
+  const customTabFieldSchema = z.object({
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "Only meaningful on update_custom_tab: pass an existing field's id back to preserve its " +
+          "identity and stored value across the update. Omit for a new field, and always omit on add_custom_tab."
+      ),
+    label: z.string().describe("Field label shown above the input"),
+    type: z
+      .enum(CUSTOM_FIELD_TYPES)
+      .describe(
+        "Field type. 'richtext' is plain multi-line text today (line breaks preserved, no formatting). " +
+          "'select' requires options. 'table' requires tableColumns and behaves like a mini version of a table-based tab."
+      ),
+    required: z.boolean().optional().default(false),
+    placeholder: z.string().optional().describe("Placeholder text shown in an empty field"),
+    options: z.array(z.string()).optional().describe("Choices — required for type 'select'."),
+    tableColumns: z
+      .array(customTabColumnSchema)
+      .optional()
+      .describe("Column definitions — required for type 'table'. Same shape as a table-tab's columns."),
+    initialValue: z
+      .unknown()
+      .optional()
+      .describe(
+        "Starting value. A string for text/textarea/richtext/file, a boolean for checkbox, a plain " +
+          "value for number/date/select, or an array of row objects (matching tableColumns' keys) for 'table'."
+      ),
+  });
+
   const filledBySchema = z
     .enum(["client", "talkpush"])
     .optional()
@@ -1680,7 +1745,9 @@ export function createMcpServer(): McpServer {
   // --- add_custom_tab ---
   server.tool(
     "add_custom_tab",
-    "Create a custom table tab on a checklist: column definitions, per-column help text, and optional starting rows. " +
+    "Create a custom tab on a checklist — either a flat table (columns/rows) or a document-style " +
+      "tab (fields: text, richtext, checkbox, a mini table, etc.), for content like a script or a " +
+      "sign-off form that doesn't fit a grid. Give exactly one of `columns` or `fields`, never both. " +
       "Use this when the standard tabs don't fit what a client needs to give us, instead of forcing the data into an unrelated tab. " +
       "Call preview_custom_tab first to confirm the shape with the user — this tool writes immediately and the tab becomes visible to the client (unless filled_by is 'talkpush').",
     {
@@ -1692,17 +1759,27 @@ export function createMcpServer(): McpServer {
         .describe(
           "One or two sentences on what the tab is for, shown next to the title. Without it the client opens a bare grid with no explanation."
         ),
-      tab_icon: z.string().optional().default("Table").describe("Lucide icon name (default: 'Table')"),
+      tab_icon: z
+        .string()
+        .optional()
+        .describe("Lucide icon name (default: 'Table' for a table tab, 'FileText' for a document-style tab)"),
       filled_by: filledBySchema,
       place_after: placeAfterSchema,
-      columns: z.array(customTabColumnSchema).describe("Column definitions for the tab table"),
+      columns: z
+        .array(customTabColumnSchema)
+        .optional()
+        .describe("Column definitions for a table tab. Omit when using `fields` instead."),
       rows: z
         .array(z.record(z.string(), z.unknown()))
         .optional()
         .default([])
-        .describe("Optional starting rows (each row is a key→value object matching column keys)"),
+        .describe("Optional starting rows for a table tab (each row is a key→value object matching column keys)"),
+      fields: z
+        .array(customTabFieldSchema)
+        .optional()
+        .describe("Field definitions for a document-style tab. Omit when using `columns` instead."),
     },
-    async ({ slug, tab_name, tab_description, tab_icon, filled_by, place_after, columns, rows }) => {
+    async ({ slug, tab_name, tab_description, tab_icon, filled_by, place_after, columns, rows, fields }) => {
       try {
         const tabSlug = generateSlug(tab_name);
         if (!tabSlug) {
@@ -1710,13 +1787,89 @@ export function createMcpServer(): McpServer {
             `"${tab_name}" doesn't produce a usable tab slug. Use a name with letters or numbers in it.`
           );
         }
+        if (columns && fields) {
+          throw new CustomTabError(`Give either "columns" or "fields", not both.`);
+        }
+        if (!columns && !fields) {
+          throw new CustomTabError(`Give "columns" (a table tab) or "fields" (a document-style tab).`);
+        }
 
-        const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
-          columns as ColumnSpec[]
-        );
-        const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
-          tabColumns,
-          (rows ?? []) as Array<Record<string, unknown>>,
+        // Table-based branch: unchanged from before `fields` existed.
+        if (columns) {
+          const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
+            columns as ColumnSpec[]
+          );
+          const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
+            tabColumns,
+            (rows ?? []) as Array<Record<string, unknown>>,
+            { makeId: uuid }
+          );
+
+          const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+            if (!isSlugAvailable(tabSlug, ctx.tabs)) {
+              throw new CustomTabError(
+                `Slug "${tabSlug}" is already in use by another tab. Choose a different tab name.`
+              );
+            }
+
+            const newTab: CustomTab = {
+              id: `ct_${uuid()}`,
+              slug: tabSlug,
+              label: tab_name,
+              ...(tab_description?.trim() ? { description: tab_description.trim() } : {}),
+              icon: tab_icon || "Table",
+              fields: [], // empty — this is a table-based tab
+              columns: tabColumns,
+              rows: tabRows,
+              uploadedFile: null,
+              sortOrder: ctx.tabs.length,
+              createdAt: new Date().toISOString(),
+            };
+
+            const nextTabs = [...ctx.tabs, newTab];
+            const urlSlug = `custom-${tabSlug}`;
+
+            const outcome: CustomTabMutationOutcome = {
+              tabs: nextTabs,
+              result: {
+                id: newTab.id,
+                slug: tabSlug,
+                url_slug: urlSlug,
+                columnCount: tabColumns.length,
+                rowCount: tabRows.length,
+              },
+            };
+
+            if (filled_by) {
+              outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
+            }
+            if (place_after) {
+              outcome.tabOrder = placeTabAfter(ctx.tabOrder, nextTabs, urlSlug, place_after);
+            }
+
+            return outcome;
+          });
+
+          const notes = [...columnWarnings, ...rowWarnings];
+          const text = [
+            `Created custom tab "${tab_name}" on ${slug}.`,
+            ``,
+            `- id: ${result.id}`,
+            `- tab URL: /client/${slug}/${result.url_slug}`,
+            `- filled by: ${filled_by ?? "client"}${filled_by === "talkpush" ? " (hidden from the client view)" : ""}`,
+            `- ${result.columnCount} column(s), ${result.rowCount} starting row(s)`,
+            `- checklist version: ${version}`,
+            ``,
+            describeColumns(tabColumns),
+            ...(notes.length > 0 ? ["", "Notes:", ...notes.map((n) => `- ${n}`)] : []),
+          ].join("\n");
+
+          return { content: [{ type: "text" as const, text }] };
+        }
+
+        // Form-based (document-style) branch.
+        const { fields: tabFields, initialData, warnings } = normalizeFields(
+          fields as FieldSpec[],
           { makeId: uuid }
         );
 
@@ -1732,10 +1885,8 @@ export function createMcpServer(): McpServer {
             slug: tabSlug,
             label: tab_name,
             ...(tab_description?.trim() ? { description: tab_description.trim() } : {}),
-            icon: tab_icon || "Table",
-            fields: [], // empty — this is a table-based tab
-            columns: tabColumns,
-            rows: tabRows,
+            icon: tab_icon || "FileText",
+            fields: tabFields, // this is a form-based (document-style) tab — no columns/rows
             uploadedFile: null,
             sortOrder: ctx.tabs.length,
             createdAt: new Date().toISOString(),
@@ -1750,9 +1901,9 @@ export function createMcpServer(): McpServer {
               id: newTab.id,
               slug: tabSlug,
               url_slug: urlSlug,
-              columnCount: tabColumns.length,
-              rowCount: tabRows.length,
+              fieldCount: tabFields.length,
             },
+            ...(Object.keys(initialData).length > 0 ? { customDataPatch: initialData } : {}),
           };
 
           if (filled_by) {
@@ -1765,18 +1916,17 @@ export function createMcpServer(): McpServer {
           return outcome;
         });
 
-        const notes = [...columnWarnings, ...rowWarnings];
         const text = [
-          `Created custom tab "${tab_name}" on ${slug}.`,
+          `Created document-style custom tab "${tab_name}" on ${slug}.`,
           ``,
           `- id: ${result.id}`,
           `- tab URL: /client/${slug}/${result.url_slug}`,
           `- filled by: ${filled_by ?? "client"}${filled_by === "talkpush" ? " (hidden from the client view)" : ""}`,
-          `- ${result.columnCount} column(s), ${result.rowCount} starting row(s)`,
+          `- ${result.fieldCount} field(s)`,
           `- checklist version: ${version}`,
           ``,
-          describeColumns(tabColumns),
-          ...(notes.length > 0 ? ["", "Notes:", ...notes.map((n) => `- ${n}`)] : []),
+          describeFields(tabFields),
+          ...(warnings.length > 0 ? ["", "Notes:", ...warnings.map((n) => `- ${n}`)] : []),
         ].join("\n");
 
         return { content: [{ type: "text" as const, text }] };
@@ -1789,9 +1939,10 @@ export function createMcpServer(): McpServer {
   // --- update_custom_tab ---
   server.tool(
     "update_custom_tab",
-    "Update an existing custom tab's name, description, icon, columns, sidebar position, or who fills it in. " +
-      "Columns are a full replacement — cell values under a removed column stay in storage but stop rendering, so removals are reported back. " +
-      "Use edit_custom_tab_rows to change row data.",
+    "Update an existing custom tab's name, description, icon, columns/fields, sidebar position, or who fills it in. " +
+      "Columns/fields are each a full replacement of their own kind — a table tab takes `columns`, a document-style " +
+      "tab takes `fields` (pass each existing field's `id` back to keep its stored value; a dropped id is orphaned, " +
+      "same as a removed column). Use edit_custom_tab_rows to change a table tab's row data.",
     {
       slug: z.string().describe("The checklist URL slug"),
       tab_id: z.string().describe("The custom tab ID (e.g. 'ct_abc123')"),
@@ -1806,13 +1957,19 @@ export function createMcpServer(): McpServer {
       columns: z
         .array(customTabColumnSchema)
         .optional()
-        .describe("Full replacement of column definitions (omit to keep existing columns)"),
+        .describe("Full replacement of column definitions — only valid on a table tab (omit to keep existing columns)"),
+      fields: z
+        .array(customTabFieldSchema)
+        .optional()
+        .describe("Full replacement of field definitions — only valid on a document-style tab (omit to keep existing fields)"),
     },
-    async ({ slug, tab_id, tab_name, tab_description, tab_icon, filled_by, place_after, columns }) => {
+    async ({ slug, tab_id, tab_name, tab_description, tab_icon, filled_by, place_after, columns, fields }) => {
       try {
-        const normalized = columns
-          ? normalizeColumns(columns as ColumnSpec[])
-          : null;
+        if (columns && fields) {
+          throw new CustomTabError(`Give either "columns" or "fields", not both.`);
+        }
+        const normalizedColumns = columns ? normalizeColumns(columns as ColumnSpec[]) : null;
+        const normalizedFields = fields ? normalizeFields(fields as FieldSpec[], { makeId: uuid }) : null;
 
         const { result, version } = await mutateCustomTabs(slug, (ctx) => {
           const idx = ctx.tabs.findIndex((t) => t.id === tab_id);
@@ -1823,7 +1980,21 @@ export function createMcpServer(): McpServer {
           }
 
           const existing = ctx.tabs[idx];
+          const isTable = existing.columns !== undefined;
+
+          if (normalizedColumns && !isTable) {
+            throw new CustomTabError(
+              `Custom tab "${existing.label}" is a document-style tab (fields) — pass "fields" to update it, not "columns".`
+            );
+          }
+          if (normalizedFields && isTable) {
+            throw new CustomTabError(
+              `Custom tab "${existing.label}" is a table tab (columns/rows) — pass "columns" to update it, not "fields".`
+            );
+          }
+
           const previousColumns = existing.columns ?? [];
+          const previousFields = existing.fields ?? [];
 
           // Slug collision check if renaming. The slug itself is kept so that
           // bookmarked tab URLs stay valid across a rename.
@@ -1838,16 +2009,28 @@ export function createMcpServer(): McpServer {
             description = trimmed === "" ? undefined : trimmed;
           }
 
-          const nextColumns = normalized ? normalized.columns : existing.columns;
+          const nextColumns = normalizedColumns ? normalizedColumns.columns : existing.columns;
+          const nextFields = normalizedFields ? normalizedFields.fields : existing.fields;
 
-          const droppedKeys = normalized
+          const droppedKeys = normalizedColumns
             ? previousColumns
                 .map((column) => column.key)
-                .filter((key) => !normalized.columns.some((column) => column.key === key))
+                .filter((key) => !normalizedColumns.columns.some((column) => column.key === key))
                 .filter((key) => (existing.rows ?? []).some((row) => {
                   const value = row[key];
                   return value !== "" && value !== false && value != null;
                 }))
+            : [];
+
+          const droppedFieldLabels = normalizedFields
+            ? previousFields
+                .filter((field) => !normalizedFields.fields.some((f) => f.id === field.id))
+                .filter((field) => {
+                  const value = ctx.customData[field.id];
+                  return value !== "" && value !== false && value != null &&
+                    !(Array.isArray(value) && value.length === 0);
+                })
+                .map((field) => field.label)
             : [];
 
           const updatedTab: CustomTab = {
@@ -1855,6 +2038,7 @@ export function createMcpServer(): McpServer {
             label: newLabel,
             icon: tab_icon ?? existing.icon,
             columns: nextColumns,
+            fields: nextFields,
           };
           if (description) updatedTab.description = description;
           else delete updatedTab.description;
@@ -1870,11 +2054,17 @@ export function createMcpServer(): McpServer {
               slug: updatedTab.slug,
               url_slug: urlSlug,
               label: updatedTab.label,
+              kind: isTable ? "table" : "form",
               columnCount: (nextColumns ?? []).length,
+              fieldCount: (nextFields ?? []).length,
               droppedKeys,
+              droppedFieldLabels,
             },
           };
 
+          if (normalizedFields && Object.keys(normalizedFields.initialData).length > 0) {
+            outcome.customDataPatch = normalizedFields.initialData;
+          }
           if (filled_by) {
             outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
           }
@@ -1886,10 +2076,12 @@ export function createMcpServer(): McpServer {
         });
 
         const dropped = result.droppedKeys as string[];
+        const droppedFields = result.droppedFieldLabels as string[];
+        const isTable = result.kind === "table";
         const text = [
           `Updated custom tab "${result.label}" (${result.id}) on ${slug}.`,
           `- tab URL: /client/${slug}/${result.url_slug}`,
-          `- ${result.columnCount} column(s)`,
+          `- ${isTable ? `${result.columnCount} column(s)` : `${result.fieldCount} field(s)`}`,
           ...(filled_by ? [`- filled by: ${filled_by}`] : []),
           ...(place_after ? [`- moved after: ${place_after}`] : []),
           `- checklist version: ${version}`,
@@ -1899,8 +2091,17 @@ export function createMcpServer(): McpServer {
                 `Heads up: ${dropped.length} removed column(s) still hold data that will no longer render — ${dropped.join(", ")}. Re-add the column to see those values again.`,
               ]
             : []),
-          ...(normalized && normalized.warnings.length > 0
-            ? ["", "Notes:", ...normalized.warnings.map((n) => `- ${n}`)]
+          ...(droppedFields.length > 0
+            ? [
+                ``,
+                `Heads up: ${droppedFields.length} removed field(s) still hold data that will no longer render — ${droppedFields.join(", ")}. Pass the field's id back to keep it.`,
+              ]
+            : []),
+          ...(normalizedColumns && normalizedColumns.warnings.length > 0
+            ? ["", "Notes:", ...normalizedColumns.warnings.map((n) => `- ${n}`)]
+            : []),
+          ...(normalizedFields && normalizedFields.warnings.length > 0
+            ? ["", "Notes:", ...normalizedFields.warnings.map((n) => `- ${n}`)]
             : []),
         ].join("\n");
 
@@ -2051,7 +2252,7 @@ export function createMcpServer(): McpServer {
       const payload = tabs.map((tab) => {
         const urlSlug = `custom-${tab.slug}`;
         return {
-          ...summarizeTab(tab),
+          ...summarizeTab(tab, customData),
           filledBy: filledBy[urlSlug] ?? "client",
           sidebarPosition: order.indexOf(urlSlug) === -1 ? null : order.indexOf(urlSlug),
           status: getCustomTabSectionState(tab, customData),
@@ -2068,8 +2269,9 @@ export function createMcpServer(): McpServer {
   // --- preview_custom_tab ---
   server.tool(
     "preview_custom_tab",
-    "Validate a proposed custom tab and render it as a table WITHOUT writing anything. " +
-      "Use this to agree the shape with the user before calling add_custom_tab: it reports column problems, bad dropdown values and slug collisions, and shows what the tab will look like. Nothing is saved.",
+    "Validate a proposed custom tab and render it WITHOUT writing anything — a table (columns/rows) " +
+      "or a document-style tab (fields), matching whichever add_custom_tab call you're about to make. " +
+      "Use this to agree the shape with the user first: it reports problems, bad values and slug collisions, and shows what the tab will look like. Nothing is saved.",
     {
       slug: z
         .string()
@@ -2077,25 +2279,24 @@ export function createMcpServer(): McpServer {
         .describe("Checklist slug to check the tab name against for collisions. Optional."),
       tab_name: z.string().describe("Proposed display name for the tab"),
       tab_description: z.string().optional().describe("Proposed description"),
-      columns: z.array(customTabColumnSchema).describe("Proposed column definitions"),
+      columns: z.array(customTabColumnSchema).optional().describe("Proposed column definitions for a table tab"),
       rows: z
         .array(z.record(z.string(), z.unknown()))
         .optional()
         .default([])
-        .describe("Proposed starting rows"),
+        .describe("Proposed starting rows for a table tab"),
+      fields: z.array(customTabFieldSchema).optional().describe("Proposed field definitions for a document-style tab"),
     },
-    async ({ slug, tab_name, tab_description, columns, rows }) => {
+    async ({ slug, tab_name, tab_description, columns, rows, fields }) => {
       try {
-        const tabSlug = generateSlug(tab_name);
-        const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
-          columns as ColumnSpec[]
-        );
-        const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
-          tabColumns,
-          (rows ?? []) as Array<Record<string, unknown>>,
-          { makeId: uuid }
-        );
+        if (columns && fields) {
+          throw new CustomTabError(`Give either "columns" or "fields", not both.`);
+        }
+        if (!columns && !fields) {
+          throw new CustomTabError(`Give "columns" (a table tab) or "fields" (a document-style tab).`);
+        }
 
+        const tabSlug = generateSlug(tab_name);
         const collisions: string[] = [];
         if (!tabSlug) {
           collisions.push(
@@ -2119,16 +2320,36 @@ export function createMcpServer(): McpServer {
           }
         }
 
-        const notes = [...columnWarnings, ...rowWarnings];
+        let body: string;
+        let notes: string[];
+
+        if (columns) {
+          const { columns: tabColumns, warnings: columnWarnings } = normalizeColumns(
+            columns as ColumnSpec[]
+          );
+          const { rows: tabRows, warnings: rowWarnings } = normalizeRows(
+            tabColumns,
+            (rows ?? []) as Array<Record<string, unknown>>,
+            { makeId: uuid }
+          );
+          notes = [...columnWarnings, ...rowWarnings];
+          body = [describeColumns(tabColumns), ``, renderPreviewTable(tabColumns, tabRows)].join("\n");
+        } else {
+          const { fields: tabFields, warnings } = normalizeFields(fields as FieldSpec[], { makeId: uuid });
+          notes = warnings;
+          const tablePreviews = tabFields
+            .filter((f) => f.type === "table" && f.tableColumns)
+            .map((f) => `${f.label}:\n${renderPreviewTable(f.tableColumns!, [])}`);
+          body = [describeFields(tabFields), ...(tablePreviews.length > 0 ? ["", ...tablePreviews] : [])].join("\n");
+        }
+
         const text = [
           `Preview only — nothing has been saved.`,
           ``,
           `**${tab_name}**${tabSlug ? ` (would live at custom-${tabSlug})` : ""}`,
           ...(tab_description ? [tab_description] : []),
           ``,
-          describeColumns(tabColumns),
-          ``,
-          renderPreviewTable(tabColumns, tabRows),
+          body,
           ...(collisions.length > 0 ? ["", "Blocking:", ...collisions.map((c) => `- ${c}`)] : []),
           ...(notes.length > 0 ? ["", "Notes:", ...notes.map((n) => `- ${n}`)] : []),
           ``,

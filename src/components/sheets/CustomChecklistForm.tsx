@@ -16,6 +16,10 @@ import { FileUploadCell } from "@/components/shared/FileUploadCell";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { CustomSchema, CustomData, CustomFieldDef, CustomTab, ColumnDef } from "@/lib/types";
+import { buildColumnDefs } from "@/lib/custom-tab-columns";
+
+/** A table-field row: `id` stays a string (required by EditableTable's row type), other cells are typed per-column. */
+type TableFieldRow = { id: string; [key: string]: unknown };
 
 function TableField({
   field,
@@ -23,25 +27,35 @@ function TableField({
   onChange,
 }: {
   field: CustomFieldDef;
-  value: Record<string, string>[];
-  onChange: (rows: Record<string, string>[]) => void;
+  value: TableFieldRow[];
+  onChange: (rows: TableFieldRow[]) => void;
 }) {
-  const columns: ColumnDef[] = (field.columns ?? []).map((col) => ({
-    key: col.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
-    label: col,
-    type: "text" as const,
-  }));
+  // Typed columns (from tableColumns) take precedence — they let this table have
+  // a real checkbox/select/etc. column instead of every column being plain text.
+  // Falls back to the legacy `columns: string[]` (plain header labels, all-text)
+  // so a field saved before tableColumns existed keeps rendering unchanged.
+  const columns: ColumnDef[] =
+    field.tableColumns && field.tableColumns.length > 0
+      ? buildColumnDefs(field.tableColumns)
+      : (field.columns ?? []).map((col) => ({
+          key: col.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+          label: col,
+          type: "text" as const,
+        }));
 
   const handleUpdate = (index: number, key: string, val: string | boolean) => {
     const updated = [...value];
-    updated[index] = { ...updated[index], [key]: String(val) };
+    const col = columns.find((c) => c.key === key);
+    // Boolean columns keep a real boolean; everything else stays a string, matching
+    // how MCP-created table tabs (CustomTabSheet) store their cell values.
+    updated[index] = { ...updated[index], [key]: col?.type === "boolean" ? val : String(val) };
     onChange(updated);
   };
 
   const handleAdd = () => {
-    const emptyRow: Record<string, string> = { id: crypto.randomUUID() };
+    const emptyRow: TableFieldRow = { id: crypto.randomUUID() };
     for (const col of columns) {
-      emptyRow[col.key] = "";
+      emptyRow[col.key] = col.type === "boolean" ? false : "";
     }
     onChange([...value, emptyRow]);
   };
@@ -50,7 +64,7 @@ function TableField({
     onChange(value.filter((_, i) => i !== index));
   };
 
-  const handleReorder = (reordered: Record<string, string>[]) => {
+  const handleReorder = (reordered: TableFieldRow[]) => {
     onChange(reordered);
   };
 
@@ -242,7 +256,7 @@ function CustomField({
       {field.type === "table" && (
         <TableField
           field={field}
-          value={Array.isArray(value) ? (value as Record<string, string>[]) : []}
+          value={Array.isArray(value) ? (value as TableFieldRow[]) : []}
           onChange={(rows) => onChange(rows)}
         />
       )}

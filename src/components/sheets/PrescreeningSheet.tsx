@@ -58,6 +58,13 @@ const columns: ColumnDef[] = [
       </>
     ),
   },
+  {
+    key: "approved",
+    label: "Approved?",
+    type: "boolean",
+    width: 90,
+    description: "Client sign-off on this question",
+  },
 ];
 
 const detailColumns: ColumnDef[] = [
@@ -102,6 +109,12 @@ const detailColumns: ColumnDef[] = [
     type: "textarea",
     description: "Internal notes for reviewers or implementation guidance",
   },
+  {
+    key: "clientComments",
+    label: "Client Comments",
+    type: "textarea",
+    description: "Client-facing comments on this question — distinct from the internal Comments field above",
+  },
 ];
 
 const EMPTY_QUESTION: Omit<QuestionRow, "id"> = {
@@ -114,6 +127,8 @@ const EMPTY_QUESTION: Omit<QuestionRow, "id"> = {
   rejectCondition: "",
   rejectReason: "",
   comments: "",
+  approved: false,
+  clientComments: "",
 };
 
 export function PrescreeningSheet() {
