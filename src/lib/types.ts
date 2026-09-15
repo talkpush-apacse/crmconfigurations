@@ -644,18 +644,6 @@ export type CustomData = Record<string, unknown>;
 export interface CustomTabColumn {
   key: string;            // unique column identifier (snake_case)
   label: string;          // display label
-  /**
-   * Guidance shown in the column-header tooltip, the same as ColumnDef's.
-   *
-   * Custom tabs previously had no way to carry help text at all, so the tabs
-   * built for one specific client — exactly the ones whose columns nobody else
-   * can guess the meaning of — were the only tabs in the app offering no
-   * guidance whatsoever.
-   *
-   * Optional, and stored inside the existing `customTabs` JSON column, so no
-   * migration and older tabs keep working with it absent.
-   */
-  description?: string;
   type:
     | "text"
     | "textarea"
@@ -672,6 +660,16 @@ export interface CustomTabColumn {
    * comma-joined in the row, so a cell stays a plain string.
    */
   options?: string[];
+  /**
+   * Help text shown in the column-header tooltip, so the instruction for a
+   * column lives on the column instead of in a separate email to the client.
+   *
+   * Optional, and stored inside the existing `customTabs` JSON column, so
+   * there is no migration and older tabs keep working with it absent.
+   */
+  description?: string;
+  /** Sample value shown as the cell placeholder. */
+  example?: string;
   /**
    * Starting column width. A number is px (what the grid uses); the legacy
    * string form is a Tailwind class and is still accepted.
@@ -694,6 +692,8 @@ export interface CustomTab {
   id: string;
   slug: string;
   label: string;           // display name (used by tab-config and navigation)
+  /** What the tab is for — rendered next to the title for whoever fills it in. */
+  description?: string;
   icon: string;
   fields: CustomFieldDef[]; // form-based custom tabs (legacy/admin-created)
   // Table-based custom tab fields (MCP-created, optional for backward compat)
