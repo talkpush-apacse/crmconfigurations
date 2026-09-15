@@ -774,7 +774,7 @@ export function createMcpServer(): McpServer {
           z.object({
             category: z.string().describe("Question category (e.g. 'Pre-screening', 'Follow-up')"),
             question: z.string().describe("The question text"),
-            questionType: z.string().describe("Type: Text, Number, Multiple Choice, Dropdown, Audio, Video, File Upload, Booking, Geolocation, Play Media"),
+            questionType: z.string().describe("Type: Text, Number, Multiple Choice, Dropdown, Audio, Audio or Text, Video, File Upload, Play Media, Geolocation"),
             answerOptions: z.string().optional().default("").describe("Comma-separated answer options (for Multiple Choice / Dropdown)"),
             applicableCampaigns: z.string().optional().default("").describe("Which campaigns this applies to"),
             autoReject: z.string().optional().default("").describe("Whether to auto-reject: Yes / No"),
