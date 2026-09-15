@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { HybridPicker } from "@/components/shared/HybridPicker";
@@ -467,7 +467,7 @@ export function IntegrationsSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Integrations"
         description="Capture third-party vendor integration actions that Talkpush needs to scope, build, or hand off."
       />

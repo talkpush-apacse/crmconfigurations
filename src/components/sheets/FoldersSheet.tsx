@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -78,22 +77,20 @@ export function FoldersSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Folders"
         description="Configure the workflow stages (folders) that candidates move through during the recruitment process."
       />
 
-      <TabUploadBanner tabKey="folders" tabLabel="Folders" />
+      <TabUploadBanner tabKey="folders" tabLabel="Folders" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p>Folders represent stages in your hiring pipeline. The default folders (Inbox, Interview, Hired, Rejected, Archived) cover most workflows. Add custom folders like &quot;Onboarding&quot;, &quot;Training&quot;, or &quot;For Pooling&quot; if needed.</p>
-      </ExampleHint>
-
       <EditableTable
+        spreadsheetMode
+        tableId="folders"
         columns={columns}
         data={folders}
         onUpdate={handleUpdate}

@@ -1,9 +1,8 @@
 "use client";
 
-import { Info } from "lucide-react";
 import { EditableCell } from "./EditableCell";
 import { FileUploadCell } from "./FileUploadCell";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpTip } from "./HelpTip";
 import { cn } from "@/lib/utils";
 
 export interface KeyValueField {
@@ -32,17 +31,27 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
   return (
     <div className="rounded-lg border overflow-hidden">
       {/* Column headers — hidden on mobile */}
+      {/*
+        Light header, matching EditableTable. This was `bg-primary` with white
+        uppercase labels; once the data grids went light it was the only dark
+        header left in the app, so a form-shaped tab and a table-shaped tab no
+        longer looked like the same product.
+      */}
       <div
         className={cn(
-          "hidden lg:grid bg-primary text-primary-foreground",
+          "hidden border-b border-grid-line-strong bg-grid-header lg:grid",
           hasSamples
             ? "lg:grid-cols-[180px_minmax(200px,1fr)_200px] xl:grid-cols-[200px_minmax(220px,1fr)_220px]"
             : "lg:grid-cols-[180px_minmax(200px,1fr)] xl:grid-cols-[200px_minmax(220px,1fr)]"
         )}
       >
-        <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Field</div>
-        <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Client Response</div>
-        {hasSamples && <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Sample</div>}
+        <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-700">Field</div>
+        <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-700">Client Response</div>
+        {hasSamples && (
+          <div className="border-l border-grid-line px-4 py-2 text-[11px] font-medium uppercase tracking-[0.06em] text-slate-500">
+            Sample
+          </div>
+        )}
       </div>
       {fields.map((field, idx) => (
         <div
@@ -60,33 +69,19 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
             <div className="flex items-center gap-1.5">
             <span className="text-[14px] font-medium text-gray-700 leading-snug">{field.label}</span>
             {field.description && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`Description for ${field.label}`}
-                    className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              <HelpTip label={field.label} side="top" size={13}>
+                <p>{field.description}</p>
+                {field.link && (
+                  <a
+                    href={field.link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 block text-xs underline-offset-2 hover:underline"
                   >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="max-w-[280px] bg-slate-800 text-slate-50 text-[13px] leading-snug rounded-md px-3 py-2 shadow-lg z-50"
-                >
-                  <p>{field.description}</p>
-                  {field.link && (
-                    <a
-                      href={field.link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 block text-xs text-brand-lavender hover:underline"
-                    >
-                      {field.link.label}
-                    </a>
-                  )}
-                </TooltipContent>
-              </Tooltip>
+                    {field.link.label}
+                  </a>
+                )}
+              </HelpTip>
             )}
             </div>
             {field.helperText && (

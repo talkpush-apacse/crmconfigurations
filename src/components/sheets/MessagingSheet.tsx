@@ -1,37 +1,34 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { SheetIntro } from "@/components/shared/SheetIntro";
+import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
+import { SectionFooter } from "@/components/shared/SectionFooter";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultMessaging, defaultCommunicationChannels } from "@/lib/template-data";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Copy, GripVertical, AlertCircle } from "lucide-react";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { arrayMove } from "@/lib/utils";
-import type { MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { AlertCircle } from "lucide-react";
+import type { ColumnDef, MessagingTemplateRow, CommunicationChannels } from "@/lib/types";
 import { softDeleteByIds } from "@/lib/duplicate-row";
-import { SectionFooter } from "@/components/shared/SectionFooter";
+
+const AVAILABLE_TOKENS = [
+  "<Candidate First Name>",
+  "<Candidate Last Name>",
+  "<Campaign Name>",
+  "<Scheduler URL>",
+  "<Company Name>",
+  "<Site Name>",
+];
 
 const allChannels = [
   { key: "email" as const, label: "Email", templateKey: "emailTemplate" as const, activeKey: "emailActive" as const },
@@ -40,277 +37,59 @@ const allChannels = [
   { key: "messenger" as const, label: "Messenger", templateKey: "messengerTemplate" as const, activeKey: "messengerActive" as const },
 ];
 
-function SortableTemplateItem({
-  template,
-  idx,
-  channels,
-  handleUpdate,
-  handleDuplicate,
-  handleDelete,
-  isReadOnly,
-  hasEmailChannel,
-}: {
-  template: MessagingTemplateRow;
-  idx: number;
-  channels: typeof allChannels;
-  handleUpdate: (index: number, field: string, value: string | boolean) => void;
-  handleDuplicate: (index: number) => void;
-  handleDelete: (index: number) => void;
-  isReadOnly: boolean;
-  hasEmailChannel: boolean;
-}) {
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+type Channel = (typeof allChannels)[number];
 
-  const handleDeleteClick = () => {
-    if (confirmingDelete) {
-      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      setConfirmingDelete(false);
-      handleDelete(idx);
-    } else {
-      setConfirmingDelete(true);
-      confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 3000);
-    }
-  };
+const baseColumns: ColumnDef[] = [
+  {
+    key: "name",
+    label: "Template Name",
+    type: "text",
+    required: true,
+    width: 200,
+    description: "What Talkpush will call this template in the platform, e.g. \"Invitation to Apply\".",
+  },
+  {
+    key: "purpose",
+    label: "Purpose",
+    type: "text",
+    required: true,
+    width: 240,
+    description: "When this message goes out, in your own words — this is what tells us where to wire it into the candidate journey.",
+  },
+  { key: "language", label: "Language", type: "text", width: 120 },
+  {
+    key: "folder",
+    label: "Folder",
+    type: "text",
+    width: 130,
+    description: "The candidate folder this template is sent from, if it is tied to one.",
+  },
+];
 
-  const notApplicable = template.notApplicable === true;
-  // A template marked not applicable isn't incomplete — it's out of scope, so
-  // it stops being flagged for missing name/purpose.
-  const nameEmpty = !isReadOnly && !notApplicable && !template.name.trim();
-  const purposeEmpty = !isReadOnly && !notApplicable && !template.purpose.trim();
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: template.id || `template-${idx}`, disabled: isReadOnly });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <AccordionItem
-        value={template.id || String(idx)}
-        className={`rounded-lg border ${isDragging ? "ring-2 ring-brand-lavender bg-brand-lavender-lightest" : ""} ${notApplicable ? "bg-slate-50/80" : ""}`}
-      >
-        {/*
-          The drag handle sits beside the trigger, not inside it. AccordionTrigger
-          renders a <button>, so nesting another button inside it is invalid HTML
-          and was failing hydration on every load of this tab — React discarded
-          the server markup and re-rendered the whole list on the client.
-        */}
-        <div className="flex items-stretch">
-          {!isReadOnly && (
-            <button
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing rounded p-1 pl-4 transition-colors hover:bg-gray-200 touch-none"
-              title="Drag to reorder"
-            >
-              <GripVertical className="h-4 w-4 text-gray-400" />
-            </button>
-          )}
-        <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline">
-          <div className="flex items-center gap-3 text-left">
-            <span
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold shrink-0 ${
-                notApplicable
-                  ? "bg-slate-300 text-slate-600"
-                  : "bg-primary text-primary-foreground"
-              }`}
-            >
-              {idx + 1}
-            </span>
-            <div className={notApplicable ? "opacity-60" : undefined}>
-              <p className="flex items-center gap-2 font-medium">
-                <span className={notApplicable ? "line-through" : undefined}>
-                  {template.name || "Untitled Template"}
-                </span>
-                {notApplicable && (
-                  <span className="rounded-full border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                    Not applicable
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground line-clamp-1 max-w-xs">
-                {template.purpose || "No purpose set"}
-              </p>
-            </div>
-          </div>
-        </AccordionTrigger>
-        </div>
-        <AccordionContent className="px-4 pb-4">
-          <div className="space-y-4">
-            {/*
-              Marking a template not applicable keeps the row and its purpose
-              text — which is the reference for what it was for — while taking
-              it out of scope. Deleting is still available below for templates
-              a client genuinely never wants to see again.
-            */}
-            {!isReadOnly && (
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2">
-                <Checkbox
-                  checked={notApplicable}
-                  onCheckedChange={(checked) =>
-                    handleUpdate(idx, "notApplicable", checked === true)
-                  }
-                />
-                <span className="text-xs text-gray-700">
-                  Not applicable to us — leave this template out of the build
-                </span>
-              </label>
-            )}
-
-            <div className={notApplicable ? "pointer-events-none opacity-50" : undefined}>
-            <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">Template Name <span className="text-red-500">*</span></Label>
-                <Input
-                  value={template.name}
-                  onChange={(e) => handleUpdate(idx, "name", e.target.value)}
-                  placeholder="e.g., Invitation"
-                  className={`mt-1 ${nameEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
-                />
-                {nameEmpty && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-                    <AlertCircle className="h-3 w-3" /> Template name is required
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs">Language</Label>
-                <Input
-                  value={template.language}
-                  onChange={(e) => handleUpdate(idx, "language", e.target.value)}
-                  placeholder="e.g., English"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">Purpose <span className="text-red-500">*</span></Label>
-                <Input
-                  value={template.purpose}
-                  onChange={(e) => handleUpdate(idx, "purpose", e.target.value)}
-                  placeholder="What this template is used for"
-                  className={`mt-1 ${purposeEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
-                />
-                {purposeEmpty && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-                    <AlertCircle className="h-3 w-3" /> Purpose is required
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label className="text-xs">Folder</Label>
-                <Input
-                  value={template.folder}
-                  onChange={(e) => handleUpdate(idx, "folder", e.target.value)}
-                  placeholder="e.g., Inbox"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-lg border">
-              <div className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] bg-gray-100 px-3 py-2 text-xs font-medium">
-                <span>Channel</span>
-                <span>Template Content</span>
-                <span className="text-center">Active</span>
-              </div>
-              {channels.map((ch) => (
-                <div
-                  key={ch.key}
-                  className="grid grid-cols-[90px_1fr_48px] sm:grid-cols-[120px_1fr_60px] items-start border-t px-3 py-2"
-                >
-                  <span className="pt-2 text-sm font-medium">{ch.label}</span>
-                  <div className="space-y-2">
-                    {ch.key === "email" && hasEmailChannel && (
-                      <div>
-                        <Label className="text-xs text-gray-500">Subject Line</Label>
-                        <Input
-                          value={template.emailSubject || ""}
-                          onChange={(e) => handleUpdate(idx, "emailSubject", e.target.value)}
-                          placeholder="Enter email subject line..."
-                          className="mt-1 text-sm"
-                        />
-                      </div>
-                    )}
-                    <Textarea
-                      value={String(template[ch.templateKey] || "")}
-                      onChange={(e) => handleUpdate(idx, ch.templateKey, e.target.value)}
-                      placeholder={`Enter ${ch.label} template...`}
-                      className="min-h-[100px] text-sm"
-                    />
-                  </div>
-                  <div className="flex items-center justify-center pt-2">
-                    <Checkbox
-                      checked={!!template[ch.activeKey]}
-                      onCheckedChange={(checked) => handleUpdate(idx, ch.activeKey, !!checked)}
-                      aria-label={`${ch.label} active`}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <Label className="text-xs">Comments</Label>
-              <Textarea
-                value={template.comments}
-                onChange={(e) => handleUpdate(idx, "comments", e.target.value)}
-                placeholder="Additional notes..."
-                className="mt-1 min-h-[80px]"
-              />
-            </div>
-
-            </div>
-            </div>
-
-            {!isReadOnly && (
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary"
-                  onClick={() => handleDuplicate(idx)}
-                >
-                  <Copy className="mr-1 h-3.5 w-3.5" />
-                  Duplicate
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={confirmingDelete ? "text-destructive bg-red-50 scale-105" : "text-destructive"}
-                  onClick={handleDeleteClick}
-                  title={confirmingDelete ? "Click again to confirm delete" : "Delete template"}
-                >
-                  <Trash2 className="mr-1 h-3.5 w-3.5" />
-                  {confirmingDelete ? "Confirm Delete?" : "Delete Template"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </div>
-  );
-}
-
+/**
+ * Messaging Templates as a grid.
+ *
+ * This tab used to be the odd one out: a drag-and-drop accordion of stacked
+ * forms, each holding a nested channel table. One template open ran past the
+ * fold, so a client with a dozen templates could see one in detail or none at
+ * all — and which channels a template actually used was only discoverable by
+ * opening every template in turn.
+ *
+ * One row per template now, with the channel toggles as columns so the matrix
+ * reads at a glance, and the message bodies in the row's drawer where
+ * paragraphs have room. The stored shape is untouched — same field names, so
+ * the XLS export and the section-status logic are unaffected.
+ */
 export function MessagingSheet() {
   const { data, updateField, isReadOnly } = useChecklistContext();
   const { isSkipped, uploadedFiles } = useTabUpload("messaging");
+  const [tokensOpen, setTokensOpen] = useState(false);
+
   const allTemplates = (data.messaging as MessagingTemplateRow[]) || defaultMessaging;
-  const templates = allTemplates.filter((t) => !t.deletedAt);
+  const templates = useMemo(
+    () => allTemplates.filter((t) => !t.deletedAt),
+    [allTemplates]
+  );
 
   // The visible list hides soft-deleted rows, so an index from the UI has to be
   // mapped back to the full array before writing.
@@ -320,22 +99,48 @@ export function MessagingSheet() {
     return allTemplates.findIndex((t) => t.id === target.id);
   };
 
-  // Filter channels based on communication channels setting (fall back to defaults for old checklists)
-  const enabledChannels = (data.communicationChannels as CommunicationChannels | null) ?? defaultCommunicationChannels;
-  const channels = allChannels.filter((ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false);
-  const hasEmailChannel = channels.some((ch) => ch.key === "email");
-
-  // Validation: check if any template has empty name or purpose
-  const hasValidationErrors = templates.some((t) => !t.name.trim() || !t.purpose.trim());
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor)
+  // Only the channels this client actually uses (falls back to defaults for
+  // older checklists).
+  const enabledChannels =
+    (data.communicationChannels as CommunicationChannels | null) ?? defaultCommunicationChannels;
+  const channels = useMemo(
+    () =>
+      allChannels.filter(
+        (ch) => enabledChannels[ch.key as keyof CommunicationChannels] !== false
+      ),
+    [enabledChannels]
   );
 
-  const sortableIds = useMemo(
-    () => templates.map((t, i) => t.id || `template-${i}`),
-    [templates]
+  const columns = useMemo<ColumnDef[]>(
+    () => [
+      ...baseColumns,
+      ...channels.map<ColumnDef>((ch) => ({
+        key: ch.activeKey,
+        label: ch.label,
+        type: "boolean",
+        width: 96,
+        description: `Tick this if the template goes out over ${ch.label}. Write the message itself in the row's panel — open it with the chevron on the left.`,
+      })),
+    ],
+    [channels]
+  );
+
+  const sampleRow = useMemo(() => {
+    const row: Record<string, string> = {
+      name: "Invitation to Apply",
+      purpose: "First outreach message sent to candidate after sourcing",
+      language: "English",
+      folder: "Inbox",
+    };
+    for (const ch of channels) {
+      row[ch.activeKey] = ch.key === "email" || ch.key === "sms" ? "Yes" : "";
+    }
+    return row;
+  }, [channels]);
+
+  // A template with no name or purpose isn't ready to be built.
+  const hasValidationErrors = templates.some(
+    (t) => t.notApplicable !== true && (!t.name.trim() || !t.purpose.trim())
   );
 
   const handleUpdate = (index: number, field: string, value: string | boolean) => {
@@ -347,6 +152,8 @@ export function MessagingSheet() {
   };
 
   const handleAdd = () => {
+    // Guarded rather than disabled: EditableTable owns the add button, and a
+    // pile of nameless templates is what this stops.
     if (hasValidationErrors) return;
     updateField("messaging", [
       ...allTemplates,
@@ -385,45 +192,109 @@ export function MessagingSheet() {
     updateField("messaging", updated);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = sortableIds.indexOf(active.id as string);
-    const newIndex = sortableIds.indexOf(over.id as string);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    // mergeVisibleRows keeps the full array's own order, so it can't express a
-    // reorder. The new visible order is written out in full, with soft-deleted
-    // rows kept on the end where they stay out of the way but recoverable.
-    const reordered = arrayMove(templates, oldIndex, newIndex);
+  /**
+   * mergeVisibleRows keeps the full array's own order, so it can't express a
+   * reorder. The new visible order is written out in full, with soft-deleted
+   * rows kept on the end where they stay out of the way but recoverable.
+   */
+  const handleReorder = (reordered: MessagingTemplateRow[]) => {
     const removed = allTemplates.filter((t) => t.deletedAt);
     updateField("messaging", [...reordered, ...removed]);
   };
 
-  const accordionContent = (
-    <Accordion type="multiple" className="space-y-3">
-      {templates.map((template, idx) => (
-        <SortableTemplateItem
-          key={template.id || idx}
-          template={template}
-          idx={idx}
-          channels={channels}
-          handleUpdate={handleUpdate}
-          handleDuplicate={handleDuplicate}
-          handleDelete={handleDelete}
-          isReadOnly={isReadOnly}
-          hasEmailChannel={hasEmailChannel}
+  /** One block per channel, plus comments — the row's expanded panel. */
+  const renderChannelBlock = (
+    row: MessagingTemplateRow,
+    rowIdx: number,
+    ch: Channel
+  ) => (
+    <div key={ch.key}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-600">
+          {ch.label}
+        </span>
+        <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Checkbox
+            checked={!!row[ch.activeKey]}
+            onCheckedChange={(checked) => handleUpdate(rowIdx, ch.activeKey, !!checked)}
+            aria-label={`${ch.label} active`}
+            className="h-3.5 w-3.5"
+          />
+          Active
+        </label>
+      </div>
+      {ch.key === "email" && (
+        <Input
+          value={row.emailSubject || ""}
+          onChange={(e) => handleUpdate(rowIdx, "emailSubject", e.target.value)}
+          placeholder="Subject line"
+          className="mb-1.5 h-8 text-[13px]"
         />
-      ))}
-    </Accordion>
+      )}
+      <Textarea
+        value={String(row[ch.templateKey] || "")}
+        onChange={(e) => handleUpdate(rowIdx, ch.templateKey, e.target.value)}
+        placeholder={`Enter the ${ch.label} message…`}
+        className="min-h-[88px] text-[13px]"
+      />
+    </div>
   );
+
+  const renderDetail = ({
+    row,
+    rowIdx,
+  }: {
+    row: MessagingTemplateRow;
+    rowIdx: number;
+  }) => {
+    const notApplicable = row.notApplicable === true;
+    return (
+      <div className="space-y-3">
+        {/*
+          Marking a template not applicable keeps the row and its purpose text
+          — which is the reference for what it was for — while taking it out of
+          scope. Deleting is still available in the row itself.
+        */}
+        {!isReadOnly && (
+          <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md border bg-card px-2.5 py-1.5">
+            <Checkbox
+              checked={notApplicable}
+              onCheckedChange={(checked) =>
+                handleUpdate(rowIdx, "notApplicable", checked === true)
+              }
+              className="h-3.5 w-3.5"
+            />
+            <span className="text-xs text-foreground">
+              Not applicable to us — leave this template out of the build
+            </span>
+          </label>
+        )}
+
+        <div className={notApplicable ? "pointer-events-none opacity-50" : undefined}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {channels.map((ch) => renderChannelBlock(row, rowIdx, ch))}
+            <div className="sm:col-span-2">
+              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-600">
+                Comments
+              </span>
+              <Textarea
+                value={row.comments}
+                onChange={(e) => handleUpdate(rowIdx, "comments", e.target.value)}
+                placeholder="Anything Talkpush should know about this template"
+                className="min-h-[56px] text-[13px]"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
       <SheetIntro
         title="Messaging Templates"
-        description="Configure message templates for each communication channel. Use tokens like <Candidate First Name> or <Scheduler URL> for personalization."
+        description="The messages Talkpush sends candidates on your behalf. One row per template — open a row to write the message for each channel."
       />
 
       <TabUploadBanner tabKey="messaging" tabLabel="Messaging Templates" compact />
@@ -432,45 +303,64 @@ export function MessagingSheet() {
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <div className="mb-4 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-3">
-        <p className="text-xs text-foreground/80">
-          <strong>Available tokens:</strong>{" "}
-          {"<Candidate First Name>, <Candidate Last Name>, <Campaign Name>, <Scheduler URL>, <Company Name>, <Site Name>"}
-        </p>
-      </div>
+          {/*
+            Collapsed by default. This was a permanent lavender banner listing
+            every token, on screen whether or not anyone was writing a message.
+          */}
+          <Collapsible open={tokensOpen} onOpenChange={setTokensOpen} className="mb-3">
+            <CollapsibleTrigger className="flex cursor-pointer items-center gap-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:text-brand-lavender-darker">
+              <ChevronRight
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${tokensOpen ? "rotate-90" : ""}`}
+              />
+              Available tokens ({AVAILABLE_TOKENS.length})
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {AVAILABLE_TOKENS.map((token) => (
+                  <code
+                    key={token}
+                    className="rounded border border-brand-lavender-lighter bg-brand-lavender-lightest px-1.5 py-0.5 text-[11.5px] text-brand-lavender-darker"
+                  >
+                    {token}
+                  </code>
+                ))}
+              </div>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                Paste a token into any message and Talkpush fills it in per candidate.
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
 
-      {!isReadOnly ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-            {accordionContent}
-          </SortableContext>
-        </DndContext>
-      ) : (
-        accordionContent
-      )}
+          <EditableTable<MessagingTemplateRow>
+            spreadsheetMode
+            tableId="messaging"
+            columns={columns}
+            data={templates}
+            onUpdate={handleUpdate}
+            onAdd={handleAdd}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+            onReorder={handleReorder}
+            renderDetail={renderDetail}
+            rowClassName={(row) =>
+              row.notApplicable === true
+                ? "opacity-60 [&_input]:line-through [&_input]:decoration-slate-400"
+                : undefined
+            }
+            addLabel="Add template"
+            sampleRow={sampleRow}
+            deleteConfirmation={{
+              title: "Delete this template?",
+              getName: (row) => row.name || "Untitled template",
+            }}
+          />
 
-      {!isReadOnly && (
-        <div className="mt-4 flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={handleAdd}
-            disabled={hasValidationErrors}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Template
-          </Button>
-          {hasValidationErrors && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3.5 w-3.5" />
-              Fill in all required fields before adding a new template
+          {!isReadOnly && hasValidationErrors && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              Give every template a name and a purpose before adding another one.
             </p>
           )}
-        </div>
-      )}
         </>
       )}
       <SectionFooter />

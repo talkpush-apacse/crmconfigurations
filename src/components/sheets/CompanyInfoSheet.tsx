@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
+import { SubSectionHeader } from "@/components/shared/SubSectionHeader";
 import { KeyValueForm, type KeyValueField } from "@/components/shared/KeyValueForm";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -203,35 +203,20 @@ export function CompanyInfoSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Company Information"
         description="Provide company details, Facebook page information, branding assets, and recruitment process settings for your Talkpush CRM instance."
       />
 
-      <TabUploadBanner tabKey="companyInfo" tabLabel="Company Information" />
+      <TabUploadBanner tabKey="companyInfo" tabLabel="Company Information" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample configuration:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Company Name:</strong> TaskUs</li>
-          <li><strong>Website:</strong> https://www.taskus.com/</li>
-          <li><strong>Facebook Page:</strong> TaskUs &mdash; Page ID from Facebook Page Settings</li>
-          <li><strong>Logo:</strong> Provide shareable links (Google Drive, Dropbox, etc.)</li>
-          <li><strong>Allow Duplicates:</strong> No &mdash; Most clients prevent duplicate profiles.</li>
-          <li><strong>Cooling Period:</strong> 90 &mdash; A 90-day cooling period is typical.</li>
-        </ul>
-      </ExampleHint>
-
       {/* Company Details */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Details</h3>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+        <SubSectionHeader title="Company Details" />
         <KeyValueForm
           fields={companyDetailsFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -241,10 +226,7 @@ export function CompanyInfoSheet() {
 
       {/* Facebook Details */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Facebook Details</h3>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+        <SubSectionHeader title="Facebook Details" />
         <KeyValueForm
           fields={facebookFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -254,10 +236,7 @@ export function CompanyInfoSheet() {
 
       {/* Company Branding Assets */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Branding Assets</h3>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+        <SubSectionHeader title="Company Branding Assets" />
         <KeyValueForm
           fields={brandingFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -267,10 +246,7 @@ export function CompanyInfoSheet() {
 
       {/* Recruitment Process */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruitment Process</h3>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
+        <SubSectionHeader title="Recruitment Process" />
         <KeyValueForm
           fields={recruitmentFields}
           data={companyInfo as unknown as Record<string, string | boolean>}
@@ -279,7 +255,7 @@ export function CompanyInfoSheet() {
       </div>
 
       <div className="mb-6">
-        <SectionHeader
+        <SubSectionHeader
           title="Business Hours"
           description="Defines the window during which automated messages (autoflows) are sent to candidates. Messages triggered outside these hours are queued and delivered at the next opening time. Manual recruiter messages are not affected by this setting."
         />

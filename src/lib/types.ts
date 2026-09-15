@@ -663,6 +663,9 @@ export interface CustomTabColumn {
   /**
    * Help text shown in the column-header tooltip, so the instruction for a
    * column lives on the column instead of in a separate email to the client.
+   *
+   * Optional, and stored inside the existing `customTabs` JSON column, so
+   * there is no migration and older tabs keep working with it absent.
    */
   description?: string;
   /** Sample value shown as the cell placeholder. */

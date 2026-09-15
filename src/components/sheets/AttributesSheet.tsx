@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -132,27 +131,20 @@ export function AttributesSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Candidate Attributes"
         description="Define the custom candidate attributes to be created in the CRM. Expand each row to configure advanced settings."
       />
 
-      <TabUploadBanner tabKey="attributes" tabLabel="Attributes" />
+      <TabUploadBanner tabKey="attributes" tabLabel="Attributes" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample attributes:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>AI Call Consent</strong> | Key: 1_ai_call_consent | Text | Values: Yes, No | Read-Only</li>
-          <li><strong>Preferred Shift</strong> | Key: preferred_shift | Dropdown | Values: Morning, Afternoon, Night</li>
-          <li><strong>Employee ID</strong> | Key: employee_id | Text | Read-Only, Private</li>
-        </ul>
-      </ExampleHint>
-
       <EditableTable
+        spreadsheetMode
+        tableId="attributes"
         columns={columns}
         detailColumns={detailColumns}
         data={attributes}
