@@ -48,7 +48,13 @@ export function getTabBySlug(slug: string): TabConfig | undefined {
 // existing checklist was created: no checklist has it in `enabledTabs`, so
 // without this it would be invisible everywhere — including to Talkpush. Being
 // Talkpush-filled, excludeTalkpushTabs still keeps it out of the client view.
-export const ALWAYS_ENABLED_SLUGS = ["welcome", "labels"];
+//
+// `welcome` used to be here too. It's now a normal selectable tab (an admin
+// can turn it off), but every checklist created before that change stores an
+// explicit `enabledTabs` list that predates "welcome" ever being a choice —
+// see scripts/backfill-checklists.ts, which added it to all of them once, so
+// removing it here didn't silently hide the welcome page anywhere.
+export const ALWAYS_ENABLED_SLUGS = ["labels"];
 
 // Tabs that can be toggled by admin (excludes always-enabled and admin-only tabs)
 export const SELECTABLE_TABS = TAB_CONFIG.filter(

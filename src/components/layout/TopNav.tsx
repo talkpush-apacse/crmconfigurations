@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Building2,
   Camera,
+  ArrowLeftRight,
   ChevronDown,
   FileText,
   Folder,
@@ -60,6 +61,7 @@ export type NavItem = {
   slug?: string;
   filledBy?: "talkpush" | "client";
   hasAttachments?: boolean;
+  canChangeOwnership?: boolean;
 };
 
 interface TopNavProps {
@@ -67,7 +69,7 @@ interface TopNavProps {
   clientName: string;
   hasPendingChangesRef?: RefObject<boolean>;
   onReorder?: (slugs: string[]) => void;
-  onFilledByChange?: (map: Record<string, "talkpush" | "client">) => void;
+  onOwnershipChange?: (slug: string, filledBy: "talkpush" | "client") => void;
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -133,13 +135,19 @@ function SortableNavItem({
   isActive,
   confirmNavigation,
   canReorder,
+  onOwnershipChange,
 }: {
   item: NavItem;
   isActive: boolean;
   confirmNavigation: (href: string) => boolean;
   canReorder: boolean;
+  onOwnershipChange?: (slug: string, filledBy: "talkpush" | "client") => void;
 }) {
   const Icon = ICON_MAP[item.icon ?? ""] ?? Info;
+  const canChangeOwnership = !!item.slug && !!item.canChangeOwnership && !!onOwnershipChange;
+  const currentOwner = item.filledBy === "talkpush" ? "talkpush" : "client";
+  const nextOwner = currentOwner === "talkpush" ? "client" : "talkpush";
+  const nextOwnerLabel = nextOwner === "talkpush" ? "Talkpush" : "client";
   const {
     attributes,
     listeners,
@@ -173,7 +181,7 @@ function SortableNavItem({
                 {...attributes}
                 {...listeners}
                 className="absolute left-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground active:cursor-grabbing xl:flex xl:opacity-0 xl:group-hover:opacity-100"
-                title="Drag to reorder"
+                title="Drag to reorder within this group"
               >
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
@@ -186,6 +194,7 @@ function SortableNavItem({
               }}
               className={cn(
                 "relative flex min-h-[52px] items-center justify-center gap-3 rounded-[20px] px-3 py-3 text-sm transition-all duration-200 active:scale-[0.98] xl:justify-start xl:px-4 xl:pl-11",
+                canChangeOwnership && "xl:pr-12",
                 isActive
                   ? "bg-brand-sage-lightest text-foreground ring-1 ring-inset ring-brand-sage-darker/25 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -206,7 +215,9 @@ function SortableNavItem({
 
               <div className="hidden min-w-0 flex-1 xl:block">
                 <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">{item.label}</span>
+                  <span className="min-w-0 max-w-[10.5rem] whitespace-normal font-medium leading-5">
+                    {item.label}
+                  </span>
                   {item.hasAttachments && (
                     <Paperclip
                       className="h-3 w-3 shrink-0 text-brand-lavender-darker"
@@ -220,6 +231,27 @@ function SortableNavItem({
                 </div>
               </div>
             </Link>
+            {canChangeOwnership && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground opacity-0 transition hover:bg-secondary hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:flex xl:group-hover:opacity-100"
+                aria-label={`Move ${item.label} to ${nextOwnerLabel}`}
+                title={`Move to ${nextOwnerLabel}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!item.slug) return;
+                  const confirmed = window.confirm(
+                    nextOwner === "talkpush"
+                      ? `Move ${item.label} to Talkpush? It will be hidden from the client-facing checklist.`
+                      : `Move ${item.label} to the client? It will be visible on the client-facing checklist.`
+                  );
+                  if (confirmed) onOwnershipChange(item.slug, nextOwner);
+                }}
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </TooltipTrigger>
@@ -230,7 +262,13 @@ function SortableNavItem({
   );
 }
 
-export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onFilledByChange }: TopNavProps) {
+export function TopNav({
+  items,
+  clientName,
+  hasPendingChangesRef,
+  onReorder,
+  onOwnershipChange,
+}: TopNavProps) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
@@ -306,44 +344,35 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
     const newIndex = combinedIds.indexOf(overId);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // Determine the target group based on which group the "over" item belongs to.
-    // If the user dropped on a talkpush item, the dragged item joins the talkpush group
-    // (and vice versa). This makes cross-group drops intuitive.
+    const activeItem = combinedItems[oldIndex];
     const overItem = combinedItems[newIndex];
-    const targetGroup: "talkpush" | "client" =
-      overItem.filledBy === "talkpush" ? "talkpush" : "client";
+    const activeGroup = activeItem.filledBy === "talkpush" ? "talkpush" : "client";
+    const overGroup = overItem.filledBy === "talkpush" ? "talkpush" : "client";
 
-    const reordered = arrayMove(combinedItems, oldIndex, newIndex);
-
-    // Build the new filledBy map (only include standard tabs with a slug).
-    const newFilledBy: Record<string, "talkpush" | "client"> = {};
-    for (const item of reordered) {
-      if (!item.slug) continue;
-      newFilledBy[item.slug] =
-        (item.slug === activeId
-          ? targetGroup
-          : item.filledBy === "talkpush"
-            ? "talkpush"
-            : "client");
+    // Reordering must not change who fills a module in. Crossing this boundary
+    // changes client visibility, so ownership needs a separate explicit action.
+    if (activeGroup !== overGroup) {
+      return;
     }
 
-    // Re-bucket items by their new group, preserving the order within each bucket
-    // as it appears in `reordered` so the dropped item lands at the right position.
-    const newClientSlugs: string[] = [];
-    const newTalkpushSlugs: string[] = [];
-    for (const item of reordered) {
-      const slug = item.slug;
-      if (!slug) continue;
-      if (newFilledBy[slug] === "talkpush") {
-        newTalkpushSlugs.push(slug);
-      } else {
-        newClientSlugs.push(slug);
-      }
-    }
+    const nextGroup = arrayMove(
+      activeGroup === "talkpush" ? talkpushItems : clientItems,
+      activeGroup === "talkpush"
+        ? talkpushItems.findIndex((item) => (item.slug || item.href) === activeId)
+        : clientItems.findIndex((item) => (item.slug || item.href) === activeId),
+      activeGroup === "talkpush"
+        ? talkpushItems.findIndex((item) => (item.slug || item.href) === overId)
+        : clientItems.findIndex((item) => (item.slug || item.href) === overId)
+    );
 
-    // Persist: client group first, then talkpush group (matches visual order).
-    onReorder([...newClientSlugs, ...newTalkpushSlugs]);
-    onFilledByChange?.(newFilledBy);
+    const nextClientItems = activeGroup === "client" ? nextGroup : clientItems;
+    const nextTalkpushItems = activeGroup === "talkpush" ? nextGroup : talkpushItems;
+
+    onReorder(
+      [...nextClientItems, ...nextTalkpushItems]
+        .map((item) => item.slug)
+        .filter((slug): slug is string => !!slug)
+    );
   };
 
   const canReorder = Boolean(onReorder);
@@ -358,6 +387,7 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
           isActive={isActive}
           confirmNavigation={confirmNavigation}
           canReorder={canReorder}
+          onOwnershipChange={onOwnershipChange}
         />
       );
     });
@@ -365,7 +395,7 @@ export function TopNav({ items, clientName, hasPendingChangesRef, onReorder, onF
   const navContent = (
     <aside
       ref={navRef}
-      className="flex h-screen w-16 shrink-0 flex-col overflow-hidden bg-card border-r border-border text-foreground shadow-[4px_0_24px_-8px_rgba(15,23,42,0.07)] xl:w-64"
+      className="flex h-screen w-16 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-foreground shadow-[4px_0_24px_-8px_rgba(15,23,42,0.07)] xl:w-72"
     >
       <div className="border-b border-border px-2 py-3 xl:px-4 xl:py-5">
         <div className="flex items-center justify-center gap-3 xl:justify-start">

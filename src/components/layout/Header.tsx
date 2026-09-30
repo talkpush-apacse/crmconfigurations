@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, ChevronRight, Download, History, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download, History, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
 import { SaveButton } from "@/components/shared/SaveButton";
@@ -16,8 +22,6 @@ interface HeaderProps {
   saveStatus: "saved" | "saving" | "error";
   saveError?: string | null;
   onRetrySave?: () => void;
-  filledCount: number;
-  totalCount: number;
   isReadOnly?: boolean;
   editorToken?: string;
   hasPendingChanges?: boolean;
@@ -34,10 +38,12 @@ function StatusPill({
   label,
   value,
   tone,
+  className,
 }: {
   label: string;
   value: number;
   tone: "blue" | "emerald" | "amber";
+  className?: string;
 }) {
   return (
     <span
@@ -45,7 +51,8 @@ function StatusPill({
         "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-sm",
         tone === "blue" && "bg-brand-lavender-lightest text-brand-lavender-darker ring-1 ring-brand-lavender/40",
         tone === "emerald" && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
-        tone === "amber" && "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70"
+        tone === "amber" && "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
+        className
       )}
     >
       <span className="tabular-nums">{value}</span>
@@ -61,8 +68,6 @@ export function Header({
   saveStatus,
   saveError,
   onRetrySave,
-  filledCount,
-  totalCount,
   isReadOnly,
   editorToken,
   hasPendingChanges = false,
@@ -80,22 +85,24 @@ export function Header({
     window.open(exportUrl, "_blank");
   };
 
-  const { activeItem, completeCount, inProgressCount } = useMemo(() => {
+  const { activeItem, completeCount, inProgressCount, totalCount } = useMemo(() => {
     const active = items.find((item) => item.href === pathname) ?? items[0] ?? null;
+    const statusItems = items.filter((item) => item.status !== null);
 
     return {
       activeItem: active,
-      completeCount: items.filter((item) => item.status === "complete").length,
-      inProgressCount: items.filter((item) => item.status === "in-progress").length,
+      completeCount: statusItems.filter((item) => item.status === "complete").length,
+      inProgressCount: statusItems.filter((item) => item.status === "in-progress").length,
+      totalCount: statusItems.length,
     };
   }, [items, pathname]);
 
   const completionPercent = totalCount > 0
-    ? Math.round((filledCount / totalCount) * 100)
+    ? Math.round((completeCount / totalCount) * 100)
     : 0;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/70 bg-white/[0.72] shadow-[0_14px_40px_-28px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 shadow-sm backdrop-blur-xl">
       <div className="brand-gradient-strip h-1.5 w-full" />
       <div className="px-4 py-4 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
@@ -125,13 +132,13 @@ export function Header({
             </div>
 
             <div className="mt-3">
-              <h1 className="truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
+              <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">
                 {clientName}
               </h1>
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>{activeItem?.label ?? "Configuration dashboard"}</span>
                 <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" />
-                <span className="tabular-nums">{filledCount}/{totalCount} sections configured</span>
+                <span className="tabular-nums">{completeCount}/{totalCount} sections complete</span>
               </p>
             </div>
 
@@ -175,8 +182,8 @@ export function Header({
                 variant="compact"
               />
             )}
-            <StatusPill label="Complete" value={completeCount} tone="emerald" />
-            <StatusPill label="In Progress" value={inProgressCount} tone="amber" />
+            <StatusPill label="Complete" value={completeCount} tone="emerald" className="hidden sm:inline-flex" />
+            <StatusPill label="In Progress" value={inProgressCount} tone="amber" className="hidden sm:inline-flex" />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -194,7 +201,7 @@ export function Header({
             {snapshotsHref && (
               <Link
                 href={snapshotsHref}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
+                className="hidden h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95 sm:inline-flex"
                 title="Manage snapshots / restore previous state"
               >
                 <History className="h-4 w-4" />
@@ -205,11 +212,39 @@ export function Header({
             <Button
               size="sm"
               onClick={handleExport}
-              className="h-11 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_14px_28px_-18px_oklch(0.12_0.01_240/0.5)] hover:bg-primary/85 active:scale-95"
+              className="hidden h-11 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_14px_28px_-18px_oklch(0.12_0.01_240/0.5)] hover:bg-primary/85 active:scale-95 sm:inline-flex"
             >
               <Download className="h-4 w-4" />
               Export XLS
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 rounded-xl bg-white sm:hidden"
+                  aria-label="More checklist actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {snapshotsHref && (
+                  <DropdownMenuItem asChild>
+                    <Link href={snapshotsHref}>
+                      <History className="h-4 w-4" />
+                      Snapshots
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="h-4 w-4" />
+                  Export XLS
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

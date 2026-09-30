@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { getCustomTabMode } from "@/lib/custom-tab-service";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
 import { UserListSheet } from "@/components/sheets/UserListSheet";
@@ -90,7 +91,7 @@ export default function AdminChecklistTabPage() {
   }
 
   if (customTab) {
-    if (customTab.columns !== undefined) {
+    if (getCustomTabMode(customTab) === "table") {
       return <CustomTabSheet customTab={customTab} />;
     }
     return <CustomChecklistForm customTabId={customTab.id} />;

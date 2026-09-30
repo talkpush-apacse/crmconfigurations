@@ -1,6 +1,39 @@
-import type { ChecklistJsonField, UserRow, CustomFieldDef, CustomData, CustomTab, IntegrationRow } from "./types";
+import { excludeTalkpushTabs, getEnabledTabs } from "./tab-config";
+import type {
+  ChecklistData,
+  ChecklistJsonField,
+  UserRow,
+  CustomFieldDef,
+  CustomData,
+  CustomTab,
+  IntegrationRow,
+} from "./types";
+import {
+  getCustomFieldKey,
+  getCustomTabFormValues,
+  getCustomTabMode,
+  isCustomFieldVisible,
+  validateCustomFormValues,
+} from "./custom-tab-service";
 
 export type SectionState = "complete" | "in-progress" | "not-started";
+
+export interface ChecklistProgressSection {
+  slug: string;
+  label: string;
+  status: SectionState;
+}
+
+export interface ChecklistProgressSummary {
+  sections: ChecklistProgressSection[];
+  completeCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+  startedCount: number;
+  totalCount: number;
+  completionPercent: number;
+  status: SectionState;
+}
 
 const USER_EDITABLE_FIELDS: (keyof UserRow)[] = [
   "name",
@@ -164,23 +197,29 @@ export function getSectionState(
  * + the shared customData bag).
  */
 function getCustomFieldTabState(
-  fields: CustomFieldDef[],
+  tabOrFields: CustomTab | CustomFieldDef[],
   customData: CustomData | null,
 ): SectionState {
+  const tab = Array.isArray(tabOrFields) ? null : tabOrFields;
+  const fields = Array.isArray(tabOrFields) ? tabOrFields : (tabOrFields.fields ?? []);
   if (!fields || fields.length === 0) return "not-started";
   if (!customData) return "not-started";
+  const values = tab ? getCustomTabFormValues(tab, customData) : customData;
+  const visibleFields = fields.filter((field) => isCustomFieldVisible(field, values));
 
-  const totalFields = fields.length;
-  const filledFields = fields.filter((f) => {
-    const val = customData[f.id];
+  const totalFields = visibleFields.length;
+  const filledFields = visibleFields.filter((f) => {
+    const val = values[getCustomFieldKey(f)];
     if (val === null || val === undefined) return false;
     if (typeof val === "string") return val.trim() !== "";
     if (typeof val === "boolean") return val;
     if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "object") return Object.keys(val).length > 0;
     return true;
   }).length;
 
   if (filledFields === 0) return "not-started";
+  if (tab && validateCustomFormValues(tab, values).valid) return "complete";
   return filledFields >= totalFields ? "complete" : "in-progress";
 }
 
@@ -223,6 +262,82 @@ export function getCustomTabSectionState(
   tab: CustomTab,
   customData: CustomData | null,
 ): SectionState {
-  if (tab.columns !== undefined) return getCustomTableTabState(tab);
-  return getCustomFieldTabState(tab.fields ?? [], customData);
+  if (getCustomTabMode(tab) === "table") return getCustomTableTabState(tab);
+  return getCustomFieldTabState(tab, customData);
+}
+
+export function getChecklistProgress(
+  data: ChecklistData,
+  {
+    includeAdminTabs = false,
+    clientView = false,
+  }: {
+    includeAdminTabs?: boolean;
+    clientView?: boolean;
+  } = {},
+): ChecklistProgressSummary {
+  const customData = (data.customData as CustomData | null) ?? null;
+  const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
+
+  const sections: ChecklistProgressSection[] = data.isCustom
+    ? [
+        {
+          slug: "custom",
+          label: "Custom Checklist",
+          status: getCustomFieldTabState(data.customSchema ?? [], customData),
+        },
+      ]
+    : (clientView
+        ? excludeTalkpushTabs(
+            getEnabledTabs(
+              data.enabledTabs ?? null,
+              includeAdminTabs,
+              data.tabOrder ?? null,
+              customTabs,
+              data.tabFilledBy ?? null,
+            ),
+          )
+        : getEnabledTabs(
+            data.enabledTabs ?? null,
+            includeAdminTabs,
+            data.tabOrder ?? null,
+            customTabs,
+            data.tabFilledBy ?? null,
+          )
+      )
+        .filter((tab) => tab.dataKey || tab.customTabId)
+        .map((tab) => {
+          let status: SectionState = "not-started";
+          if (tab.customTabId) {
+            const customTab = customTabs?.find((candidate) => candidate.id === tab.customTabId);
+            status = customTab ? getCustomTabSectionState(customTab, customData) : "not-started";
+          } else if (tab.dataKey) {
+            status = getSectionState(data[tab.dataKey as keyof ChecklistData], tab.dataKey);
+          }
+          return { slug: tab.slug, label: tab.label, status };
+        });
+
+  const completeCount = sections.filter((section) => section.status === "complete").length;
+  const inProgressCount = sections.filter((section) => section.status === "in-progress").length;
+  const notStartedCount = sections.filter((section) => section.status === "not-started").length;
+  const totalCount = sections.length;
+  const startedCount = completeCount + inProgressCount;
+  const completionPercent = totalCount > 0 ? Math.round((completeCount / totalCount) * 100) : 0;
+  const status: SectionState =
+    totalCount > 0 && completeCount === totalCount
+      ? "complete"
+      : startedCount > 0
+        ? "in-progress"
+        : "not-started";
+
+  return {
+    sections,
+    completeCount,
+    inProgressCount,
+    notStartedCount,
+    startedCount,
+    totalCount,
+    completionPercent,
+    status,
+  };
 }

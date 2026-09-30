@@ -12,7 +12,19 @@
  * error, not a silently blank cell in front of the client.
  */
 
-import type { CustomFieldDef, CustomFieldType, CustomTab, CustomTabColumn, CustomTabRow } from "./types";
+import type {
+  CustomData,
+  CustomFieldDef,
+  CustomFieldType,
+  CustomFormFileValue,
+  CustomTab,
+  CustomTabColumn,
+  CustomTabRow,
+  FieldCondition,
+  RepeaterColumn,
+  ValidationGroup,
+  ValidationGroupType,
+} from "./types";
 
 export const CUSTOM_TAB_COLUMN_TYPES = [
   "text",
@@ -500,6 +512,7 @@ export interface CustomTabSummary {
   label: string;
   description: string | null;
   icon: string;
+  mode: "table" | "form";
   kind: "table" | "form";
   columns: Array<{
     key: string;
@@ -516,14 +529,31 @@ export interface CustomTabSummary {
   /** Only present for kind "form" — the field ids a caller needs to preserve values across update_custom_tab. */
   fields?: Array<{
     id: string;
+    key: string;
     label: string;
     type: string;
     required: boolean;
+    helpText?: string;
+    placeholder?: string;
     options?: string[];
+    min?: number;
+    max?: number;
+    integerOnly?: boolean;
+    allowedExtensions?: string[];
+    allowedMimeTypes?: string[];
+    maxFileSizeMb?: number;
+    multiple?: boolean;
+    visibleWhen?: FieldCondition;
+    requiredWhen?: FieldCondition;
+    columns?: RepeaterColumn[];
+    minRows?: number;
+    maxRows?: number;
     tableColumns?: string[];
     /** The field's current value from customData, when the caller supplied it (see includeFieldValues). */
     value?: unknown;
   }>;
+  validationGroups?: ValidationGroup[];
+  templateSource?: CustomTab["templateSource"];
 }
 
 export function summarizeTab(
@@ -531,7 +561,9 @@ export function summarizeTab(
   customData?: Record<string, unknown> | null
 ): CustomTabSummary {
   const columns = tab.columns ?? [];
-  const isForm = tab.columns === undefined;
+  const mode = getCustomTabMode(tab);
+  const isForm = mode === "form";
+  const formValues = isForm ? getCustomTabFormValues(tab, customData) : {};
   return {
     id: tab.id,
     slug: tab.slug,
@@ -539,6 +571,7 @@ export function summarizeTab(
     label: tab.label,
     description: tab.description ?? null,
     icon: tab.icon,
+    mode,
     kind: isForm ? "form" : "table",
     columns: columns.map((column) => ({
       key: column.key,
@@ -552,19 +585,36 @@ export function summarizeTab(
     rowCount: (tab.rows ?? []).length,
     uploadedFile: tab.uploadedFile?.name ?? null,
     createdAt: tab.createdAt ?? null,
+    ...(tab.templateSource ? { templateSource: tab.templateSource } : {}),
     ...(isForm
       ? {
           fields: tab.fields.map((field) => ({
             id: field.id,
+            key: getCustomFieldKey(field),
             label: field.label,
             type: field.type,
             required: !!field.required,
+            ...(field.helpText ? { helpText: field.helpText } : {}),
+            ...(field.placeholder ? { placeholder: field.placeholder } : {}),
             ...(field.options?.length ? { options: field.options } : {}),
+            ...(typeof field.min === "number" ? { min: field.min } : {}),
+            ...(typeof field.max === "number" ? { max: field.max } : {}),
+            ...(field.integerOnly ? { integerOnly: true } : {}),
+            ...(field.allowedExtensions?.length ? { allowedExtensions: field.allowedExtensions } : {}),
+            ...(field.allowedMimeTypes?.length ? { allowedMimeTypes: field.allowedMimeTypes } : {}),
+            ...(field.maxFileSizeMb ? { maxFileSizeMb: field.maxFileSizeMb } : {}),
+            ...(field.multiple !== undefined ? { multiple: field.multiple } : {}),
+            ...(field.visibleWhen ? { visibleWhen: field.visibleWhen } : {}),
+            ...(field.requiredWhen ? { requiredWhen: field.requiredWhen } : {}),
+            ...(Array.isArray(field.columns) && field.columns.length > 0 ? { columns: field.columns as RepeaterColumn[] } : {}),
+            ...(typeof field.minRows === "number" ? { minRows: field.minRows } : {}),
+            ...(typeof field.maxRows === "number" ? { maxRows: field.maxRows } : {}),
             ...(field.tableColumns?.length
               ? { tableColumns: field.tableColumns.map((c) => c.label) }
               : {}),
-            ...(customData && field.id in customData ? { value: customData[field.id] } : {}),
+            ...(getCustomFieldKey(field) in formValues ? { value: formValues[getCustomFieldKey(field)] } : {}),
           })),
+          ...(tab.validationGroups?.length ? { validationGroups: tab.validationGroups } : {}),
         }
       : {}),
   };
@@ -572,18 +622,18 @@ export function summarizeTab(
 
 /** A table-based tab is the only kind these tools can safely rewrite. */
 export function assertTableTab(tab: CustomTab): CustomTabColumn[] {
-  if (tab.columns === undefined) {
+  if (getCustomTabMode(tab) !== "table") {
     throw new CustomTabError(
       `Custom tab "${tab.label}" is a document-style tab (fields), not a table. ` +
         `Row and column tools don't apply to it.`
     );
   }
-  return tab.columns;
+  return tab.columns ?? [];
 }
 
 /** A form-based tab is the only kind that has `fields` to rewrite. */
 export function assertFormTab(tab: CustomTab): CustomFieldDef[] {
-  if (tab.columns !== undefined) {
+  if (getCustomTabMode(tab) !== "form") {
     throw new CustomTabError(
       `Custom tab "${tab.label}" is a table-based tab (columns/rows). Field tools don't apply to it.`
     );
@@ -602,9 +652,12 @@ export const CUSTOM_FIELD_TYPES = [
   "number",
   "date",
   "select",
+  "email",
+  "url",
   "checkbox",
   "file",
   "table",
+  "repeater",
 ] as const;
 
 // Compile-time check that the list above stays in sync with CustomFieldType.
@@ -613,6 +666,35 @@ void _typeCheck;
 
 /** Field types whose initial value is coerced via the same rules a table cell uses. */
 const SHIM_COERCED_TYPES = new Set<CustomFieldType>(["checkbox", "number", "date", "select"]);
+
+export const FORM_FIELD_TYPES = [
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "select",
+  "email",
+  "url",
+  "checkbox",
+  "file",
+  "repeater",
+] as const;
+
+const REPEATER_COLUMN_TYPES = [
+  "text",
+  "textarea",
+  "number",
+  "email",
+  "url",
+  "select",
+  "date",
+  "checkbox",
+] as const;
+
+const CONDITION_OPERATORS = ["equals", "not_equals", "is_empty", "is_not_empty", "contains"] as const;
+const VALIDATION_GROUP_TYPES = ["at_least_one", "exactly_one", "all_or_none"] as const;
+const EXECUTABLE_EXTENSIONS = new Set(["exe", "bat", "cmd", "com", "scr", "js", "jar", "sh", "ps1", "app", "dmg"]);
+const EXECUTABLE_MIME_PREFIXES = ["application/x-msdownload", "application/x-sh", "application/x-msdos-program"];
 
 export interface FieldSpec {
   /**
@@ -623,12 +705,26 @@ export interface FieldSpec {
    * dropped table column).
    */
   id?: string;
+  key?: string;
   label: string;
   type: CustomFieldType;
   required?: boolean;
+  helpText?: string;
   placeholder?: string;
   /** Choices — required for type "select". */
   options?: string[];
+  min?: number;
+  max?: number;
+  integerOnly?: boolean;
+  allowedExtensions?: string[];
+  allowedMimeTypes?: string[];
+  maxFileSizeMb?: number;
+  multiple?: boolean;
+  visibleWhen?: FieldCondition;
+  requiredWhen?: FieldCondition;
+  columns?: RepeaterColumn[];
+  minRows?: number;
+  maxRows?: number;
   /** Column definitions — required for type "table". */
   tableColumns?: ColumnSpec[];
   /**
@@ -645,6 +741,10 @@ export interface NormalizedFields {
   /** Keyed by each field's generated id — merge this into the checklist's customData. */
   initialData: Record<string, unknown>;
   warnings: string[];
+}
+
+export interface NormalizedValidationGroups {
+  validationGroups: ValidationGroup[];
 }
 
 export interface NormalizeFieldsOptions {
@@ -692,6 +792,176 @@ function coerceFieldInitialValue(
   return { value: raw === null || raw === undefined ? "" : String(raw) };
 }
 
+function cleanStringArray(raw: string[] | undefined, transform?: (value: string) => string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of raw ?? []) {
+    const value = transform ? transform(String(entry ?? "").trim()) : String(entry ?? "").trim();
+    if (!value) continue;
+    const dedupe = value.toLowerCase();
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    out.push(value);
+  }
+  return out;
+}
+
+function normalizeExtension(value: string): string {
+  return value.trim().replace(/^\./, "").toLowerCase();
+}
+
+function isSupportedFieldCondition(value: unknown): value is FieldCondition {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const condition = value as FieldCondition;
+  return (
+    typeof condition.fieldKey === "string" &&
+    condition.fieldKey.trim() !== "" &&
+    CONDITION_OPERATORS.includes(condition.operator as (typeof CONDITION_OPERATORS)[number])
+  );
+}
+
+function normalizeCondition(
+  condition: FieldCondition | undefined,
+  owner: string,
+  knownKeys: Set<string>,
+  issues: string[]
+): FieldCondition | undefined {
+  if (!condition) return undefined;
+  if (!isSupportedFieldCondition(condition)) {
+    issues.push(`${owner}: condition must include fieldKey and one of ${CONDITION_OPERATORS.join(", ")}.`);
+    return undefined;
+  }
+
+  const fieldKey = normalizeColumnKey(condition.fieldKey);
+  if (!knownKeys.has(fieldKey)) {
+    issues.push(`${owner}: condition references unknown field "${condition.fieldKey}".`);
+    return undefined;
+  }
+  if ((condition.operator === "equals" || condition.operator === "not_equals" || condition.operator === "contains") &&
+      condition.value === undefined) {
+    issues.push(`${owner}: operator "${condition.operator}" needs a value.`);
+    return undefined;
+  }
+  return {
+    fieldKey,
+    operator: condition.operator,
+    ...(condition.value !== undefined ? { value: condition.value } : {}),
+  };
+}
+
+function normalizeRepeaterColumns(
+  specs: RepeaterColumn[] | undefined,
+  position: string
+): RepeaterColumn[] {
+  const issues: string[] = [];
+  if (!Array.isArray(specs) || specs.length === 0) {
+    throw new CustomTabError(`${position}: type "repeater" needs at least one column.`);
+  }
+  if (specs.length > MAX_CUSTOM_TAB_COLUMNS) {
+    throw new CustomTabError(`${position}: a repeater can have at most ${MAX_CUSTOM_TAB_COLUMNS} columns.`);
+  }
+
+  const used = new Map<string, string>();
+  const columns: RepeaterColumn[] = [];
+  specs.forEach((spec, index) => {
+    const label = String(spec?.label ?? "").trim();
+    const colPos = `${position} column ${index + 1}`;
+    if (!label) {
+      issues.push(`${colPos}: label is required.`);
+      return;
+    }
+    const type = spec?.type;
+    if (!REPEATER_COLUMN_TYPES.includes(type as (typeof REPEATER_COLUMN_TYPES)[number])) {
+      issues.push(`${colPos} ("${label}"): type "${String(type)}" is not one of ${REPEATER_COLUMN_TYPES.join(", ")}.`);
+      return;
+    }
+    const key = normalizeColumnKey(spec.key ? spec.key : label);
+    if (!key) {
+      issues.push(`${colPos} ("${label}"): give it a usable key.`);
+      return;
+    }
+    const clash = used.get(key);
+    if (clash) {
+      issues.push(`${colPos} ("${label}"): key "${key}" is already used by "${clash}".`);
+      return;
+    }
+    used.set(key, label);
+    const options = cleanOptions(spec.options);
+    if (type === "select" && options.length === 0) {
+      issues.push(`${colPos} ("${label}"): type "select" needs options.`);
+      return;
+    }
+    const column: RepeaterColumn = {
+      key,
+      label,
+      type: type as RepeaterColumn["type"],
+      ...(spec.required ? { required: true } : {}),
+      ...(optionalText(spec.helpText) ? { helpText: optionalText(spec.helpText) } : {}),
+      ...(optionalText(spec.placeholder) ? { placeholder: optionalText(spec.placeholder) } : {}),
+      ...(type === "select" ? { options } : {}),
+      ...(typeof spec.min === "number" && Number.isFinite(spec.min) ? { min: spec.min } : {}),
+      ...(typeof spec.max === "number" && Number.isFinite(spec.max) ? { max: spec.max } : {}),
+      ...(spec.integerOnly ? { integerOnly: true } : {}),
+    };
+    columns.push(column);
+  });
+
+  if (issues.length > 0) {
+    throw new CustomTabError("The repeater column definitions have problems:", issues);
+  }
+  return columns;
+}
+
+export function normalizeValidationGroups(
+  specs: ValidationGroup[] | undefined,
+  fields: CustomFieldDef[]
+): ValidationGroup[] {
+  const issues: string[] = [];
+  const groups: ValidationGroup[] = [];
+  const fieldKeys = new Set(fields.map((field) => getCustomFieldKey(field)));
+  const ids = new Set<string>();
+
+  for (const [index, spec] of (specs ?? []).entries()) {
+    const position = `validation group ${index + 1}`;
+    const id = normalizeColumnKey(spec?.id ?? "");
+    if (!id) {
+      issues.push(`${position}: id is required.`);
+      continue;
+    }
+    if (ids.has(id)) {
+      issues.push(`${position}: id "${id}" is duplicated.`);
+      continue;
+    }
+    ids.add(id);
+
+    if (!VALIDATION_GROUP_TYPES.includes(spec?.type as ValidationGroupType)) {
+      issues.push(`${position} ("${id}"): type must be one of ${VALIDATION_GROUP_TYPES.join(", ")}.`);
+      continue;
+    }
+    const keys = cleanStringArray(spec.fieldKeys, normalizeColumnKey);
+    if (keys.length < 2) {
+      issues.push(`${position} ("${id}"): fieldKeys needs at least two fields.`);
+      continue;
+    }
+    const unknown = keys.filter((key) => !fieldKeys.has(key));
+    if (unknown.length > 0) {
+      issues.push(`${position} ("${id}"): unknown field key(s): ${unknown.join(", ")}.`);
+      continue;
+    }
+    const message = String(spec.message ?? "").trim();
+    if (!message) {
+      issues.push(`${position} ("${id}"): message is required.`);
+      continue;
+    }
+    groups.push({ id, type: spec.type, fieldKeys: keys, message });
+  }
+
+  if (issues.length > 0) {
+    throw new CustomTabError("The validation groups have problems:", issues);
+  }
+  return groups;
+}
+
 /**
  * Validates a proposed field list (a form-based/document-style tab) and
  * returns it in storage shape, alongside the initial `customData` values those
@@ -718,6 +988,13 @@ export function normalizeFields(
 
   const fields: CustomFieldDef[] = [];
   const initialData: Record<string, unknown> = {};
+  const usedKeys = new Map<string, string>();
+  const pendingConditions: Array<{
+    field: CustomFieldDef;
+    spec: FieldSpec;
+    position: string;
+    label: string;
+  }> = [];
 
   specs.forEach((spec, index) => {
     const position = `field ${index + 1}`;
@@ -734,6 +1011,18 @@ export function normalizeFields(
       );
       return;
     }
+
+    const key = normalizeColumnKey(spec.key ? spec.key : label);
+    if (!key) {
+      issues.push(`${position} ("${label}"): can't derive a field key — give it an explicit snake_case key.`);
+      return;
+    }
+    const clash = usedKeys.get(key);
+    if (clash) {
+      issues.push(`${position} ("${label}"): key "${key}" is already used by "${clash}". Keys must be unique.`);
+      return;
+    }
+    usedKeys.set(key, label);
 
     const cleanedOptions = cleanOptions(spec.options);
     if (type === "select" && cleanedOptions.length === 0) {
@@ -758,17 +1047,64 @@ export function normalizeFields(
       }
     }
 
+    let repeaterColumns: RepeaterColumn[] | undefined;
+    if (type === "repeater") {
+      try {
+        repeaterColumns = normalizeRepeaterColumns(spec.columns, `${position} ("${label}")`);
+      } catch (error) {
+        const message = error instanceof CustomTabError ? error.message : String(error);
+        issues.push(message);
+        return;
+      }
+      if (typeof spec.minRows === "number" && typeof spec.maxRows === "number" && spec.minRows > spec.maxRows) {
+        issues.push(`${position} ("${label}"): minRows cannot be greater than maxRows.`);
+        return;
+      }
+    }
+
+    const allowedExtensions = cleanStringArray(spec.allowedExtensions, normalizeExtension);
+    const allowedMimeTypes = cleanStringArray(spec.allowedMimeTypes, (value) => value.toLowerCase());
+    const blockedExt = allowedExtensions.find((ext) => EXECUTABLE_EXTENSIONS.has(ext));
+    if (blockedExt) {
+      issues.push(`${position} ("${label}"): executable extension ".${blockedExt}" is not allowed.`);
+      return;
+    }
+    const blockedMime = allowedMimeTypes.find((mime) => EXECUTABLE_MIME_PREFIXES.some((prefix) => mime.startsWith(prefix)));
+    if (blockedMime) {
+      issues.push(`${position} ("${label}"): executable MIME type "${blockedMime}" is not allowed.`);
+      return;
+    }
+    if (typeof spec.min === "number" && typeof spec.max === "number" && spec.min > spec.max) {
+      issues.push(`${position} ("${label}"): min cannot be greater than max.`);
+      return;
+    }
+
     const id = optionalText(spec.id) ?? makeId();
     const field: CustomFieldDef = {
       id,
+      key,
       label,
       type,
       required: !!spec.required,
     };
+    const helpText = optionalText(spec.helpText);
+    if (helpText) field.helpText = helpText;
     const placeholder = optionalText(spec.placeholder);
     if (placeholder) field.placeholder = placeholder;
     if (type === "select") field.options = cleanedOptions;
     if (tableColumns) field.tableColumns = tableColumns;
+    if (repeaterColumns) field.columns = repeaterColumns;
+    if (typeof spec.min === "number" && Number.isFinite(spec.min)) field.min = spec.min;
+    if (typeof spec.max === "number" && Number.isFinite(spec.max)) field.max = spec.max;
+    if (spec.integerOnly) field.integerOnly = true;
+    if (allowedExtensions.length > 0) field.allowedExtensions = allowedExtensions;
+    if (allowedMimeTypes.length > 0) field.allowedMimeTypes = allowedMimeTypes;
+    if (typeof spec.maxFileSizeMb === "number" && Number.isFinite(spec.maxFileSizeMb) && spec.maxFileSizeMb > 0) {
+      field.maxFileSizeMb = spec.maxFileSizeMb;
+    }
+    if (spec.multiple !== undefined) field.multiple = !!spec.multiple;
+    if (typeof spec.minRows === "number" && Number.isFinite(spec.minRows)) field.minRows = Math.max(0, Math.floor(spec.minRows));
+    if (typeof spec.maxRows === "number" && Number.isFinite(spec.maxRows)) field.maxRows = Math.max(0, Math.floor(spec.maxRows));
 
     if (spec.initialValue !== undefined) {
       const coerced = coerceFieldInitialValue(type, tableColumns, cleanedOptions, spec.initialValue, makeId);
@@ -777,11 +1113,32 @@ export function normalizeFields(
         return;
       }
       if (coerced.warning) warnings.push(`${position} ("${label}"): ${coerced.warning}`);
-      initialData[id] = coerced.value;
+      initialData[key] = coerced.value;
     }
 
     fields.push(field);
+    pendingConditions.push({ field, spec, position, label });
   });
+
+  if (issues.length === 0) {
+    const knownKeys = new Set(fields.map((field) => getCustomFieldKey(field)));
+    for (const pending of pendingConditions) {
+      const visibleWhen = normalizeCondition(
+        pending.spec.visibleWhen,
+        `${pending.position} ("${pending.label}") visibleWhen`,
+        knownKeys,
+        issues
+      );
+      const requiredWhen = normalizeCondition(
+        pending.spec.requiredWhen,
+        `${pending.position} ("${pending.label}") requiredWhen`,
+        knownKeys,
+        issues
+      );
+      if (visibleWhen) pending.field.visibleWhen = visibleWhen;
+      if (requiredWhen) pending.field.requiredWhen = requiredWhen;
+    }
+  }
 
   if (issues.length > 0) {
     throw new CustomTabError("The field definitions have problems:", issues);
@@ -797,8 +1154,260 @@ export function describeFields(fields: CustomFieldDef[]): string {
       const bits: string[] = [field.type];
       if (field.required) bits.push("required");
       if (field.options?.length) bits.push(`options: ${field.options.join(" / ")}`);
+      if (field.helpText) bits.push(`help: ${field.helpText}`);
+      if (field.placeholder) bits.push(`placeholder: ${field.placeholder}`);
+      if (typeof field.min === "number") bits.push(`min: ${field.min}`);
+      if (typeof field.max === "number") bits.push(`max: ${field.max}`);
+      if (field.integerOnly) bits.push("integer only");
+      if (field.allowedExtensions?.length) bits.push(`extensions: ${field.allowedExtensions.join(", ")}`);
+      if (field.allowedMimeTypes?.length) bits.push(`mime types: ${field.allowedMimeTypes.join(", ")}`);
+      if (field.maxFileSizeMb) bits.push(`max file size: ${field.maxFileSizeMb} MB`);
+      if (field.visibleWhen) bits.push(`visible when ${field.visibleWhen.fieldKey} ${field.visibleWhen.operator} ${field.visibleWhen.value ?? ""}`.trim());
+      if (field.requiredWhen) bits.push(`required when ${field.requiredWhen.fieldKey} ${field.requiredWhen.operator} ${field.requiredWhen.value ?? ""}`.trim());
       if (field.tableColumns?.length) bits.push(`table columns: ${field.tableColumns.map((c) => c.label).join(", ")}`);
-      return `- ${field.label} — ${bits.join("; ")}`;
+      if (Array.isArray(field.columns) && field.columns.length > 0) bits.push(`repeater columns: ${(field.columns as RepeaterColumn[]).map((c) => c.label).join(", ")}`);
+      return `- ${field.label} (\`${getCustomFieldKey(field)}\`) — ${bits.join("; ")}`;
     })
     .join("\n");
+}
+
+export function getCustomTabMode(tab: CustomTab): "table" | "form" {
+  if (tab.mode === "form" || tab.mode === "table") return tab.mode;
+  return tab.columns !== undefined ? "table" : "form";
+}
+
+export function getCustomFieldKey(field: CustomFieldDef): string {
+  return field.key || field.id;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function getCustomTabFormValues(
+  tab: CustomTab,
+  customData: CustomData | null | undefined
+): Record<string, unknown> {
+  const data = (customData ?? {}) as Record<string, unknown>;
+  const container = data[tab.id];
+  const nestedValues =
+    isRecord(container) && isRecord(container.values)
+      ? (container.values as Record<string, unknown>)
+      : {};
+  const values: Record<string, unknown> = { ...nestedValues };
+
+  for (const field of tab.fields ?? []) {
+    const key = getCustomFieldKey(field);
+    if (values[key] !== undefined) continue;
+    if (data[key] !== undefined) values[key] = data[key];
+    else if (data[field.id] !== undefined) values[key] = data[field.id];
+  }
+  return values;
+}
+
+export function buildCustomTabFormDataPatch(
+  tab: CustomTab,
+  values: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    [tab.id]: {
+      values,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+function valueIsEmpty(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (typeof value === "boolean") return value === false;
+  if (Array.isArray(value)) return value.length === 0;
+  if (isRecord(value)) {
+    if (typeof value.url === "string" && value.url.trim()) return false;
+    return Object.keys(value).length === 0;
+  }
+  return false;
+}
+
+function conditionMatches(condition: FieldCondition | undefined, values: Record<string, unknown>): boolean {
+  if (!condition) return true;
+  const actual = values[condition.fieldKey];
+  const expected = condition.value;
+
+  switch (condition.operator) {
+    case "equals":
+      return String(actual ?? "") === String(expected ?? "");
+    case "not_equals":
+      return String(actual ?? "") !== String(expected ?? "");
+    case "is_empty":
+      return valueIsEmpty(actual);
+    case "is_not_empty":
+      return !valueIsEmpty(actual);
+    case "contains":
+      if (Array.isArray(actual)) return actual.some((item) => String(item) === String(expected ?? ""));
+      return String(actual ?? "").includes(String(expected ?? ""));
+  }
+}
+
+export function isCustomFieldVisible(field: CustomFieldDef, values: Record<string, unknown>): boolean {
+  return conditionMatches(field.visibleWhen, values);
+}
+
+export function isCustomFieldRequired(field: CustomFieldDef, values: Record<string, unknown>): boolean {
+  if (!isCustomFieldVisible(field, values)) return false;
+  return !!field.required || (!!field.requiredWhen && conditionMatches(field.requiredWhen, values));
+}
+
+function fileValues(value: unknown): CustomFormFileValue[] {
+  if (Array.isArray(value)) return value.filter(isRecord).map((v) => v as unknown as CustomFormFileValue);
+  if (isRecord(value)) return [value as unknown as CustomFormFileValue];
+  return [];
+}
+
+export function validateFileValue(field: CustomFieldDef, value: unknown): string[] {
+  const errors: string[] = [];
+  const files = fileValues(value);
+  if (!field.multiple && files.length > 1) {
+    errors.push(`${field.label}: only one file is allowed.`);
+  }
+  for (const file of files) {
+    const fileName = String(file.fileName ?? "");
+    const extension = normalizeExtension(fileName.split(".").pop() ?? "");
+    const mimeType = String(file.mimeType ?? "").toLowerCase();
+    const size = typeof file.size === "number" ? file.size : null;
+    if (EXECUTABLE_EXTENSIONS.has(extension) || EXECUTABLE_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix))) {
+      errors.push(`${field.label}: executable files are not allowed.`);
+    }
+    if (field.allowedExtensions?.length && !field.allowedExtensions.includes(extension)) {
+      errors.push(`${field.label}: "${fileName}" must use one of these extensions: ${field.allowedExtensions.join(", ")}.`);
+    }
+    if (field.allowedMimeTypes?.length && (!mimeType || !field.allowedMimeTypes.includes(mimeType))) {
+      errors.push(`${field.label}: "${fileName}" must use one of these MIME types: ${field.allowedMimeTypes.join(", ")}.`);
+    }
+    if (field.maxFileSizeMb && size !== null && size > field.maxFileSizeMb * 1024 * 1024) {
+      errors.push(`${field.label}: "${fileName}" is larger than ${field.maxFileSizeMb} MB.`);
+    }
+  }
+  return errors;
+}
+
+function validateScalarValue(
+  label: string,
+  type: CustomFieldType | RepeaterColumn["type"],
+  value: unknown,
+  config: {
+    options?: string[];
+    min?: number;
+    max?: number;
+    integerOnly?: boolean;
+  } = {}
+): string[] {
+  if (valueIsEmpty(value)) return [];
+  const errors: string[] = [];
+  const text = String(value ?? "").trim();
+  if (type === "email" && !EMAIL_SHAPE.test(text)) {
+    errors.push(`${label}: enter a valid email address.`);
+  }
+  if (type === "url" && !/^https?:\/\/\S+$/i.test(text)) {
+    errors.push(`${label}: enter a URL starting with http:// or https://.`);
+  }
+  if (type === "select" && config.options?.length && !config.options.includes(text)) {
+    errors.push(`${label}: choose one of ${config.options.join(", ")}.`);
+  }
+  if (type === "number") {
+    const number = typeof value === "number" ? value : Number(text);
+    if (!Number.isFinite(number)) {
+      errors.push(`${label}: enter a number.`);
+    } else {
+      if (config.integerOnly && !Number.isInteger(number)) errors.push(`${label}: enter a whole number.`);
+      if (typeof config.min === "number" && number < config.min) errors.push(`${label}: must be at least ${config.min}.`);
+      if (typeof config.max === "number" && number > config.max) errors.push(`${label}: must be at most ${config.max}.`);
+    }
+  }
+  return errors;
+}
+
+function validateRepeaterRows(
+  field: CustomFieldDef,
+  value: unknown,
+  options: { enforceRequired?: boolean } = {}
+): string[] {
+  const { enforceRequired = true } = options;
+  const rows = Array.isArray(value) ? value : [];
+  const columns = Array.isArray(field.columns) ? (field.columns as RepeaterColumn[]) : [];
+  const errors: string[] = [];
+  if (enforceRequired && typeof field.minRows === "number" && rows.length < field.minRows) {
+    errors.push(`${field.label}: add at least ${field.minRows} row(s).`);
+  }
+  if (typeof field.maxRows === "number" && rows.length > field.maxRows) {
+    errors.push(`${field.label}: use at most ${field.maxRows} row(s).`);
+  }
+  rows.forEach((row, rowIndex) => {
+    const record = isRecord(row) ? row : {};
+    for (const column of columns) {
+      const value = record[column.key];
+      const label = `${field.label} row ${rowIndex + 1} ${column.label}`;
+      if (enforceRequired && column.required && valueIsEmpty(value)) {
+        errors.push(`${label}: required.`);
+        continue;
+      }
+      errors.push(...validateScalarValue(label, column.type, value, column));
+    }
+  });
+  return errors;
+}
+
+export function validateCustomFormValues(
+  tab: CustomTab,
+  values: Record<string, unknown>,
+  options: { enforceRequired?: boolean; enforceValidationGroups?: boolean } = {}
+): { valid: boolean; errors: Record<string, string[]> } {
+  const { enforceRequired = true, enforceValidationGroups = true } = options;
+  const errors: Record<string, string[]> = {};
+
+  for (const field of tab.fields ?? []) {
+    const key = getCustomFieldKey(field);
+    if (!isCustomFieldVisible(field, values)) continue;
+    const value = values[key];
+    const fieldErrors: string[] = [];
+    if (enforceRequired && isCustomFieldRequired(field, values) && valueIsEmpty(value)) {
+      fieldErrors.push(`${field.label}: required.`);
+    }
+    if (field.type === "file") fieldErrors.push(...validateFileValue(field, value));
+    else if (field.type === "repeater") fieldErrors.push(...validateRepeaterRows(field, value, { enforceRequired }));
+    else fieldErrors.push(...validateScalarValue(field.label, field.type, value, field));
+    if (fieldErrors.length > 0) errors[key] = fieldErrors;
+  }
+
+  if (enforceValidationGroups) {
+    for (const group of tab.validationGroups ?? []) {
+      const populated = group.fieldKeys.filter((key) => !valueIsEmpty(values[key]));
+      let failed = false;
+      if (group.type === "at_least_one") failed = populated.length < 1;
+      if (group.type === "exactly_one") failed = populated.length !== 1;
+      if (group.type === "all_or_none") failed = populated.length > 0 && populated.length !== group.fieldKeys.length;
+      if (failed) errors[`validationGroup:${group.id}`] = [group.message];
+    }
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+export function validateCustomTabsData(
+  tabs: CustomTab[] | null | undefined,
+  customData: CustomData | null | undefined,
+  options: { enforceRequired?: boolean; enforceValidationGroups?: boolean } = {}
+): string[] {
+  const errors: string[] = [];
+  for (const tab of tabs ?? []) {
+    if (getCustomTabMode(tab) !== "form") continue;
+    const values = getCustomTabFormValues(tab, customData);
+    const validation = validateCustomFormValues(tab, values, options);
+    if (!validation.valid) {
+      for (const messages of Object.values(validation.errors)) {
+        errors.push(...messages.map((message) => `${tab.label}: ${message}`));
+      }
+    }
+  }
+  return errors;
 }

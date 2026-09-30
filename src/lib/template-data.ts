@@ -453,11 +453,19 @@ export const defaultInstagram: InstagramData = {
 };
 
 export const defaultAiCallData: AiCallData = {
+  agentName: "",
   measureEnglish: false,
   gender: "",
   preferredVoice: "",
+  warmth: "",
+  formality: "",
+  pace: "",
   callType: "",
+  callScheduleWindow: "",
+  callLength: "",
+  callStatus: "",
   interviewRole: "",
+  jobDescription: "",
   interviewQuestions: "",
   faqs: [
     { id: uid(), faq: "Documents to bring", example: "What documents do I need to bring?", faqResponse: "" },

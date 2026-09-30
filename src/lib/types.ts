@@ -33,6 +33,15 @@ export interface CompanyInfo {
   coolingPeriod: string;
   rehiresAllowed: string;
   businessHours?: BusinessHourEntry[];
+  /**
+   * Welcome-page copy, admin/editor-editable (never shown to the client as an
+   * editable field). Stored here rather than on `adminSettings` because
+   * `adminSettings` is stripped from every public/client-facing response
+   * (it also carries internal telephony credentials) — this needs to reach
+   * the client's own Welcome page, just not be editable by them.
+   */
+  checklistTitle?: string;
+  welcomeSubtitle?: string;
 }
 
 // ===== User List =====
@@ -68,6 +77,7 @@ export interface SiteRow extends SoftDeletable {
   id: string;
   siteName: string;
   internalName: string;
+  lobsOrAccounts?: string;
   interviewHours: string;
   interviewType: string;
   fullAddress: string;
@@ -198,11 +208,19 @@ export interface AiCallFaqRow {
 }
 
 export interface AiCallData {
+  agentName?: string;
   measureEnglish: boolean;
   gender: string;
   preferredVoice: string;
+  warmth?: string;
+  formality?: string;
+  pace?: string;
   callType: string;
+  callScheduleWindow?: string;
+  callLength?: string;
+  callStatus?: string;
   interviewRole: string;
+  jobDescription?: string;
   interviewQuestions: string;
   faqs: AiCallFaqRow[];
 }
@@ -625,19 +643,104 @@ export type CustomFieldType =
   | 'number'
   | 'date'
   | 'select'
+  | 'email'
+  | 'url'
   | 'checkbox'
   | 'file'
-  | 'table';
+  | 'table'
+  | 'repeater';
+
+export interface FieldCondition {
+  fieldKey: string;
+  operator: "equals" | "not_equals" | "is_empty" | "is_not_empty" | "contains";
+  value?: string | number | boolean;
+}
+
+export type ValidationGroupType = "at_least_one" | "exactly_one" | "all_or_none";
+
+export interface ValidationGroup {
+  id: string;
+  type: ValidationGroupType;
+  fieldKeys: string[];
+  message: string;
+}
+
+export type RepeaterColumnType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "email"
+  | "url"
+  | "select"
+  | "date"
+  | "checkbox";
+
+export interface RepeaterColumn {
+  key: string;
+  label: string;
+  type: RepeaterColumnType;
+  required?: boolean;
+  helpText?: string;
+  placeholder?: string;
+  options?: string[];
+  min?: number;
+  max?: number;
+  integerOnly?: boolean;
+}
+
+export interface CustomFormFileValue {
+  fileName: string;
+  url: string;
+  mimeType?: string | null;
+  size?: number | null;
+  uploadedAt: string;
+}
+
+export interface CustomTabTemplateSource {
+  templateId: string;
+  version: number;
+}
+
+export interface RequirementsTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  tabName: string;
+  tabDescription?: string;
+  tabIcon?: string;
+  fields: CustomFieldDef[];
+  validationGroups?: ValidationGroup[];
+  version: number;
+  archived?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface CustomFieldDef {
   id: string;
+  /** Stable response key for form-mode custom tabs. Legacy fields may only have `id`. */
+  key?: string;
   label: string;
   type: CustomFieldType;
   required: boolean;
   placeholder?: string;
+  helpText?: string;
   options?: string[];
+  min?: number;
+  max?: number;
+  integerOnly?: boolean;
+  allowedExtensions?: string[];
+  allowedMimeTypes?: string[];
+  maxFileSizeMb?: number;
+  multiple?: boolean;
+  visibleWhen?: FieldCondition;
+  requiredWhen?: FieldCondition;
+  columns?: string[] | RepeaterColumn[];
+  minRows?: number;
+  maxRows?: number;
   /** Legacy: plain column headers for a `table`-type field — every column renders as text. */
-  columns?: string[];
+  legacyColumns?: string[];
   /**
    * Typed column definitions for a `table`-type field, reusing the same column-type
    * union MCP-created table tabs use (`CustomTabColumn`, defined below). Takes
@@ -704,8 +807,11 @@ export interface CustomTab {
   label: string;           // display name (used by tab-config and navigation)
   /** What the tab is for — rendered next to the title for whoever fills it in. */
   description?: string;
+  mode?: "table" | "form";
   icon: string;
   fields: CustomFieldDef[]; // form-based custom tabs (legacy/admin-created)
+  validationGroups?: ValidationGroup[];
+  templateSource?: CustomTabTemplateSource;
   // Table-based custom tab fields (MCP-created, optional for backward compat)
   columns?: CustomTabColumn[];
   rows?: CustomTabRow[];

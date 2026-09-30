@@ -105,9 +105,17 @@ export function normalizeCellValue(value: unknown): string {
         .join("")
         .trim();
     }
-    // Hyperlink: { text, hyperlink }
+    // Hyperlink: { text, hyperlink }. When the display text differs from the
+    // link target, encode it as a markdown link (`[text](url)`) instead of
+    // just the text — otherwise the target is silently lost, which is exactly
+    // what happened importing a client's AI Voice Call checklist (a "Sample
+    // audio here." cell lost its Google Drive link). EditableCell renders this
+    // same `[label](url)` shape as a real clickable link.
     if (typeof obj.hyperlink === "string") {
-      return normalizeCellValue(obj.text ?? obj.hyperlink);
+      const text = normalizeCellValue(obj.text ?? obj.hyperlink);
+      const href = obj.hyperlink;
+      if (!text || text === href) return href;
+      return `[${text}](${href})`;
     }
     // Formula: { formula, result }
     if ("result" in obj) return normalizeCellValue(obj.result);

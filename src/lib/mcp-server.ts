@@ -18,16 +18,22 @@ import { CHECKLIST_JSON_FIELDS, FIELD_LABELS, type ChecklistJsonField } from "./
 import { TAB_CONFIG } from "./tab-config";
 import {
   assertTableTab,
+  buildCustomTabFormDataPatch,
   CUSTOM_FIELD_TYPES,
   CUSTOM_TAB_COLUMN_TYPES,
   CustomTabError,
   describeColumns,
   describeFields,
+  getCustomFieldKey,
+  getCustomTabFormValues,
+  getCustomTabMode,
   normalizeColumns,
   normalizeFields,
+  normalizeValidationGroups,
   normalizeRows,
   renderPreviewTable,
   summarizeTab,
+  validateCustomFormValues,
   type ColumnSpec,
   type FieldSpec,
 } from "./custom-tab-service";
@@ -69,6 +75,7 @@ import type {
   CustomTabRow,
   CustomData,
   LabelRow,
+  RequirementsTemplate as RequirementsTemplateShape,
   AtsIntegration,
   AtsTriggerRow,
   AtsFieldMappingRow,
@@ -85,6 +92,7 @@ import type {
   IntegrationResponseMapping,
   IntegrationRow,
   IntegrationStatus,
+  ValidationGroup,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -1085,6 +1093,7 @@ export function createMcpServer(): McpServer {
           z.object({
             siteName: z.string().describe("Site display name (e.g. 'BGC Tower 1')"),
             internalName: z.string().optional().default("").describe("Internal reference name"),
+            lobsOrAccounts: z.string().optional().default("").describe("Lines of business or accounts supported by this site"),
             interviewHours: z.string().optional().default("").describe("Interview schedule hours"),
             interviewType: z.string().optional().default("").describe("Type: Face-to-Face, Virtual, Hybrid"),
             fullAddress: z.string().optional().default(""),
@@ -1100,6 +1109,7 @@ export function createMcpServer(): McpServer {
         id: uuid(),
         siteName: s.siteName,
         internalName: s.internalName,
+        lobsOrAccounts: s.lobsOrAccounts,
         interviewHours: s.interviewHours,
         interviewType: s.interviewType,
         fullAddress: s.fullAddress,
@@ -1692,6 +1702,32 @@ export function createMcpServer(): McpServer {
     width: z.number().optional().describe("Starting column width in pixels"),
   });
 
+  const fieldConditionSchema = z.object({
+    fieldKey: z.string().describe("Stable key of the controlling field"),
+    operator: z.enum(["equals", "not_equals", "is_empty", "is_not_empty", "contains"]),
+    value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  });
+
+  const repeaterColumnSchema = z.object({
+    key: z.string().optional().describe("Stable snake_case key. Derived from label when omitted."),
+    label: z.string(),
+    type: z.enum(["text", "textarea", "number", "email", "url", "select", "date", "checkbox"]),
+    required: z.boolean().optional().default(false),
+    helpText: z.string().optional(),
+    placeholder: z.string().optional(),
+    options: z.array(z.string()).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    integerOnly: z.boolean().optional().default(false),
+  });
+
+  const validationGroupSchema = z.object({
+    id: z.string(),
+    type: z.enum(["at_least_one", "exactly_one", "all_or_none"]),
+    fieldKeys: z.array(z.string()).min(2),
+    message: z.string(),
+  });
+
   /**
    * Shared zod shape for a form field, across the custom-tab tools — a
    * document-style tab (Main Script, sign-off notes, etc.) instead of a flat
@@ -1705,16 +1741,33 @@ export function createMcpServer(): McpServer {
         "Only meaningful on update_custom_tab: pass an existing field's id back to preserve its " +
           "identity and stored value across the update. Omit for a new field, and always omit on add_custom_tab."
       ),
+    key: z
+      .string()
+      .optional()
+      .describe("Stable snake_case response key. Derived from the label when omitted."),
     label: z.string().describe("Field label shown above the input"),
     type: z
       .enum(CUSTOM_FIELD_TYPES)
       .describe(
-        "Field type. 'richtext' is plain multi-line text today (line breaks preserved, no formatting). " +
-          "'select' requires options. 'table' requires tableColumns and behaves like a mini version of a table-based tab."
+        "Field type. For V1 requirements forms use text, textarea, number, date, select, email, url, checkbox, file, or repeater. " +
+          "Legacy richtext/table remain supported for older document-style tabs."
       ),
     required: z.boolean().optional().default(false),
+    helpText: z.string().optional().describe("Help text shown below the field. Stored exactly as supplied."),
     placeholder: z.string().optional().describe("Placeholder text shown in an empty field"),
     options: z.array(z.string()).optional().describe("Choices — required for type 'select'."),
+    min: z.number().optional().describe("Minimum allowed number value"),
+    max: z.number().optional().describe("Maximum allowed number value"),
+    integerOnly: z.boolean().optional().default(false),
+    allowedExtensions: z.array(z.string()).optional().describe("Allowed file extensions, e.g. ['pdf', 'docx']"),
+    allowedMimeTypes: z.array(z.string()).optional().describe("Allowed file MIME types"),
+    maxFileSizeMb: z.number().positive().optional(),
+    multiple: z.boolean().optional().default(false),
+    visibleWhen: fieldConditionSchema.optional(),
+    requiredWhen: fieldConditionSchema.optional(),
+    columns: z.array(repeaterColumnSchema).optional().describe("Repeater column definitions; required for type 'repeater'."),
+    minRows: z.number().int().nonnegative().optional(),
+    maxRows: z.number().int().nonnegative().optional(),
     tableColumns: z
       .array(customTabColumnSchema)
       .optional()
@@ -1742,6 +1795,307 @@ export function createMcpServer(): McpServer {
       "Slug of the tab this one should sit after in the sidebar, e.g. 'documents' or 'custom-pre-boarding'. Defaults to last."
     );
 
+  function serializeRequirementsTemplate(template: {
+    id: string;
+    name: string;
+    description: string | null;
+    category: string | null;
+    tabName: string;
+    tabDescription: string | null;
+    tabIcon: string | null;
+    fields: unknown;
+    validationGroups: unknown;
+    version: number;
+    archived: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }): RequirementsTemplateShape {
+    return {
+      id: template.id,
+      name: template.name,
+      ...(template.description ? { description: template.description } : {}),
+      ...(template.category ? { category: template.category } : {}),
+      tabName: template.tabName,
+      ...(template.tabDescription ? { tabDescription: template.tabDescription } : {}),
+      ...(template.tabIcon ? { tabIcon: template.tabIcon } : {}),
+      fields: (template.fields ?? []) as RequirementsTemplateShape["fields"],
+      validationGroups: (template.validationGroups ?? []) as RequirementsTemplateShape["validationGroups"],
+      version: template.version,
+      archived: template.archived,
+      createdAt: template.createdAt.toISOString(),
+      updatedAt: template.updatedAt.toISOString(),
+    };
+  }
+
+  function normalizeTemplateInput(input: {
+    fields: unknown;
+    validation_groups?: unknown;
+  }) {
+    const normalizedFields = normalizeFields(input.fields as FieldSpec[], { makeId: uuid });
+    const validationGroups = normalizeValidationGroups(
+      input.validation_groups as ValidationGroup[] | undefined,
+      normalizedFields.fields
+    );
+    return { fields: normalizedFields.fields, validationGroups, warnings: normalizedFields.warnings };
+  }
+
+  const templateFieldsSchema = z.array(customTabFieldSchema).describe("Form schema fields. Reuses the same V1 CustomField shape.");
+  const templateValidationGroupsSchema = z
+    .array(validationGroupSchema)
+    .optional()
+    .describe("Tab-level validation groups. Reuses V1 ValidationGroup shape.");
+
+  // --- requirements template tools ---
+  server.tool(
+    "list_requirements_templates",
+    "List reusable requirements templates that can be applied to client checklists.",
+    {
+      include_archived: z.boolean().optional().default(false),
+    },
+    async ({ include_archived }) => {
+      const templates = await prisma.requirementsTemplate.findMany({
+        where: include_archived ? {} : { archived: false },
+        orderBy: [{ archived: "asc" }, { updatedAt: "desc" }],
+      });
+
+      return mcpJson({
+        count: templates.length,
+        templates: templates.map((template) => serializeRequirementsTemplate(template)),
+      });
+    }
+  );
+
+  server.tool(
+    "get_requirements_template",
+    "Get one reusable requirements template, including its full form schema and validation groups.",
+    {
+      template_id: z.string(),
+    },
+    async ({ template_id }) => {
+      const template = await prisma.requirementsTemplate.findUnique({
+        where: { id: template_id },
+      });
+      if (!template) return mcpError(new Error(`Requirements template "${template_id}" not found.`));
+      return mcpJson(serializeRequirementsTemplate(template));
+    }
+  );
+
+  server.tool(
+    "create_requirements_template",
+    "Create a reusable requirements questionnaire template. This does not apply it to any client checklist.",
+    {
+      name: z.string(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      tab_name: z.string(),
+      tab_description: z.string().optional(),
+      tab_icon: z.string().optional(),
+      fields: templateFieldsSchema,
+      validation_groups: templateValidationGroupsSchema,
+    },
+    async ({ name, description, category, tab_name, tab_description, tab_icon, fields, validation_groups }) => {
+      try {
+        const cleanName = name.trim();
+        const cleanTabName = tab_name.trim();
+        if (!cleanName) throw new CustomTabError("Template name is required.");
+        if (!cleanTabName) throw new CustomTabError("Template tab_name is required.");
+
+        const normalized = normalizeTemplateInput({ fields, validation_groups });
+        const template = await prisma.requirementsTemplate.create({
+          data: {
+            name: cleanName,
+            description: description?.trim() || null,
+            category: category?.trim() || null,
+            tabName: cleanTabName,
+            tabDescription: tab_description?.trim() || null,
+            tabIcon: tab_icon?.trim() || null,
+            fields: toPrismaJson(normalized.fields),
+            validationGroups: toPrismaJson(normalized.validationGroups),
+          },
+        });
+
+        return mcpJson({
+          template: serializeRequirementsTemplate(template),
+          warnings: normalized.warnings,
+        });
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "update_requirements_template",
+    "Update a reusable requirements template. Schema updates increment the template version; applied client tabs remain snapshots and do not change.",
+    {
+      template_id: z.string(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      category: z.string().optional(),
+      tab_name: z.string().optional(),
+      tab_description: z.string().optional(),
+      tab_icon: z.string().optional(),
+      fields: templateFieldsSchema.optional(),
+      validation_groups: templateValidationGroupsSchema,
+      archived: z.boolean().optional(),
+    },
+    async ({ template_id, name, description, category, tab_name, tab_description, tab_icon, fields, validation_groups, archived }) => {
+      try {
+        const existing = await prisma.requirementsTemplate.findUnique({ where: { id: template_id } });
+        if (!existing) throw new CustomTabError(`Requirements template "${template_id}" not found.`);
+
+        const nextFieldsInput = fields ?? (existing.fields as unknown as FieldSpec[]);
+        const nextGroupsInput =
+          validation_groups !== undefined
+            ? validation_groups
+            : ((existing.validationGroups ?? []) as unknown as ValidationGroup[]);
+        const normalized = normalizeTemplateInput({
+          fields: nextFieldsInput,
+          validation_groups: nextGroupsInput,
+        });
+        const schemaChanged = fields !== undefined || validation_groups !== undefined;
+
+        const template = await prisma.requirementsTemplate.update({
+          where: { id: template_id },
+          data: {
+            ...(name !== undefined ? { name: name.trim() } : {}),
+            ...(description !== undefined ? { description: description.trim() || null } : {}),
+            ...(category !== undefined ? { category: category.trim() || null } : {}),
+            ...(tab_name !== undefined ? { tabName: tab_name.trim() } : {}),
+            ...(tab_description !== undefined ? { tabDescription: tab_description.trim() || null } : {}),
+            ...(tab_icon !== undefined ? { tabIcon: tab_icon.trim() || null } : {}),
+            ...(archived !== undefined ? { archived } : {}),
+            fields: toPrismaJson(normalized.fields),
+            validationGroups: toPrismaJson(normalized.validationGroups),
+            ...(schemaChanged ? { version: { increment: 1 } } : {}),
+          },
+        });
+
+        return mcpJson({
+          template: serializeRequirementsTemplate(template),
+          versionIncremented: schemaChanged,
+          warnings: normalized.warnings,
+        });
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "archive_requirements_template",
+    "Archive or unarchive a reusable requirements template. Archiving does not affect already-applied client tabs.",
+    {
+      template_id: z.string(),
+      archived: z.boolean().optional().default(true),
+    },
+    async ({ template_id, archived }) => {
+      const existing = await prisma.requirementsTemplate.findUnique({ where: { id: template_id } });
+      if (!existing) return mcpError(new Error(`Requirements template "${template_id}" not found.`));
+      const template = await prisma.requirementsTemplate.update({
+        where: { id: template_id },
+        data: { archived },
+      });
+      return mcpJson(serializeRequirementsTemplate(template));
+    }
+  );
+
+  server.tool(
+    "apply_requirements_template",
+    "Apply a reusable requirements template to a checklist by creating a new form-mode custom tab that snapshots the template schema.",
+    {
+      slug: z.string().describe("Checklist slug to receive the template tab"),
+      template_id: z.string(),
+      tab_name_override: z.string().optional(),
+      description_override: z.string().optional(),
+      tab_icon_override: z.string().optional(),
+      filled_by: filledBySchema,
+      place_after: placeAfterSchema,
+    },
+    async ({ slug, template_id, tab_name_override, description_override, tab_icon_override, filled_by, place_after }) => {
+      try {
+        const template = await prisma.requirementsTemplate.findUnique({ where: { id: template_id } });
+        if (!template) throw new CustomTabError(`Requirements template "${template_id}" not found.`);
+        if (template.archived) {
+          throw new CustomTabError(`Requirements template "${template.name}" is archived. Unarchive it before applying.`);
+        }
+
+        const label = (tab_name_override?.trim() || template.tabName).trim();
+        const tabSlug = generateSlug(label);
+        if (!tabSlug) {
+          throw new CustomTabError(`"${label}" doesn't produce a usable tab slug. Use a name with letters or numbers in it.`);
+        }
+
+        const fields = JSON.parse(JSON.stringify(template.fields ?? [])) as RequirementsTemplateShape["fields"];
+        const validationGroups = JSON.parse(JSON.stringify(template.validationGroups ?? [])) as RequirementsTemplateShape["validationGroups"];
+
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          if (!isSlugAvailable(tabSlug, ctx.tabs)) {
+            throw new CustomTabError(
+              `Slug "${tabSlug}" is already in use by another tab. Pass tab_name_override with a different name.`
+            );
+          }
+
+          const newTab: CustomTab = {
+            id: `ct_${uuid()}`,
+            slug: tabSlug,
+            label,
+            ...(description_override !== undefined
+              ? (description_override.trim() ? { description: description_override.trim() } : {})
+              : (template.tabDescription ? { description: template.tabDescription } : {})),
+            mode: "form",
+            icon: tab_icon_override?.trim() || template.tabIcon || "FileText",
+            fields,
+            ...(validationGroups && validationGroups.length > 0 ? { validationGroups } : {}),
+            templateSource: {
+              templateId: template.id,
+              version: template.version,
+            },
+            uploadedFile: null,
+            sortOrder: ctx.tabs.length,
+            createdAt: new Date().toISOString(),
+          };
+
+          const nextTabs = [...ctx.tabs, newTab];
+          const urlSlug = `custom-${tabSlug}`;
+          const outcome: CustomTabMutationOutcome = {
+            tabs: nextTabs,
+            result: {
+              id: newTab.id,
+              slug: tabSlug,
+              url_slug: urlSlug,
+              label: newTab.label,
+              templateId: template.id,
+              templateVersion: template.version,
+              fieldCount: fields.length,
+              validationGroupCount: validationGroups?.length ?? 0,
+            },
+          };
+
+          if (filled_by) {
+            outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
+          }
+          if (place_after) {
+            outcome.tabOrder = placeTabAfter(ctx.tabOrder, nextTabs, urlSlug, place_after);
+          }
+
+          return outcome;
+        });
+
+        return mcpJson({
+          slug,
+          version,
+          appliedTab: result,
+          readBack: {
+            note: "Use list_custom_tabs to verify the full applied schema and templateSource metadata.",
+          },
+        });
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
   // --- add_custom_tab ---
   server.tool(
     "add_custom_tab",
@@ -1763,6 +2117,10 @@ export function createMcpServer(): McpServer {
         .string()
         .optional()
         .describe("Lucide icon name (default: 'Table' for a table tab, 'FileText' for a document-style tab)"),
+      mode: z
+        .enum(["table", "form"])
+        .optional()
+        .describe("Explicit custom tab mode. Omit for backward-compatible inference from columns/fields."),
       filled_by: filledBySchema,
       place_after: placeAfterSchema,
       columns: z
@@ -1778,8 +2136,12 @@ export function createMcpServer(): McpServer {
         .array(customTabFieldSchema)
         .optional()
         .describe("Field definitions for a document-style tab. Omit when using `columns` instead."),
+      validation_groups: z
+        .array(validationGroupSchema)
+        .optional()
+        .describe("Tab-level validation groups for form-mode tabs, e.g. at_least_one across file/url fields."),
     },
-    async ({ slug, tab_name, tab_description, tab_icon, filled_by, place_after, columns, rows, fields }) => {
+    async ({ slug, tab_name, tab_description, tab_icon, mode, filled_by, place_after, columns, rows, fields, validation_groups }) => {
       try {
         const tabSlug = generateSlug(tab_name);
         if (!tabSlug) {
@@ -1790,8 +2152,17 @@ export function createMcpServer(): McpServer {
         if (columns && fields) {
           throw new CustomTabError(`Give either "columns" or "fields", not both.`);
         }
+        if (mode === "table" && fields) {
+          throw new CustomTabError(`mode "table" takes "columns", not "fields".`);
+        }
+        if (mode === "form" && columns) {
+          throw new CustomTabError(`mode "form" takes "fields", not "columns".`);
+        }
         if (!columns && !fields) {
           throw new CustomTabError(`Give "columns" (a table tab) or "fields" (a document-style tab).`);
+        }
+        if (validation_groups && !fields) {
+          throw new CustomTabError(`validation_groups only apply to form-mode tabs.`);
         }
 
         // Table-based branch: unchanged from before `fields` existed.
@@ -1817,6 +2188,7 @@ export function createMcpServer(): McpServer {
               slug: tabSlug,
               label: tab_name,
               ...(tab_description?.trim() ? { description: tab_description.trim() } : {}),
+              mode: "table",
               icon: tab_icon || "Table",
               fields: [], // empty — this is a table-based tab
               columns: tabColumns,
@@ -1872,6 +2244,7 @@ export function createMcpServer(): McpServer {
           fields as FieldSpec[],
           { makeId: uuid }
         );
+        const validationGroups = normalizeValidationGroups(validation_groups as ValidationGroup[] | undefined, tabFields);
 
         const { result, version } = await mutateCustomTabs(slug, (ctx) => {
           if (!isSlugAvailable(tabSlug, ctx.tabs)) {
@@ -1885,8 +2258,10 @@ export function createMcpServer(): McpServer {
             slug: tabSlug,
             label: tab_name,
             ...(tab_description?.trim() ? { description: tab_description.trim() } : {}),
+            mode: "form",
             icon: tab_icon || "FileText",
             fields: tabFields, // this is a form-based (document-style) tab — no columns/rows
+            ...(validationGroups.length > 0 ? { validationGroups } : {}),
             uploadedFile: null,
             sortOrder: ctx.tabs.length,
             createdAt: new Date().toISOString(),
@@ -1902,8 +2277,11 @@ export function createMcpServer(): McpServer {
               slug: tabSlug,
               url_slug: urlSlug,
               fieldCount: tabFields.length,
+              validationGroupCount: validationGroups.length,
             },
-            ...(Object.keys(initialData).length > 0 ? { customDataPatch: initialData } : {}),
+            ...(Object.keys(initialData).length > 0
+              ? { customDataPatch: buildCustomTabFormDataPatch(newTab, initialData) }
+              : {}),
           };
 
           if (filled_by) {
@@ -1923,6 +2301,7 @@ export function createMcpServer(): McpServer {
           `- tab URL: /client/${slug}/${result.url_slug}`,
           `- filled by: ${filled_by ?? "client"}${filled_by === "talkpush" ? " (hidden from the client view)" : ""}`,
           `- ${result.fieldCount} field(s)`,
+          `- ${result.validationGroupCount} validation group(s)`,
           `- checklist version: ${version}`,
           ``,
           describeFields(tabFields),
@@ -1962,8 +2341,12 @@ export function createMcpServer(): McpServer {
         .array(customTabFieldSchema)
         .optional()
         .describe("Full replacement of field definitions — only valid on a document-style tab (omit to keep existing fields)"),
+      validation_groups: z
+        .array(validationGroupSchema)
+        .optional()
+        .describe("Full replacement of form validation groups. Only valid on a form-mode tab."),
     },
-    async ({ slug, tab_id, tab_name, tab_description, tab_icon, filled_by, place_after, columns, fields }) => {
+    async ({ slug, tab_id, tab_name, tab_description, tab_icon, filled_by, place_after, columns, fields, validation_groups }) => {
       try {
         if (columns && fields) {
           throw new CustomTabError(`Give either "columns" or "fields", not both.`);
@@ -1980,7 +2363,7 @@ export function createMcpServer(): McpServer {
           }
 
           const existing = ctx.tabs[idx];
-          const isTable = existing.columns !== undefined;
+          const isTable = getCustomTabMode(existing) === "table";
 
           if (normalizedColumns && !isTable) {
             throw new CustomTabError(
@@ -1991,6 +2374,14 @@ export function createMcpServer(): McpServer {
             throw new CustomTabError(
               `Custom tab "${existing.label}" is a table tab (columns/rows) — pass "columns" to update it, not "fields".`
             );
+          }
+          if (validation_groups && isTable) {
+            throw new CustomTabError(
+              `Custom tab "${existing.label}" is a table tab (columns/rows) — validation_groups only apply to form tabs.`
+            );
+          }
+          if (validation_groups && !normalizedFields) {
+            normalizeValidationGroups(validation_groups as ValidationGroup[] | undefined, existing.fields ?? []);
           }
 
           const previousColumns = existing.columns ?? [];
@@ -2011,6 +2402,12 @@ export function createMcpServer(): McpServer {
 
           const nextColumns = normalizedColumns ? normalizedColumns.columns : existing.columns;
           const nextFields = normalizedFields ? normalizedFields.fields : existing.fields;
+          const nextValidationGroups = validation_groups
+            ? normalizeValidationGroups(
+                validation_groups as ValidationGroup[] | undefined,
+                nextFields ?? []
+              )
+            : existing.validationGroups;
 
           const droppedKeys = normalizedColumns
             ? previousColumns
@@ -2039,6 +2436,7 @@ export function createMcpServer(): McpServer {
             icon: tab_icon ?? existing.icon,
             columns: nextColumns,
             fields: nextFields,
+            validationGroups: nextValidationGroups,
           };
           if (description) updatedTab.description = description;
           else delete updatedTab.description;
@@ -2057,13 +2455,17 @@ export function createMcpServer(): McpServer {
               kind: isTable ? "table" : "form",
               columnCount: (nextColumns ?? []).length,
               fieldCount: (nextFields ?? []).length,
+              validationGroupCount: (nextValidationGroups ?? []).length,
               droppedKeys,
               droppedFieldLabels,
             },
           };
 
           if (normalizedFields && Object.keys(normalizedFields.initialData).length > 0) {
-            outcome.customDataPatch = normalizedFields.initialData;
+            outcome.customDataPatch = buildCustomTabFormDataPatch(updatedTab, {
+              ...getCustomTabFormValues(existing, ctx.customData),
+              ...normalizedFields.initialData,
+            });
           }
           if (filled_by) {
             outcome.tabFilledBy = { ...(ctx.tabFilledBy ?? {}), [urlSlug]: filled_by };
@@ -2082,6 +2484,7 @@ export function createMcpServer(): McpServer {
           `Updated custom tab "${result.label}" (${result.id}) on ${slug}.`,
           `- tab URL: /client/${slug}/${result.url_slug}`,
           `- ${isTable ? `${result.columnCount} column(s)` : `${result.fieldCount} field(s)`}`,
+          ...(!isTable ? [`- ${result.validationGroupCount} validation group(s)`] : []),
           ...(filled_by ? [`- filled by: ${filled_by}`] : []),
           ...(place_after ? [`- moved after: ${place_after}`] : []),
           `- checklist version: ${version}`,
@@ -2279,6 +2682,7 @@ export function createMcpServer(): McpServer {
         .describe("Checklist slug to check the tab name against for collisions. Optional."),
       tab_name: z.string().describe("Proposed display name for the tab"),
       tab_description: z.string().optional().describe("Proposed description"),
+      mode: z.enum(["table", "form"]).optional().describe("Explicit mode to validate against"),
       columns: z.array(customTabColumnSchema).optional().describe("Proposed column definitions for a table tab"),
       rows: z
         .array(z.record(z.string(), z.unknown()))
@@ -2286,15 +2690,19 @@ export function createMcpServer(): McpServer {
         .default([])
         .describe("Proposed starting rows for a table tab"),
       fields: z.array(customTabFieldSchema).optional().describe("Proposed field definitions for a document-style tab"),
+      validation_groups: z.array(validationGroupSchema).optional().describe("Proposed tab-level validation groups for a form tab"),
     },
-    async ({ slug, tab_name, tab_description, columns, rows, fields }) => {
+    async ({ slug, tab_name, tab_description, mode, columns, rows, fields, validation_groups }) => {
       try {
         if (columns && fields) {
           throw new CustomTabError(`Give either "columns" or "fields", not both.`);
         }
+        if (mode === "table" && fields) throw new CustomTabError(`mode "table" takes "columns", not "fields".`);
+        if (mode === "form" && columns) throw new CustomTabError(`mode "form" takes "fields", not "columns".`);
         if (!columns && !fields) {
           throw new CustomTabError(`Give "columns" (a table tab) or "fields" (a document-style tab).`);
         }
+        if (validation_groups && !fields) throw new CustomTabError(`validation_groups only apply to form-mode tabs.`);
 
         const tabSlug = generateSlug(tab_name);
         const collisions: string[] = [];
@@ -2336,11 +2744,18 @@ export function createMcpServer(): McpServer {
           body = [describeColumns(tabColumns), ``, renderPreviewTable(tabColumns, tabRows)].join("\n");
         } else {
           const { fields: tabFields, warnings } = normalizeFields(fields as FieldSpec[], { makeId: uuid });
+          const validationGroups = normalizeValidationGroups(validation_groups as ValidationGroup[] | undefined, tabFields);
           notes = warnings;
           const tablePreviews = tabFields
             .filter((f) => f.type === "table" && f.tableColumns)
             .map((f) => `${f.label}:\n${renderPreviewTable(f.tableColumns!, [])}`);
-          body = [describeFields(tabFields), ...(tablePreviews.length > 0 ? ["", ...tablePreviews] : [])].join("\n");
+          body = [
+            describeFields(tabFields),
+            ...(validationGroups.length > 0
+              ? ["", "Validation groups:", ...validationGroups.map((g) => `- ${g.id}: ${g.type} (${g.fieldKeys.join(", ")}) — ${g.message}`)]
+              : []),
+            ...(tablePreviews.length > 0 ? ["", ...tablePreviews] : []),
+          ].join("\n");
         }
 
         const text = [
@@ -2359,6 +2774,76 @@ export function createMcpServer(): McpServer {
         ].join("\n");
 
         return { content: [{ type: "text" as const, text }] };
+      } catch (error) {
+        return customTabToolError(error);
+      }
+    }
+  );
+
+  // --- update_custom_tab_responses ---
+  server.tool(
+    "update_custom_tab_responses",
+    "Update client response values for a form-mode custom tab. Values are keyed by field key, validated against the tab schema, and stored separately from the schema in customData.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab_id: z.string().describe("The form-mode custom tab ID"),
+      values: z.record(z.string(), z.unknown()).describe("Field-keyed response values to merge into this tab's current responses"),
+      replace: z.boolean().optional().default(false).describe("Replace all current response values for this tab instead of merging"),
+    },
+    async ({ slug, tab_id, values, replace }) => {
+      try {
+        const { result, version } = await mutateCustomTabs(slug, (ctx) => {
+          const tab = ctx.tabs.find((candidate) => candidate.id === tab_id);
+          if (!tab) {
+            throw new CustomTabError(
+              `Custom tab with id "${tab_id}" not found on ${slug}. Use list_custom_tabs to see the ids.`
+            );
+          }
+          if (getCustomTabMode(tab) !== "form") {
+            throw new CustomTabError(`Custom tab "${tab.label}" is a table tab. Use edit_custom_tab_rows for table data.`);
+          }
+
+          const knownKeys = new Set((tab.fields ?? []).map((field) => getCustomFieldKey(field)));
+          const unknownKeys = Object.keys(values).filter((key) => !knownKeys.has(key));
+          if (unknownKeys.length > 0) {
+            throw new CustomTabError(
+              `Unknown field key(s) for "${tab.label}": ${unknownKeys.join(", ")}. Known keys: ${Array.from(knownKeys).join(", ")}.`
+            );
+          }
+
+          const currentValues = replace ? {} : getCustomTabFormValues(tab, ctx.customData);
+          const nextValues = { ...currentValues, ...(values as Record<string, unknown>) };
+          const validation = validateCustomFormValues(tab, nextValues);
+          if (!validation.valid) {
+            throw new CustomTabError(
+              `The response values for "${tab.label}" have validation errors:`,
+              Object.values(validation.errors).flat()
+            );
+          }
+
+          return {
+            tabs: ctx.tabs,
+            customDataPatch: buildCustomTabFormDataPatch(tab, nextValues),
+            result: {
+              id: tab.id,
+              label: tab.label,
+              values: nextValues,
+              status: getCustomTabSectionState(tab, {
+                ...ctx.customData,
+                ...buildCustomTabFormDataPatch(tab, nextValues),
+              }),
+            },
+          };
+        });
+
+        return mcpJson({
+          slug,
+          tabId: result.id,
+          label: result.label,
+          version,
+          status: result.status,
+          values: result.values,
+        });
       } catch (error) {
         return customTabToolError(error);
       }

@@ -10,7 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultAttributes } from "@/lib/template-data";
 import type { ColumnDef, AttributeRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "attributeName", label: "Attribute Name", type: "text", required: true, description: "Display name of the candidate attribute" },
@@ -113,8 +113,12 @@ export function AttributesSheet() {
     updateField("attributes", appendBulkDuplicates("attributes", allAttributes, attributes, ids));
   };
 
+  const handleReorder = (attributesNext: AttributeRow[]) => {
+    updateField("attributes", mergeVisibleRows(allAttributes, attributesNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       ...emptyRow,
       id: uid(),
@@ -127,7 +131,7 @@ export function AttributesSheet() {
       useSuggestedValuesOnly: row.useSuggestedValuesOnly === "true" || row.useSuggestedValuesOnly === true,
       readOnlyMode: row.readOnlyMode === "true" || row.readOnlyMode === true,
     }));
-    updateField("attributes", [...allAttributes, ...newRows]);
+    updateField("attributes", mode === "replace" ? [...allAttributes.filter((row) => row.deletedAt), ...newRows] : [...allAttributes, ...newRows]);
   };
 
   return (
@@ -160,6 +164,7 @@ export function AttributesSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         addLabel="Add Attribute"
         sampleRow={{ attributeName: "AI Call Consent", key: "1_ai_call_consent", dataType: "Text", suggestedValues: "Yes, No" }}
         csvConfig={{

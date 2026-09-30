@@ -1,0 +1,90 @@
+/* Talkpush canonical palette — 2026 executive-reports system (source of truth). */
+:root{
+  --color-beige:#FFFFF5;
+  --color-ink:#1a1a1a;
+  --color-muted:#6b6b6b;
+  --color-line:#E8E4D2;
+  --color-white:#FFFFFF;
+  --color-row-stripe:#F8F8EE;
+  --color-row-stripe-alt:#F4F4ED;
+
+  --color-green:#ACCDB5;
+  --color-green-soft:#DCEAE0;
+  --color-green-lightest:#BFDCC5;
+  --color-green-darker:#88A88C;
+
+  --color-pink:#E8C2EF;
+  --color-pink-soft:#F4E0F7;
+  --color-pink-lightest:#EFD2F3;
+  --color-pink-darker:#D59BDE;
+
+  --color-blue:#BBCAF0;
+  --color-blue-soft:#DFE5F7;
+  --color-blue-lightest:#CDDAF2;
+  --color-blue-darker:#95A4DB;
+
+  --color-orange:#E8B766;
+  --color-orange-soft:#F4DBB2;
+  --color-orange-lightest:#F7CC90;
+  --color-orange-darker:#D69048;
+  --color-accent-ink:#7A4F1E;
+
+  /* Not in source doc: aging/alert reds+ambers named but no hex given.
+     Derived in oklch to sit harmoniously beside the warm palette. Flagged for review. */
+  --color-alert-amber:oklch(72% 0.14 60);
+  --color-alert-red:oklch(58% 0.13 25);
+
+  --gradient-signature:linear-gradient(90deg,#ACCDB5 0%,#BBCAF0 33%,#E8C2EF 66%,#E8B766 100%); /* @kind color */
+
+  /* Semantic aliases — default (executive report) context */
+  --surface-page:var(--color-beige);
+  --surface-card:var(--color-white);
+  --text-primary:var(--color-ink);
+  --text-muted:var(--color-muted);
+  --border-hairline:var(--color-line);
+  --row-stripe:var(--color-row-stripe);
+
+  --accent-green:var(--color-green);
+  --accent-green-soft:var(--color-green-soft);
+  --accent-pink:var(--color-pink);
+  --accent-pink-soft:var(--color-pink-soft);
+  --accent-blue:var(--color-blue);
+  --accent-blue-soft:var(--color-blue-soft);
+  --accent-orange:var(--color-orange);
+  --accent-orange-soft:var(--color-orange-soft);
+
+  --status-success:var(--color-green);
+  --status-info:var(--color-blue);
+  --status-highlight:var(--color-pink);
+  --status-attention:var(--color-orange);
+  --status-warning:var(--color-alert-amber);
+  --status-danger:var(--color-alert-red);
+}
+
+/* Context B — pricing proposals. White page, beige moves to card/fill use, ink is pure black for headers. */
+.context-proposal{
+  --surface-page:var(--color-white);
+  --surface-card:var(--color-beige);
+  --text-primary:#000000;
+  --text-body:#1A1A1A;
+  --border-hairline:#E8E8E0;
+  --row-stripe:var(--color-row-stripe-alt);
+}
+
+/* Context C — Talkpush Sign product UI. Namespaced so it never bleeds into report/proposal surfaces. */
+.context-sign{
+  --sign-background:#FFFFF6;
+  --sign-foreground:#141414;
+  --sign-card:#FFFFFF;
+  --sign-primary:#141414;
+  --sign-secondary:#F7F6E9;
+  --sign-muted:#EDECDE;
+  --sign-muted-foreground:#6b6b70;
+  --sign-border:#DCDBCF;
+  --sign-destructive:#D1483D;
+  --sign-sage:#ACCDB5;
+  --sign-lavender:#BBCAF0;
+  --sign-pink:#F1C1F3;
+  --sign-amber:#F2B457;
+  --sign-gradient:linear-gradient(to right,#F2B457,#F1C1F3,#BBCAF0,#ACCDB5); /* @kind color */
+}

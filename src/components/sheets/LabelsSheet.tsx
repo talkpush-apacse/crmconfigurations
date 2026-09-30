@@ -5,7 +5,7 @@ import { SheetIntro } from "@/components/shared/SheetIntro";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid } from "@/lib/template-data";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 import type { ColumnDef, LabelRow } from "@/lib/types";
 
 const labelColumns: ColumnDef[] = [
@@ -81,6 +81,10 @@ export function LabelsSheet() {
     updateField("labels", appendBulkDuplicates("labels", allLabels, labels, ids));
   };
 
+  const handleLabelReorder = (labelsNext: LabelRow[]) => {
+    updateField("labels", mergeVisibleRows(allLabels, labelsNext));
+  };
+
   return (
     <div>
       <SheetIntro
@@ -94,6 +98,7 @@ export function LabelsSheet() {
         onUpdate={handleLabelUpdate}
         onAdd={handleLabelAdd}
         onDelete={handleLabelDelete}
+        onReorder={handleLabelReorder}
         spreadsheetMode
         tableId="labels"
         addLabel="Add Label"

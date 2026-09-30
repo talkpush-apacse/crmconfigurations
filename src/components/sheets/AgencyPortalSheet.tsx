@@ -8,7 +8,7 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { uid, defaultAgencyPortal, defaultAgencyPortalUsers } from "@/lib/template-data";
 import type { ColumnDef, AgencyPortalRow, AgencyPortalUser } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "agencyName", label: "Agency Name", type: "text", description: "Name of the staffing/recruitment agency" },
@@ -95,14 +95,18 @@ export function AgencyPortalSheet() {
     updateField("agencyPortal", appendBulkDuplicates("agencyPortal", allAgencies, agencies, ids));
   };
 
+  const handleReorder = (agenciesNext: AgencyPortalRow[]) => {
+    updateField("agencyPortal", mergeVisibleRows(allAgencies, agenciesNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       agencyName: "", contactName: "", email: "", phone: "", country: "", comments: "",
       ...row,
     }));
-    updateField("agencyPortal", [...allAgencies, ...newRows]);
+    updateField("agencyPortal", mode === "replace" ? [...allAgencies.filter((row) => row.deletedAt), ...newRows] : [...allAgencies, ...newRows]);
   };
 
   // --- Agency Portal Users handlers ---
@@ -141,14 +145,18 @@ export function AgencyPortalSheet() {
     updateField("agencyPortalUsers", appendBulkDuplicates("agencyPortalUsers", allUsers, users, ids));
   };
 
+  const handleUserReorder = (usersNext: AgencyPortalUser[]) => {
+    updateField("agencyPortalUsers", mergeVisibleRows(allUsers, usersNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleUserCsvImport = (rows: Record<string, any>[]) => {
+  const handleUserCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       name: "", email: "", agency: "", userAccess: "" as AgencyPortalUser["userAccess"],
       ...row,
     }));
-    updateField("agencyPortalUsers", [...allUsers, ...newRows]);
+    updateField("agencyPortalUsers", mode === "replace" ? [...allUsers.filter((row) => row.deletedAt), ...newRows] : [...allUsers, ...newRows]);
   };
 
   return (
@@ -171,6 +179,7 @@ export function AgencyPortalSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         spreadsheetMode
         tableId="agency-portal"
         addLabel="Add Agency"
@@ -201,6 +210,7 @@ export function AgencyPortalSheet() {
           onAdd={handleUserAdd}
           onDelete={handleUserDelete}
           onDuplicate={handleUserDuplicate}
+          onReorder={handleUserReorder}
           spreadsheetMode
           tableId="agency-portal-users"
           addLabel="Add User"

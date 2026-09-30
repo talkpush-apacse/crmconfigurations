@@ -10,7 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultDocuments } from "@/lib/template-data";
 import type { ColumnDef, DocumentRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "documentName", label: "Document Name", type: "text", description: "Official name of the document to collect" },
@@ -73,14 +73,18 @@ export function DocumentsSheet() {
     updateField("documents", appendBulkDuplicates("documents", allDocuments, documents, ids));
   };
 
+  const handleReorder = (documentsNext: DocumentRow[]) => {
+    updateField("documents", mergeVisibleRows(allDocuments, documentsNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       documentName: "", applicableCandidates: "", required: "", blankTemplateLink: "", applicableCampaigns: "", accessPermissions: "", folder: "", comments: "",
       ...row,
     }));
-    updateField("documents", [...allDocuments, ...newRows]);
+    updateField("documents", mode === "replace" ? [...allDocuments.filter((row) => row.deletedAt), ...newRows] : [...allDocuments, ...newRows]);
   };
 
   return (
@@ -113,6 +117,7 @@ export function DocumentsSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         addLabel="Add Document"
         sampleRow={{ documentName: "Resume/CV", applicableCandidates: "All candidates", required: "Required", folder: "Inbox" }}
         csvConfig={{

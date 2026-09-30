@@ -5,8 +5,10 @@ export const DROPDOWN_OPTIONS = {
   questionTypes: [
     "Text",
     "Number",
-    "Multiple Choice",
+    "Multiple Choice (Single Select)",
+    "Multiple Select",
     "Dropdown",
+    "Date Picker",
     "Audio",
     "Audio or Text",
     "Video",

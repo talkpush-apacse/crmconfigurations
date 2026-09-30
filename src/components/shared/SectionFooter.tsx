@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getEnabledTabs } from "@/lib/tab-config";
+import { getEnabledTabs, isClientView } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { SaveButton } from "@/components/shared/SaveButton";
+import { getChecklistProgress } from "@/lib/section-status";
 
 /** Renders Prev / Continue navigation at the bottom of each content sheet. */
 export function SectionFooter() {
@@ -25,7 +26,13 @@ export function SectionFooter() {
     isReadOnly,
   } = useChecklistContext();
 
-  const enabledTabs = getEnabledTabs(data?.enabledTabs ?? null, !!includeAdminTabs, data?.tabOrder ?? null);
+  const enabledTabs = getEnabledTabs(
+    data?.enabledTabs ?? null,
+    !!includeAdminTabs,
+    data?.tabOrder ?? null,
+    data?.customTabs ?? null,
+    data?.tabFilledBy ?? null,
+  );
   // Exclude welcome from prev/next — it is not a content section
   const contentTabs = enabledTabs.filter((t) => t.slug !== "welcome");
 
@@ -38,6 +45,12 @@ export function SectionFooter() {
   const nextTab = contentTabs[currentIndex + 1];
 
   const isLastSection = !nextTab;
+  const progress = getChecklistProgress(data, {
+    includeAdminTabs: !!includeAdminTabs,
+    clientView: isClientView(basePath),
+  });
+  const allSectionsComplete =
+    progress.totalCount > 0 && progress.completeCount === progress.totalCount;
 
   return (
     <div className="mt-10 flex flex-col gap-4 rounded-[24px] bg-white/[0.82] px-5 py-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
@@ -73,7 +86,7 @@ export function SectionFooter() {
       {isLastSection ? (
         <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200/70">
           <CheckCircle2 className="h-4 w-4" />
-          All sections complete
+          {allSectionsComplete ? "All sections complete" : "End of checklist"}
         </div>
       ) : nextTab ? (
         <Button asChild size="sm" className="h-11 gap-2 rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/85 active:scale-95">

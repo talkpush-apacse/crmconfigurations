@@ -40,15 +40,37 @@ export function ConfiguratorSummaryTable({ sourceData, onExport, exporting }: Co
         </Button>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="space-y-3 p-4 md:hidden">
+          {rows.map((row, index) => (
+            <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Step {index + 1}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{row.path}</p>
+                </div>
+                <Badge className="shrink-0 rounded-md bg-emerald-50 text-emerald-800 hover:bg-emerald-50">
+                  {row.testerPerspective}
+                </Badge>
+              </div>
+              <p className="text-sm leading-6 text-slate-700">{row.action}</p>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                {row.module}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <Table className="min-w-full table-fixed">
             <TableHeader>
               <TableRow className="bg-slate-50">
                 <TableHead className="w-12 text-xs uppercase tracking-wide">#</TableHead>
-                <TableHead className="min-w-40 text-xs uppercase tracking-wide">Path</TableHead>
+                <TableHead className="w-44 text-xs uppercase tracking-wide">Path</TableHead>
                 <TableHead className="w-36 text-xs uppercase tracking-wide">Tester Perspective</TableHead>
-                <TableHead className="min-w-[32rem] text-xs uppercase tracking-wide">Action</TableHead>
-                <TableHead className="w-44 text-xs uppercase tracking-wide">Module</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Action</TableHead>
+                <TableHead className="w-40 text-xs uppercase tracking-wide">Module</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -59,14 +81,16 @@ export function ConfiguratorSummaryTable({ sourceData, onExport, exporting }: Co
                       {index + 1}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3 text-sm text-slate-600">{row.path}</TableCell>
+                  <TableCell className="py-3 text-sm leading-5 text-slate-600">{row.path}</TableCell>
                   <TableCell className="py-3">
                     <Badge className="rounded-md bg-emerald-50 text-emerald-800 hover:bg-emerald-50">
                       {row.testerPerspective}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-3 text-sm leading-6 text-slate-700">{row.action}</TableCell>
-                  <TableCell className="py-3 text-sm font-medium text-slate-600">{row.module}</TableCell>
+                  <TableCell className="py-3 text-sm leading-6 text-slate-700">
+                    <span className="block whitespace-normal break-words">{row.action}</span>
+                  </TableCell>
+                  <TableCell className="py-3 text-sm font-medium leading-5 text-slate-600">{row.module}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
