@@ -1,6 +1,7 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SheetIntro } from "@/components/shared/SheetIntro";
+import { SubSectionHeader } from "@/components/shared/SubSectionHeader";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { defaultAdminSettings } from "@/lib/template-data";
@@ -18,15 +19,11 @@ import {
 import { cn } from "@/lib/utils";
 
 // ===== Section Divider =====
+// Delegates to the shared SubSectionHeader — this was a third copy of the same
+// small-caps-plus-rule markup. Keeps its own vertical rhythm; call sites are
+// unchanged.
 function SectionDivider({ title }: { title: string }) {
-  return (
-    <div className="mb-4 mt-8 first:mt-0 flex items-center gap-3">
-      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-        {title}
-      </h3>
-      <div className="h-px flex-1 bg-gray-200" />
-    </div>
-  );
+  return <SubSectionHeader title={title} className="mb-4 mt-8 first:mt-0" />;
 }
 
 // ===== Text Field Row =====
@@ -200,7 +197,7 @@ function RadioField({
               value={opt.value}
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
-              className="h-4 w-4 accent-brand-sage-darker border-[#BDBDBD] focus:ring-brand-lavender-darker"
+              className="h-4 w-4 accent-brand-sage-darker border-field-border focus:ring-brand-lavender-darker"
             />
             <span className="text-sm text-gray-700">{opt.label}</span>
           </label>
@@ -377,7 +374,7 @@ export function AdminSettingsSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Admin Settings"
         description="Internal Talkpush configuration settings for this client's CRM instance. Only visible to Talkpush team members."
       />

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Plus, Trash2 } from "lucide-react";
-import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { SectionFooter } from "@/components/shared/SectionFooter";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
@@ -471,7 +471,7 @@ export function AtsIntegrationsSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="ATS / HRIS Integrations"
         description="Internal Talkpush setup notes for ATS and HRIS integrations. Only visible to authenticated Talkpush admins."
       />

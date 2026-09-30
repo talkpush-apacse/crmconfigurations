@@ -72,6 +72,27 @@
   --color-status-in-progress:  var(--status-in-progress);
   --color-status-pending:      var(--status-pending);
   --color-status-declined:     var(--status-declined);
+
+  /*
+   * Form field surface.
+   *
+   * Every control — Input, Textarea, SelectTrigger, the multi-select trigger
+   * and the click-to-edit cell — draws from these, so a field looks the same
+   * whichever component rendered it. See src/lib/field-styles.ts for the class
+   * recipe that consumes them.
+   */
+  --color-field:               var(--field-bg);
+  --color-field-empty:         var(--field-bg-empty);
+  --color-field-border:        var(--field-border);
+  --color-field-border-hover:  var(--field-border-hover);
+  --color-field-border-focus:  var(--field-border-focus);
+  --color-field-placeholder:   var(--field-placeholder);
+  --color-field-ring:          var(--field-ring);
+
+  /* Spreadsheet grid rules — see --grid-line in :root. */
+  --color-grid-line:           var(--grid-line);
+  --color-grid-line-strong:    var(--grid-line-strong);
+  --color-grid-header:         var(--grid-header);
 }
 
 :root {
@@ -136,6 +157,45 @@
   --sidebar-accent-foreground: oklch(0.20 0.01 240);
   --sidebar-border: oklch(0.87 0.01 240);
   --sidebar-ring: var(--brand-lavender-darker);
+
+  /*
+   * Form field surface — one recipe for every control.
+   *
+   * These replace four competing treatments that had drifted apart: the
+   * shadcn primitives, the multi-select trigger, the click-to-edit cell and a
+   * global `input:not([data-slot])` stylesheet override, each with its own
+   * radius, shadow and hardcoded grey. The values below are the previous
+   * hexes expressed on the palette's own scale (#BDBDBD, #9E9E9E, #757575),
+   * so field contrast is preserved rather than lightened to --border.
+   */
+  --field-bg:            oklch(1 0 0);
+  /* An unanswered cell reads as unanswered, instead of looking filled in by
+     its own placeholder. */
+  --field-bg-empty:      oklch(0.975 0.008 90);
+  --field-border:        oklch(0.795 0 0);
+  --field-border-hover:  oklch(0.705 0 0);
+  --field-border-focus:  var(--brand-lavender-darker);
+  --field-ring:          oklch(0.82 0.08 258 / 0.25);
+  --field-placeholder:   oklch(0.555 0 0);
+  --field-shadow:        0 1px 2px oklch(0.12 0.01 240 / 0.06);
+
+  /*
+   * Spreadsheet grid.
+   *
+   * The table draws the structure, so the cells inside it don't have to. Every
+   * cell used to be a bordered, shadowed box sitting inside a table that was
+   * already drawing lines — a box inside a box, ten or more times per screen,
+   * which is most of what made these tabs feel busy. Cells are now transparent
+   * at rest and these rules do the separating; a cell takes a border on hover
+   * and a lavender ring on focus, the way Airtable, Notion and Excel behave.
+   *
+   * --grid-header replaces a near-black header bar that was the heaviest
+   * element on the page, pulling the eye to the column labels rather than to
+   * the client's own data.
+   */
+  --grid-line:           oklch(0.945 0 0);
+  --grid-line-strong:    oklch(0.895 0 0);
+  --grid-header:         oklch(0.955 0.01 90);
 }
 
 .dark {
@@ -171,6 +231,22 @@
   --sidebar-accent-foreground: oklch(0.96 0.01 90);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: var(--brand-lavender);
+
+  /* Field surface — dark equivalents. Nothing in the app toggles `.dark`
+     today; these exist so the fields follow the rest of the palette if it
+     ever does, rather than staying hardcoded white. */
+  --field-bg:            var(--card);
+  --field-bg-empty:      oklch(0.25 0.02 240);
+  --field-border:        oklch(1 0 0 / 22%);
+  --field-border-hover:  oklch(1 0 0 / 38%);
+  --field-border-focus:  var(--brand-lavender);
+  --field-ring:          oklch(0.82 0.08 258 / 0.30);
+  --field-placeholder:   oklch(0.62 0.01 240);
+  --field-shadow:        0 1px 2px oklch(0 0 0 / 0.25);
+
+  --grid-line:           oklch(1 0 0 / 10%);
+  --grid-line-strong:    oklch(1 0 0 / 18%);
+  --grid-header:         oklch(0.27 0.02 240);
 }
 
 @layer base {
@@ -223,33 +299,15 @@
   --tp-text-placeholder: oklch(0.65 0.00 0);
 }
 
-/* ---- Global Form Field Visibility & Contrast ---- */
-/* Fallback for native inputs/textareas/selects not using shadcn components */
-input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]),
-textarea:not([data-slot]),
-select:not([data-slot]) {
-  border: 1.5px solid #BDBDBD;
-  background-color: #FFFFFF;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"])::placeholder,
-textarea:not([data-slot])::placeholder {
-  color: #757575;
-  font-style: normal;
-}
-input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]):hover,
-textarea:not([data-slot]):hover,
-select:not([data-slot]):hover {
-  border-color: #9E9E9E;
-}
-input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([role="combobox"]):focus,
-textarea:not([data-slot]):focus,
-select:not([data-slot]):focus {
-  border-color: oklch(0.67 0.12 258);  /* brand-lavender-darker */
-  box-shadow: 0 0 0 3px oklch(0.82 0.08 258 / 0.25);
-  outline: none;
-}
+/*
+ * The global `input:not([data-slot])` override that used to live here is gone.
+ *
+ * It restyled every native control that wasn't a shadcn component, which meant
+ * a third border/shadow recipe competing with the primitives themselves. Every
+ * remaining raw <input> in the app is a radio, a checkbox or a hidden file
+ * input — all of which that rule already excluded — so nothing loses styling.
+ * Controls now get their look from src/lib/field-styles.ts.
+ */
 
 /* Thin Scrollbar Utility */
 .scrollbar-thin {

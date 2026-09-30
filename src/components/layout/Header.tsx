@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, ChevronRight, Download, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { NavItem } from "./TopNav";
 import { SaveButton } from "@/components/shared/SaveButton";
 
@@ -30,27 +29,43 @@ interface HeaderProps {
   snapshotsHref?: string;
 }
 
-function StatusPill({
-  label,
-  value,
-  tone,
+/**
+ * How far through the checklist this client is — the single place the header
+ * states progress.
+ *
+ * It used to say the same thing four ways at once: "6/11 sections configured"
+ * in the subtitle, a "4 Complete" pill, a "2 In Progress" pill, and a
+ * "Completion 55%" bar. Four readings of one fact, in four shapes, competing
+ * with Save and Export in the same corner. Per-section state is already on
+ * every row of the sidebar and on the Welcome chips, which is where someone
+ * looking for *which* sections are outstanding actually goes.
+ */
+function ProgressMeter({
+  filledCount,
+  totalCount,
+  percent,
 }: {
-  label: string;
-  value: number;
-  tone: "blue" | "emerald" | "amber";
+  filledCount: number;
+  totalCount: number;
+  percent: number;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium shadow-sm",
-        tone === "blue" && "bg-brand-lavender-lightest text-brand-lavender-darker ring-1 ring-brand-lavender/40",
-        tone === "emerald" && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
-        tone === "amber" && "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70"
-      )}
-    >
-      <span className="tabular-nums">{value}</span>
-      <span>{label}</span>
-    </span>
+    <div className="hidden min-w-[168px] flex-col gap-1.5 sm:flex">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium tabular-nums text-slate-600">
+          {filledCount} of {totalCount} sections
+        </span>
+        <span className="text-xs font-semibold tabular-nums text-slate-900">
+          {percent}%
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full rounded-full bg-brand-sage-darker transition-all duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -80,15 +95,12 @@ export function Header({
     window.open(exportUrl, "_blank");
   };
 
-  const { activeItem, completeCount, inProgressCount } = useMemo(() => {
-    const active = items.find((item) => item.href === pathname) ?? items[0] ?? null;
-
-    return {
-      activeItem: active,
-      completeCount: items.filter((item) => item.status === "complete").length,
-      inProgressCount: items.filter((item) => item.status === "in-progress").length,
-    };
-  }, [items, pathname]);
+  // The per-status counts that used to be derived here fed the two pills that
+  // are gone; the sidebar already carries per-section state.
+  const activeItem = useMemo(
+    () => items.find((item) => item.href === pathname) ?? items[0] ?? null,
+    [items, pathname]
+  );
 
   const completionPercent = totalCount > 0
     ? Math.round((filledCount / totalCount) * 100)
@@ -124,21 +136,23 @@ export function Header({
               )}
             </div>
 
-            <div className="mt-3">
-              <h1 className="truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-[28px]">
-                {clientName}
-              </h1>
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                <span>{activeItem?.label ?? "Configuration dashboard"}</span>
-                <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" />
-                <span className="tabular-nums">{filledCount}/{totalCount} sections configured</span>
-              </p>
-            </div>
-
+            {/*
+              No subtitle. It repeated the tab name that is already in the
+              breadcrumb directly above it, and restated the progress the
+              meter on the right now owns.
+            */}
+            <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-[26px]">
+              {clientName}
+            </h1>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 xl:items-end">
+        {/*
+          One row, not two. Save, progress and Export used to stack on
+          separate lines with four progress indicators between them, which is
+          what made the header as tall as it was.
+        */}
+        <div className="flex flex-wrap items-center gap-3 xl:flex-nowrap xl:justify-end">
           <div className="flex flex-wrap items-center gap-2">
             {/*
               Discard sits beside Save, and only while there is something to
@@ -175,26 +189,21 @@ export function Header({
                 variant="compact"
               />
             )}
-            <StatusPill label="Complete" value={completeCount} tone="emerald" />
-            <StatusPill label="In Progress" value={inProgressCount} tone="amber" />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="hidden items-center gap-3 rounded-2xl bg-slate-100/90 px-3 py-2 text-xs text-slate-500 shadow-sm ring-1 ring-slate-200/70 sm:flex">
-              <span className="font-medium text-slate-600">Completion</span>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-brand-sage-darker transition-all duration-300"
-                  style={{ width: `${completionPercent}%` }}
-                />
-              </div>
-              <span className="font-semibold tabular-nums text-slate-900">{completionPercent}%</span>
-            </div>
+          <div className="hidden h-6 w-px bg-slate-200 sm:block" />
 
+          <ProgressMeter
+            filledCount={filledCount}
+            totalCount={totalCount}
+            percent={completionPercent}
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
             {snapshotsHref && (
               <Link
                 href={snapshotsHref}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
                 title="Manage snapshots / restore previous state"
               >
                 <History className="h-4 w-4" />
@@ -205,7 +214,7 @@ export function Header({
             <Button
               size="sm"
               onClick={handleExport}
-              className="h-11 rounded-xl bg-primary px-4 text-primary-foreground shadow-[0_14px_28px_-18px_oklch(0.12_0.01_240/0.5)] hover:bg-primary/85 active:scale-95"
+              className="h-10 rounded-lg bg-primary px-4 text-primary-foreground shadow-[0_10px_22px_-16px_oklch(0.12_0.01_240/0.45)] hover:bg-primary/85 active:scale-95"
             >
               <Download className="h-4 w-4" />
               Export XLS

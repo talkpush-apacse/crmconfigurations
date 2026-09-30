@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { fieldControl, fieldEmpty, fieldGridCell } from "@/lib/field-styles";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { parseClipboardGrid, useGridNav } from "./grid-nav";
 
@@ -74,6 +75,12 @@ export function EditableCell({
   // follow the table's mode. Keyboard navigation and paste additionally need
   // grid coordinates, which only main-grid cells carry.
   const spreadsheetMode = grid?.spreadsheetMode ?? false;
+  /**
+   * In a grid the control is borderless and 32px; outside one it keeps the
+   * standard bordered 36px surface. `fieldGridCell` is listed before the
+   * per-branch classes so a branch can still override it.
+   */
+  const surface = spreadsheetMode ? fieldGridCell : fieldControl;
   const inGrid =
     spreadsheetMode && grid !== null && gridRow !== undefined && gridCol !== undefined;
   const [editing, setEditing] = useState(false);
@@ -212,7 +219,12 @@ export function EditableCell({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs bg-red-50 text-red-700 border-red-200">
+        {/*
+          Not a HelpTip: this is a validation error, which should appear
+          without being asked for. HelpTip is for guidance the client chooses
+          to read.
+        */}
+        <TooltipContent side="bottom" className="max-w-xs bg-destructive text-white">
           <p className="text-xs">{errorMessage}</p>
         </TooltipContent>
       </Tooltip>
@@ -245,16 +257,18 @@ export function EditableCell({
           <DropdownMenuTrigger
             aria-invalid={!!errorMessage}
             className={cn(
-              "flex h-9 w-full items-center justify-between gap-2 rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-left text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
-              !selected.length && "text-[#757575]",
-              errorMessage && "border-red-400 bg-red-50/50",
+              surface,
+              "flex items-center justify-between gap-2 text-left",
+              !selected.length && "text-field-placeholder",
+              spreadsheetMode && !selected.length && fieldEmpty,
+              errorMessage && "border-destructive bg-destructive/5",
               className
             )}
           >
             <span className="min-w-0 flex-1 truncate">
               {selected.length ? selected.join(", ") : placeholder || "Select..."}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </DropdownMenuTrigger>
         )}
         <DropdownMenuContent align="start" className="max-h-64 w-56 overflow-y-auto p-1">
@@ -288,8 +302,10 @@ export function EditableCell({
           <SelectTrigger
             aria-invalid={!!errorMessage}
             className={cn(
-              "h-9 text-sm",
-              errorMessage && "border-red-400 focus-visible:ring-red-400",
+              spreadsheetMode ? fieldGridCell : "h-9",
+              "text-sm",
+              spreadsheetMode && !String(value || "") && fieldEmpty,
+              errorMessage && "border-destructive focus-visible:ring-destructive/25",
               className
             )}
           >
@@ -318,12 +334,15 @@ export function EditableCell({
         placeholder={placeholder}
         aria-invalid={!!errorMessage}
         className={cn(
-          // Compact in the grid, roomy in a detail panel.
-          inGrid ? "min-h-[36px] resize-y text-sm" : "min-h-[80px] resize-y text-sm",
-          spreadsheetMode &&
-            currentValue.trim() === "" &&
-            "bg-slate-50/70 placeholder:text-[#9AA0A6]",
-          errorMessage && "border-red-400 focus-visible:ring-red-400",
+          // Clamped to one row in the grid, roomy in a detail panel. The
+          // resize handle is left enabled, so a long message body can be
+          // pulled open in place without the cell deciding to do it unasked
+          // and taking the whole row with it.
+          spreadsheetMode
+            ? `${fieldGridCell} h-8 min-h-8 resize-y py-1 leading-snug`
+            : "min-h-20 resize-y text-sm",
+          spreadsheetMode && currentValue.trim() === "" && fieldEmpty,
+          errorMessage && "border-destructive focus-visible:ring-destructive/25",
           className
         )}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
@@ -342,9 +361,10 @@ export function EditableCell({
     return wrapWithValidation(
       <div
         className={cn(
-          "group flex cursor-text items-center justify-between rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
-          !currentValue && "text-[#757575]",
-          errorMessage && "border-red-400 bg-red-50/50",
+          fieldControl,
+          "group flex cursor-text items-center justify-between text-sm",
+          !currentValue && "text-field-placeholder",
+          errorMessage && "border-destructive bg-destructive/5",
           className
         )}
         onClick={() => {
@@ -355,7 +375,7 @@ export function EditableCell({
         <span className="min-w-0 flex-1 truncate">
           {currentValue || placeholder || "Click to edit"}
         </span>
-        <Pencil className="ml-2 h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+        <Pencil className="ml-2 h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     );
   }
@@ -381,11 +401,12 @@ export function EditableCell({
       placeholder={placeholder}
       aria-invalid={!!errorMessage}
       className={cn(
-        "h-9 text-sm",
+        spreadsheetMode ? fieldGridCell : "h-9",
+        "text-sm",
         // An unfilled cell reads as unfilled, rather than looking answered by
         // its own placeholder.
-        spreadsheetMode && isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
-        errorMessage && "border-red-400 focus-visible:ring-red-400",
+        spreadsheetMode && isEmpty && fieldEmpty,
+        errorMessage && "border-destructive focus-visible:ring-destructive/25",
         className
       )}
     />

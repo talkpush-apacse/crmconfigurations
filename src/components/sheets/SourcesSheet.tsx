@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ExampleHint } from "@/components/shared/ExampleHint";
+import { SheetIntro } from "@/components/shared/SheetIntro";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { TabUploadBanner, TabUploadSkippedNotice } from "@/components/shared/TabUploadBanner";
 import { useTabUpload } from "@/hooks/useTabUpload";
@@ -88,27 +87,20 @@ export function SourcesSheet() {
 
   return (
     <div>
-      <SectionHeader
+      <SheetIntro
         title="Sources"
         description="Define the candidate sourcing channels and their details."
       />
 
-      <TabUploadBanner tabKey="sources" tabLabel="Sources" />
+      <TabUploadBanner tabKey="sources" tabLabel="Sources" compact />
 
       {isSkipped ? (
         <TabUploadSkippedNotice fileCount={uploadedFiles.length} />
       ) : (
         <>
-      <ExampleHint>
-        <p className="mb-1 font-medium">Sample sourcing channels:</p>
-        <ul className="list-disc pl-4 space-y-0.5">
-          <li><strong>Job Boards</strong> | Indeed | https://indeed.com/company-page</li>
-          <li><strong>Social Media</strong> | Facebook Jobs | https://facebook.com/company/jobs</li>
-          <li><strong>Referral</strong> | Employee Referral Program | &mdash;</li>
-        </ul>
-      </ExampleHint>
-
       <EditableTable
+        spreadsheetMode
+        tableId="sources"
         columns={columns}
         data={sources}
         onUpdate={handleUpdate}
