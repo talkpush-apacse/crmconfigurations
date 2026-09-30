@@ -107,13 +107,13 @@ export function CampaignsSheet() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "",
       ...row,
     }));
-    updateField("campaigns", [...allCampaigns, ...newRows]);
+    updateField("campaigns", mode === "replace" ? [...allCampaigns.filter((row) => row.deletedAt), ...newRows] : [...allCampaigns, ...newRows]);
   };
 
   // A pasted block arrives as the full next visible list, in one update —
@@ -123,6 +123,19 @@ export function CampaignsSheet() {
   // flattened to a comma string, so it is restored to an array on the way back
   // rather than persisting the display shape.
   const handlePasteApply = (campaignsNext: CampaignRow[]) => {
+    const restored = campaignsNext.map((c) => ({
+      ...c,
+      assignedRecruiters: Array.isArray(c.assignedRecruiters)
+        ? c.assignedRecruiters
+        : String(c.assignedRecruiters ?? "")
+            .split(",")
+            .map((r) => r.trim())
+            .filter(Boolean),
+    }));
+    updateField("campaigns", mergeVisibleRows(allCampaigns, restored));
+  };
+
+  const handleReorder = (campaignsNext: CampaignRow[]) => {
     const restored = campaignsNext.map((c) => ({
       ...c,
       assignedRecruiters: Array.isArray(c.assignedRecruiters)
@@ -168,6 +181,7 @@ export function CampaignsSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         pasteConfig={{
           onApply: handlePasteApply,
           createRow: () => ({ id: uid(), nameInternal: "", jobTitleExternal: "", site: "", jobDescription: "", googleMapsLink: "", zoomLink: "", comments: "" }),

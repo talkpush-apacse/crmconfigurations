@@ -72,14 +72,18 @@ export function InstagramSheet() {
     updateField("instagram", { ...igData, faqs: updated });
   };
 
+  const handleFaqReorder = (reordered: FaqEntry[]) => {
+    updateField("instagram", { ...igData, faqs: reordered });
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleFaqCsvImport = (rows: Record<string, any>[]) => {
+  const handleFaqCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       category: "", faq: "", description: "", example: "", faqResponse: "",
       ...row,
     }));
-    updateField("instagram", { ...igData, faqs: [...faqs, ...newRows] });
+    updateField("instagram", { ...igData, faqs: mode === "replace" ? newRows : [...faqs, ...newRows] });
   };
 
   return (
@@ -138,6 +142,7 @@ export function InstagramSheet() {
           onAdd={handleFaqAdd}
           onDelete={handleFaqDelete}
           onDuplicate={handleFaqDuplicate}
+          onReorder={handleFaqReorder}
           addLabel="Add FAQ"
           sampleRow={{ category: "General", faq: "Working Hours", description: "Office hours question", example: "What are your working hours?", faqResponse: "Our office hours are 9AM to 6PM, Monday to Friday." }}
           csvConfig={{

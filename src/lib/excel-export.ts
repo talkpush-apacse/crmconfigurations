@@ -40,6 +40,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
   // The template has no sheet for these, so they are appended in the same style
   // as the other generated sheets.
   addStyledSheet(workbook, "Attributes", ATTRIBUTE_COLUMNS, data.attributes as Record<string, unknown>[] | null);
+  addStyledSheet(workbook, "AI Call Settings", AI_CALL_SETTINGS_COLUMNS, aiCallSettingsRows(data));
   addStyledSheet(workbook, "Agency Portal Users", AGENCY_USER_COLUMNS, data.agencyPortalUsers as Record<string, unknown>[] | null);
 
   addAutoflowsSheet(workbook, data.autoflows);
@@ -300,6 +301,35 @@ const AGENCY_USER_COLUMNS: StyledColumn[] = [
   { header: "User Access", key: "userAccess", width: 20 },
 ];
 
+const AI_CALL_SETTINGS_COLUMNS: StyledColumn[] = [
+  { header: "Setting", key: "setting", width: 32 },
+  { header: "Value", key: "value", width: 56 },
+];
+
+function aiCallSettingsRows(data: ChecklistData): Record<string, unknown>[] | null {
+  const aiCall = Array.isArray(data.aiCallFaqs)
+    ? null
+    : (data.aiCallFaqs as AiCallData | null);
+  if (!aiCall) return null;
+
+  return [
+    { setting: "Agent Name", value: aiCall.agentName },
+    { setting: "Measure English Language Skills", value: aiCall.measureEnglish ? "Yes" : "No" },
+    { setting: "Gender", value: aiCall.gender },
+    { setting: "Preferred Voice", value: aiCall.preferredVoice },
+    { setting: "Warmth", value: aiCall.warmth },
+    { setting: "Formality", value: aiCall.formality },
+    { setting: "Pace", value: aiCall.pace },
+    { setting: "Call Type", value: aiCall.callType },
+    { setting: "Call Schedule Window", value: aiCall.callScheduleWindow },
+    { setting: "Call Length", value: aiCall.callLength },
+    { setting: "Call Status", value: aiCall.callStatus },
+    { setting: "Job Title", value: aiCall.interviewRole },
+    { setting: "Job Description", value: aiCall.jobDescription },
+    { setting: "Interview Questions", value: aiCall.interviewQuestions },
+  ];
+}
+
 /** Appends a sheet in the same style as the other generated sheets. */
 function addStyledSheet(
   workbook: ExcelJS.Workbook,
@@ -393,6 +423,7 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
   addTableSheet("Sites", [
     { header: "Site Name", key: "siteName", width: 25 },
     { header: "Internal Name", key: "internalName", width: 20 },
+    { header: "LOBs / Accounts", key: "lobsOrAccounts", width: 30 },
     { header: "Interview Hours", key: "interviewHours", width: 20 },
     { header: "Interview Type", key: "interviewType", width: 15 },
     { header: "Full Address", key: "fullAddress", width: 40 },
@@ -471,6 +502,11 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
     { header: "Suggested Values Only", key: "useSuggestedValuesOnly", width: 22 },
     { header: "Read-Only", key: "readOnlyMode", width: 12 },
   ], data.attributes as Record<string, unknown>[] | null);
+
+  addTableSheet("AI Call Settings", [
+    { header: "Setting", key: "setting", width: 32 },
+    { header: "Value", key: "value", width: 56 },
+  ], aiCallSettingsRows(data));
 
   // Handle both old array and new object format for AI Call
   const freshAiCallFaqRows = Array.isArray(data.aiCallFaqs)

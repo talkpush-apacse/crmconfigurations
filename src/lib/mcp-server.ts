@@ -774,7 +774,7 @@ export function createMcpServer(): McpServer {
           z.object({
             category: z.string().describe("Question category (e.g. 'Pre-screening', 'Follow-up')"),
             question: z.string().describe("The question text"),
-            questionType: z.string().describe("Type: Text, Number, Multiple Choice, Dropdown, Audio, Video, File Upload, Booking, Geolocation, Play Media"),
+            questionType: z.string().describe("Type: Text, Number, Multiple Choice, Dropdown, Audio, Audio or Text, Video, File Upload, Play Media, Geolocation"),
             answerOptions: z.string().optional().default("").describe("Comma-separated answer options (for Multiple Choice / Dropdown)"),
             applicableCampaigns: z.string().optional().default("").describe("Which campaigns this applies to"),
             autoReject: z.string().optional().default("").describe("Whether to auto-reject: Yes / No"),
@@ -1085,6 +1085,7 @@ export function createMcpServer(): McpServer {
           z.object({
             siteName: z.string().describe("Site display name (e.g. 'BGC Tower 1')"),
             internalName: z.string().optional().default("").describe("Internal reference name"),
+            lobsOrAccounts: z.string().optional().default("").describe("Lines of business or accounts supported by this site"),
             interviewHours: z.string().optional().default("").describe("Interview schedule hours"),
             interviewType: z.string().optional().default("").describe("Type: Face-to-Face, Virtual, Hybrid"),
             fullAddress: z.string().optional().default(""),
@@ -1100,6 +1101,7 @@ export function createMcpServer(): McpServer {
         id: uuid(),
         siteName: s.siteName,
         internalName: s.internalName,
+        lobsOrAccounts: s.lobsOrAccounts,
         interviewHours: s.interviewHours,
         interviewType: s.interviewType,
         fullAddress: s.fullAddress,

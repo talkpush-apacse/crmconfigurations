@@ -9,14 +9,16 @@ import { uid, defaultPrescreening } from "@/lib/template-data";
 import type { ColumnDef, QuestionRow } from "@/lib/types";
 import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 // Question type definitions, shown in the Question Type column tooltip.
 const referenceData = [
   { type: "Text", description: "Free-form text response from the candidate." },
   { type: "Number", description: "Numeric input only." },
-  { type: "Multiple Choice", description: "Candidate picks one or more from predefined options." },
+  { type: "Multiple Choice (Single Select)", description: "Candidate picks exactly one option (radio-button style)." },
+  { type: "Multiple Select", description: "Candidate picks one or more options (checkbox style)." },
   { type: "Dropdown", description: "Single selection from a dropdown list of options." },
+  { type: "Date Picker", description: "Candidate selects a calendar date." },
   { type: "Audio", description: "Candidate records a voice response." },
   { type: "Audio or Text", description: "Candidate can respond with voice or text." },
   { type: "Video", description: "Candidate records a video response." },
@@ -175,14 +177,18 @@ export function PrescreeningSheet() {
     updateField("prescreening", appendBulkDuplicates("prescreening", allQuestions, questions, ids));
   };
 
+  const handleReorder = (questionsNext: QuestionRow[]) => {
+    updateField("prescreening", mergeVisibleRows(allQuestions, questionsNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       ...EMPTY_QUESTION,
       ...row,
     }));
-    updateField("prescreening", [...allQuestions, ...newRows]);
+    updateField("prescreening", mode === "replace" ? [...allQuestions.filter((row) => row.deletedAt), ...newRows] : [...allQuestions, ...newRows]);
   };
 
   return (
@@ -206,19 +212,20 @@ export function PrescreeningSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         spreadsheetMode
         tableId="prescreening"
         addLabel="Add Question"
         sampleRow={{
           category: "Pre-screening",
           question: "Are you willing to work night shifts?",
-          questionType: "Multiple Choice",
+          questionType: "Multiple Choice (Single Select)",
         }}
         csvConfig={{
           sampleRow: {
             category: "Pre-screening",
             question: "Are you willing to work night shifts?",
-            questionType: "Multiple Choice",
+            questionType: "Multiple Choice (Single Select)",
             answerOptions: "Yes, No",
             applicableCampaigns: "CSR - Makati, TSR - BGC Night",
             autoReject: "Yes",

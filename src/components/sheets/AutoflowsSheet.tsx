@@ -84,6 +84,17 @@ function GroupSection({ groupName, rules, allRules, onUpdate }: GroupSectionProp
     onUpdate(allRules.filter((r) => r.id !== target.id));
   };
 
+  const handleReorder = (reordered: AutoflowRule[]) => {
+    const reorderedIds = new Set(reordered.map((rule) => rule.id));
+    const queue = [...reordered];
+    onUpdate(
+      allRules.map((rule) => {
+        if (!reorderedIds.has(rule.id)) return rule;
+        return queue.shift() ?? rule;
+      })
+    );
+  };
+
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mb-4">
       <div className="flex items-center gap-2 rounded-t-lg border border-b-0 bg-slate-50 px-4 py-2.5">
@@ -114,6 +125,7 @@ function GroupSection({ groupName, rules, allRules, onUpdate }: GroupSectionProp
             onUpdate={handleUpdate}
             onAdd={handleAdd}
             onDelete={handleDelete}
+            onReorder={handleReorder}
             addLabel="Add Rule"
           />
         </div>

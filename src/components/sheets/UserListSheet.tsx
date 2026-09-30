@@ -115,18 +115,22 @@ export function UserListSheet() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "",
       ...row,
     }));
-    updateField("users", [...allUsers, ...newRows]);
+    updateField("users", mode === "replace" ? [...allUsers.filter((row) => row.deletedAt), ...newRows] : [...allUsers, ...newRows]);
   };
 
   // A pasted block arrives as the full next visible list, in one update —
   // per-cell writes would each see a stale array and only the last would stick.
   const handlePasteApply = (usersNext: UserRow[]) => {
+    updateField("users", mergeVisibleRows(allUsers, usersNext));
+  };
+
+  const handleReorder = (usersNext: UserRow[]) => {
     updateField("users", mergeVisibleRows(allUsers, usersNext));
   };
 
@@ -151,6 +155,7 @@ export function UserListSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         pasteConfig={{
           onApply: handlePasteApply,
           createRow: () => ({ id: uid(), name: "", accessType: "", jobTitle: "", email: "", phone: "", site: "", reportsTo: "", stage: "", comments: "" }),

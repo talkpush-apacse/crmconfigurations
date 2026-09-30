@@ -639,6 +639,12 @@ export function AtsIntegrationsSheet() {
                             triggers: current.triggers.filter((_, rowIndex) => rowIndex !== index),
                           }))
                         }
+                        onReorder={(reordered) =>
+                          updateIntegration(integration.id, (current) => ({
+                            ...current,
+                            triggers: reordered,
+                          }))
+                        }
                       />
                     </AccordionContent>
                   </AccordionItem>
@@ -681,6 +687,12 @@ export function AtsIntegrationsSheet() {
                           updateIntegration(integration.id, (current) => ({
                             ...current,
                             fieldMappings: current.fieldMappings.filter((_, rowIndex) => rowIndex !== index),
+                          }))
+                        }
+                        onReorder={(reordered) =>
+                          updateIntegration(integration.id, (current) => ({
+                            ...current,
+                            fieldMappings: reordered,
                           }))
                         }
                       />
@@ -761,6 +773,12 @@ export function AtsIntegrationsSheet() {
                           updateIntegration(integration.id, (current) => ({
                             ...current,
                             authRequirements: current.authRequirements.filter((_, rowIndex) => rowIndex !== index),
+                          }))
+                        }
+                        onReorder={(reordered) =>
+                          updateIntegration(integration.id, (current) => ({
+                            ...current,
+                            authRequirements: reordered,
                           }))
                         }
                       />

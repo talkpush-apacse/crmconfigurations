@@ -14,6 +14,7 @@ import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/d
 const columns: ColumnDef[] = [
   { key: "siteName", label: "Site Name", type: "text", description: "Public-facing name of the interview/office site" },
   { key: "internalName", label: "Internal Name", type: "text", description: "Internal identifier for this site" },
+  { key: "lobsOrAccounts", label: "LOBs / Accounts", type: "text", description: "Lines of business or accounts supported by this site" },
   { key: "interviewType", label: "Interview Type", type: "dropdown", options: [...DROPDOWN_OPTIONS.interviewTypes], description: "Whether interviews are conducted onsite, virtually, or both" },
 ];
 
@@ -48,7 +49,7 @@ export function SitesSheet() {
   const handleAdd = () => {
     updateField("sites", [
       ...allSites,
-      { id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" },
+      { id: uid(), siteName: "", internalName: "", lobsOrAccounts: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" },
     ]);
   };
 
@@ -72,14 +73,18 @@ export function SitesSheet() {
     updateField("sites", appendBulkDuplicates("sites", allSites, sites, ids));
   };
 
+  const handleReorder = (reordered: SiteRow[]) => {
+    updateField("sites", mergeVisibleRows(allSites, reordered));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
-      siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "",
+      siteName: "", internalName: "", lobsOrAccounts: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "",
       ...row,
     }));
-    updateField("sites", [...allSites, ...newRows]);
+    updateField("sites", mode === "replace" ? [...allSites.filter((row) => row.deletedAt), ...newRows] : [...allSites, ...newRows]);
   };
 
   // A pasted block arrives as the full next visible list, in one update —
@@ -109,16 +114,17 @@ export function SitesSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         pasteConfig={{
           onApply: handlePasteApply,
-          createRow: () => ({ id: uid(), siteName: "", internalName: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" }),
+          createRow: () => ({ id: uid(), siteName: "", internalName: "", lobsOrAccounts: "", interviewHours: "", interviewType: "", fullAddress: "", documentsToRing: "", googleMapsLink: "", comments: "" }),
         }}
         spreadsheetMode
         tableId="sites"
         addLabel="Add Site"
-        sampleRow={{ siteName: "Makati Main", internalName: "MKT-HQ", interviewType: "Onsite" }}
+        sampleRow={{ siteName: "Makati Main", internalName: "MKT-HQ", lobsOrAccounts: "Customer Support", interviewType: "Onsite" }}
         csvConfig={{
-          sampleRow: { siteName: "Main Office", internalName: "HQ", interviewHours: "9AM-5PM", interviewType: "Onsite", fullAddress: "123 Main St, City" },
+          sampleRow: { siteName: "Main Office", internalName: "HQ", lobsOrAccounts: "Customer Support, Sales", interviewHours: "9AM-5PM", interviewType: "Onsite", fullAddress: "123 Main St, City" },
           onImport: handleCsvImport,
           sheetName: "Sites",
         }}
