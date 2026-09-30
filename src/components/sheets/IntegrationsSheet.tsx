@@ -64,7 +64,7 @@ import type {
   IntegrationRow,
   IntegrationStatus,
 } from "@/lib/types";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const mainColumns: ColumnDef[] = [
   { key: "vendorName", label: "Vendor Name", type: "text", width: "180px" },
@@ -404,7 +404,11 @@ export function IntegrationsSheet() {
     saveIntegrations(appendBulkDuplicates("integrations", allIntegrations, integrations, ids));
   };
 
-  const handleCsvImport = (rows: Record<string, string>[]) => {
+  const handleReorder = (integrationsNext: IntegrationRow[]) => {
+    saveIntegrations(mergeVisibleRows(allIntegrations, integrationsNext));
+  };
+
+  const handleCsvImport = (rows: Record<string, string>[], mode: "append" | "replace" = "append") => {
     const imported = rows.map((row) =>
       makeIntegrationRow({
         vendorName: row.vendorName ?? "",
@@ -447,7 +451,7 @@ export function IntegrationsSheet() {
         notes: row.notes ?? "",
       })
     );
-    saveIntegrations([...allIntegrations, ...imported]);
+    saveIntegrations(mode === "replace" ? [...allIntegrations.filter((row) => row.deletedAt), ...imported] : [...allIntegrations, ...imported]);
   };
 
   const renderFolderWarning = (row: IntegrationRow) => {
@@ -496,6 +500,7 @@ export function IntegrationsSheet() {
         data={integrations}
         onAdd={addRow}
         hideAddButton
+        onReorder={handleReorder}
         onDelete={(index) => {
           const target = integrations[index];
           if (!target) return;

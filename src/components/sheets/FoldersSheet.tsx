@@ -10,7 +10,7 @@ import { DROPDOWN_OPTIONS } from "@/lib/validations";
 import { uid, defaultFolders } from "@/lib/template-data";
 import type { ColumnDef, FolderRow } from "@/lib/types";
 import { SectionFooter } from "@/components/shared/SectionFooter";
-import { softDeleteByIds, appendBulkDuplicates } from "@/lib/duplicate-row";
+import { softDeleteByIds, appendBulkDuplicates, mergeVisibleRows } from "@/lib/duplicate-row";
 
 const columns: ColumnDef[] = [
   { key: "folderName", label: "Folder Name", type: "text", description: "Name of the workflow stage/folder" },
@@ -66,14 +66,18 @@ export function FoldersSheet() {
     updateField("folders", appendBulkDuplicates("folders", allFolders, folders, ids));
   };
 
+  const handleReorder = (foldersNext: FolderRow[]) => {
+    updateField("folders", mergeVisibleRows(allFolders, foldersNext));
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       folderName: "", description: "", movementType: "", comments: "",
       ...row,
     }));
-    updateField("folders", [...allFolders, ...newRows]);
+    updateField("folders", mode === "replace" ? [...allFolders.filter((row) => row.deletedAt), ...newRows] : [...allFolders, ...newRows]);
   };
 
   return (
@@ -100,6 +104,7 @@ export function FoldersSheet() {
         onAdd={handleAdd}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}
+        onReorder={handleReorder}
         addLabel="Add Folder"
         sampleRow={{ folderName: "For Pooling", description: "Candidates held for future openings", movementType: "Manual", comments: "Custom stage" }}
         csvConfig={{

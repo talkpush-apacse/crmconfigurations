@@ -68,6 +68,7 @@ export interface SiteRow extends SoftDeletable {
   id: string;
   siteName: string;
   internalName: string;
+  lobsOrAccounts?: string;
   interviewHours: string;
   interviewType: string;
   fullAddress: string;
@@ -198,11 +199,19 @@ export interface AiCallFaqRow {
 }
 
 export interface AiCallData {
+  agentName?: string;
   measureEnglish: boolean;
   gender: string;
   preferredVoice: string;
+  warmth?: string;
+  formality?: string;
+  pace?: string;
   callType: string;
+  callScheduleWindow?: string;
+  callLength?: string;
+  callStatus?: string;
   interviewRole: string;
+  jobDescription?: string;
   interviewQuestions: string;
   faqs: AiCallFaqRow[];
 }

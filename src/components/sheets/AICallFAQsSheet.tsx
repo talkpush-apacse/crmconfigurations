@@ -19,6 +19,13 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
 
   return [
     {
+      key: "agentName",
+      label: "Agent Name",
+      description: "What the AI caller should call itself during the call.",
+      type: "text",
+      example: "Ailyn",
+    },
+    {
       key: "measureEnglish",
       label: "Measure English Language Skills",
       description: "Enable Talkscore AI language skills assessment during the call.",
@@ -48,6 +55,30 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
       example: "Clara",
     },
     {
+      key: "warmth",
+      label: "Warmth",
+      description: "How warm or friendly the AI caller should sound.",
+      type: "dropdown",
+      options: ["Friendly", "Warm", "Neutral", "Reserved"],
+      example: "Friendly",
+    },
+    {
+      key: "formality",
+      label: "Formality",
+      description: "How formal the AI caller should be with candidates.",
+      type: "dropdown",
+      options: ["Casual", "Professional", "Formal"],
+      example: "Casual",
+    },
+    {
+      key: "pace",
+      label: "Pace",
+      description: "How quickly the AI caller should speak and move through the call.",
+      type: "dropdown",
+      options: ["Unhurried", "Balanced", "Fast"],
+      example: "Unhurried",
+    },
+    {
       key: "callType",
       label: "Call Type",
       description: "How candidates will connect to the AI call.",
@@ -56,11 +87,39 @@ function getConfigFields(selectedGender: string): KeyValueField[] {
       example: "Web",
     },
     {
+      key: "callScheduleWindow",
+      label: "Call Schedule Window",
+      description: "When candidates may receive or complete AI calls.",
+      type: "text",
+      example: "9am to 6pm (Monday to Friday only)",
+    },
+    {
+      key: "callLength",
+      label: "Call Length",
+      description: "Target or maximum call duration.",
+      type: "text",
+      example: "Max of 2 minutes",
+    },
+    {
+      key: "callStatus",
+      label: "Call Status",
+      description: "Allowed status values Talkpush should use for AI calls.",
+      type: "text",
+      example: "Completed, Declined, Rescheduled, Not Taken, Unfinished",
+    },
+    {
       key: "interviewRole",
-      label: "Interview Role",
-      description: "The role/position that interview questions relate to.",
+      label: "Job Title",
+      description: "The role or position used in the AI call scripts.",
       type: "text",
       example: "Customer Service Representative",
+    },
+    {
+      key: "jobDescription",
+      label: "Job Description",
+      description: "Role overview and responsibilities the AI caller can use as context.",
+      type: "textarea",
+      example: "Answer customer inquiries, resolve billing concerns, and route complex issues to the right team.",
     },
     {
       key: "interviewQuestions",
@@ -133,8 +192,12 @@ export function AICallFAQsSheet() {
     updateField("aiCallFaqs", { ...aiCallData, faqs: updated });
   };
 
+  const handleFaqReorder = (reordered: AiCallFaqRow[]) => {
+    updateField("aiCallFaqs", { ...aiCallData, faqs: reordered });
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace" = "append") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       faq: "",
@@ -142,7 +205,7 @@ export function AICallFAQsSheet() {
       faqResponse: "",
       ...row,
     }));
-    updateField("aiCallFaqs", { ...aiCallData, faqs: [...faqs, ...newRows] });
+    updateField("aiCallFaqs", { ...aiCallData, faqs: mode === "replace" ? newRows : [...faqs, ...newRows] });
   };
 
   return (
@@ -196,6 +259,7 @@ export function AICallFAQsSheet() {
           onAdd={handleFaqAdd}
           onDelete={handleFaqDelete}
           onDuplicate={handleFaqDuplicate}
+          onReorder={handleFaqReorder}
           addLabel="Add FAQ"
           sampleRow={{ faq: "Salary", example: "How much is the starting salary?", faqResponse: "Starting salary is PHP 18,000-22,000/month depending on experience." }}
           csvConfig={{

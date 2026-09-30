@@ -104,6 +104,7 @@ function sitesContext(sourceData: unknown): ConfiguratorSourceContext | null {
     lines: numbered(rows, (row, index) =>
       compact([
         `${index + 1}. ${value(row, "siteName") || value(row, "internalName") || "Unnamed site"}`,
+        value(row, "lobsOrAccounts") && `LOBs / Accounts: ${value(row, "lobsOrAccounts")}`,
         value(row, "fullAddress"),
         value(row, "interviewType"),
         value(row, "interviewHours"),

@@ -1085,6 +1085,7 @@ export function createMcpServer(): McpServer {
           z.object({
             siteName: z.string().describe("Site display name (e.g. 'BGC Tower 1')"),
             internalName: z.string().optional().default("").describe("Internal reference name"),
+            lobsOrAccounts: z.string().optional().default("").describe("Lines of business or accounts supported by this site"),
             interviewHours: z.string().optional().default("").describe("Interview schedule hours"),
             interviewType: z.string().optional().default("").describe("Type: Face-to-Face, Virtual, Hybrid"),
             fullAddress: z.string().optional().default(""),
@@ -1100,6 +1101,7 @@ export function createMcpServer(): McpServer {
         id: uuid(),
         siteName: s.siteName,
         internalName: s.internalName,
+        lobsOrAccounts: s.lobsOrAccounts,
         interviewHours: s.interviewHours,
         interviewType: s.interviewType,
         fullAddress: s.fullAddress,
