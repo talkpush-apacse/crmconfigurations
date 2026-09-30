@@ -37,6 +37,76 @@ export function generateCsv(
   return [headers.join(","), ...body].join("\n");
 }
 
+export interface CsvParseReport {
+  rows: Record<string, string>[];
+  headers: string[];
+  matchedHeaders: string[];
+  ignoredHeaders: string[];
+  missingHeaders: string[];
+  totalDataRows: number;
+}
+
+/**
+ * Parses a CSV string and reports how headers map to configured columns.
+ */
+export function parseCsvWithReport(
+  csvText: string,
+  columns: ColumnDef[]
+): CsvParseReport {
+  const lines = parseCsvLines(csvText);
+  if (lines.length < 2) {
+    return { rows: [], headers: [], matchedHeaders: [], ignoredHeaders: [], missingHeaders: columns.map((col) => col.label), totalDataRows: 0 };
+  }
+
+  const headerRow = lines[0].map((header) => header.trim());
+  const headerToKey: Record<number, string> = {};
+  const matchedColumnKeys = new Set<string>();
+  const matchedHeaders: string[] = [];
+  const ignoredHeaders: string[] = [];
+
+  for (let i = 0; i < headerRow.length; i++) {
+    const headerLabel = headerRow[i];
+    const matchedCol = columns.find(
+      (col) => col.label.toLowerCase() === headerLabel.toLowerCase()
+    );
+    if (matchedCol) {
+      headerToKey[i] = matchedCol.key;
+      matchedColumnKeys.add(matchedCol.key);
+      matchedHeaders.push(matchedCol.label);
+    } else if (headerLabel) {
+      ignoredHeaders.push(headerLabel);
+    }
+  }
+
+  const rows: Record<string, string>[] = [];
+  let totalDataRows = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i];
+    if (values.length === 0 || (values.length === 1 && values[0].trim() === "")) continue;
+    totalDataRows++;
+
+    const row: Record<string, string> = {};
+    let hasMatchedData = false;
+    for (const [colIdx, key] of Object.entries(headerToKey)) {
+      const val = values[Number(colIdx)]?.trim() || "";
+      row[key] = val;
+      if (val) hasMatchedData = true;
+    }
+    for (const col of columns) {
+      if (!(col.key in row)) {
+        row[col.key] = "";
+      }
+    }
+    if (hasMatchedData) rows.push(row);
+  }
+
+  const missingHeaders = columns
+    .filter((col) => !matchedColumnKeys.has(col.key))
+    .map((col) => col.label);
+
+  return { rows, headers: headerRow, matchedHeaders, ignoredHeaders, missingHeaders, totalDataRows };
+}
+
 /**
  * Parses a CSV string into an array of row objects, mapping CSV headers
  * to column keys. Handles quoted fields with commas and escaped quotes.
@@ -45,44 +115,7 @@ export function parseCsv(
   csvText: string,
   columns: ColumnDef[]
 ): Record<string, string>[] {
-  const lines = parseCsvLines(csvText);
-  if (lines.length < 2) return [];
-
-  const headerRow = lines[0];
-  // Build a mapping from CSV header label to column key
-  const headerToKey: Record<number, string> = {};
-  for (let i = 0; i < headerRow.length; i++) {
-    const headerLabel = headerRow[i].trim();
-    const matchedCol = columns.find(
-      (col) => col.label.toLowerCase() === headerLabel.toLowerCase()
-    );
-    if (matchedCol) {
-      headerToKey[i] = matchedCol.key;
-    }
-  }
-
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i];
-    if (values.length === 0 || (values.length === 1 && values[0].trim() === "")) continue;
-
-    const row: Record<string, string> = {};
-    let hasData = false;
-    for (const [colIdx, key] of Object.entries(headerToKey)) {
-      const val = values[Number(colIdx)]?.trim() || "";
-      row[key] = val;
-      if (val) hasData = true;
-    }
-    // Also initialize any columns that weren't in the CSV
-    for (const col of columns) {
-      if (!(col.key in row)) {
-        row[col.key] = "";
-      }
-    }
-    if (hasData) rows.push(row);
-  }
-
-  return rows;
+  return parseCsvWithReport(csvText, columns).rows;
 }
 
 /**

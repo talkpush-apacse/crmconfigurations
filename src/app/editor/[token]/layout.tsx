@@ -75,19 +75,6 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
         (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
       );
 
-  const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);
-  const filledCount = isCustom
-    ? 0
-    : tabsWithData.filter((t) => {
-        if (t.customTabId) {
-          const ct = customTabs?.find((c) => c.id === t.customTabId);
-          return ct ? getCustomTabSectionState(ct, customData) !== "not-started" : false;
-        }
-        const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-        return getSectionState(val, t.dataKey) !== "not-started";
-      }).length;
-  const totalCount = isCustom ? 0 : tabsWithData.length;
-
   const tabUploadMeta = (data.tabUploadMeta as TabUploadMetaMap | null) ?? null;
 
   const navItems: NavItem[] = enabledTabs.map((tab) => {
@@ -108,6 +95,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
       slug: tab.slug,
       filledBy: tab.filledBy,
       hasAttachments,
+      canChangeOwnership: isAdmin && !tab.adminOnly && !!(tab.dataKey || tab.customTabId),
     };
   });
 
@@ -115,8 +103,9 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
     updateField("tabOrder", slugs);
   };
 
-  const handleTabFilledByChange = (map: Record<string, "talkpush" | "client">) => {
-    updateField("tabFilledBy", map);
+  const handleOwnershipChange = (slug: string, filledBy: "talkpush" | "client") => {
+    if (!isAdmin) return;
+    updateField("tabFilledBy", { ...(data.tabFilledBy ?? {}), [slug]: filledBy });
   };
 
   return (
@@ -145,8 +134,6 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
           saveStatus={saveStatus}
           saveError={saveError}
           onRetrySave={retrySave}
-          filledCount={filledCount}
-          totalCount={totalCount}
           isReadOnly={false}
           editorToken={token}
           hasPendingChanges={hasPendingChanges}
@@ -161,7 +148,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
               clientName={data.clientName}
               hasPendingChangesRef={hasPendingChangesRef}
               onReorder={handleTabReorder}
-              onFilledByChange={handleTabFilledByChange}
+              onOwnershipChange={isAdmin ? handleOwnershipChange : undefined}
             />
           )}
           <div className="flex flex-col flex-1 overflow-hidden">

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { normalizeOwnerEmail } from "@/lib/notifications";
 import { getDefaultChecklistData } from "@/lib/template-data";
+import { getChecklistProgress } from "@/lib/section-status";
+import type { ChecklistData } from "@/lib/types";
 
 /**
  * Strips fields that must never reach an unauthenticated slug-based viewer.
@@ -75,14 +77,75 @@ export async function GET(request: NextRequest) {
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
         orderBy: { updatedAt: "desc" },
-        select: { id: true, slug: true, editorToken: true, clientName: true, ownerEmail: true, createdAt: true, updatedAt: true, enabledTabs: true, communicationChannels: true, featureToggles: true, configuratorChecklist: true, version: true, isCustom: true, customSchema: true, customTabs: true },
+        select: {
+          id: true,
+          slug: true,
+          editorToken: true,
+          clientName: true,
+          ownerEmail: true,
+          createdAt: true,
+          updatedAt: true,
+          enabledTabs: true,
+          tabOrder: true,
+          tabFilledBy: true,
+          communicationChannels: true,
+          featureToggles: true,
+          configuratorChecklist: true,
+          version: true,
+          isCustom: true,
+          customSchema: true,
+          customData: true,
+          customTabs: true,
+          companyInfo: true,
+          users: true,
+          campaigns: true,
+          sites: true,
+          prescreening: true,
+          messaging: true,
+          sources: true,
+          folders: true,
+          documents: true,
+          attributes: true,
+          fbWhatsapp: true,
+          instagram: true,
+          aiCallFaqs: true,
+          agencyPortal: true,
+          agencyPortalUsers: true,
+          rejectionReasons: true,
+          labels: true,
+          adminSettings: true,
+          atsIntegrations: true,
+          integrations: true,
+          autoflows: true,
+        },
         take: pageSize,
         skip,
       }),
       prisma.checklist.count(),
     ]);
 
-    return NextResponse.json({ items, total, page, pageSize });
+    const itemsWithProgress = items.map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      editorToken: item.editorToken,
+      clientName: item.clientName,
+      ownerEmail: item.ownerEmail,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      enabledTabs: item.enabledTabs,
+      communicationChannels: item.communicationChannels,
+      featureToggles: item.featureToggles,
+      configuratorChecklist: item.configuratorChecklist,
+      version: item.version,
+      isCustom: item.isCustom,
+      customSchema: item.customSchema,
+      customTabs: item.customTabs,
+      completionSummary: getChecklistProgress(item as unknown as ChecklistData, {
+        includeAdminTabs: true,
+      }),
+    }));
+
+    return NextResponse.json({ items: itemsWithProgress, total, page, pageSize });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("GET /api/checklists error:", message, err);

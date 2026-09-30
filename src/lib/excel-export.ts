@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import path from "path";
 import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule, IntegrationRow, CustomTab, CustomData } from "./types";
 import { TAB_CONFIG } from "./tab-config";
+import { getCustomFieldKey, getCustomTabFormValues, getCustomTabMode } from "./custom-tab-service";
 import {
   integrationToCsvRow,
 } from "./integration-utils";
@@ -779,6 +780,7 @@ function addCustomFieldTabSheet(
 ) {
   const fields = tab.fields ?? [];
   if (fields.length === 0) return;
+  const values = getCustomTabFormValues(tab, customData);
 
   const sheet = workbook.addWorksheet(toUniqueSheetName(workbook, tab.label));
   sheet.columns = [
@@ -795,7 +797,7 @@ function addCustomFieldTabSheet(
   for (const field of fields) {
     sheet.addRow({
       field: field.label,
-      value: customCellValue(customData?.[field.id]),
+      value: customCellValue(values[getCustomFieldKey(field)]),
     });
   }
 
@@ -825,7 +827,7 @@ function addCustomTabSheets(
   );
 
   for (const tab of ordered) {
-    if (tab.columns !== undefined) {
+    if (getCustomTabMode(tab) === "table") {
       addCustomTableTabSheet(workbook, tab);
     } else {
       addCustomFieldTabSheet(workbook, tab, customData);

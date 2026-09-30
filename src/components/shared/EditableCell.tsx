@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { ChevronDown, Pencil } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { ChevronDown, Pencil, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,8 +25,59 @@ type ValidationType = "email" | "url" | "phone";
 const VALIDATION_RULES: Record<ValidationType, { regex: RegExp; message: string }> = {
   email: { regex: /.+@.+\..+/, message: "Please enter a valid email address" },
   url: { regex: /^https?:\/\/.+/, message: "URL must start with http:// or https://" },
-  phone: { regex: /\d{7,}/, message: "Phone number must have at least 7 digits" },
+  phone: { regex: /(?:\D*\d){7,}/, message: "Phone number must have at least 7 digits" },
 };
+
+// Matches a markdown-style link `[label](url)`, e.g. text transcribed from a
+// spreadsheet cell that had a hyperlink on part of its text — see
+// normalizeCellValue in spreadsheet-infer.ts, which produces this same shape
+// on import. A bare "https://..." run is also linkified, so a plain URL typed
+// or pasted into a text cell becomes clickable without any special syntax.
+const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/\S+)/g;
+
+/** True as soon as a value has anything `renderTextWithLinks` would linkify. */
+function hasLinkableContent(value: string): boolean {
+  MARKDOWN_LINK_RE.lastIndex = 0;
+  return MARKDOWN_LINK_RE.test(value);
+}
+
+/**
+ * Renders plain text with any `[label](url)` or bare URL substrings turned
+ * into real, clickable anchors — everything else stays as plain text. Used
+ * for read-mode display only; editing still works on the underlying string.
+ */
+function renderTextWithLinks(value: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  MARKDOWN_LINK_RE.lastIndex = 0;
+  let key = 0;
+
+  while ((match = MARKDOWN_LINK_RE.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(value.slice(lastIndex, match.index));
+    }
+    const [full, label, labeledHref, bareHref] = match;
+    const href = labeledHref ?? bareHref;
+    parts.push(
+      <a
+        key={`link-${key++}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-brand-lavender-darker underline hover:opacity-80"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {label ?? full}
+      </a>
+    );
+    lastIndex = match.index + full.length;
+  }
+  if (lastIndex < value.length) {
+    parts.push(value.slice(lastIndex));
+  }
+  return parts;
+}
 
 interface EditableCellProps {
   value: string | boolean;
@@ -353,41 +404,64 @@ export function EditableCell({
         }}
       >
         <span className="min-w-0 flex-1 truncate">
-          {currentValue || placeholder || "Click to edit"}
+          {currentValue
+            ? hasLinkableContent(currentValue)
+              ? renderTextWithLinks(currentValue)
+              : currentValue
+            : placeholder || "Click to edit"}
         </span>
         <Pencil className="ml-2 h-3 w-3 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
     );
   }
 
+  // A URL-validated field is usually a live input the user still needs to
+  // edit, so it can't become a plain anchor the way the read-only text box
+  // above does — instead, a small button alongside it opens the link.
+  const canOpenAsLink = validation === "url" && !validationError && currentValue.trim() !== "";
+
   return wrapWithValidation(
-    <Input
-      ref={inputRef as React.RefObject<HTMLInputElement>}
-      value={currentValue}
-      onChange={(e) => setDraftValue(e.target.value)}
-      onBlur={() => {
-        setEditing(false);
-        handleBlur();
-      }}
-      onKeyDown={(e) => {
-        // Outside spreadsheet mode, Enter/Escape close the editor rather than
-        // moving between rows.
-        if (!spreadsheetMode && (e.key === "Enter" || e.key === "Escape")) {
+    <div className="flex items-center gap-1">
+      <Input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        value={currentValue}
+        onChange={(e) => setDraftValue(e.target.value)}
+        onBlur={() => {
           setEditing(false);
-        }
-        handleGridKeyDown(e);
-      }}
-      onPaste={handleGridPaste}
-      placeholder={placeholder}
-      aria-invalid={!!errorMessage}
-      className={cn(
-        "h-9 text-sm",
-        // An unfilled cell reads as unfilled, rather than looking answered by
-        // its own placeholder.
-        spreadsheetMode && isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
-        errorMessage && "border-red-400 focus-visible:ring-red-400",
-        className
+          handleBlur();
+        }}
+        onKeyDown={(e) => {
+          // Outside spreadsheet mode, Enter/Escape close the editor rather than
+          // moving between rows.
+          if (!spreadsheetMode && (e.key === "Enter" || e.key === "Escape")) {
+            setEditing(false);
+          }
+          handleGridKeyDown(e);
+        }}
+        onPaste={handleGridPaste}
+        placeholder={placeholder}
+        aria-invalid={!!errorMessage}
+        className={cn(
+          "h-9 text-sm",
+          // An unfilled cell reads as unfilled, rather than looking answered by
+          // its own placeholder.
+          spreadsheetMode && isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
+          errorMessage && "border-red-400 focus-visible:ring-red-400",
+          className
+        )}
+      />
+      {canOpenAsLink && (
+        <a
+          href={currentValue}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open link"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-brand-lavender-darker"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       )}
-    />
+    </div>
   );
 }

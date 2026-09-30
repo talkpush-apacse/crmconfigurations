@@ -19,6 +19,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,7 +34,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Plus,
@@ -45,6 +51,7 @@ import {
   ChevronRight,
   FileText,
   Link2,
+  MoreHorizontal,
   RefreshCw,
   Mail,
 } from "lucide-react";
@@ -53,6 +60,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
+import type { ChecklistProgressSummary } from "@/lib/section-status";
 import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
 
@@ -97,6 +105,7 @@ interface ChecklistSummary {
   isCustom?: boolean;
   customSchema?: CustomFieldDef[] | null;
   customTabs?: CustomTab[] | null;
+  completionSummary?: ChecklistProgressSummary;
 }
 
 interface EditingState {
@@ -152,6 +161,41 @@ function SortHeader({
         <ChevronsUpDown className="h-3 w-3 opacity-40" />
       )}
     </button>
+  );
+}
+
+function ChecklistStatusBadge({ summary }: { summary?: ChecklistProgressSummary }) {
+  if (!summary || summary.totalCount === 0) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        No sections
+      </Badge>
+    );
+  }
+
+  const label =
+    summary.status === "complete"
+      ? "Complete"
+      : summary.status === "in-progress"
+        ? "In progress"
+        : "Not started";
+
+  const className =
+    summary.status === "complete"
+      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+      : summary.status === "in-progress"
+        ? "border-amber-300 bg-amber-50 text-amber-700"
+        : "text-muted-foreground";
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Badge variant="outline" className={className}>
+        {label}
+      </Badge>
+      <span className="text-xs text-muted-foreground">
+        {summary.completeCount}/{summary.totalCount} complete
+      </span>
+    </div>
   );
 }
 
@@ -508,13 +552,13 @@ export default function AdminDashboard() {
         {/* P4-03: Collapsible sidebar, desktop only */}
         <AdminSidebar />
 
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto bg-background">
           <div className="mx-auto max-w-5xl p-6">
 
             {/* P3-05: Larger title with more breathing room */}
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold">CRM Config Checklists</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">CRM Config Checklists</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage client configuration checklists
                 </p>
@@ -627,7 +671,7 @@ export default function AdminDashboard() {
             )}
 
             {/* P3-04: Upgraded to shadow-md */}
-            <Card className="shadow-md">
+            <Card className="border-border/80 shadow-sm">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
                   <CardTitle className="text-base">
@@ -682,7 +726,145 @@ export default function AdminDashboard() {
                     </Link>
                   </div>
                 ) : (
-                  <Table>
+                  <>
+                  <div className="space-y-3 md:hidden">
+                    {displayed.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+                        <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          No results for &ldquo;{searchQuery}&rdquo;
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-2 text-sm text-primary underline-offset-2 hover:underline"
+                          onClick={() => setSearchQuery("")}
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    ) : (
+                      displayed.map((c) => (
+                        <article
+                          key={c.id}
+                          className="rounded-lg border border-border bg-card p-4 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/admin/checklists/${c.id}/welcome`}
+                                className="block truncate text-base font-semibold text-brand-sage-darker hover:text-foreground hover:underline"
+                              >
+                                {c.clientName}
+                              </Link>
+                              <p className="mt-1 break-words text-xs text-muted-foreground">
+                                {c.slug}
+                              </p>
+                            </div>
+                            <ChecklistStatusBadge summary={c.completionSummary} />
+                          </div>
+
+                          {(c.isCustom || c.ownerEmail) && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {c.isCustom && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
+                                  Custom
+                                </Badge>
+                              )}
+                              {c.ownerEmail && (
+                                <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
+                                  <Mail className="h-3 w-3" />
+                                  Owner email
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
+                          <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <dt className="font-medium uppercase tracking-wide text-muted-foreground">
+                                Created
+                              </dt>
+                              <dd className="mt-1 text-foreground">{formatRelativeTime(c.createdAt)}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-medium uppercase tracking-wide text-muted-foreground">
+                                Updated
+                              </dt>
+                              <dd className="mt-1 text-foreground">{formatRelativeTime(c.updatedAt)}</dd>
+                            </div>
+                          </dl>
+
+                          <div className="mt-4 flex items-center gap-2">
+                            <Button asChild size="sm" className="h-9 flex-1 gap-1.5">
+                              <Link href={`/admin/checklists/${c.id}/welcome`}>
+                                Open checklist
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9"
+                                  aria-label={`More actions for ${c.clientName}`}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-64">
+                                <DropdownMenuItem onClick={() => handleCopyEditorLink(c)}>
+                                  {editorLinkCopied === c.id ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Link2 className="h-4 w-4" />
+                                  )}
+                                  {editorLinkCopied === c.id ? "Editor link copied" : "Copy editor link"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/${c.slug}/configurator`}>
+                                    <FileText className="h-4 w-4" />
+                                    {c.configuratorChecklist
+                                      ? "View configurator checklist"
+                                      : "Generate configurator checklist"}
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
+                                    <Download className="h-4 w-4" />
+                                    Export to XLS
+                                  </a>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditSettings(c)}>
+                                  <Settings className="h-4 w-4" />
+                                  Configure settings
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCopy(c.id)}>
+                                  <Copy className="h-4 w-4" />
+                                  Duplicate checklist
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
+                                  <RefreshCw className="h-4 w-4" />
+                                  Regenerate editor link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteTarget(c)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete checklist
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+
+                  <Table className="hidden md:table">
                     <TableHeader>
                       <TableRow>
                         {/* P2-06: Uppercase, small, spaced column headers */}
@@ -695,7 +877,6 @@ export default function AdminDashboard() {
                             onSort={handleSort}
                           />
                         </TableHead>
-                        {/* P2-04: Status column — TODO: wire to actual completion data */}
                         <TableHead className="py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           Status
                         </TableHead>
@@ -777,11 +958,8 @@ export default function AdminDashboard() {
                               </p>
                             </TableCell>
 
-                            {/* P2-04: Status placeholder — TODO: wire to actual completion data */}
                             <TableCell className="py-2">
-                              <Badge variant="outline" className="text-muted-foreground">
-                                —
-                              </Badge>
+                              <ChecklistStatusBadge summary={c.completionSummary} />
                             </TableCell>
 
                             {/* P2-03: Relative timestamps with full date in tooltip */}
@@ -817,140 +995,75 @@ export default function AdminDashboard() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* P2-05: Separator between safe actions and destructive delete */}
-                              <div className="flex items-center justify-end gap-1">
-                                {/* Copy Editor Link */}
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Copy editor link for ${c.clientName}`}
-                                      onClick={() => handleCopyEditorLink(c)}
-                                    >
+                              <div className="flex items-center justify-end gap-2">
+                                <Button asChild size="sm" variant="outline" className="h-8 gap-1.5 px-3">
+                                  <Link href={`/admin/checklists/${c.id}/welcome`} target="_blank">
+                                    Open
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </Link>
+                                </Button>
+
+                                <DropdownMenu>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          aria-label={`More actions for ${c.clientName}`}
+                                        >
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>More actions</TooltipContent>
+                                  </Tooltip>
+                                  <DropdownMenuContent align="end" className="w-64">
+                                    <DropdownMenuItem onClick={() => handleCopyEditorLink(c)}>
                                       {editorLinkCopied === c.id ? (
                                         <CheckCircle className="h-4 w-4 text-green-600" />
                                       ) : (
                                         <Link2 className="h-4 w-4" />
                                       )}
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {editorLinkCopied === c.id ? "Copied!" : "Copy editor link"}
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Link href={`/admin/${c.slug}/configurator`}>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={`${c.configuratorChecklist ? "View" : "Generate"} configurator checklist for ${c.clientName}`}
-                                      >
+                                      {editorLinkCopied === c.id ? "Editor link copied" : "Copy editor link"}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/admin/${c.slug}/configurator`}>
                                         <FileText className="h-4 w-4" />
-                                      </Button>
-                                    </Link>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {c.configuratorChecklist
-                                      ? "View Configurator's Checklist"
-                                      : "Generate Configurator's Checklist"}
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                {/* P1-02: aria-label on every icon button */}
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Link href={`/admin/checklists/${c.id}/welcome`} target="_blank">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={`Open ${c.clientName} checklist`}
-                                      >
-                                        <ExternalLink className="h-4 w-4" />
-                                      </Button>
-                                    </Link>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Open checklist</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <a
-                                      href={`/api/export/${c.slug}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={`Export ${c.clientName} checklist`}
-                                      >
+                                        {c.configuratorChecklist
+                                          ? "View configurator checklist"
+                                          : "Generate configurator checklist"}
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
                                         <Download className="h-4 w-4" />
-                                      </Button>
-                                    </a>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Export to XLS</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Configure ${c.clientName}`}
-                                      onClick={() => handleEditSettings(c)}
-                                    >
+                                        Export to XLS
+                                      </a>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleEditSettings(c)}>
                                       <Settings className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Configure</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Duplicate ${c.clientName} checklist`}
-                                      onClick={() => handleCopy(c.id)}
-                                    >
+                                      Configure settings
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleCopy(c.id)}>
                                       <Copy className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Duplicate</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Regenerate editor link for ${c.clientName}`}
-                                      onClick={() => handleRegenerateToken(c)}
-                                    >
+                                      Duplicate checklist
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
                                       <RefreshCw className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Regenerate editor link</TooltipContent>
-                                </Tooltip>
-
-                                <Separator orientation="vertical" className="mx-1 h-5" />
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label={`Delete ${c.clientName} checklist`}
-                                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      Regenerate editor link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
                                       onClick={() => setDeleteTarget(c)}
                                     >
                                       <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete</TooltipContent>
-                                </Tooltip>
+                                      Delete checklist
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -958,6 +1071,7 @@ export default function AdminDashboard() {
                       )}
                     </TableBody>
                   </Table>
+                  </>
                 )}
               </CardContent>
             </Card>

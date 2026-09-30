@@ -77,7 +77,12 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
       required: field.required,
       placeholder: field.placeholder ?? "",
       options: field.options?.join(", ") ?? "",
-      columns: formatTableColumnsInput(field),
+      columns: formatTableColumnsInput({
+        columns: Array.isArray(field.columns)
+          ? field.columns.filter((column): column is string => typeof column === "string")
+          : undefined,
+        tableColumns: field.tableColumns,
+      }),
     });
     setEditingIndex(index);
     setDialogOpen(true);

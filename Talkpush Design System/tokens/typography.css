@@ -1,0 +1,28 @@
+/* Polymath Display / Polymath Text are the licensed brand fonts (not distributable).
+   Space Grotesk is Talkpush's own approved working substitute for both — see readme. */
+:root{
+  --font-display:'Space Grotesk',system-ui,-apple-system,sans-serif;
+  --font-body:'Space Grotesk',system-ui,-apple-system,sans-serif;
+  --font-editorial:'Fraunces','Space Grotesk',Georgia,serif;
+  --font-details:'Space Grotesk',ui-monospace,Menlo,monospace;
+
+  --fs-eyebrow:11px;
+  --fs-footer:11px;
+  --fs-body:15px;
+  --fs-body-dense:13px;
+  --fs-h3:15px;
+  --fs-h2:19px;
+  --fs-h1:29px;
+  --fs-kpi:40px;
+  --fs-kpi-lg:48px;
+  --fs-cover:72px;
+  --fs-cover-proposal:52px;
+
+  --tracking-tight:-0.03em;
+  --tracking-tighter:-0.04em;
+  --tracking-eyebrow:0.12em;
+  --tracking-label:0.1em;
+
+  --lh-body:1.5; /* @kind other */
+  --lh-tight:1.15; /* @kind other */
+}

@@ -72,6 +72,8 @@ export function parseStorageUrl(rawUrl: string): StorageUrlParts | null {
 
 function getAttachmentScanRoots(checklist: ChecklistLike): ScanRoot[] {
   const roots: ScanRoot[] = [];
+  const customTabs = Array.isArray(checklist.customTabs) ? checklist.customTabs : [];
+  const customData = isRecord(checklist.customData) ? checklist.customData : {};
 
   for (const field of CHECKLIST_JSON_FIELDS) {
     const value = checklist[field];
@@ -92,6 +94,24 @@ function getAttachmentScanRoots(checklist: ChecklistLike): ScanRoot[] {
           value: customTab,
         });
       });
+      continue;
+    }
+
+    if (field === "customData") {
+      for (const [index, customTab] of customTabs.entries()) {
+        if (!isRecord(customTab)) continue;
+        const tabId = getString(customTab.id);
+        if (!tabId) continue;
+        const container = customData[tabId];
+        const values = isRecord(container) && isRecord(container.values)
+          ? container.values
+          : null;
+        if (!values) continue;
+        roots.push({
+          tab: getCustomTabAttachmentKey(customTab, index),
+          value: { customTabs: { [tabId]: values } },
+        });
+      }
       continue;
     }
 

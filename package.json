@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
     "build": "npm run verify:template && next build",
     "start": "next start",
     "lint": "eslint",

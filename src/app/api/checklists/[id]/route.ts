@@ -4,6 +4,7 @@ import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { normalizeOwnerEmail } from "@/lib/notifications";
 import { requireAuth } from "@/lib/api-auth";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
+import { validateCustomTabsData } from "@/lib/custom-tab-service";
 
 const JSON_FIELDS_SET = new Set<string>(CHECKLIST_JSON_FIELDS);
 
@@ -208,6 +209,17 @@ export async function PUT(
     const allFieldVersions: Record<string, number> = {};
     for (const f of CHECKLIST_JSON_FIELDS) {
       allFieldVersions[f] = version + 1;
+    }
+
+    const customValidationErrors = validateCustomTabsData(customTabs, customData, {
+      enforceRequired: false,
+      enforceValidationGroups: false,
+    });
+    if (customValidationErrors.length > 0) {
+      return NextResponse.json(
+        { error: "Custom requirements form values failed validation.", details: customValidationErrors },
+        { status: 400 }
+      );
     }
 
     const checklist = await prisma.checklist.update({

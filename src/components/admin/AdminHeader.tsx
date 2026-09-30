@@ -19,9 +19,9 @@ export function AdminHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-gray-200 bg-white px-4">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card px-4">
       <div className="flex items-center gap-2">
-        <span className="text-base font-semibold text-gray-900">Talkpush CRM</span>
+        <span className="text-base font-semibold text-foreground">Talkpush CRM</span>
         <span className="hidden rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary sm:inline">
           Config Checklist
         </span>

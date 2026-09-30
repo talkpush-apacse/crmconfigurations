@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { accumulateNotificationState } from "@/lib/notification-state";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
+import { validateCustomTabsData } from "@/lib/custom-tab-service";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
   (field) => field !== "atsIntegrations" && field !== "integrations"
@@ -128,6 +129,16 @@ export async function PUT(
         const updatedFieldVersions = { ...currentFieldVersions };
         const currentChecklist = await tx.checklist.findUnique({ where: { id } });
         if (!currentChecklist) return { status: 404 as const };
+        if (validFields.includes("customData") || validFields.includes("customTabs")) {
+          const customValidationErrors = validateCustomTabsData(
+            (hasOwn(body, "customTabs") ? body.customTabs : currentChecklist.customTabs) as Parameters<typeof validateCustomTabsData>[0],
+            (hasOwn(body, "customData") ? body.customData : currentChecklist.customData) as Parameters<typeof validateCustomTabsData>[1],
+            { enforceRequired: false, enforceValidationGroups: false }
+          );
+          if (customValidationErrors.length > 0) {
+            return { status: 400 as const, customValidationErrors };
+          }
+        }
         const notificationUpdate = accumulateNotificationState({
           currentState: currentChecklist.notificationState as Parameters<typeof accumulateNotificationState>[0]["currentState"],
           previousData: currentChecklist as Partial<Record<ChecklistJsonField, unknown>>,
@@ -163,6 +174,12 @@ export async function PUT(
             currentVersion: result.currentVersion,
           },
           { status: 409 }
+        );
+      }
+      if (result.status === 400) {
+        return NextResponse.json(
+          { error: "Custom requirements form values failed validation.", details: result.customValidationErrors },
+          { status: 400 }
         );
       }
 
@@ -248,6 +265,16 @@ export async function PUT(
     }
 
     const changedFieldsForNotification = PUBLIC_JSON_FIELDS.filter((field) => hasOwn(body, field));
+    const customValidationErrors = validateCustomTabsData(customTabs, customData, {
+      enforceRequired: false,
+      enforceValidationGroups: false,
+    });
+    if (customValidationErrors.length > 0) {
+      return NextResponse.json(
+        { error: "Custom requirements form values failed validation.", details: customValidationErrors },
+        { status: 400 }
+      );
+    }
     const notificationUpdate = accumulateNotificationState({
       currentState: current.notificationState as Parameters<typeof accumulateNotificationState>[0]["currentState"],
       previousData: current as Partial<Record<ChecklistJsonField, unknown>>,

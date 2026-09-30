@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info } from "lucide-react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info, ArrowDownCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -34,7 +34,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "./EditableCell";
 import { GridNavProvider } from "./grid-nav";
-import { CsvToolbar } from "./CsvToolbar";
+import { CsvToolbar, type CsvImportMode } from "./CsvToolbar";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { BulkActionBar } from "./BulkActionBar";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
@@ -110,7 +110,7 @@ interface EditableTableProps<TRow extends EditableRow> {
   };
   csvConfig?: {
     sampleRow: Record<string, string>;
-    onImport: (rows: Record<string, string>[]) => void;
+    onImport: (rows: Record<string, string>[], mode: CsvImportMode) => void;
     sheetName: string;
     exportRows?: Record<string, string>[];
     extraExport?: {
@@ -168,6 +168,19 @@ function defaultColumnWidth(col: ColumnDef): number {
 /** Resizing is clamped so a column can't be dragged to unusable extremes. */
 const MIN_COLUMN_WIDTH = 80;
 const MAX_COLUMN_WIDTH = 720;
+
+interface AttentionIssue {
+  id: string;
+  rowIdx: number;
+  column: ColumnDef;
+}
+
+function hasMeaningfulCellValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value).trim().length > 0;
+}
 
 /**
  * Shapes a value pasted from a spreadsheet for the column it lands in, so a
@@ -251,11 +264,13 @@ function SortableRow<TRow extends EditableRow>({
   renderCell,
   renderDetail,
   requestDelete,
+  rowRef,
   bulkRow,
   numColLeft,
   firstDataColLeft,
   stickyColumns,
   detailFilledCount,
+  isIssueHighlighted = false,
 }: {
   row: TRow;
   rowIdx: number;
@@ -281,6 +296,7 @@ function SortableRow<TRow extends EditableRow>({
   }) => React.ReactNode;
   renderDetail?: (args: { row: TRow; rowIdx: number }) => React.ReactNode;
   requestDelete?: (rowIdx: number) => void;
+  rowRef?: (node: HTMLElement | null) => void;
   bulkRow?: BulkRowContext;
   /** Left offsets, in px, for the frozen leading columns. */
   numColLeft: number;
@@ -289,6 +305,7 @@ function SortableRow<TRow extends EditableRow>({
   stickyColumns: boolean;
   /** Filled / total detail fields, for the collapsed-row badge. */
   detailFilledCount?: { filled: number; total: number };
+  isIssueHighlighted?: boolean;
 }) {
   const rowValues = row as Record<string, string | boolean | null | undefined>;
   const sortableId = row.id || `row-${rowIdx}`;
@@ -311,7 +328,11 @@ function SortableRow<TRow extends EditableRow>({
   return (
     <Fragment>
       <TableRow
-        ref={setNodeRef}
+        ref={(node) => {
+          setNodeRef(node);
+          rowRef?.(node);
+        }}
+        tabIndex={-1}
         style={style}
         className={cn(
           "transition-colors hover:bg-gray-50",
@@ -324,6 +345,7 @@ function SortableRow<TRow extends EditableRow>({
               ? "bg-slate-50"
               : "bg-slate-50/60",
           (detailColumns || renderDetail) && !isExpanded && "border-b border-gray-200",
+          isIssueHighlighted && "bg-amber-100 ring-2 ring-amber-400 ring-offset-1 hover:bg-amber-100",
           isDragging && "bg-brand-lavender-lightest shadow-sm",
           bulkRow?.isSelected && "bg-brand-sage-lightest hover:bg-brand-sage-lightest"
         )}
@@ -561,6 +583,156 @@ function SortableRow<TRow extends EditableRow>({
   );
 }
 
+function MobileSpreadsheetRow<TRow extends EditableRow>({
+  row,
+  rowIdx,
+  columns,
+  onUpdate,
+  onDuplicate,
+  onDelete,
+  isReadOnly,
+  rowIsActive,
+  renderCellPrefix,
+  renderCell,
+  bulkRow,
+  rowRef,
+  isIssueHighlighted = false,
+}: {
+  row: TRow;
+  rowIdx: number;
+  columns: ColumnDef[];
+  onUpdate: (index: number, field: string, value: string | boolean) => void;
+  onDuplicate?: (index: number) => void;
+  onDelete: (index: number) => void;
+  isReadOnly: boolean;
+  rowIsActive: boolean;
+  renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
+  renderCell?: (args: {
+    row: TRow;
+    rowIdx: number;
+    column: ColumnDef;
+    value: string | boolean | null | undefined;
+    onChange: (value: string | boolean) => void;
+  }) => React.ReactNode;
+  bulkRow?: BulkRowContext;
+  rowRef?: (node: HTMLElement | null) => void;
+  isIssueHighlighted?: boolean;
+}) {
+  const rowValues = row as Record<string, string | boolean | null | undefined>;
+
+  return (
+    <article
+      ref={rowRef}
+      tabIndex={-1}
+      className={cn(
+        "rounded-lg border border-border bg-card p-4 shadow-sm transition-colors",
+        isIssueHighlighted && "border-amber-400 bg-amber-50 ring-2 ring-amber-300 ring-offset-1",
+        bulkRow?.isSelected && "border-brand-sage-darker bg-brand-sage-lightest"
+      )}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Row {rowIdx + 1}
+          </p>
+          {bulkRow?.enabled && (
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                checked={bulkRow.isSelected}
+                onClick={bulkRow.onToggle}
+                onCheckedChange={() => {}}
+                aria-label={`Select row ${rowIdx + 1}`}
+              />
+              Select row
+            </label>
+          )}
+        </div>
+        {!isReadOnly && (
+          <div className="flex shrink-0 items-center gap-1">
+            {onDuplicate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                onClick={() => onDuplicate(rowIdx)}
+                title="Duplicate row"
+                aria-label={`Duplicate row ${rowIdx + 1}`}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
+              onClick={() => onDelete(rowIdx)}
+              title="Delete row"
+              aria-label={`Delete row ${rowIdx + 1}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {columns.map((col, colIdx) => (
+          <div key={col.key} className="space-y-1.5">
+            <label className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {renderColumnLabel(col, "text-red-500")}
+              {col.description && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex shrink-0 cursor-help items-center rounded-full text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
+                      aria-label={`About ${col.label}`}
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-sm">
+                    <div className="space-y-1 text-xs leading-relaxed">
+                      {col.description}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </label>
+            <div className="flex items-center gap-2">
+              {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
+              <div className="min-w-0 flex-1">
+                {renderCell ? (
+                  renderCell({
+                    row,
+                    rowIdx,
+                    column: col,
+                    value: rowValues[col.key],
+                    onChange: (val) => onUpdate(rowIdx, col.key, val),
+                  })
+                ) : (
+                  <EditableCell
+                    value={rowValues[col.key] as string | boolean}
+                    type={col.type}
+                    options={col.options}
+                    onChange={(val) => onUpdate(rowIdx, col.key, val)}
+                    placeholder={col.label}
+                    validation={col.validation}
+                    required={col.required}
+                    showRequiredError={rowIsActive}
+                    gridRow={rowIdx}
+                    gridCol={colIdx}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export function EditableTable<TRow extends EditableRow>({
   columns,
   detailColumns,
@@ -608,6 +780,8 @@ export function EditableTable<TRow extends EditableRow>({
     tone: "ok" | "warn";
   } | null>(null);
   const pasteNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightedIssueRowId, setHighlightedIssueRowId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showPasteNotice = useCallback((text: string, tone: "ok" | "warn") => {
     setPasteNotice({ text, tone });
@@ -618,6 +792,7 @@ export function EditableTable<TRow extends EditableRow>({
   useEffect(
     () => () => {
       if (pasteNoticeTimer.current) clearTimeout(pasteNoticeTimer.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     },
     []
   );
@@ -724,6 +899,63 @@ export function EditableTable<TRow extends EditableRow>({
   // No drawer in spreadsheet mode, so no expand control and no detail row.
   const isExpandable = !spreadsheetMode && (!!detailColumns || !!renderDetail);
   const deleteDialogRow = deleteDialogIndex === null ? null : data[deleteDialogIndex] ?? null;
+  const desktopRowRefs = useRef<Record<string, HTMLElement | null>>({});
+  const mobileRowRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const requiredColumns = useMemo(
+    () => allColumns.filter((column) => column.required),
+    [allColumns]
+  );
+
+  const attentionIssues = useMemo<AttentionIssue[]>(() => {
+    if (requiredColumns.length === 0 || data.length === 0) return [];
+
+    const issues: AttentionIssue[] = [];
+    data.forEach((row, rowIdx) => {
+      const rowValues = row as Record<string, unknown>;
+      for (const column of requiredColumns) {
+        if (!hasMeaningfulCellValue(rowValues[column.key])) {
+          issues.push({
+            id: `${row.id || `row-${rowIdx}`}-${column.key}`,
+            rowIdx,
+            column,
+          });
+        }
+      }
+    });
+    return issues;
+  }, [requiredColumns, data]);
+
+  const hasRequiredCompletionSignal = requiredColumns.length > 0;
+  const showCompleteState = hasRequiredCompletionSignal && data.length > 0 && attentionIssues.length === 0;
+  const firstAttentionIssue = attentionIssues[0];
+  const attentionPreview = attentionIssues.slice(0, 3);
+
+  const jumpToIssue = (issue = firstAttentionIssue) => {
+    if (!issue) return;
+    const rowId = sortableIds[issue.rowIdx];
+    if (!rowId) return;
+    if (isExpandable && !isRowExpanded(rowId)) {
+      setToggledRowIds((prev) => {
+        const next = new Set(prev);
+        if (spreadsheetMode) {
+          next.add(rowId);
+        } else {
+          next.delete(rowId);
+        }
+        return next;
+      });
+    }
+    setHighlightedIssueRowId(rowId);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedIssueRowId(null), 3000);
+    window.requestAnimationFrame(() => {
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+      const row = (isMobile ? mobileRowRefs : desktopRowRefs).current[rowId];
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+      row?.focus({ preventScroll: true });
+    });
+  };
 
   const handleDeleteClick = (rowId: string, rowIdx: number) => {
     if (confirmingDeleteId === rowId) {
@@ -931,7 +1163,9 @@ export function EditableTable<TRow extends EditableRow>({
     [persistWidths]
   );
 
-  // The table is as wide as its columns need; the container scrolls.
+  // The table is at least as wide as its columns need, but it should also fill
+  // the available work surface. Without the `max(100%, …)` minimum, a compact
+  // two-column custom tab can render as a narrow strip inside a wide CRM page.
   const totalGridWidth = useMemo(() => {
     if (!spreadsheetMode) return 0;
     const leading = (bulkEnabled ? 44 : 0) + (isExpandable || canReorder ? 56 : 44);
@@ -1019,6 +1253,49 @@ export function EditableTable<TRow extends EditableRow>({
           extraExport={csvConfig.extraExport}
         />
       )}
+      {showCompleteState && (
+        <div className="mb-2 flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Section complete</p>
+            <p className="mt-0.5 text-xs text-green-800">All required fields in this table are filled.</p>
+          </div>
+        </div>
+      )}
+      {attentionIssues.length > 0 && (
+        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-medium">Needs attention: {attentionIssues.length} required field{attentionIssues.length === 1 ? "" : "s"} blank</p>
+                <ul className="mt-1 space-y-0.5 text-xs text-amber-900">
+                  {attentionPreview.map((issue) => (
+                    <li key={issue.id}>
+                      Row {issue.rowIdx + 1}: {issue.column.label} is blank
+                    </li>
+                  ))}
+                </ul>
+                {attentionIssues.length > attentionPreview.length && (
+                  <p className="mt-1 text-xs text-amber-900">
+                    +{attentionIssues.length - attentionPreview.length} more required field{attentionIssues.length - attentionPreview.length === 1 ? "" : "s"}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => jumpToIssue()}
+              className="h-8 shrink-0 border-amber-300 bg-white text-xs text-amber-950 hover:bg-amber-100"
+            >
+              <ArrowDownCircle className="mr-1.5 h-3.5 w-3.5" />
+              Jump to first issue
+            </Button>
+          </div>
+        </div>
+      )}
       {pasteNotice && (
         <div
           role="status"
@@ -1049,7 +1326,106 @@ export function EditableTable<TRow extends EditableRow>({
           isBusy={bulkBusy}
         />
       )}
-    <div className="rounded-lg border">
+      {spreadsheetMode && (
+        <div className="space-y-3 md:hidden">
+          {sampleRow && (
+            <div className="rounded-lg border border-brand-lavender/30 bg-brand-lavender-lightest p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-lavender-darker">
+                Sample row
+              </p>
+              <div className="mt-3 space-y-2">
+                {gridColumns.map((col) => (
+                  <div key={col.key}>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {col.label}
+                    </p>
+                    <p className="mt-0.5 break-words text-sm text-brand-lavender-darker">
+                      {sampleRow[col.key] || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                {hasRequiredCompletionSignal
+                  ? `Add a row to start filling ${requiredColumns.length} required field${requiredColumns.length === 1 ? "" : "s"}.`
+                  : "Nothing here yet."}
+                {sampleRow && !hasRequiredCompletionSignal ? " The row above is an example, not your data." : ""}
+              </p>
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onAdd}
+                  className="mt-4 border-primary/40 text-primary hover:border-primary/70"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  {hasRequiredCompletionSignal ? `${addLabel} to start` : addLabel}
+                </Button>
+              )}
+            </div>
+          ) : (
+            data.map((row, rowIdx) => {
+              const rowId = row.id;
+              const bulkRow: BulkRowContext | undefined =
+                bulkEnabled && rowId
+                  ? {
+                      enabled: true,
+                      isSelected: bulkSelection.isSelected(rowId),
+                      onToggle: (e) =>
+                        bulkSelection.toggle(rowId, {
+                          index: rowIdx,
+                          shiftKey: e.shiftKey,
+                          allIds: selectableIds,
+                        }),
+                    }
+                  : bulkEnabled
+                    ? { enabled: true, isSelected: false, onToggle: () => {} }
+                    : undefined;
+
+              return (
+                <MobileSpreadsheetRow
+                  key={row.id || rowIdx}
+                  row={row}
+                  rowIdx={rowIdx}
+                  rowRef={(node: HTMLElement | null) => {
+                    mobileRowRefs.current[sortableIds[rowIdx]] = node;
+                  }}
+                  columns={gridColumns}
+                  onUpdate={onUpdate}
+                  onDuplicate={onDuplicate}
+                  onDelete={deleteConfirmation ? setDeleteDialogIndex : onDelete}
+                  isReadOnly={isReadOnly}
+                  rowIsActive={allColumns.some((col) =>
+                    hasCellValue(
+                      (row as Record<string, string | boolean | null | undefined>)[col.key]
+                    )
+                  )}
+                  renderCellPrefix={renderCellPrefix}
+                  renderCell={renderCell}
+                  bulkRow={bulkRow}
+                  isIssueHighlighted={highlightedIssueRowId === sortableIds[rowIdx]}
+                />
+              );
+            })
+          )}
+
+          {!isReadOnly && !hideAddButton && data.length > 0 && (
+            <div className="rounded-lg border border-dashed border-border p-2">
+              <Button variant="outline" size="sm" onClick={onAdd} className="w-full text-primary border-primary/30 hover:border-primary/60">
+                <Plus className="mr-1 h-4 w-4" />
+                {addLabel}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+    <div className={cn("rounded-lg border", spreadsheetMode && "hidden md:block overflow-hidden bg-white")}>
       <div className="relative">
         {spreadsheetMode && moreColumnsRight && (
           <>
@@ -1072,17 +1448,33 @@ export function EditableTable<TRow extends EditableRow>({
           className={cn(spreadsheetMode && "table-fixed")}
           style={
             spreadsheetMode
-              ? { width: Math.max(totalGridWidth, 0) || undefined }
+              ? {
+                  width:
+                    totalGridWidth > 0
+                      ? `max(100%, ${totalGridWidth}px)`
+                      : "100%",
+                }
               : undefined
           }
         >
           <TableHeader>
-            <TableRow ref={headerRowRef} className="bg-primary hover:bg-primary">
+            <TableRow
+              ref={headerRowRef}
+              className={cn(
+                spreadsheetMode
+                  ? "bg-slate-100 hover:bg-slate-100"
+                  : "bg-primary hover:bg-primary"
+              )}
+            >
               {bulkEnabled && (
                 <TableHead
                   className={cn(
-                    "w-10 text-center text-white",
-                    stickyColumns && "sticky left-0 top-0 z-30 bg-primary"
+                    "w-10 text-center",
+                    spreadsheetMode ? "text-slate-600" : "text-white",
+                    stickyColumns &&
+                      (spreadsheetMode
+                        ? "sticky left-0 top-0 z-30 bg-slate-100"
+                        : "sticky left-0 top-0 z-30 bg-primary")
                   )}
                 >
                   <Checkbox
@@ -1100,9 +1492,13 @@ export function EditableTable<TRow extends EditableRow>({
               )}
               <TableHead
                 className={cn(
-                  "text-center text-white",
+                  "text-center",
+                  spreadsheetMode ? "text-slate-600" : "text-white",
                   isExpandable || canReorder ? "w-14" : "w-10",
-                  stickyColumns && "sticky top-0 z-30 bg-primary"
+                  stickyColumns &&
+                    (spreadsheetMode
+                      ? "sticky top-0 z-30 bg-slate-100"
+                      : "sticky top-0 z-30 bg-primary")
                 )}
                 style={stickyColumns ? { left: numColLeft } : undefined}
               >
@@ -1126,13 +1522,16 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableHead
                   key={col.key}
                   className={cn(
-                    "text-white text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    "text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    spreadsheetMode ? "text-slate-600" : "text-white",
                     spreadsheetMode && "relative",
                     stickyColumns && [
-                      "sticky top-0 bg-primary",
+                      spreadsheetMode ? "sticky top-0 bg-slate-100" : "sticky top-0 bg-primary",
                       // Border-collapse drops borders on sticky cells, so the
                       // header/body separator is drawn as an inset shadow.
-                      "shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)]",
+                      spreadsheetMode
+                        ? "shadow-[inset_0_-1px_0_rgb(226,232,240)]"
+                        : "shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)]",
                       colIdx === 0 ? "z-30" : "z-20",
                     ]
                   )}
@@ -1142,7 +1541,7 @@ export function EditableTable<TRow extends EditableRow>({
                   }}
                 >
                   <span className="inline-flex items-center gap-1">
-                    {renderColumnLabel(col, "text-red-200")}
+                    {renderColumnLabel(col, spreadsheetMode ? "text-red-500" : "text-red-200")}
                     {col.description && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1151,7 +1550,12 @@ export function EditableTable<TRow extends EditableRow>({
                             // A dotted underline on white text over a dark
                             // header is nearly invisible; an explicit icon is
                             // discoverable and keyboard-reachable.
-                            className="inline-flex shrink-0 cursor-help items-center rounded-full text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70"
+                            className={cn(
+                              "inline-flex shrink-0 cursor-help items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1",
+                              spreadsheetMode
+                                ? "text-slate-400 hover:text-slate-600 focus-visible:ring-slate-400"
+                                : "text-white/70 hover:text-white focus-visible:ring-white/70"
+                            )}
                             aria-label={`About ${col.label}`}
                           >
                             <Info className="h-3.5 w-3.5" />
@@ -1159,7 +1563,10 @@ export function EditableTable<TRow extends EditableRow>({
                         </TooltipTrigger>
                         <TooltipContent
                           side="bottom"
-                          className="max-w-sm bg-slate-800 text-slate-50"
+                          className={cn(
+                            "max-w-sm",
+                            !spreadsheetMode && "bg-slate-800 text-slate-50"
+                          )}
                         >
                           <div className="space-y-1 text-xs leading-relaxed">
                             {col.description}
@@ -1178,8 +1585,11 @@ export function EditableTable<TRow extends EditableRow>({
                       title="Drag to resize · double-click to reset"
                       className={cn(
                         "absolute right-0 top-0 z-10 flex h-full w-2 cursor-col-resize touch-none items-center justify-center",
-                        "before:h-1/2 before:w-px before:bg-white/30 before:transition-colors hover:before:bg-white",
-                        resizingKey === col.key && "before:bg-white"
+                        spreadsheetMode
+                          ? "before:h-1/2 before:w-px before:bg-slate-300 before:transition-colors hover:before:bg-slate-500"
+                          : "before:h-1/2 before:w-px before:bg-white/30 before:transition-colors hover:before:bg-white",
+                        resizingKey === col.key &&
+                          (spreadsheetMode ? "before:bg-slate-500" : "before:bg-white")
                       )}
                     />
                   )}
@@ -1188,8 +1598,12 @@ export function EditableTable<TRow extends EditableRow>({
               {!isReadOnly && (
                 <TableHead
                   className={cn(
-                    "w-10 text-white",
-                    stickyColumns && "sticky top-0 z-20 bg-primary"
+                    "w-10",
+                    spreadsheetMode ? "text-slate-600" : "text-white",
+                    stickyColumns &&
+                      (spreadsheetMode
+                        ? "sticky top-0 z-20 bg-slate-100"
+                        : "sticky top-0 z-20 bg-primary")
                   )}
                 />
               )}
@@ -1256,8 +1670,10 @@ export function EditableTable<TRow extends EditableRow>({
                   {emptyMessage ?? (
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-sm text-muted-foreground">
-                        Nothing here yet
-                        {sampleRow ? " — the row above is an example, not your data." : "."}
+                        {hasRequiredCompletionSignal
+                          ? `Add a row to start filling ${requiredColumns.length} required field${requiredColumns.length === 1 ? "" : "s"}.`
+                          : "Nothing here yet."}
+                        {sampleRow && !hasRequiredCompletionSignal ? " The row above is an example, not your data." : ""}
                       </p>
                       {!isReadOnly && (
                         <Button
@@ -1267,7 +1683,7 @@ export function EditableTable<TRow extends EditableRow>({
                           className="border-primary/40 text-primary hover:border-primary/70"
                         >
                           <Plus className="mr-1 h-4 w-4" />
-                          {addLabel}
+                          {hasRequiredCompletionSignal ? `${addLabel} to start` : addLabel}
                         </Button>
                       )}
                     </div>
@@ -1297,6 +1713,9 @@ export function EditableTable<TRow extends EditableRow>({
                   key={row.id || rowIdx}
                   row={row}
                   rowIdx={rowIdx}
+                  rowRef={(node: HTMLElement | null) => {
+                    desktopRowRefs.current[sortableIds[rowIdx]] = node;
+                  }}
                   columns={gridColumns}
                   detailColumns={spreadsheetMode ? undefined : detailColumns}
                   isExpanded={isRowExpanded(sortableIds[rowIdx])}
@@ -1321,6 +1740,7 @@ export function EditableTable<TRow extends EditableRow>({
                   numColLeft={numColLeft}
                   firstDataColLeft={firstDataColLeft}
                   stickyColumns={stickyColumns}
+                  isIssueHighlighted={highlightedIssueRowId === sortableIds[rowIdx]}
                   detailFilledCount={
                     detailColumns && !spreadsheetMode
                       ? {

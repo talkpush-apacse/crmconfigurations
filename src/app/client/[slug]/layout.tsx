@@ -108,19 +108,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         ),
       );
 
-  const tabsWithData = enabledTabs.filter((t) => t.dataKey || t.customTabId);
-  const filledCount = isCustom
-    ? 0
-    : tabsWithData.filter((t) => {
-        if (t.customTabId) {
-          const ct = customTabs?.find((c) => c.id === t.customTabId);
-          return ct ? getCustomTabSectionState(ct, customData) !== "not-started" : false;
-        }
-        const val = (data as ChecklistData)[t.dataKey as keyof ChecklistData];
-        return getSectionState(val, t.dataKey) !== "not-started";
-      }).length;
-  const totalCount = isCustom ? 0 : tabsWithData.length;
-
   const tabUploadMeta = (data.tabUploadMeta as TabUploadMetaMap | null) ?? null;
 
   const navItems: NavItem[] = enabledTabs.map((tab) => {
@@ -154,8 +141,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           saveStatus={saveStatus}
           saveError={saveError}
           onRetrySave={retrySave}
-          filledCount={filledCount}
-          totalCount={totalCount}
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
           onSave={publishChanges}

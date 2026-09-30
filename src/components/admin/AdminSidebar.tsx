@@ -30,7 +30,7 @@ export function AdminSidebar() {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col shrink-0 border-r border-gray-200 bg-white transition-[width] duration-200 overflow-hidden",
+        "hidden md:flex flex-col shrink-0 border-r border-border bg-card transition-[width] duration-200 overflow-hidden",
         collapsed ? "w-12" : "w-48"
       )}
     >
@@ -53,7 +53,7 @@ export function AdminSidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-gray-100 p-2">
+      <div className="border-t border-border p-2">
         <button
           onClick={toggle}
           className="flex w-full items-center justify-center rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

@@ -83,6 +83,25 @@ model ChecklistSnapshot {
   @@index([checklistId, archived])
 }
 
+model RequirementsTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  category       String?
+  tabName        String
+  tabDescription String?
+  tabIcon        String?
+  fields         Json
+  validationGroups Json?
+  version        Int      @default(1)
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([archived, updatedAt])
+  @@index([name])
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique

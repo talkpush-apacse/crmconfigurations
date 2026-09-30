@@ -77,13 +77,13 @@ export function SourcesSheet() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCsvImport = (rows: Record<string, any>[]) => {
+  const handleCsvImport = (rows: Record<string, any>[], mode: "append" | "replace") => {
     const newRows = rows.map((row) => ({
       id: uid(),
       category: "", subcategory: "", link: "", comments: "",
       ...row,
     }));
-    updateField("sources", [...allSources, ...newRows]);
+    updateField("sources", mode === "replace" ? [...allSources.filter((row) => row.deletedAt), ...newRows] : [...allSources, ...newRows]);
   };
 
   return (

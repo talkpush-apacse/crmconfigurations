@@ -88,7 +88,22 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   const rows = (customTab.rows ?? []) as CustomTabRow[];
   // Memoised so the row handlers below keep stable identities across renders.
   const columns = useMemo(() => customTab.columns ?? [], [customTab.columns]);
-  const columnDefs = useMemo(() => buildColumnDefs(columns), [columns]);
+  const columnDefs = useMemo(() => {
+    const defs = buildColumnDefs(columns);
+    if (defs.length !== 2) return defs;
+
+    const [first, second] = defs;
+    const isSettingsPair =
+      first.label.trim().toLowerCase() === "setting" &&
+      second.label.trim().toLowerCase() === "value";
+
+    if (!isSettingsPair) return defs;
+
+    return [
+      { ...first, width: first.width ?? 460 },
+      { ...second, width: second.width ?? 560 },
+    ];
+  }, [columns]);
   const sampleRow = useMemo(() => buildSampleRow(columns), [columns]);
   // The pinned example row is only worth the vertical space when someone wrote
   // real examples for this tab; a row of generic "10" / "2026-01-31" filler
@@ -162,10 +177,10 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
     return row;
   }, [columns]);
 
-  // Appends CSV rows. parseCsv matches on column label, so a file produced by
+  // parseCsv matches on column label, so a file produced by
   // "Download CSV Template" round-trips without editing the headers.
   const handleCsvImport = useCallback(
-    (imported: Record<string, unknown>[]) => {
+    (imported: Record<string, unknown>[], mode: "append" | "replace") => {
       updateTab((tab) => {
         const cols = tab.columns ?? [];
         const newRows: CustomTabRow[] = imported.map((row) => {
@@ -182,7 +197,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
           }
           return next;
         });
-        return { ...tab, rows: [...(tab.rows ?? []), ...newRows] };
+        return { ...tab, rows: mode === "replace" ? newRows : [...(tab.rows ?? []), ...newRows] };
       });
     },
     [updateTab]

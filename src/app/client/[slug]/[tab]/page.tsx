@@ -9,6 +9,7 @@ import {
   excludeTalkpushTabs,
 } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { getCustomTabMode } from "@/lib/custom-tab-service";
 import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
 import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
 import { UserListSheet } from "@/components/sheets/UserListSheet";
@@ -107,7 +108,7 @@ export default function TabPage() {
   // Custom tab on a standard checklist
   if (customTab) {
     // Table-based tabs (created via MCP) have columns defined
-    if (customTab.columns !== undefined) {
+    if (getCustomTabMode(customTab) === "table") {
       return <CustomTabSheet customTab={customTab} />;
     }
     // Form-based tabs (created via admin UI) use the legacy renderer

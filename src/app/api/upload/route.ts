@@ -5,6 +5,8 @@ import { sendOwnerNotification } from "@/lib/email";
 import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { buildClientTabUrl, getNotificationTabMeta } from "@/lib/notifications";
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
+import { getCustomFieldKey, validateFileValue } from "@/lib/custom-tab-service";
+import type { CustomTab } from "@/lib/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = [
@@ -14,6 +16,8 @@ const ALLOWED_TYPES = [
   "image/webp",
   "image/svg+xml",
   "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   // Excel + CSV — used by tab-upload banner ("Skip manual entry")
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
@@ -43,6 +47,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File | null;
     const rawFolder = (formData.get("folder") as string) || "general";
     const tabKey = (formData.get("tabKey") as string) || "";
+    const customTabId = (formData.get("customTabId") as string) || "";
+    const fieldKey = (formData.get("fieldKey") as string) || "";
     const folder: AllowedFolder = (ALLOWED_FOLDERS as readonly string[]).includes(rawFolder)
       ? (rawFolder as AllowedFolder)
       : "general";
@@ -116,9 +122,46 @@ export async function POST(request: NextRequest) {
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: `File type '${file.type}' is not allowed. Accepted: images and PDF.` },
+        { error: `File type '${file.type}' is not allowed. Accepted: images, PDF, Word documents, and spreadsheets/CSV for tab uploads.` },
         { status: 400 }
       );
+    }
+
+    if (customTabId && fieldKey) {
+      const slug = (formData.get("slug") as string) || "";
+      const editorToken = (formData.get("editorToken") as string) || "";
+      const checklist = editorToken
+        ? await prisma.checklist.findUnique({
+            where: { editorToken },
+            select: { customTabs: true },
+          })
+        : slug
+          ? await prisma.checklist.findUnique({
+              where: { slug },
+              select: { customTabs: true },
+            })
+          : null;
+
+      const customTabs = (checklist?.customTabs ?? []) as unknown as CustomTab[];
+      const customTab = customTabs.find((tab) => tab.id === customTabId);
+      const field = customTab?.fields?.find((candidate) => getCustomFieldKey(candidate) === fieldKey);
+      if (!customTab || !field || field.type !== "file") {
+        return NextResponse.json(
+          { error: "Custom file field not found for this checklist." },
+          { status: 400 }
+        );
+      }
+
+      const validationErrors = validateFileValue(field, {
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        url: "https://pending-upload.local/file",
+        uploadedAt: new Date().toISOString(),
+      });
+      if (validationErrors.length > 0) {
+        return NextResponse.json({ error: validationErrors.join(" ") }, { status: 400 });
+      }
     }
 
     // Sanitize filename and create unique path
@@ -166,7 +209,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response = NextResponse.json({ url: urlData.publicUrl });
+    const response = NextResponse.json({
+      url: urlData.publicUrl,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    });
     scheduleNotificationSweep(requestOrigin);
     return response;
   } catch (err) {
