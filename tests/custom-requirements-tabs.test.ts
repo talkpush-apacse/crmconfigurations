@@ -12,6 +12,13 @@ import {
   validateCustomTabsData,
 } from "../src/lib/custom-tab-service";
 import { scanChecklistForAttachments } from "../src/lib/mcp/attachments";
+import {
+  buildCustomTabFromTemplate,
+  serializeRequirementsTemplate,
+  summarizeRequirementsTemplate,
+  uniqueCustomTabSlug,
+  type RequirementsTemplateRecord,
+} from "../src/lib/requirements-template-service";
 import type { CustomTab } from "../src/lib/types";
 
 function makeId() {
@@ -254,4 +261,48 @@ test("partial server validation allows incomplete required fields but rejects ma
   });
   assert.equal(errors.length, 1);
   assert.match(errors[0], /URL/);
+});
+
+test("requirements template service snapshots schema into a unique form tab", () => {
+  const sourceTab = makeRequirementsTab();
+  const template: RequirementsTemplateRecord = {
+    id: "tpl_referral_portal",
+    name: "Referral Portal Phase One Requirements",
+    description: "Reusable phase-one questionnaire.",
+    category: "Referral Portal",
+    tabName: sourceTab.label,
+    tabDescription: sourceTab.description ?? null,
+    tabIcon: "FileText",
+    fields: sourceTab.fields,
+    validationGroups: sourceTab.validationGroups,
+    version: 3,
+    archived: false,
+    createdAt: new Date("2026-09-30T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-30T00:00:00.000Z"),
+  };
+
+  const serialized = serializeRequirementsTemplate(template);
+  assert.equal(serialized.fields.length, sourceTab.fields.length);
+  assert.deepEqual(summarizeRequirementsTemplate(serialized), {
+    fieldCount: 6,
+    requiredFieldCount: 4,
+    attachmentFieldCount: 1,
+    repeaterFieldCount: 1,
+    validationGroupCount: 1,
+  });
+
+  assert.equal(
+    uniqueCustomTabSlug(sourceTab.label, [sourceTab]),
+    "referral-portal-phase-one-requirements-2",
+  );
+
+  const applied = buildCustomTabFromTemplate(template, [sourceTab]);
+  assert.equal(applied.urlSlug, "custom-referral-portal-phase-one-requirements-2");
+  assert.equal(applied.customTab.mode, "form");
+  assert.deepEqual(applied.customTab.templateSource, {
+    templateId: "tpl_referral_portal",
+    version: 3,
+  });
+  assert.equal(applied.customTab.fields[0].key, "referral_policy");
+  assert.equal(applied.customTab.validationGroups?.[0].id, "referral_policy_requirement");
 });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardList, LayoutList, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -25,6 +25,7 @@ export function AdminSidebar() {
 
   const navItems = [
     { href: "/admin", label: "Checklists", icon: LayoutList },
+    { href: "/admin/requirements-templates", label: "Templates", icon: ClipboardList },
   ];
 
   return (

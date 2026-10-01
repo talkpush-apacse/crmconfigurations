@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
+import { ApplyRequirementsTemplateSheet } from "@/components/admin/ApplyRequirementsTemplateSheet";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -140,6 +141,22 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
             />
           )}
           <div className="flex flex-1 flex-col overflow-hidden">
+            {!isCustom && (
+              <div className="border-b bg-background/95 px-4 py-3 sm:px-6 lg:px-8 xl:px-10">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Requirements forms</p>
+                    <p className="text-xs text-muted-foreground">
+                      Apply a reusable questionnaire as a new client-facing custom tab.
+                    </p>
+                  </div>
+                  <ApplyRequirementsTemplateSheet
+                    checklistId={id}
+                    clientName={data.clientName}
+                  />
+                </div>
+              </div>
+            )}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
             </main>
