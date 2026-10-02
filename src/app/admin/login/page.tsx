@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
         throw new Error(errorMsg);
       }
 
-      router.push("/admin");
+      router.push("/admin/home");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
