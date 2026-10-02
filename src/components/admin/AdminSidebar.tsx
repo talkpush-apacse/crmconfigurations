@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutList, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardList, LayoutList, ChevronLeft, ChevronRight, FolderKanban, Building2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getActiveModule } from "@/lib/modules";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
 
@@ -23,10 +24,18 @@ export function AdminSidebar() {
     });
   };
 
-  const navItems = [
-    { href: "/admin", label: "Checklists", icon: LayoutList },
-    { href: "/admin/requirements-templates", label: "Templates", icon: ClipboardList },
+  const checklistNav = [
+    { href: "/admin", label: "Checklists", icon: LayoutList, exact: true },
+    { href: "/admin/requirements-templates", label: "Templates", icon: ClipboardList, exact: true },
   ];
+  const trackerNav = [
+    { href: "/admin/tracker", label: "Portfolio", icon: FolderKanban, exact: true },
+    { href: "/admin/tracker/accounts", label: "Accounts", icon: Building2, exact: false },
+    { href: "/admin/tracker/team", label: "Team", icon: Users, exact: false },
+  ];
+  const navItems = getActiveModule(pathname) === "tracker" ? trackerNav : checklistNav;
+  const isActive = (item: { href: string; exact: boolean }) =>
+    item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
   return (
     <aside
@@ -42,7 +51,7 @@ export function AdminSidebar() {
             href={item.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              pathname === item.href
+              isActive(item)
                 ? "bg-primary/10 font-medium text-primary"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}

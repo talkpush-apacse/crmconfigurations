@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
           data: { googleId },
         });
 
-    const response = NextResponse.redirect(new URL("/admin", request.url));
+    const response = NextResponse.redirect(new URL("/admin/home", request.url));
     clearStateCookie(response);
     setAdminSessionCookie(response, adminUser.id);
     return response;
