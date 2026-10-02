@@ -267,3 +267,53 @@ select:not([data-slot]):focus {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
 }
+
+
+/* ---- Exec summary palettes (see DESIGN.md "The Two Contexts Rule") ----
+   The staff face uses the Sign product accents. Anything a client sees uses the
+   canonical executive-report accents. Components read only the --es-* names, so
+   the two contexts can never be mixed on one page. */
+.es-staff {
+  --es-bg: var(--background);
+  --es-card: var(--card);
+  --es-ink: var(--foreground);
+  --es-muted: var(--muted-foreground);
+  --es-line: var(--border);
+  --es-stripe: var(--secondary);
+  --es-green: var(--brand-sage);
+  --es-green-soft: var(--brand-sage-lightest);
+  --es-green-strong: var(--brand-sage-darker);
+  --es-blue: var(--brand-lavender);
+  --es-blue-soft: var(--brand-lavender-lightest);
+  --es-pink: var(--brand-pink);
+  --es-pink-soft: var(--brand-pink-lightest);
+  --es-orange: var(--brand-amber);
+  --es-orange-soft: var(--brand-amber-lightest);
+  --es-orange-ink: var(--foreground);
+  --es-red: var(--destructive);
+}
+.es-client {
+  --es-bg: #FFFFF5;
+  --es-card: #FFFFFF;
+  --es-ink: #1A1A1A;
+  --es-muted: #6B6B6B;
+  --es-line: #E8E4D2;
+  --es-stripe: #F8F8EE;
+  --es-green: #ACCDB5;
+  --es-green-soft: #DCEAE0;
+  --es-green-strong: #88A88C;
+  --es-blue: #BBCAF0;
+  --es-blue-soft: #DFE5F7;
+  --es-pink: #E8C2EF;
+  --es-pink-soft: #F4E0F7;
+  --es-orange: #E8B766;
+  --es-orange-soft: #F4DBB2;
+  --es-orange-ink: #7A4F1E;
+  --es-red: #D1483D;
+  background: var(--es-bg);
+  background-image: none; /* client face is flat beige, never a gradient (DESIGN.md) */
+}
+
+/* Gradient strip: Sign order for staff, report order (green, blue, pink, orange) for clients. */
+.es-staff .es-gradient { background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5); }
+.es-client .es-gradient { background: linear-gradient(90deg, #ACCDB5 0%, #BBCAF0 33%, #E8C2EF 66%, #E8B766 100%); }

@@ -71,3 +71,52 @@ Run it every 5 minutes from any external scheduler such as GitHub Actions or cro
 - `failed`
 - `skippedRateLimited`
 - `skippedVersionConflict`
+
+## Project Tracker
+
+A second module next to the CRM Config Checklist. After login you land on `/admin/home` and pick a module.
+The tracker follows client implementation projects: accounts, projects, phases, open items (status, owner,
+dates, dependencies, remarks), success metrics, and what clients may see.
+
+- **Staff pages:** `/admin/tracker` (Portfolio, Accounts, Team) and `/admin/tracker/projects/[id]` with
+  Summary, List, Board, Timeline, Metrics and Activity tabs.
+- **Client links:** read-only `/share/<private link>`, created from a project's **Share** button. Links expire
+  (90 days by default), can be revoked, and only ever show client-visible items, metrics and shared remarks.
+  Design rules: `DESIGN.md` (staff = Talkpush Sign palette, client = executive-report palette).
+- **Claude (MCP):** `/api/mcp/tracker`, with its own key. See `.claude/skills/project-tracker-mcp/SKILL.md`.
+- **Code layout:** all rules live in `src/lib/tracker/` (pure, tested functions plus a thin database layer).
+  The website, the staff API (`src/app/api/tracker/**`) and the MCP tools all call the same layer.
+
+### Environment variables
+
+| Name | Purpose |
+|---|---|
+| `TRACKER_MCP_API_KEY` | Key for `/api/mcp/tracker` (24+ characters; keep separate from `MCP_API_KEY`) |
+| `TRACKER_TIMEZONE` | Optional IANA time zone for "today" (default UTC), for example `Asia/Manila` |
+
+### Local development (read this: `npm run dev` can hit live data)
+
+`.env.local` points `DATABASE_URL_DIRECT` at the production Supabase database, and Next.js loads it over `.env`.
+Do not develop against it. Create a gitignored `.env.development.local` that overrides the database URL with a
+local Postgres (SSL on, because `src/lib/db.ts` always uses SSL), and blank the Supabase storage keys so uploads
+cannot reach the live bucket. Load the schema into the local database with:
+
+```bash
+npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script | psql <local-url>
+```
+
+(`prisma migrate deploy` cannot build a fresh database: two old migrations share a timestamp.)
+
+Useful scripts (all refuse to run unless the database is on localhost):
+
+```bash
+npx tsx scripts/seed-tracker-demo.ts          # one clearly fake demo project
+npx tsx scripts/smoke-tracker-mcp.ts <url>    # 20 checks against the MCP endpoint
+npx tsx scripts/check-share-links.ts          # share-link create, resolve, expire, revoke
+npx tsx scripts/check-share-route.ts <url>    # public client link, over real HTTP
+```
+
+### Releasing
+
+See [docs/project-tracker-release.md](docs/project-tracker-release.md): the Supabase SQL (additive, re-runnable,
+rehearsed), Vercel variables, verification steps and rollback.
