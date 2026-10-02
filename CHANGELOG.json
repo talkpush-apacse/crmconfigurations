@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.2",
+    "name": "Version 3.2 - Project Tracker",
+    "changes": [
+      "Added the Project Tracker module next to the CRM Config Checklist, with a module picker after login and a module switcher in the header",
+      "Accounts, client contacts and vendors; projects with phases, dates, health and reschedule history",
+      "Open items with status, owner, dates, dependencies, remarks and client visibility; List, Board (drag and drop), Timeline (Gantt) and Activity views",
+      "Executive summary and success metrics (baseline, current, target, history) with a plain-language headline and charts",
+      "Read-only private client links with expiry and revoke, showing only client-visible information",
+      "Claude can read and update projects through a new MCP endpoint (/api/mcp/tracker) with its own key; there is no delete tool",
+      "Database: 11 new tables only, applied with supabase/migrations/20261002120000_add_project_tracker.sql"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.1",
     "name": "Version 3.1 - Light Sidebar",
     "changes": [

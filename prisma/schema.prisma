@@ -109,3 +109,249 @@ model AdminUser {
   googleId     String?  @unique
   createdAt    DateTime @default(now())
 }
+
+// =============================================================================
+// Project Tracker (additive: new tables only, nothing above this line changes)
+// Status-like fields are plain strings validated in code (src/lib/tracker),
+// matching how this schema already stores values, and so a new status can be
+// added later without a database enum migration.
+// Dates that mean "a calendar day" use @db.Date so time zones cannot shift them.
+// =============================================================================
+
+model TrackerAccount {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  notes     String?
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  people    TrackerPerson[]
+  projects  TrackerProject[]
+
+  @@index([name])
+}
+
+// A person who can own items. accountId null = Talkpush staff.
+// side: talkpush | client | vendor
+model TrackerPerson {
+  id            String   @id @default(cuid())
+  accountId     String?
+  account       TrackerAccount? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  side          String
+  name          String
+  email         String?
+  title         String?
+  organisation  String?
+  adminUserId   String?  // loose link to AdminUser.id, deliberately not a foreign key
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownedItems       TrackerItem[]      @relation("ItemOwner")
+  sponsoredProjects TrackerProject[]  @relation("ProjectSponsor")
+  ownedProjects    TrackerProject[]   @relation("ProjectOwner")
+  shareLinks       TrackerShareLink[]
+
+  @@index([accountId])
+  @@index([side])
+}
+
+// status: planned | active | on_hold | completed
+// healthOverride: on_track | at_risk | off_track (null = calculated)
+model TrackerProject {
+  id                  String   @id @default(cuid())
+  accountId           String
+  account             TrackerAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  title               String
+  objective           String?
+  status              String   @default("planned")
+  startDate           DateTime? @db.Date
+  targetDate          DateTime? @db.Date
+  originalTargetDate  DateTime? @db.Date
+  goLiveDate          DateTime? @db.Date
+  rescheduleCount     Int      @default(0)
+  healthOverride      String?
+  healthOverrideNote  String?
+  sponsorPersonId     String?
+  sponsor             TrackerPerson? @relation("ProjectSponsor", fields: [sponsorPersonId], references: [id], onDelete: SetNull)
+  ownerPersonId       String?
+  owner               TrackerPerson? @relation("ProjectOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  checklistId         String?  // reference to Checklist.id, deliberately not a foreign key
+  archived            Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  phases     TrackerPhase[]
+  items      TrackerItem[]
+  metrics    TrackerMetric[]
+  shareLinks TrackerShareLink[]
+  activity   TrackerActivity[]
+
+  @@index([accountId])
+  @@index([status, archived])
+}
+
+model TrackerPhase {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String
+  sortOrder    Int      @default(0)
+  startDate    DateTime? @db.Date
+  endDate      DateTime? @db.Date
+  exitCriteria String?
+  createdAt    DateTime @default(now())
+
+  items TrackerItem[]
+
+  @@index([projectId, sortOrder])
+}
+
+// type: config | integration | uat | training | decision | risk | issue
+// priority: high | medium | low
+// status: not_started | in_progress | waiting_on_client | blocked | done | dropped
+// visibility: client_visible | internal
+// createdVia: web | mcp | client
+model TrackerItem {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId            String?
+  phase              TrackerPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  title              String
+  description        String?
+  type               String   @default("config")
+  priority           String   @default("medium")
+  status             String   @default("not_started")
+  visibility         String   @default("client_visible")
+  isMilestone        Boolean  @default(false)
+  ownerPersonId      String?
+  owner              TrackerPerson? @relation("ItemOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  startDate          DateTime? @db.Date
+  dueDate            DateTime? @db.Date
+  completedAt        DateTime?
+  blockerReason      String?
+  waitingOn          String?
+  externalDependency String?
+  links              Json     @default("[]")
+  checklistTabSlug   String?
+  sortOrder          Int      @default(0)
+  archived           Boolean  @default(false)
+  createdVia         String   @default("web")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  blockedBy TrackerItemDependency[] @relation("DependentItem")
+  blocks    TrackerItemDependency[] @relation("BlockingItem")
+  remarks   TrackerRemark[]
+
+  @@index([projectId, status])
+  @@index([projectId, sortOrder])
+  @@index([ownerPersonId])
+  @@index([dueDate])
+}
+
+// "itemId cannot finish until blockedByItemId is done"
+model TrackerItemDependency {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            TrackerItem @relation("DependentItem", fields: [itemId], references: [id], onDelete: Cascade)
+  blockedByItemId String
+  blockedByItem   TrackerItem @relation("BlockingItem", fields: [blockedByItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([itemId, blockedByItemId])
+  @@index([blockedByItemId])
+}
+
+// visibility: shared | internal (default internal)
+model TrackerRemark {
+  id          String   @id @default(cuid())
+  itemId      String
+  item        TrackerItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  body        String
+  visibility  String   @default("internal")
+  authorLabel String
+  createdVia  String   @default("web")
+  createdAt   DateTime @default(now())
+
+  @@index([itemId, createdAt])
+}
+
+// direction: higher_is_better | lower_is_better
+model TrackerMetric {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  unit          String
+  direction     String   @default("higher_is_better")
+  baselineValue Float?
+  baselineDate  DateTime? @db.Date
+  targetValue   Float?
+  currentValue  Float?
+  currentAsOf   DateTime? @db.Date
+  source        String?
+  visibility    String   @default("client_visible")
+  sortOrder     Int      @default(0)
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  readings TrackerMetricReading[]
+
+  @@index([projectId, sortOrder])
+}
+
+model TrackerMetricReading {
+  id         String   @id @default(cuid())
+  metricId   String
+  metric     TrackerMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+  value      Float
+  asOf       DateTime @db.Date
+  note       String?
+  createdVia String   @default("web")
+  createdAt  DateTime @default(now())
+
+  @@index([metricId, asOf])
+}
+
+// via: web | mcp | client
+model TrackerActivity {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entityType String
+  entityId   String
+  action     String
+  before     Json?
+  after      Json?
+  actorLabel String
+  via        String   @default("web")
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// kind: viewer | contributor. Only a hash of the secret link token is stored.
+model TrackerShareLink {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        String
+  personId    String?
+  person      TrackerPerson? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  label       String?
+  tokenHash   String   @unique
+  tokenHint   String?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
