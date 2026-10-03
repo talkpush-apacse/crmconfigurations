@@ -47,7 +47,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Talkpush CRM tools</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Talkpush Implementation Hub</p>
           <CardTitle className="text-xl">{problem ? "This connection cannot be made" : "Connect an app?"}</CardTitle>
         </CardHeader>
 

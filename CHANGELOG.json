@@ -1,5 +1,15 @@
 [
   {
+    "version": "3.4",
+    "name": "Version 3.4 - Talkpush Implementation Hub",
+    "changes": [
+      "The portal is now called Talkpush Implementation Hub: header, login, module picker, sign-in pages, admin page titles, footer and the home-screen name",
+      "The CRM Config Checklist and Project Tracker keep their names as modules inside the Hub",
+      "Client-facing checklist pages and notification emails are unchanged"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.3",
     "name": "Version 3.3 - Connect Claude by signing in",
     "changes": [

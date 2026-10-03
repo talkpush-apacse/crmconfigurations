@@ -78,11 +78,11 @@ export default function AdminChecklistTabPage() {
 
   useEffect(() => {
     if (isCustom && data?.clientName) {
-      document.title = `Custom Checklist - ${data.clientName} | Talkpush CRM`;
+      document.title = `Custom Checklist - ${data.clientName} | Talkpush Implementation Hub`;
     } else if (customTab && data?.clientName) {
-      document.title = `${customTab.label} - ${data.clientName} | Talkpush CRM`;
+      document.title = `${customTab.label} - ${data.clientName} | Talkpush Implementation Hub`;
     } else if (tabConfig && data?.clientName) {
-      document.title = `${tabConfig.label} - ${data.clientName} | Talkpush CRM`;
+      document.title = `${tabConfig.label} - ${data.clientName} | Talkpush Implementation Hub`;
     }
   }, [isCustom, tab, tabConfig, customTab, data?.clientName]);
 

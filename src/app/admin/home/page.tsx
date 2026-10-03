@@ -11,7 +11,7 @@ const ICONS: Record<ModuleId, typeof ClipboardList> = {
   tracker: FolderKanban,
 };
 
-export const metadata = { title: "Talkpush CRM" };
+export const metadata = { title: "Talkpush Implementation Hub" };
 
 export default async function AdminHomePage() {
   // Someone who started connecting Claude before signing in is sent back to finish it.
@@ -29,7 +29,7 @@ export default async function AdminHomePage() {
             <span aria-hidden="true" className="absolute right-6 top-20 h-2 w-2 rotate-45 bg-brand-amber opacity-50" />
             <div className="p-6 md:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Talkpush CRM portal
+                Talkpush Implementation Hub
               </p>
               <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
                 Pick a module to start

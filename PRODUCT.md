@@ -15,7 +15,7 @@ web
 - **Vendors** appear as owners of items. They do not log in (inferred).
 
 ## Product Purpose
-Two modules behind one login.
+**Talkpush Implementation Hub** is the name of the whole portal. Two modules behind one login.
 1. **CRM Config Checklist** (exists today): collects and tracks the configuration data Talkpush needs from a client to set up their CRM, then exports it and generates configurator steps.
 2. **Project Tracker** (being built): tracks client implementation projects. Accounts, projects, phases, open items with status, owner, dates and dependencies, remarks, and success metrics with a baseline. Views: Kanban board, Gantt timeline, list, and an Exec Summary. Status can be updated through MCP from Claude.
 

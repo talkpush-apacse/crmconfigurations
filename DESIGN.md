@@ -1,5 +1,5 @@
 ---
-name: Talkpush CRM Config Checklist and Project Tracker
+name: Talkpush Implementation Hub (CRM Config Checklist and Project Tracker)
 description: Warm beige, near-black ink, four pastel accents. The Talkpush Sign design system applied to an internal operations tool with client-safe views.
 colors:
   sign-background: "#FFFFF6"
@@ -127,7 +127,7 @@ components:
     padding: "12px 16px"
 ---
 
-# Design System: Talkpush CRM Config Checklist and Project Tracker
+# Design System: Talkpush Implementation Hub (CRM Config Checklist and Project Tracker)
 
 > Source of truth: the Talkpush Design System in `Talkpush Design System/` (readme, `tokens/`, and `uploads/Talkpush_Brand_Guidelines_for_Claude_Design.md`). This file applies that system to this app. When this file and the brand guidelines disagree, the guidelines win.
 > Status: drafted from the design system sources and the current `src/app/globals.css`. The Creative North Star and the tracker-specific components are provisional until confirmed.

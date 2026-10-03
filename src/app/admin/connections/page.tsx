@@ -50,7 +50,7 @@ export default function ConnectionsPage() {
     <>
       <PageHeader
         title="Connected apps"
-        description="People who have connected Claude to the Talkpush CRM tools. Revoke a connection to switch it off straight away."
+        description="People who have connected Claude to the Talkpush Implementation Hub. Revoke a connection to switch it off straight away."
       />
       {actionError && (
         <p role="alert" className="mb-4 text-sm text-destructive">

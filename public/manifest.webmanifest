@@ -1,7 +1,7 @@
 {
-  "name": "Talkpush CRM Config",
-  "short_name": "CRM Config",
-  "description": "CRM Configuration Checklist for Talkpush",
+  "name": "Talkpush Implementation Hub",
+  "short_name": "Talkpush Hub",
+  "description": "Client CRM configuration checklists and implementation project tracking for Talkpush",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",

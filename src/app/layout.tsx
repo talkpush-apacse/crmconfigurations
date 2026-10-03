@@ -21,13 +21,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Talkpush CRM Configuration",
-  description: "CRM Configuration Checklist",
+  title: "Talkpush Implementation Hub",
+  description: "Client CRM configuration checklists and implementation project tracking",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CRM Config",
+    title: "Talkpush Hub",
   },
 };
 
