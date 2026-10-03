@@ -9,7 +9,7 @@ The tracker holds one **project** per client implementation (an **account** can 
 (Scoping, Configuration, Integration, UAT, Training, Go-live, Hypercare), **items** (the open work), **people**
 (Talkpush staff, client contacts, vendors) and **success metrics**.
 
-Endpoint: `/api/mcp/tracker` (key: `TRACKER_MCP_API_KEY`). Full tool list: `references/tools.md`.
+Endpoint: `/api/mcp/tracker`. People connect by signing in through Claude (changes are logged as "Claude for <email>"); the shared key `TRACKER_MCP_API_KEY` still works. Full tool list: `references/tools.md`.
 
 ## How to work
 

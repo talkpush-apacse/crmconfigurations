@@ -250,6 +250,28 @@ async function main() {
     check("the revoked token is refused at once", (await mcp("/api/mcp/tracker", renewed.access_token)).res.status === 401);
     const afterRevoke = await tokenCall({ grant_type: "refresh_token", refresh_token: renewed.refresh_token, client_id: reg.client_id });
     check("a revoked connection cannot be renewed", afterRevoke.status === 400);
+
+    // ----- the "Connected apps" page: an admin lists and revokes connections ------------------------------------------------------------
+    const again = await decide({ decision: "allow" }, { origin: base });
+    const code2 = loc(again).searchParams.get("code") ?? "";
+    const tok2 = await (await tokenCall({ grant_type: "authorization_code", code: code2, client_id: reg.client_id, redirect_uri: REDIRECT, code_verifier: verifier })).json();
+    check("a second connection can be made", (await mcp("/api/mcp/tracker", tok2.access_token)).res.status === 200);
+
+    check("the connections list is staff only", (await http("/api/mcp-connections")).status === 401);
+    const listRes = await http("/api/mcp-connections", { cookies: { admin_token: session } });
+    const listText = await listRes.text();
+    const list = JSON.parse(listText) as { connections: { id: string; email: string; appName: string }[] };
+    const mine = list.connections.find((c) => c.email === email && c.appName === "OAUTH FLOW CHECK");
+    check("an admin sees who is connected", listRes.status === 200 && !!mine);
+    check("the list never exposes tokens or hashes", !listText.includes(tok2.access_token) && !listText.includes(tok2.refresh_token) && !/accessTokenHash|refreshTokenHash/.test(listText));
+
+    check("revoking is staff only", (await http(`/api/mcp-connections/${mine?.id}`, { method: "DELETE" })).status === 401);
+    const staffRevoke = await http(`/api/mcp-connections/${mine?.id}`, { method: "DELETE", cookies: { admin_token: session } });
+    check("an admin can revoke a connection", staffRevoke.status === 200);
+    check("that app's token stops working at once", (await mcp("/api/mcp/tracker", tok2.access_token)).res.status === 401);
+    check("and it cannot be renewed", (await tokenCall({ grant_type: "refresh_token", refresh_token: tok2.refresh_token, client_id: reg.client_id })).status === 400);
+    check("the connection leaves the list", !(JSON.parse(await (await http("/api/mcp-connections", { cookies: { admin_token: session } })).text()) as { connections: { id: string }[] }).connections.some((c) => c.id === mine?.id));
+    check("revoking it again says it was not found", (await http(`/api/mcp-connections/${mine?.id}`, { method: "DELETE", cookies: { admin_token: session } })).status === 404);
   } finally {
     await prisma.adminUser.deleteMany({ where: { email } });
     await prisma.mcpOAuthClient.deleteMany({ where: { id: { in: clientIds } } });
