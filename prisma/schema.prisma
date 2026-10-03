@@ -413,3 +413,113 @@ model McpToken {
   @@index([adminUserId])
   @@index([clientId])
 }
+
+// =============================================================================
+// Workflow Builder (additive: new tables only, nothing above this line changes)
+// Ported from the Workflow Editor. Status-like fields are plain strings validated in code.
+// nodes/edges/viewport are a legacy mirror of pages[0]; pages is the source of truth.
+// =============================================================================
+
+// status: draft | shared | approved | changes_requested
+model WorkflowProject {
+  id             String   @id @default(cuid())
+  clientName     String
+  workflowName   String
+  description    String?
+  status         String   @default("draft")
+  templateId     String?
+  nodes          Json     @default("[]")
+  edges          Json     @default("[]")
+  viewport       Json     @default("{\"x\":0,\"y\":0,\"zoom\":1}")
+  pages          Json     @default("[]") // [{ id, name, nodes, edges, viewport }]
+  shareToken     String?  @unique
+  currentVersion Int      @default(0)
+  shareVersionId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  template         WorkflowTemplate?         @relation(fields: [templateId], references: [id])
+  feedback         WorkflowFeedback[]
+  versions         WorkflowVersion[]
+  scopingArtifacts WorkflowScopingArtifact[]
+
+  @@index([clientName])
+  @@index([status])
+}
+
+// kind: assumption | open_question | risk | decision | call_note | customer_summary
+// status: open | confirmed | resolved | dismissed
+// source: mcp | manual | transcript | validation
+model WorkflowScopingArtifact {
+  id         String   @id @default(cuid())
+  workflowId String
+  kind       String
+  title      String
+  detail     String
+  status     String   @default("open")
+  severity   String   @default("info")
+  owner      String?
+  source     String   @default("manual")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, kind])
+  @@index([workflowId, status])
+  @@index([workflowId, createdAt])
+}
+
+// industry: bpo | retail | general
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  industry    String   @default("general")
+  nodes       Json     @default("[]")
+  edges       Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  workflows WorkflowProject[]
+
+  @@index([industry])
+}
+
+// action: approved | changes_requested
+model WorkflowFeedback {
+  id           String   @id @default(cuid())
+  workflowId   String
+  action       String
+  reviewerName String
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+// triggeredBy: status_change | manual | restore
+model WorkflowVersion {
+  id            String   @id @default(cuid())
+  workflowId    String
+  versionNumber Int
+  label         String?
+  status        String
+  triggeredBy   String
+  triggerDetail String?
+  createdByName String?
+  nodes         Json
+  edges         Json
+  viewport      Json?
+  pages         Json?
+  nodeCount     Int
+  edgeCount     Int
+  createdAt     DateTime @default(now())
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, versionNumber])
+  @@index([workflowId, createdAt])
+}

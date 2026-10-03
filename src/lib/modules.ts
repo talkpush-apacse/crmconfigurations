@@ -3,7 +3,7 @@
  * picker all read this list, so adding a module is a one-place change.
  */
 
-export type ModuleId = "checklist" | "tracker";
+export type ModuleId = "checklist" | "tracker" | "workflows";
 
 export interface PortalModule {
   id: ModuleId;
@@ -29,6 +29,13 @@ export const PORTAL_MODULES: PortalModule[] = [
     description: "Follow each client implementation: open items, owners, dependencies and success metrics.",
     href: "/admin/tracker",
   },
+  {
+    id: "workflows",
+    label: "Workflow Builder",
+    shortLabel: "Workflow Builder",
+    description: "Map a client's hiring process, version it and share it for review.",
+    href: "/admin/workflows",
+  },
 ];
 
 /** Which module a path belongs to. The module picker and the Connected apps page belong to neither. */
@@ -37,6 +44,7 @@ export function getActiveModule(pathname: string | null): ModuleId | null {
   if (pathname === "/admin/home" || pathname.startsWith("/admin/home/")) return null;
   if (pathname === "/admin/connections") return null;
   if (pathname === "/admin/tracker" || pathname.startsWith("/admin/tracker/")) return "tracker";
+  if (pathname === "/admin/workflows" || pathname.startsWith("/admin/workflows/")) return "workflows";
   if (pathname.startsWith("/admin")) return "checklist";
   return null;
 }
