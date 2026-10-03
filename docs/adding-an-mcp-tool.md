@@ -14,6 +14,20 @@ toolkit (`src/lib/mcp/toolkit.ts`).
 | CRM Config Checklist tools (46, not yet moved to the toolkit) | `src/lib/mcp-server.ts`, in `registerChecklistTools` |
 | The generated tool list for the tracker | `.claude/skills/project-tracker-mcp/references/tools.md` (do not edit by hand) |
 
+## One URL for everything: the combined connector
+
+`/api/mcp/all` serves the checklist, tracker and workflow tools together (`src/lib/mcp/combined.ts`). The three
+single-area URLs (`/api/mcp`, `/api/mcp/tracker`, `/api/mcp/workflows`) still work, so existing connections keep working.
+
+- **Adding a tool to an existing area:** nothing extra. Add it to that area's module as above and it appears on both
+  its own URL and the combined one.
+- **Adding a whole new area:** make its `ToolModule`, then add it to `combinedModules` in `src/lib/mcp/combined.ts`
+  (and, if it should also have its own URL, copy one of the small routes in `src/app/api/mcp/`). Add the new path to
+  `RESOURCES` in `src/app/.well-known/oauth-protected-resource/[[...path]]/route.ts` if it needs its own sign-in entry.
+- **Names must be unique across all areas.** The server refuses to start otherwise, and `tests/mcp-combined.test.ts` checks it.
+- **Sign-in:** people connect with Claude sign-in (OAuth); the same sign-in works on every URL. The optional key for scripts
+  is `COMBINED_MCP_API_KEY` (header only). The checklist, tracker and workflow keys are NOT accepted on the combined URL.
+
 ## Add a tool to the tracker (5 steps)
 
 1. **Write the tool** in `read-tools.ts` (it only looks) or `write-tools.ts` (it changes something):
