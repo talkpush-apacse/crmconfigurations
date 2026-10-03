@@ -31,10 +31,11 @@ export const PORTAL_MODULES: PortalModule[] = [
   },
 ];
 
-/** Which module a path belongs to. The module picker itself belongs to neither. */
+/** Which module a path belongs to. The module picker and the Connected apps page belong to neither. */
 export function getActiveModule(pathname: string | null): ModuleId | null {
   if (!pathname) return null;
   if (pathname === "/admin/home" || pathname.startsWith("/admin/home/")) return null;
+  if (pathname === "/admin/connections") return null;
   if (pathname === "/admin/tracker" || pathname.startsWith("/admin/tracker/")) return "tracker";
   if (pathname.startsWith("/admin")) return "checklist";
   return null;

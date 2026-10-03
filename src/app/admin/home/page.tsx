@@ -1,7 +1,10 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, ClipboardList, FolderKanban } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { PORTAL_MODULES, type ModuleId } from "@/lib/modules";
+import { PENDING_CONNECT_COOKIE } from "@/lib/mcp/oauth/session";
 
 const ICONS: Record<ModuleId, typeof ClipboardList> = {
   checklist: ClipboardList,
@@ -10,7 +13,10 @@ const ICONS: Record<ModuleId, typeof ClipboardList> = {
 
 export const metadata = { title: "Talkpush CRM" };
 
-export default function AdminHomePage() {
+export default async function AdminHomePage() {
+  // Someone who started connecting Claude before signing in is sent back to finish it.
+  if ((await cookies()).get(PENDING_CONNECT_COOKIE)?.value) redirect("/oauth/resume");
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AdminHeader />

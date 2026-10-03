@@ -1,5 +1,18 @@
 [
   {
+    "version": "3.3",
+    "name": "Version 3.3 - Connect Claude by signing in",
+    "changes": [
+      "Colleagues can connect Claude to the CRM tools by adding the connector URL and clicking Connect: they sign in with their usual login and approve on an Allow page, with no key to copy",
+      "Changes made through Claude now appear in Activity as Claude for the person who connected it",
+      "New Connected apps page (user menu) lists who has connected Claude and lets an admin revoke a connection, which takes effect immediately",
+      "The older shared keys keep working on both connectors, including the ?api_key= form",
+      "Tools for Claude are now defined in one standard way (src/lib/mcp), with a generated tool list and a guide for adding tools",
+      "Database: 3 new tables only, applied with supabase/migrations/20261003120000_add_mcp_oauth.sql"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.2",
     "name": "Version 3.2 - Project Tracker",
     "changes": [

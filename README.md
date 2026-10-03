@@ -83,7 +83,7 @@ dates, dependencies, remarks), success metrics, and what clients may see.
 - **Client links:** read-only `/share/<private link>`, created from a project's **Share** button. Links expire
   (90 days by default), can be revoked, and only ever show client-visible items, metrics and shared remarks.
   Design rules: `DESIGN.md` (staff = Talkpush Sign palette, client = executive-report palette).
-- **Claude (MCP):** `/api/mcp/tracker`, with its own key. See `.claude/skills/project-tracker-mcp/SKILL.md`.
+- **Claude (MCP):** `/api/mcp/tracker`. Colleagues connect by signing in (no key); the shared key still works. See `docs/mcp-sign-in-release.md`, `docs/adding-an-mcp-tool.md` and `.claude/skills/project-tracker-mcp/SKILL.md`.
 - **Code layout:** all rules live in `src/lib/tracker/` (pure, tested functions plus a thin database layer).
   The website, the staff API (`src/app/api/tracker/**`) and the MCP tools all call the same layer.
 

@@ -1,12 +1,14 @@
 /**
  * Project Tracker MCP endpoint (Streamable HTTP, stateless).
- * Separate from /api/mcp (checklists) with its own key: TRACKER_MCP_API_KEY.
+ * Separate from /api/mcp (checklists). Callers sign in through Claude (OAuth) or use the shared key
+ * TRACKER_MCP_API_KEY, which keeps working.
  */
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { NextResponse } from "next/server";
 import { createTrackerMcpServer } from "@/lib/mcp/tracker";
 import { validateTrackerMcpAuth } from "@/lib/mcp/tracker-auth";
+import { actorLabelFor, authenticateMcpRequest, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,8 +17,10 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, mcp-session-id, mcp-protocol-version",
-  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, WWW-Authenticate",
 };
+
+const RESOURCE_PATH = "/api/mcp/tracker";
 
 function json(status: number, body: Record<string, string>) {
   return NextResponse.json(body, { status, headers: CORS_HEADERS });
@@ -27,11 +31,11 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const auth = validateTrackerMcpAuth(request);
-  if (!auth.valid) return json(401, { error: auth.error ?? "Unauthorized" });
+  const auth = await authenticateMcpRequest(request, validateTrackerMcpAuth);
+  if (!auth.ok) return unauthorizedResponse(request, RESOURCE_PATH, auth.error, CORS_HEADERS);
 
   try {
-    const server = createTrackerMcpServer();
+    const server = createTrackerMcpServer({ actor: { label: actorLabelFor(auth.caller), via: "mcp" } });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

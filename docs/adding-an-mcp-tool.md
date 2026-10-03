@@ -45,7 +45,7 @@ toolkit (`src/lib/mcp/toolkit.ts`).
 - **Reuse the service layer.** Rules such as "blocked needs a reason" live in `src/lib/tracker/*`, so the website and Claude
   can never disagree. A tool should not talk to the database directly for anything that has a rule.
 - **No delete.** Use an archive. Tool names containing `delete`, `destroy`, `purge`, `drop` or `truncate` fail the tests.
-- **Write tools log who did it.** Pass `ctx.actor` to the service function, never a hard-coded name.
+- **Write tools log who did it.** Pass `ctx.actor` to the service function, never a hard-coded name. For a person who connected through sign-in it reads "Claude for <email>"; for the shared key it reads "Claude (MCP)".
 - **Visibility.** Anything a client could see must say so in its description, and defaults must be the safe one.
 - **Describe fields** Claude could mistake: dates (`YYYY-MM-DD`), names versus ids, what `null` does.
 - **Errors.** Throw a `TrackerError` (`badRequest`, `notFound`) for a message a person can act on. Any other error shows

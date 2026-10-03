@@ -48,6 +48,19 @@ const nextConfig: NextConfig = {
         source: "/api/share/:path*",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
+      // Claude connector sign-in: pages and responses carry one-time codes and tokens, so never cache them or send a Referer.
+      {
+        source: "/oauth/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/api/oauth/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
     ];
   },
 };

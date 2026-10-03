@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronDown, LayoutGrid, LogOut, User } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, LogOut, PlugZap, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,7 +74,14 @@ export function AdminHeader() {
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/admin/connections" className="flex items-center gap-2">
+                <PlugZap className="h-4 w-4" />
+                Connected apps
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-destructive focus:text-destructive"
               onClick={handleLogout}
