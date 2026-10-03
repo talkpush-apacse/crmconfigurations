@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutList, ChevronLeft, ChevronRight, FolderKanban, Building2, Users } from "lucide-react";
+import { ClipboardList, LayoutList, ChevronLeft, ChevronRight, FolderKanban, Building2, Users, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getActiveModule } from "@/lib/modules";
 
@@ -33,7 +33,9 @@ export function AdminSidebar() {
     { href: "/admin/tracker/accounts", label: "Accounts", icon: Building2, exact: false },
     { href: "/admin/tracker/team", label: "Team", icon: Users, exact: false },
   ];
-  const navItems = getActiveModule(pathname) === "tracker" ? trackerNav : checklistNav;
+  const workflowNav = [{ href: "/admin/workflows", label: "Workflows", icon: GitBranch, exact: false }];
+  const activeModule = getActiveModule(pathname);
+  const navItems = activeModule === "tracker" ? trackerNav : activeModule === "workflows" ? workflowNav : checklistNav;
   const isActive = (item: { href: string; exact: boolean }) =>
     item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 

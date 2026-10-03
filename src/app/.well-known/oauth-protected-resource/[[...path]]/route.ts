@@ -5,7 +5,7 @@ import { oauthJson, oauthPreflight } from "@/lib/mcp/oauth/http";
 export const dynamic = "force-dynamic";
 
 /** The connectors that accept a sign-in. Anything else is not a protected resource of ours. */
-const RESOURCES = new Set(["/api/mcp", "/api/mcp/tracker"]);
+const RESOURCES = new Set(["/api/mcp", "/api/mcp/tracker", "/api/mcp/workflows"]);
 
 export function OPTIONS() {
   return oauthPreflight();
