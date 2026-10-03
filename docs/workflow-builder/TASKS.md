@@ -15,7 +15,6 @@ Rule: nothing is deployed, no library is added without Jolo's approval.
 - [x] Templates: `scripts/seed-workflow-templates.ts` (refuses non-localhost without `--allow-remote`).
 - [x] One edge normalizer (`src/lib/workflow/normalize.ts`) replaces six copies; one `sanitizeText`; client viewer now honours path types and bends (spec F10).
 - [x] Replaced libraries the app does not have, with small local helpers: toasts, dates, ids, command palette. No new libraries beyond the two approved.
-- [x] AI Generate calls the Anthropic HTTP API directly (no SDK). Default model `claude-sonnet-5-5`, overridable with `WORKFLOW_AI_MODEL`.
 - [x] MCP: the 29 original tools served at `/api/mcp/workflows` through the app's toolkit, OAuth sign-in or `WORKFLOW_MCP_API_KEY` (header only).
 - [x] Tests: golden parity against the ORIGINAL editor's own code on all 10 templates (numbering, validation, Mermaid, layout), MCP tools, REST API (local DB). `npm test` = 208 pass with a local DB (202 + 6 skipped without).
 - [x] Typecheck clean, lint 0 errors, `npm run build` passes (built against the local DB).
@@ -23,7 +22,6 @@ Rule: nothing is deployed, no library is added without Jolo's approval.
 ### Known gaps in Phase 1 (honest list)
 - [ ] **PDF export is a stub** (shows "PDF export is not available yet"). Needs `jspdf`, or wait for the Phase 3 exporter. Jolo to decide.
 - [ ] **Editor UI not clicked through by Claude**: needs a logged-in browser session. Only the public client page was checked visually (renders, no console errors).
-- [ ] AI Generate untested (needs `ANTHROPIC_API_KEY`).
 - [ ] Appendix D "OAuth flow" parity: the app's own Claude sign-in is reused; the workflow endpoint is listed in the OAuth resource list but not yet tried with a real Claude connection.
 - [ ] Styling is still the original teal/gray look, not Talkpush Sign (Phase 5).
 
@@ -86,6 +84,9 @@ Resolved: F2, F3, F4, F5, F7, F8, F9, F10, F11, F12, F13, F15, F16, F17, F19. Pa
 
 ### Last full verification (2026-10-04, local DB)
 `tsc` clean, `eslint` 0 new errors (1 pre-existing in `requirements-templates/page.tsx`), 302 tests pass, `next build` passes.
+
+## AI Generate removed (2026-10-04)
+The in-editor "AI Generate" button, its API route, modal and prompt were removed at Jolo's request. `ANTHROPIC_API_KEY` and `WORKFLOW_AI_MODEL` are no longer used by this module.
 
 ## Observations outside this module (not changed)
 - Opening `/admin`, `/admin/tracker` and `/admin/workflows` without a login returns the page shell (HTTP 200) in dev; data routes do return 401. The root `middleware.ts` may not be applied because the app uses `src/`. Worth a separate look.

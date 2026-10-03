@@ -398,19 +398,6 @@ export interface WorkflowSpecInput {
   diagramStyle?: "classic" | "process_map";
 }
 
-// ─── AI Generate Response ───────────────────────────────────────────
-
-export interface AIGenerateResponse {
-  nodes: WorkflowNodeData[];
-  edges: WorkflowEdgeData[];
-  summary: {
-    confirmed: number;
-    likely: number;
-    needsReview: number;
-    flags: string[];
-  };
-}
-
 // ─── Status Config ──────────────────────────────────────────────────
 
 export const WORKFLOW_STATUS_CONFIG: Record<
