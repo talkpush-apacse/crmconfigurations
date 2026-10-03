@@ -11,7 +11,7 @@
       "Claude can read and update projects through a new MCP endpoint (/api/mcp/tracker) with its own key; there is no delete tool",
       "Database: 11 new tables only, applied with supabase/migrations/20261002120000_add_project_tracker.sql"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-03"
   },
   {
     "version": "3.1",
