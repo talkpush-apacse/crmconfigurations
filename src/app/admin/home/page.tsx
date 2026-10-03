@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ClipboardList, FolderKanban } from "lucide-react";
+import { ArrowRight, ClipboardList, FolderKanban, GitBranch } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { PORTAL_MODULES, type ModuleId } from "@/lib/modules";
 import { PENDING_CONNECT_COOKIE } from "@/lib/mcp/oauth/session";
@@ -9,6 +9,7 @@ import { PENDING_CONNECT_COOKIE } from "@/lib/mcp/oauth/session";
 const ICONS: Record<ModuleId, typeof ClipboardList> = {
   checklist: ClipboardList,
   tracker: FolderKanban,
+  workflows: GitBranch,
 };
 
 export const metadata = { title: "Talkpush Implementation Hub" };

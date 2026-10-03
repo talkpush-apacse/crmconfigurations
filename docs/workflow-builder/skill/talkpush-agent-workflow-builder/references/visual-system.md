@@ -1,0 +1,47 @@
+# Visual system (Process Map style)
+
+Measured from the MyPal v3 and Teleperformance v5.1 reference diagrams. The tool draws all of this itself; you choose the meaning, never the pixels.
+
+## Colour follows who acts, never the tag
+
+| Meaning | Shape | Fill |
+|---|---|---|
+| The system does it, no person needed | rectangle | green `#C8E6C9` |
+| A person acts (role in brackets, people icon) | rectangle | white |
+| Decision | diamond | blue `#BBDEFB` |
+| True start (entry channel) | rounded oblong | white |
+| End: success / failure / neutral hand-off / soft success | rounded oblong | dark green (white text) / pink `#EF9A9A` / grey `#ECEFF1` / light green |
+| Jump to another step | small circle | purple `#E1BEE7` |
+| Note | dashed rectangle | yellow `#FFF9C4` |
+| To confirm with the client | dashed rectangle | orange `#FFE0B2` |
+| Rejection reason | dashed rectangle | pink `#FFCDD2` |
+| Out of scope | dashed rectangle | grey |
+
+A person who acts and then something happens automatically is **one white box**: add "The system then ..." to the text. Never split it into two boxes and never renumber for it. If it is unclear who performs a step, ask.
+
+## Role and tag
+
+Every white box starts with the acting role in capitals and brackets, in the client's words: `[REPORTER]`, `[HANDLER]`, `[HANDLER, then LEAD]`, `[RECRUITER]`, `[HIRING MANAGER]`, `[CANDIDATE]`. Never `[PERSON]` or `[MANUAL]`. Every white box carries the people icon.
+
+Green boxes carry the tag of their Action Type. One tag per Action Type, one Action Type per tag:
+
+`[CANDIDATE]` `[MOVE]` `[CALL]` `[AI]` `[MESSAGE]` `[ALERT]` `[SYSTEM]` `[Add Data]` `[READ DATA]` `[GET DATA]` `[SEND DATA]` `[REJECTION REASON]` `[EXPORT]` `[SHARE PROFILE]` `[WAIT]`
+
+Decisions and genuinely manual steps have no tag.
+
+- **Move**: any folder move, including an automatic move to Rejected. Tag by what the step does, not who triggers it. Never `[SYSTEM]`.
+- **AI**: only an AI-conducted interview. A chatbot prescreening is `[SYSTEM]`.
+- **Message vs Alert**: choose by the recipient. Candidate, reporter or outside person: `[MESSAGE]`. Internal person (handler, lead, recruiter, super admin): `[ALERT]`.
+- **Integration steps**: classify by which side of the boundary the step is on (`[GET DATA]` pulls into Talkpush, `[SEND DATA]` pushes out). If both are needed, two steps.
+
+## Numbering
+
+See `numbering.md`.
+
+## Diagram key
+
+Generated for you. Rows: green "System does it, no person needed", white "A person acts (role in brackets)", blue "Decision", then only the kinds this diagram uses (yellow Note, orange "To confirm with <Client>", pink Rejection reason, grey Out of scope, purple Jump). **The key lists colours and shapes only: no tags, no tag icons.**
+
+## Layout (the tool does this)
+
+Main path on one straight row, left to right; branches drop below their decision with elbow connectors, centred under it; the entry channel on the same row as the main path; notes beside a step, never in a connector's path; one exit point per fork; faraway rejoins become jump markers. `lint_layout` checks all of it.

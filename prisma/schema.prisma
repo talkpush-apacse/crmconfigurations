@@ -413,3 +413,270 @@ model McpToken {
   @@index([adminUserId])
   @@index([clientId])
 }
+
+// =============================================================================
+// Workflow Builder (additive: new tables only, nothing above this line changes)
+// Ported from the Workflow Editor. Status-like fields are plain strings validated in code.
+// nodes/edges/viewport are a legacy mirror of pages[0]; pages is the source of truth.
+// =============================================================================
+
+// status: draft | shared | approved | changes_requested | modified_since_approval
+model WorkflowProject {
+  id             String   @id @default(cuid())
+  clientName     String
+  workflowName   String
+  description    String?
+  status         String   @default("draft")
+  templateId     String?
+  nodes          Json     @default("[]")
+  edges          Json     @default("[]")
+  viewport       Json     @default("{\"x\":0,\"y\":0,\"zoom\":1}")
+  pages          Json     @default("[]") // [{ id, name, nodes, edges, viewport }]
+  shareToken     String?  @unique
+  currentVersion Int      @default(0)
+  shareVersionId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Phase 2 (access and sharing). revision goes up by one on every saved change, so two people editing
+  // at once can be detected instead of silently overwriting each other.
+  // generalAccess: restricted | anyone_with_link. publishedVersionId: the version clients see by default.
+  revision           Int     @default(0)
+  publishedVersionId String?
+  generalAccess      String  @default("restricted")
+  showFeasibility    Boolean @default(false)
+
+  // Phase 3 (Process Map style). diagramStyle: classic | process_map. numberingScheme: letters | decimal.
+  diagramStyle    String @default("classic")
+  numberingScheme String @default("letters")
+
+  template         WorkflowTemplate?         @relation(fields: [templateId], references: [id])
+  feedback         WorkflowFeedback[]
+  versions         WorkflowVersion[]
+  scopingArtifacts WorkflowScopingArtifact[]
+  links            WorkflowLink[]
+  members          WorkflowMember[]
+  suggestions      WorkflowSuggestion[]
+  comments         WorkflowComment[]
+  auditEvents      WorkflowAuditEvent[]
+  accessRequests   WorkflowAccessRequest[]
+
+  @@index([clientName])
+  @@index([status])
+}
+
+// kind: assumption | open_question | risk | decision | call_note | customer_summary
+// status: open | confirmed | resolved | dismissed
+// source: mcp | manual | transcript | validation
+model WorkflowScopingArtifact {
+  id         String   @id @default(cuid())
+  workflowId String
+  kind       String
+  title      String
+  detail     String
+  status     String   @default("open")
+  severity   String   @default("info")
+  owner      String?
+  source     String   @default("manual")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, kind])
+  @@index([workflowId, status])
+  @@index([workflowId, createdAt])
+}
+
+// industry: bpo | retail | general
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  industry    String   @default("general")
+  nodes       Json     @default("[]")
+  edges       Json     @default("[]")
+  createdAt   DateTime @default(now())
+
+  workflows WorkflowProject[]
+
+  @@index([industry])
+}
+
+// action: approved | changes_requested
+model WorkflowFeedback {
+  id           String   @id @default(cuid())
+  workflowId   String
+  action       String
+  reviewerName String
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  // Phase 2: an approval belongs to a specific version, and to the person or link that gave it.
+  versionId String?
+  memberId  String?
+  linkId    String?
+  adminId   String?
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+// triggeredBy: status_change | manual | restore
+model WorkflowVersion {
+  id            String   @id @default(cuid())
+  workflowId    String
+  versionNumber Int
+  label         String?
+  status        String
+  triggeredBy   String
+  triggerDetail String?
+  createdByName String?
+  nodes         Json
+  edges         Json
+  viewport      Json?
+  pages         Json?
+  nodeCount     Int
+  edgeCount     Int
+  createdAt     DateTime @default(now())
+
+  // Phase 2: which canvas revision this snapshot captured, and the named invite that caused it (if any).
+  revision          Int?
+  createdByMemberId String?
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, versionNumber])
+  @@index([workflowId, createdAt])
+}
+
+// =============================================================================
+// Workflow Builder phase 2: access, sharing, review. Additive: new tables only.
+// Only a SHA-256 hash of any secret link is stored, never the link itself.
+// =============================================================================
+
+// level: view | comment | edit. editMode (edit links only): direct | suggest_only.
+// A link is rotated by creating a new row and setting disabledAt on the old one.
+model WorkflowLink {
+  id               String    @id @default(cuid())
+  workflowId       String
+  level            String
+  editMode         String    @default("direct")
+  canApprove       Boolean   @default(false)
+  tokenHash        String    @unique
+  tokenHint        String?
+  passcodeHash     String?
+  expiresAt        DateTime?
+  disabledAt       DateTime?
+  createdByAdminId String
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime?
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, level])
+}
+
+// A named invite (a personal link for one person). level: viewer | commenter | editor.
+model WorkflowMember {
+  id                   String    @id @default(cuid())
+  workflowId           String
+  level                String
+  editMode             String    @default("direct")
+  canAcceptSuggestions Boolean   @default(false)
+  displayName          String
+  email                String?
+  emailVerified        Boolean   @default(false)
+  canApprove           Boolean   @default(false)
+  canComment           Boolean   @default(true)
+  tokenHash            String    @unique
+  tokenHint            String?
+  expiresAt            DateTime?
+  revokedAt            DateTime?
+  firstOpenedAt        DateTime?
+  lastSeenAt           DateTime?
+  createdByAdminId     String
+  createdAt            DateTime  @default(now())
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+// A proposed change from an editor in suggest-only mode. ops is the same list of changes a direct save uses.
+// status: pending | accepted | rejected | withdrawn | stale
+model WorkflowSuggestion {
+  id                String    @id @default(cuid())
+  workflowId        String
+  authorMemberId    String?
+  authorGuestName   String
+  baseRevision      Int
+  ops               Json
+  summary           String?
+  status            String    @default("pending")
+  resolvedByAdminId String?
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status])
+}
+
+// A note pinned to a step, a connector or a spot on a page. status: open | resolved
+model WorkflowComment {
+  id             String    @id @default(cuid())
+  workflowId     String
+  pageId         String
+  nodeId         String?
+  edgeId         String?
+  x              Float?
+  y              Float?
+  versionId      String?
+  parentId       String?
+  body           String
+  authorAdminId  String?
+  authorMemberId String?
+  authorName     String
+  status         String    @default("open")
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status])
+}
+
+// Who did what. actorType: admin | member | guest | mcp | system
+model WorkflowAuditEvent {
+  id         String   @id @default(cuid())
+  workflowId String
+  actorType  String
+  actorId    String?
+  actorName  String?
+  action     String
+  detail     Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, createdAt])
+}
+
+// "Request access" from a link that no longer works. No email is sent; it shows in the staff inbox.
+// status: open | handled
+model WorkflowAccessRequest {
+  id         String   @id @default(cuid())
+  workflowId String
+  name       String
+  email      String?
+  message    String?
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+
+  workflow WorkflowProject @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status])
+}

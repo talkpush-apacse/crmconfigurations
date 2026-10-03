@@ -1,0 +1,319 @@
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
+import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
+import { lintLayout } from "@/lib/workflow/process-map/lint";
+import { buildScene } from "@/lib/workflow/process-map/scene";
+import { deriveFlowTable, flowTableCsv } from "@/lib/workflow/process-map/flow-table";
+import { graphFromFlowTable, type FlowRowInput } from "@/lib/workflow/flow-table-import";
+import { runGapCheck, summarizeGaps } from "@/lib/workflow/gap-check";
+import { diffPages, type DiffPage } from "@/lib/workflow/diff";
+import { describeOps } from "@/lib/workflow/suggestion-overlay";
+import { projectPageForClient } from "@/lib/workflow/access/client-view";
+import { createScopingArtifact } from "@/lib/workflow/scoping";
+import { normalizeWorkflowEdgeData } from "@/lib/workflow/normalize";
+import { nanoid } from "@/lib/workflow/ids";
+import { pageContext, resolvePageIndex } from "@/lib/workflow/helpers";
+import { staffActing, type ActingAs } from "@/lib/workflow/access/actor";
+import { ADMIN } from "@/lib/workflow/access/permissions";
+import {
+  createLink,
+  createMember,
+  disableLink,
+  getAccessOverview,
+  linkCreateSchema,
+  memberCreateSchema,
+  revokeMember,
+} from "@/lib/workflow/access/links-service";
+import { acceptSuggestion, createSuggestion, listSuggestions, rejectSuggestion } from "@/lib/workflow/access/suggestions-service";
+import { listComments } from "@/lib/workflow/access/comments-service";
+import { publishVersion } from "@/lib/workflow/access/versions-service";
+import { renderSceneSvg } from "@/lib/workflow/render-server";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Args = Record<string, unknown>;
+export interface V2Context {
+  origin: string;
+  actor?: string;
+}
+export interface V2Helpers {
+  createFromSpec: (args: Args, context: V2Context) => Promise<unknown>;
+  Input: new (message: string) => Error;
+}
+
+const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+
+async function load(workflowId: unknown, Input: V2Helpers["Input"]) {
+  const id = str(workflowId);
+  if (!id) throw new Input("workflowId is required");
+  const wf = await prisma.workflowProject.findUnique({ where: { id } });
+  if (!wf) throw new Input("Workflow not found");
+  return wf;
+}
+
+const pagesOf = (wf: { pages: unknown }): any[] => (Array.isArray(wf.pages) ? (wf.pages as any[]) : []);
+const staffFor = (context: V2Context): ActingAs => staffActing({ id: "mcp", label: context.actor ?? "Claude (MCP)" }, ADMIN);
+
+/** The page a call is about (see pageContext), as {index, page}. */
+function currentPage(wf: { pages: unknown }, ref: unknown) {
+  const pages = pagesOf(wf);
+  const index = resolvePageIndex(pages, str(ref) ?? pageContext.getStore()?.page);
+  return { index, page: pages[index], pages };
+}
+
+async function savePages(id: string, pages: any[]) {
+  const first = pages[0];
+  await prisma.workflowProject.update({
+    where: { id },
+    data: {
+      pages: structuredCloneJson(pages),
+      nodes: structuredCloneJson(first?.nodes ?? []),
+      edges: structuredCloneJson(first?.edges ?? []),
+      viewport: structuredCloneJson(first?.viewport ?? { x: 0, y: 0, zoom: 1 }),
+      revision: { increment: 1 },
+    },
+  });
+}
+const structuredCloneJson = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue;
+
+/** Returns undefined when `name` is not one of the version 2 tools. */
+export async function callV2Tool(name: string, input: Args, context: V2Context, h: V2Helpers): Promise<unknown | undefined> {
+  const Input = h.Input;
+  switch (name) {
+    // ---------------------------------------------------------------- pages
+    case "list_pages": {
+      const wf = await load(input.workflowId, Input);
+      return { pages: pagesOf(wf).map((p, i) => ({ id: p.id, name: p.name, number: i + 1, steps: (p.nodes ?? []).length, connectors: (p.edges ?? []).length })) };
+    }
+    case "add_page": {
+      const wf = await load(input.workflowId, Input);
+      const pages = pagesOf(wf);
+      if (pages.length >= 30) throw new Input("A workflow can have at most 30 pages.");
+      const page = { id: `page_${nanoid(8)}`, name: str(input.name) ?? `Page ${pages.length + 1}`, nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } };
+      await savePages(wf.id, [...pages, page]);
+      return { pageId: page.id, name: page.name };
+    }
+    case "rename_page": {
+      const wf = await load(input.workflowId, Input);
+      const { index, pages } = currentPage(wf, input.page);
+      const name = str(input.name);
+      if (!name) throw new Input("name is required");
+      pages[index] = { ...pages[index], name };
+      await savePages(wf.id, pages);
+      return { success: true };
+    }
+    case "delete_page": {
+      const wf = await load(input.workflowId, Input);
+      const { index, pages } = currentPage(wf, input.page);
+      if (pages.length <= 1) throw new Input("A workflow needs at least one page.");
+      const [removed] = pages.splice(index, 1);
+      await savePages(wf.id, pages);
+      return { success: true, removed: removed.name, note: "A snapshot was taken just before, so this can be undone with restore_version." };
+    }
+
+    // ---------------------------------------------------------------- connectors
+    case "update_edge":
+    case "delete_edge": {
+      const wf = await load(input.workflowId, Input);
+      const { index, pages } = currentPage(wf, input.page);
+      const edgeId = str(input.edgeId);
+      const edges: any[] = pages[index].edges ?? [];
+      const edge = edges.find((e) => e.id === edgeId);
+      if (!edge) throw new Input("Connector not found");
+      if (name === "delete_edge") {
+        pages[index] = { ...pages[index], edges: edges.filter((e) => e.id !== edgeId) };
+      } else {
+        const data = normalizeWorkflowEdgeData(edge.data);
+        const next: any = { ...data };
+        if (typeof input.label === "string") next.label = input.label.slice(0, 40);
+        if (["happy", "failure", "recovery", "neutral"].includes(String(input.pathSemantic))) {
+          next.pathSemantic = input.pathSemantic;
+          next.isHappyPath = input.pathSemantic === "happy";
+          next.isRecovery = input.pathSemantic === "recovery";
+        }
+        if (["step", "smoothstep", "straight", "bezier"].includes(String(input.lineType))) next.lineType = input.lineType;
+        if (typeof input.isPrimary === "boolean") next.isPrimary = input.isPrimary;
+        if (input.resetWaypoints === true) delete next.waypoints;
+        pages[index] = { ...pages[index], edges: edges.map((e) => (e.id === edgeId ? { ...e, data: next } : e)) };
+      }
+      await savePages(wf.id, pages);
+      return { success: true };
+    }
+
+    // ---------------------------------------------------------------- flow table
+    case "get_flow_table": {
+      const wf = await load(input.workflowId, Input);
+      const { page } = currentPage(wf, input.page);
+      const table = deriveFlowTable(page?.nodes ?? [], page?.edges ?? []);
+      return { columns: table.columns, rows: table.rows, unusualActors: table.unusualActors, csv: input.format === "csv" ? flowTableCsv(table) : undefined };
+    }
+    case "create_workflow_from_flow_table": {
+      if (input.approved !== true) {
+        throw new Input("Show the flow table to the person first and ask whether to build it. Only call this with approved: true after they say yes.");
+      }
+      const rows = (Array.isArray(input.rows) ? input.rows : []) as FlowRowInput[];
+      if (rows.length === 0) throw new Input("rows must list at least one step");
+      const graph = graphFromFlowTable(rows);
+      if (graph.problems.length) throw new Input(`The table cannot be built yet: ${graph.problems.join(" ")}`);
+      return h.createFromSpec(
+        {
+          clientName: input.clientName,
+          workflowName: input.workflowName,
+          description: input.description,
+          nodes: [{ tempId: "entry", type: "source", label: str(input.entryLabel) ?? "Candidate enters", actor: "source" }, ...graph.nodes],
+          edges: [{ sourceTempId: "entry", targetTempId: graph.nodes[0].tempId }, ...graph.edges],
+          artifacts: input.artifacts,
+          summary: input.summary,
+          diagramStyle: "process_map",
+        },
+        context
+      );
+    }
+    case "propose_changes": {
+      const wf = await load(input.workflowId, Input);
+      const ops = Array.isArray(input.ops) ? input.ops : [];
+      if (ops.length === 0) throw new Input("ops must list at least one change");
+      const { page } = currentPage(wf, input.page);
+      // Fill in the page id so the caller does not have to know it.
+      const withPage = ops.map((o: any) => (o && typeof o === "object" && !("pageId" in o) && !String(o.op).includes("Page") ? { ...o, pageId: page?.id } : o));
+      const who: ActingAs = {
+        principal: { kind: "link", level: "editor", editMode: "suggest_only", canApprove: false, canComment: true, canAcceptSuggestions: false },
+        identity: { displayName: context.actor ?? "Claude (MCP)", verified: true },
+      };
+      const s = await createSuggestion(wf.id, who, { baseRevision: wf.revision, ops: withPage, summary: str(input.summary) });
+      return { suggestionId: s.id, status: s.status, inPlainLanguage: describeOps(withPage), message: "Nothing on the diagram changed. The owner can accept or reject this in Review." };
+    }
+
+    // ---------------------------------------------------------------- quality
+    case "run_gap_check": {
+      const wf = await load(input.workflowId, Input);
+      const { page } = currentPage(wf, input.page);
+      const findings = runGapCheck(page?.nodes ?? [], page?.edges ?? []);
+      let saved = 0;
+      if (input.saveAsArtifacts === true) {
+        for (const f of findings) {
+          await createScopingArtifact(wf.id, {
+            kind: f.tier === "blocker" ? "risk" : f.tier === "assumption" ? "assumption" : "open_question",
+            title: f.message.slice(0, 120),
+            detail: f.assumption ?? f.message,
+            status: "open",
+            severity: f.tier === "blocker" ? "high" : f.tier === "assumption" ? "medium" : "low",
+            source: "validation",
+            metadata: { code: f.code, group: f.group, confidence: f.confidence },
+          });
+          saved += 1;
+        }
+      }
+      return { summary: summarizeGaps(findings), findings, savedAsArtifacts: saved, note: "Blockers: list them and stop. Assumptions: state what you assumed. Never put these in a diagram shape." };
+    }
+    case "lint_layout":
+    case "render_preview": {
+      const wf = await load(input.workflowId, Input);
+      if (wf.diagramStyle !== "process_map") throw new Input("This workflow uses the Classic style. Switch it with set_diagram_style first.");
+      const { page } = currentPage(wf, input.page);
+      const client = name === "render_preview" && input.audience === "client";
+      const view = client ? projectPageForClient({ id: page.id, name: page.name, nodes: page.nodes ?? [], edges: page.edges ?? [] }, { showFeasibility: wf.showFeasibility }) : page;
+      const scene = buildScene(view.nodes ?? [], view.edges ?? [], { clientName: wf.clientName, workflowName: wf.workflowName, versionLabel: wf.currentVersion ? `v${wf.currentVersion}` : "Draft", date: new Date().toISOString().slice(0, 10), author: "Talkpush" });
+      const findings = lintLayout(scene);
+      if (name === "lint_layout") return { findings, counts: { high: findings.filter((f) => f.severity === "high").length, medium: findings.filter((f) => f.severity === "medium").length, low: findings.filter((f) => f.severity === "low").length } };
+      if (input.format === "png") throw new Input("PNG previews need a rendering library that has not been approved yet. Use format \"svg\" (it is the exact drawing a client sees) and read the layout findings.");
+      return { format: "svg", audience: client ? "client" : "internal", width: Math.round(scene.bounds.w), height: Math.round(scene.bounds.h), svg: renderSceneSvg(scene), layoutFindings: findings, note: "Never trust a success message: look at the drawing and the findings after every change." };
+    }
+
+    // ---------------------------------------------------------------- versions and style
+    case "diff_versions": {
+      const wf = await load(input.workflowId, Input);
+      const pick = async (ref: unknown): Promise<DiffPage[]> => {
+        const r = String(ref ?? "current");
+        if (r === "current") return pagesOf(wf);
+        const v = await prisma.workflowVersion.findFirst({
+          where: { workflowId: wf.id, ...(/^\d+$/.test(r) ? { versionNumber: Number(r) } : { id: r }) },
+        });
+        if (!v) throw new Input(`Version ${r} not found. Use list_versions.`);
+        return (Array.isArray(v.pages) ? v.pages : [{ id: "page_1", name: "Page 1", nodes: v.nodes, edges: v.edges }]) as DiffPage[];
+      };
+      const d = diffPages(await pick(input.a), await pick(input.b ?? "current"));
+      return { identical: d.identical, inPlainLanguage: d.lines, added: d.added, removed: d.removed, changed: d.changed, moved: d.moved };
+    }
+    case "publish_version": {
+      const wf = await load(input.workflowId, Input);
+      const v = await publishVersion(wf.id, { id: "mcp", label: context.actor ?? "Claude (MCP)" }, str(input.label));
+      return { versionId: v.id, versionNumber: v.versionNumber, message: "Clients with a link now see this version by default." };
+    }
+    case "set_diagram_style": {
+      const wf = await load(input.workflowId, Input);
+      const style = input.style === "classic" ? "classic" : "process_map";
+      const pages = pagesOf(wf).map((p) => {
+        if (style !== "process_map") return p;
+        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutProcessMap(p.nodes ?? [], p.edges ?? []));
+        return { ...p, nodes: laid.nodes, edges: laid.edges };
+      });
+      const first = pages[0];
+      await prisma.workflowProject.update({
+        where: { id: wf.id },
+        data: {
+          diagramStyle: style,
+          numberingScheme: style === "process_map" ? "decimal" : "letters",
+          pages: structuredCloneJson(pages),
+          nodes: structuredCloneJson(first?.nodes ?? []),
+          edges: structuredCloneJson(first?.edges ?? []),
+          revision: { increment: 1 },
+        },
+      });
+      return { style, arranged: style === "process_map", note: "A snapshot was taken just before this change." };
+    }
+
+    // ---------------------------------------------------------------- sharing and review (explicit instruction only)
+    case "list_access": {
+      const wf = await load(input.workflowId, Input);
+      return getAccessOverview(wf.id);
+    }
+    case "create_link": {
+      const wf = await load(input.workflowId, Input);
+      const parsed = linkCreateSchema.parse({ level: input.level, editMode: input.editMode, canApprove: input.canApprove, passcode: input.passcode ?? undefined, expiresAt: input.expiresAt });
+      const link = await createLink(wf.id, "mcp", parsed);
+      return { level: link.level, editMode: link.editMode, expiresAt: link.expiresAt, url: `${context.origin}/w/${link.token}`, note: "Give this address to the person to copy and send themselves. It is shown once; a new call replaces it and the old address stops working." };
+    }
+    case "disable_link": {
+      const wf = await load(input.workflowId, Input);
+      await disableLink(wf.id, "mcp", String(input.linkId));
+      return { success: true };
+    }
+    case "invite_person": {
+      const wf = await load(input.workflowId, Input);
+      const parsed = memberCreateSchema.parse({ displayName: input.displayName, email: input.email, level: input.level, editMode: input.editMode, canApprove: input.canApprove, canComment: input.canComment, canAcceptSuggestions: input.canAcceptSuggestions, expiresAt: input.expiresAt });
+      const m = await createMember(wf.id, "mcp", parsed);
+      return { personId: m.id, displayName: m.displayName, level: m.level, url: `${context.origin}/w/${m.token}`, note: "Nothing is emailed. The owner copies this address and sends it." };
+    }
+    case "revoke_person": {
+      const wf = await load(input.workflowId, Input);
+      await revokeMember(wf.id, "mcp", String(input.personId));
+      return { success: true };
+    }
+    case "list_suggestions": {
+      const wf = await load(input.workflowId, Input);
+      const statuses = input.status ? [String(input.status)] : ["pending", "stale"];
+      return { items: await listSuggestions(wf.id, staffFor(context), statuses) };
+    }
+    case "accept_suggestion":
+    case "reject_suggestion": {
+      const wf = await load(input.workflowId, Input);
+      const who = staffFor(context);
+      const id = String(input.suggestionId);
+      return name === "accept_suggestion" ? acceptSuggestion(wf.id, id, who) : rejectSuggestion(wf.id, id, who);
+    }
+    case "list_comments": {
+      const wf = await load(input.workflowId, Input);
+      const all = await listComments(wf.id, staffFor(context));
+      return { items: input.status ? all.filter((c) => c.status === input.status) : all };
+    }
+    default:
+      return undefined;
+  }
+}
+
+export const V2_TOOL_NAMES = [
+  "list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table",
+  "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions",
+  "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person",
+  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments",
+] as const;
