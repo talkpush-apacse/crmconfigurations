@@ -8,6 +8,7 @@
     "build": "npm run verify:template && next build",
     "start": "next start",
     "lint": "eslint",
+    "mcp:docs": "tsx scripts/generate-mcp-docs.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:setup": "npx prisma migrate dev && npx tsx prisma/seed.ts",

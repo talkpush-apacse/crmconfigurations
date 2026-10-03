@@ -5,7 +5,7 @@
 
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { NextResponse } from "next/server";
-import { createTrackerMcpServer } from "@/lib/mcp/tracker-tools";
+import { createTrackerMcpServer } from "@/lib/mcp/tracker";
 import { validateTrackerMcpAuth } from "@/lib/mcp/tracker-auth";
 
 export const dynamic = "force-dynamic";
