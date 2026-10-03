@@ -531,7 +531,16 @@ export function createMcpServer(): McpServer {
     name: "CRM Config Checklist",
     version: "1.0.0",
   });
+  registerChecklistTools(server);
+  return server;
+}
 
+/**
+ * The checklist tools, registered the original way. Split out of createMcpServer() so the same tools
+ * can be served from a combined connector (see src/lib/mcp/modules.ts). New tools should use
+ * defineTool (src/lib/mcp/toolkit.ts) instead of being added here.
+ */
+export function registerChecklistTools(server: McpServer): void {
   // =========================================================================
   // READ TOOLS
   // =========================================================================
@@ -3399,6 +3408,4 @@ export function createMcpServer(): McpServer {
       return mcpJson(checklist);
     }
   );
-
-  return server;
 }
