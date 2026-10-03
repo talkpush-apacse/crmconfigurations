@@ -10,7 +10,7 @@
       "Tools for Claude are now defined in one standard way (src/lib/mcp), with a generated tool list and a guide for adding tools",
       "Database: 3 new tables only, applied with supabase/migrations/20261003120000_add_mcp_oauth.sql"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-03"
   },
   {
     "version": "3.2",
