@@ -125,3 +125,66 @@ test("errors: carry a standard code and a message safe to show", () => {
   assert.deepEqual(err.toJSON(), { error: "invalid_grant", error_description: "That code is invalid, expired or already used." });
   assert.equal(err.status, 400);
 });
+
+// ---------------------------------------------------------------------------
+// the signed note that stops a forged Allow click
+// ---------------------------------------------------------------------------
+
+import { makeConsentToken, verifyConsentToken, type ConsentFields } from "../src/lib/mcp/oauth/consent-token";
+import { originOf } from "../src/lib/mcp/oauth/origin";
+
+const SECRET = "s".repeat(40);
+const FIELDS: ConsentFields = {
+  userId: "user_1",
+  clientId: "client_1",
+  redirectUri: "https://claude.ai/api/mcp/auth_callback",
+  codeChallenge: RFC_CHALLENGE,
+  state: "abc123",
+  scope: "mcp",
+};
+
+test("consent token: works for the exact person, app, address and request it was made for", () => {
+  const token = makeConsentToken(SECRET, FIELDS);
+  assert.equal(verifyConsentToken(SECRET, token, FIELDS), true);
+});
+
+test("consent token: changing anything it covers makes it fail", () => {
+  const token = makeConsentToken(SECRET, FIELDS);
+  for (const change of [
+    { userId: "user_2" },
+    { clientId: "client_2" },
+    { redirectUri: "https://claude.com/api/mcp/auth_callback" },
+    { codeChallenge: "A".repeat(43) },
+    { state: "other" },
+    { scope: "mcp extra" },
+  ]) {
+    assert.equal(verifyConsentToken(SECRET, token, { ...FIELDS, ...change }), false, JSON.stringify(change));
+  }
+  assert.equal(verifyConsentToken("t".repeat(40), token, FIELDS), false, "a different server secret must fail");
+});
+
+test("consent token: expires after ten minutes, and cannot be pre-dated", () => {
+  const now = Date.now();
+  const token = makeConsentToken(SECRET, FIELDS, now);
+  assert.equal(verifyConsentToken(SECRET, token, FIELDS, now + 9 * 60_000), true);
+  assert.equal(verifyConsentToken(SECRET, token, FIELDS, now + 11 * 60_000), false);
+  const [, mac] = token.split(".");
+  const farFuture = `${Math.floor(now / 1000) + 24 * 3600}.${mac}`;
+  assert.equal(verifyConsentToken(SECRET, farFuture, FIELDS, now), false);
+});
+
+test("consent token: garbage is refused without throwing", () => {
+  for (const junk of ["", "x", "1.2.3", "abc.def", `${Math.floor(Date.now() / 1000) + 60}.`, "9".repeat(20) + ".x"]) {
+    assert.equal(verifyConsentToken(SECRET, junk, FIELDS), false, junk);
+  }
+});
+
+test("origin: follows the forwarded host the way Vercel sets it, and ignores odd values", () => {
+  const req = (url: string, headers: Record<string, string> = {}) => new Request(url, { headers });
+  assert.equal(originOf(req("http://localhost:3000/x")), "http://localhost:3000");
+  assert.equal(
+    originOf(req("https://internal.vercel/x", { "x-forwarded-host": "crm.se-talkpush.com", "x-forwarded-proto": "https" })),
+    "https://crm.se-talkpush.com"
+  );
+  assert.equal(originOf(req("https://real.example/x", { "x-forwarded-host": "evil.example/<script>" })), "https://real.example");
+});

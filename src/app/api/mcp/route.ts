@@ -2,7 +2,7 @@
  * MCP Server API Route — Streamable HTTP Transport
  *
  * Handles MCP protocol over HTTP for Claude AI integration.
- * Auth: Bearer token via MCP_API_KEY environment variable.
+ * Auth: a person signed in through Claude (OAuth), or the shared key MCP_API_KEY (Bearer header or ?api_key=).
  *
  * Stateless mode — each request creates a fresh transport/server pair.
  * Works on Vercel serverless without long-lived connections.
@@ -11,6 +11,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMcpServer } from "@/lib/mcp-server";
 import { validateMcpAuth } from "@/lib/mcp-auth";
+import { authenticateMcpRequest, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, mcp-session-id, mcp-protocol-version",
-  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, WWW-Authenticate",
 };
 
 function corsResponse(status: number, body: Record<string, string>) {
@@ -35,9 +36,9 @@ export async function OPTIONS() {
 
 // --- POST (main MCP request handler) ---
 export async function POST(request: Request) {
-  const auth = validateMcpAuth(request);
-  if (!auth.valid) {
-    return corsResponse(401, { error: auth.error! });
+  const auth = await authenticateMcpRequest(request, validateMcpAuth);
+  if (!auth.ok) {
+    return unauthorizedResponse(request, "/api/mcp", auth.error, CORS_HEADERS);
   }
 
   try {
