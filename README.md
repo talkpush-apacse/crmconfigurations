@@ -1,4 +1,6 @@
-# CRM Config Checklist
+# Talkpush Implementation Hub
+
+Two modules behind one login: the **CRM Config Checklist** and the **Project Tracker**. (This site was called "CRM Config Checklist" before the Hub existed.)
 
 Next.js 16 + Prisma + Supabase app for managing CRM configuration checklists.
 

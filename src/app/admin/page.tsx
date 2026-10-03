@@ -225,7 +225,7 @@ export default function AdminDashboard() {
   const [editorLinkCopied, setEditorLinkCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Admin Dashboard | Talkpush CRM";
+    document.title = "Admin Dashboard | Talkpush Implementation Hub";
   }, []);
 
   // Clean up timer on unmount
@@ -1112,7 +1112,7 @@ export default function AdminDashboard() {
                     </Button>
                   </div>
                 )}
-                <span>Talkpush CRM Config · v{APP_VERSION}</span>
+                <span>Talkpush Implementation Hub · v{APP_VERSION}</span>
               </div>
             </div>
 

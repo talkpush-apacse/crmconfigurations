@@ -26,8 +26,9 @@ export function AdminHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card px-4">
       <div className="flex items-center gap-2">
-        <Link href="/admin/home" className="text-base font-semibold text-foreground">
-          Talkpush CRM
+        <Link href="/admin/home" className="text-sm font-semibold text-foreground sm:text-base">
+          <span className="hidden sm:inline">Talkpush Implementation Hub</span>
+          <span className="sm:hidden">Implementation Hub</span>
         </Link>
         {activeModule && (
           <DropdownMenu>

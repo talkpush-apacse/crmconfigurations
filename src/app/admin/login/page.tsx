@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Admin Login</CardTitle>
-          <p className="text-sm text-muted-foreground">Talkpush CRM Config</p>
+          <p className="text-sm text-muted-foreground">Talkpush Implementation Hub</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
