@@ -108,6 +108,10 @@ model AdminUser {
   passwordHash String?
   googleId     String?  @unique
   createdAt    DateTime @default(now())
+
+  // Back-relations for Claude connector sign-in (no column on this table).
+  mcpTokens    McpToken[]
+  mcpAuthCodes McpAuthCode[]
 }
 
 // =============================================================================
@@ -354,4 +358,58 @@ model TrackerShareLink {
   createdAt   DateTime @default(now())
 
   @@index([projectId])
+}
+
+// =============================================================================
+// Claude connector sign-in (OAuth). Additive: new tables only.
+// Codes and tokens are stored as SHA-256 hashes, never in the clear.
+// =============================================================================
+
+/// One row per app that registered itself with us (claude.ai, Claude Desktop, Claude Code ...).
+model McpOAuthClient {
+  id           String        @id @default(cuid())
+  clientName   String
+  redirectUris Json
+  createdAt    DateTime      @default(now())
+  lastUsedAt   DateTime?
+  codes        McpAuthCode[]
+  tokens       McpToken[]
+}
+
+/// A one-time code returned after someone clicks Allow. Lives about a minute, usable once.
+model McpAuthCode {
+  id            String         @id @default(cuid())
+  codeHash      String         @unique
+  clientId      String
+  client        McpOAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  adminUserId   String
+  adminUser     AdminUser      @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String
+  scope         String         @default("mcp")
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime       @default(now())
+
+  @@index([expiresAt])
+}
+
+/// One row per connected person and app. Revoking sets revokedAt. Deleting the admin login deletes the row.
+model McpToken {
+  id               String         @id @default(cuid())
+  clientId         String
+  client           McpOAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  adminUserId      String
+  adminUser        AdminUser      @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  accessTokenHash  String         @unique
+  refreshTokenHash String         @unique
+  accessExpiresAt  DateTime
+  refreshExpiresAt DateTime
+  scope            String         @default("mcp")
+  createdAt        DateTime       @default(now())
+  lastUsedAt       DateTime?
+  revokedAt        DateTime?
+
+  @@index([adminUserId])
+  @@index([clientId])
 }
