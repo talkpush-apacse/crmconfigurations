@@ -5,9 +5,8 @@ import { lintLayout } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { deriveFlowTable, flowTableCsv } from "@/lib/workflow/process-map/flow-table";
 import { chooseLayout, graphFromFlowTable, type FlowRowInput } from "@/lib/workflow/flow-table-import";
-import { computeLaneGrid, fallbackLane } from "@/lib/workflow/process-map/lanes";
-import { laneText } from "@/lib/workflow/process-map/lane-mode";
-import { shapeKindOf } from "@/lib/workflow/process-map/model";
+import { computeLaneGrid } from "@/lib/workflow/process-map/lanes";
+import { assignLanes, stripLanes } from "@/lib/workflow/process-map/lane-edit";
 import { runGapCheck, summarizeGaps } from "@/lib/workflow/gap-check";
 import { diffPages, type DiffPage } from "@/lib/workflow/diff";
 import { describeOps } from "@/lib/workflow/suggestion-overlay";
@@ -328,25 +327,9 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       if (!want) throw new Input('layout must be "lanes" or "spine".');
       const { index, pages } = currentPage(wf, input.page);
       const page = pages[index];
-      const externalKeys = new Set(strList(input.externalLanes).map((l) => l.toLowerCase()));
-      let touched = 0;
-      const nodes = (page.nodes ?? []).map((n: any) => {
-        const kind = shapeKindOf(n);
-        if (want === "spine") {
-          const d = n.data ?? {};
-          if (d.lane === undefined && d.stage === undefined && d.laneKind === undefined && d.laneRank === undefined) return n;
-          touched += 1;
-          const { lane, stage, laneKind, laneRank, ...rest } = d;
-          void lane; void stage; void laneKind; void laneRank;
-          return { ...n, data: rest };
-        }
-        if (kind !== "process" && kind !== "decision") return n;
-        const lane = laneText(n) || fallbackLane(n);
-        const ext = externalKeys.has(lane.toLowerCase());
-        if (laneText(n) && !ext) return n;
-        touched += 1;
-        return { ...n, data: { ...n.data, lane, ...(ext ? { laneKind: "external" } : {}) } };
-      });
+      const switched = want === "lanes" ? assignLanes(page.nodes ?? [], strList(input.externalLanes)) : stripLanes(page.nodes ?? []);
+      const nodes = switched.nodes;
+      const touched = switched.touched;
       const laid = applyLayout(nodes, page.edges ?? [], layoutDiagram(nodes, page.edges ?? []));
       pages[index] = { ...page, nodes: laid.nodes, edges: laid.edges };
       await savePages(wf.id, pages);

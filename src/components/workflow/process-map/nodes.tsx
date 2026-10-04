@@ -111,11 +111,15 @@ export function derivedProcessMapNodes(scene: Scene): Node[] {
     position: { x: c.rect.x, y: c.rect.y },
     data: {},
     zIndex: -2,
+    // Explicit size: React Flow keeps a node hidden until it has measured it, and these background pieces are never fed back
+    // into the editor's own node list, so without a size they would stay invisible on the canvas.
+    width: c.rect.w,
+    height: c.rect.h,
     style: { width: c.rect.w, height: c.rect.h, pointerEvents: "none" },
   }));
-  out.push({ ...base, id: "pm_title", type: "pmTitle", position: { x: scene.title.rect.x, y: scene.title.rect.y }, data: {}, zIndex: -1, style: { width: scene.title.rect.w, height: scene.title.rect.h, pointerEvents: "none" } });
+  out.push({ ...base, id: "pm_title", type: "pmTitle", position: { x: scene.title.rect.x, y: scene.title.rect.y }, data: {}, zIndex: -1, width: scene.title.rect.w, height: scene.title.rect.h, style: { width: scene.title.rect.w, height: scene.title.rect.h, pointerEvents: "none" } });
   if (scene.legend.rows.length > 0) {
-    out.push({ ...base, id: "pm_legend", type: "pmLegend", position: { x: scene.legend.rect.x, y: scene.legend.rect.y }, data: {}, zIndex: -1, style: { width: scene.legend.rect.w, height: scene.legend.rect.h, pointerEvents: "none" } });
+    out.push({ ...base, id: "pm_legend", type: "pmLegend", position: { x: scene.legend.rect.x, y: scene.legend.rect.y }, data: {}, zIndex: -1, width: scene.legend.rect.w, height: scene.legend.rect.h, style: { width: scene.legend.rect.w, height: scene.legend.rect.h, pointerEvents: "none" } });
   }
   return out;
 }

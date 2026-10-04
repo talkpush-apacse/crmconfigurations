@@ -25,7 +25,7 @@ import {
   type WorkflowNodeData,
 } from "@/lib/workflow/types";
 
-import ProcessMapProperties, { type StepOption } from "./ProcessMapProperties";
+import ProcessMapProperties, { type LaneControls, type StepOption } from "./ProcessMapProperties";
 
 interface NodePropertiesProps {
   nodeId: string;
@@ -33,6 +33,8 @@ interface NodePropertiesProps {
   diagramStyle: "classic" | "process_map";
   /** Other steps on this page, for pointing a jump marker or a note at one. */
   otherSteps: StepOption[];
+  /** Lanes diagrams only: pick this step's lane and stage. */
+  laneControls?: LaneControls;
   onChange: (id: string, updates: Partial<WorkflowNodeData>) => void;
   onDataChange: (id: string, dataUpdates: Partial<WorkflowNodeData["data"]>) => void;
   onDelete: (id: string) => void;
@@ -94,6 +96,7 @@ export default function NodeProperties({
   data,
   diagramStyle,
   otherSteps,
+  laneControls,
   onChange,
   onDataChange,
   onDelete,
@@ -868,7 +871,7 @@ export default function NodeProperties({
           </div>
         )}
 
-        {diagramStyle === "process_map" && <ProcessMapProperties nodeId={nodeId} data={data} otherSteps={otherSteps} onChange={onChange} />}
+        {diagramStyle === "process_map" && <ProcessMapProperties nodeId={nodeId} data={data} otherSteps={otherSteps} onChange={onChange} laneControls={laneControls} />}
 
         {/* Staff only: never sent to clients (the server removes it from every client view) */}
         <div className="pt-2 border-t border-gray-100">

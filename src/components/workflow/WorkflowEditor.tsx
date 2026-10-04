@@ -145,7 +145,8 @@ import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
 import { computeDecimalNumbers } from "@/lib/workflow/numbering-decimal";
 import { buildOutline } from "@/lib/workflow/outline";
-import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-layout";
+import { applyLayout, layoutDiagram, usesLanes } from "@/lib/workflow/process-map/diagram-layout";
+import { assignLanes, laneSummaries, moveLane, renameLane, setLaneExternal, setStepLane, stripLanes } from "@/lib/workflow/process-map/lane-edit";
 import { lintLayout, type LayoutFinding } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { ProcessMapContext } from "./process-map/context";
@@ -474,7 +475,7 @@ function EditorInner({
   useEffect(() => {
     isProcessMapRef.current = isProcessMap;
   }, [isProcessMap]);
-  const [layoutPreview, setLayoutPreview] = useState<{ moved: number; apply: () => void } | null>(null);
+  const [layoutPreview, setLayoutPreview] = useState<{ moved: number; apply: () => void; message?: string } | null>(null);
   const [layoutCheckOpen, setLayoutCheckOpen] = useState(false);
 
   const { stepNumbers, recoveryEdges, warnings, overflowNodes, mergeNodes } = useMemo(
@@ -544,6 +545,9 @@ function EditorInner({
     [isProcessMap, nodes, edges, workflow.clientName, workflow.workflowName, workflow.currentVersion, showStepNumbers]
   );
   const layoutFindings = useMemo<LayoutFinding[]>(() => (scene ? lintLayout(scene) : []), [scene]);
+  // Lanes: the diagram is drawn as lanes when its steps carry lanes. The sidebar and the step panel edit them.
+  const lanesMode = useMemo(() => isProcessMap && usesLanes(nodes), [isProcessMap, nodes]);
+  const laneList = useMemo(() => (isProcessMap ? laneSummaries(nodes, edges) : []), [isProcessMap, nodes, edges]);
   const outlineItems = useMemo(() => buildOutline(nodes, stepNumbers), [nodes, stepNumbers]);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isCanvasLocked, setIsCanvasLocked] = useState(false);
@@ -2299,29 +2303,77 @@ function EditorInner({
 
   // ── Auto-arrange ────────────────────────────────────────────────────────────
   /** Process Map layout. It never silently overwrites hand-placed steps: it says how many will move first. */
-  function handleProcessMapArrange() {
-    if (nodes.length === 0) return;
-    const result = layoutDiagram(nodes, edges);
-    const laid = applyLayout(nodes, edges, result);
-    const moved = laid.nodes.filter((n, i) => {
+  function commitArranged(laid: { nodes: FlowNode[]; edges: Edge[] }, message: string) {
+    const nextNodes = laid.nodes;
+    const nextEdges = laid.edges.map((e) => applyEdgeRendering(e, normalizeWorkflowEdgeData(e.data)));
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    pushHistory(nextNodes, nextEdges);
+    triggerSave(nextNodes, nextEdges, activePageIdRef.current);
+    setTimeout(() => fitView({ padding: 0.1, duration: 300 }), 80);
+    toast.success(message);
+  }
+  const movedCount = (laid: { nodes: FlowNode[] }) =>
+    laid.nodes.filter((n, i) => {
       const before = nodes[i]?.position;
       return before && (Math.abs(before.x - n.position.x) > 2 || Math.abs(before.y - n.position.y) > 2);
     }).length;
-    const apply = () => {
-      const nextNodes = laid.nodes as FlowNode[];
-      const nextEdges = (laid.edges as Edge[]).map((e) => applyEdgeRendering(e, normalizeWorkflowEdgeData(e.data)));
-      setNodes(nextNodes);
-      setEdges(nextEdges);
-      pushHistory(nextNodes, nextEdges);
-      triggerSave(nextNodes, nextEdges, activePageIdRef.current);
-      setTimeout(() => fitView({ padding: 0.1, duration: 300 }), 80);
-      toast.success("Steps arranged");
-    };
+  const moveWarning = (moved: number) => `${moved} step${moved === 1 ? "" : "s"} will move, including any you placed by hand. You can undo it with Ctrl or ⌘ + Z.`;
+
+  function handleProcessMapArrange() {
+    if (nodes.length === 0) return;
+    const laid = applyLayout(nodes, edges, layoutDiagram(nodes, edges));
+    const moved = movedCount(laid);
     if (moved === 0) {
       toast.info("Everything is already in place");
       return;
     }
-    setLayoutPreview({ moved, apply });
+    setLayoutPreview({
+      moved,
+      apply: () => commitArranged(laid, "Steps arranged"),
+      message: lanesMode ? `This lays the steps out in their lanes and stage bands. ${moveWarning(moved)}` : undefined,
+    });
+  }
+
+  /**
+   * A lane change (switch to lanes or back, rename, reorder, mark as another system, move a step to a lane) edits the
+   * steps and re-arranges in one go. Like Arrange it says how many steps will move first, and it is one undo step.
+   */
+  function arrangeAfter(transform: (steps: FlowNode[]) => FlowNode[], what: string, done: string) {
+    if (nodes.length === 0) return;
+    const changed = transform(nodes);
+    const laid = applyLayout(changed, edges, layoutDiagram(changed, edges));
+    const moved = movedCount(laid);
+    const apply = () => commitArranged(laid, done);
+    if (moved === 0) {
+      apply();
+      return;
+    }
+    setLayoutPreview({ moved, apply, message: `${what} ${moveWarning(moved)}` });
+  }
+  const lanePanel = {
+    lanesMode,
+    lanes: laneList,
+    onSetMode: (mode: "spine" | "lanes") =>
+      mode === "lanes"
+        ? arrangeAfter((ns) => assignLanes(ns).nodes, "Lanes put each step in the row of whoever does it (taken from its role), in stage bands.", "Lanes on")
+        : arrangeAfter((ns) => stripLanes(ns).nodes, "Back to a single row: the lanes and stages are removed from the steps.", "Back to a single row"),
+    onRename: (from: string, to: string) => arrangeAfter((ns) => renameLane(ns, from, to), `Renaming the lane to "${to}" re-arranges the diagram.`, "Lane renamed"),
+    onToggleExternal: (lane: string, external: boolean) =>
+      arrangeAfter((ns) => setLaneExternal(ns, lane, external), external ? `Marking "${lane}" as another system re-draws it in blue.` : `"${lane}" becomes an ordinary lane.`, external ? "Marked as another system" : "Marked as an ordinary lane"),
+    onMove: (lane: string, delta: -1 | 1) => arrangeAfter((ns) => moveLane(ns, edges, lane, delta), `Moving "${lane}" ${delta < 0 ? "up" : "down"} re-arranges the diagram.`, "Lane moved"),
+  };
+  function handleStepLaneChange(id: string, patch: { lane?: string; stage?: string }) {
+    arrangeAfter(
+      (ns) => {
+        let out = ns;
+        if (patch.lane !== undefined) out = setStepLane(out, id, patch.lane);
+        if (patch.stage !== undefined) out = out.map((n) => (n.id === id ? { ...n, data: { ...n.data, stage: patch.stage } } : n));
+        return out;
+      },
+      patch.lane !== undefined ? "Moving this step to another lane re-arranges the diagram." : "Changing where the stage starts re-arranges the diagram.",
+      patch.lane !== undefined ? "Step moved to its lane" : "Stage updated"
+    );
   }
 
   async function handleDiagramStyleChange(next: "classic" | "process_map") {
@@ -3137,6 +3189,7 @@ function EditorInner({
                 onAddAnnotation={addAnnotationToCanvas}
                 diagramStyle={diagramStyle}
                 onDiagramStyleChange={handleDiagramStyleChange}
+                lanePanel={isProcessMap ? lanePanel : undefined}
                 outline={outlineItems}
                 selectedStepId={selectedNodeId}
                 onSelectStep={(id) => {
@@ -3317,6 +3370,7 @@ function EditorInner({
             otherSteps={nodes
               .filter((n) => n.id !== selectedNode.id && !(n.data as { isAnnotation?: boolean })?.isAnnotation && !["swimlane", "frame", "note", "table"].includes(n.type ?? ""))
               .map((n) => ({ id: n.id, label: String((n.data as WorkflowNodeData).label ?? n.id), number: stepNumbers.get(n.id) ?? "" }))}
+            laneControls={lanesMode ? { lanes: laneList.map((l) => l.name), onChange: handleStepLaneChange } : undefined}
             onChange={handleNodeDataChange}
             onDataChange={handleNodeSubDataChange}
             onDelete={handleDeleteNode}
@@ -3424,8 +3478,12 @@ function EditorInner({
           <AlertDialogHeader>
             <AlertDialogTitle>Arrange the diagram?</AlertDialogTitle>
             <AlertDialogDescription>
-              This puts the main path on one row and drops each branch below its decision. {layoutPreview?.moved} step
-              {layoutPreview?.moved === 1 ? "" : "s"} will move, including any you placed by hand. You can undo it with Ctrl or ⌘ + Z.
+              {layoutPreview?.message ?? (
+                <>
+                  This puts the main path on one row and drops each branch below its decision. {layoutPreview?.moved} step
+                  {layoutPreview?.moved === 1 ? "" : "s"} will move, including any you placed by hand. You can undo it with Ctrl or ⌘ + Z.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
