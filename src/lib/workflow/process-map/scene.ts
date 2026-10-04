@@ -151,8 +151,10 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
       const first = segs.find((s) => s.length >= 60) ?? segs[0];
       if (last && !last.horizontal && last.length >= 80) {
         // A path dropping into a step: the label sits on the final vertical run just above the step, so sibling
-        // labels line up in one tidy row and never land on the shared bar above them.
-        rect = labelRect(text, { x: last.b.x, y: last.b.y - 40 });
+        // labels line up in one tidy row and never land on the shared bar above them. A path running UP into a shape
+        // (a decision to a note above it) puts the label just below the end instead, never inside the shape.
+        const goingUp = last.b.y < last.a.y;
+        rect = labelRect(text, { x: last.b.x, y: goingUp ? last.b.y + 40 : last.b.y - 40 });
       } else {
         const mid = first ? { x: (first.a.x + first.b.x) / 2, y: (first.a.y + first.b.y) / 2 } : pointAlong(points, 0.5);
         const at = first && first.horizontal ? { x: mid.x, y: mid.y - 14 } : first ? { x: mid.x + labelRect(text, mid).w / 2 + 8, y: mid.y } : mid;

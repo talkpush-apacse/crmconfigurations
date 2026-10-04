@@ -110,3 +110,21 @@ test("several entry channels are stacked in a column centred on the main row, ea
   const findings = lintLayout(scene);
   assert.deepEqual(findings.filter((f) => f.severity === "high" || f.code === "entry_row_mismatch"), [], "no high findings and the entry column counts as level with the main row");
 });
+
+test("a connector running up from a decision into its note puts its label outside the note", () => {
+  const nodes = [
+    start("src", "Entry"),
+    decision("d", "Passed?"),
+    person("a", "Sends offer", "RECRUITER"),
+    { ...note("n", "To confirm", "What if it fails?", "needs_input"), data: { ...note("n", "To confirm", "x", "needs_input").data, attachTo: "d" } },
+  ];
+  const edges = [edge("e1", "src", "d"), edge("e2", "d", "a", "Pass", { isPrimary: true }), edge("e3", "d", "n", "Fail")];
+  const { laid, scene } = sceneOf(nodes, edges);
+  const handles = layoutProcessMap(nodes, edges).edges.get("e3")!;
+  assert.deepEqual([handles.sourceHandle, handles.targetHandle], ["top", "bottom"]);
+  const fail = scene.edges.find((e: any) => e.id === "e3")!;
+  const noteRect = scene.shapes.find((s: any) => s.id === "n")!.rect;
+  assert.ok(fail.labelRect && !overlaps(fail.labelRect, noteRect), "the label does not sit on the note");
+  assert.deepEqual(lintLayout(scene).filter((f) => f.code === "label_overlap"), [], "and the layout check agrees");
+  void laid;
+});
