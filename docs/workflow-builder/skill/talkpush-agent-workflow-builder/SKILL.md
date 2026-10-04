@@ -28,12 +28,21 @@ When something is unknown and routing is unclear, do not invent a path. Add an *
 
 1. **Ask first: internal or client-facing?** Client-facing means sanitization applies (see `references/sanitization.md`).
 2. **Draft the flow table in chat** (Step, Actor, Action, Action Type, Branch / Condition). `Actor` is one of Candidate, Talkpush, Recruiter, Referrer/Vendor; if the process needs another word (HANDLER, REPORTER) say so, do not invent a fifth silently. Candidate-actor steps are `[CANDIDATE]` even when AI facilitates. Do not assume something mentioned in passing is decoration: round-robin assignment looked like a note and was a real `[Add Data]` step.
+   **Keep the table's Action column short** (a few words: "Chatbot prescreening", "Sends booking link"). Anything extra, such as the list of questions, opening days or a timing, goes in a Notes line under the table and becomes a dashed note on the map, not text inside the box. Give every path out of a decision a label, the main path included ("Yes", "Pass").
 3. **Wait for an explicit yes.** There is no fast path. Then call `create_workflow_from_flow_table` with `approved: true`.
 4. **Run the gap check** (`run_gap_check`). Blockers: list them and stop. Assumptions: "Assumed X because Y. If incorrect, Z changes." Nice to know: mention briefly. These are for the SE, never text inside a diagram shape. See `references/gap-check.md`.
 5. **Check your work by looking at it.** Call `lint_layout` and `render_preview` (audience `client` for client-facing work) after every change. A success message proves nothing. Fix every high finding before saying it is done.
 6. **Never rebuild over a human's edits.** Before changing an existing workflow: `get_workflow` (note the revision), `diff_versions` against the last version you built or the client approved, and ask which is the source of truth. Pass `baseRevision` on changes. Prefer `propose_changes`, which creates a suggestion the owner accepts. Big changes take a snapshot automatically.
 7. **Share only when asked.** `create_link`, `invite_person`, `publish_version`, `accept_suggestion`, `reject_suggestion` and `share_workflow` are for explicit requests only. Nothing is emailed: give the SE the address to copy.
 8. **Hand off** to CRM configuration planning with: the workflow id and page, the title, the tenant subdomain, **every orange "To confirm" note**, and every "Pending from <person>" rejection reason, so those rows are marked blocked instead of guessed.
+
+## Boxes are short, details live in notes (Jolo's standing preference)
+
+- **Main-path and branch boxes stay concise**: the role or tag, a short name, nothing else. No lists, no hours, no days, no explanations.
+- **Extra information goes in a note shape attached to that step** (dashed outline): `add_node` with `type: note`, `attachTo` the step. Yellow (`info`) for general detail such as the four prescreening questions; orange (`needs_input`, titled "To confirm with <client name>") for anything unknown. Never put detail in a box's `notes` or `timing` field to save a shape.
+- **One note per kind per step.** If a step needs both an explanation and a to-confirm, fold them into the single orange note; several notes on one step crowd the map.
+- **Text is centred in every shape.** The tool draws it that way: do not try to align text with spaces or line breaks.
+- **A timing in a note is not seen by the gap check** unless it is an info note that states a time. An orange note keeps the turnaround assumption on the list, which is correct while the time is unknown.
 
 ## One page, one title, one name
 
@@ -49,4 +58,5 @@ If a convention or quirk is not covered here, say so and ask. Then extend the ma
 
 | Date | Change |
 |---|---|
+| 2026-10-04 | Added "Boxes are short, details live in notes", centred text, label every path, several entry channels, revision on every reply, and the numbering effect of marking a main line. Matches Workflow Builder PR #33. |
 | 2026-10-04 | First version for the Workflow Builder: adapted from the Lucid skill. `[ALERT]` is the 15th tag; the diagram key lists colours and shapes only (no tag icons); a table appears only after the flow table is approved. |

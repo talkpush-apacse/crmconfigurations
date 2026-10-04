@@ -8,3 +8,4 @@
 - Branch order at a fork follows the page: higher first, then left to right (drawing order when nothing is placed yet).
 - Numbers are worked out every time the diagram is drawn, so editing the main path renumbers every later branch as part of the edit. Never type numbers by hand.
 - A path that runs into a step that already belongs to another path is a **join**: it keeps its arrow and adds no number.
+- **Marking a path as the main line changes the numbers.** Mark one path out of a fork as primary (`update_edge isPrimary`) and it keeps its parent's number while the other path takes the next one (7.1 and 7.1.1). Leave none marked and every path is numbered (7.1.1 and 7.1.2). Both are valid; the build check no longer asks for a main line when every path out of a Process Map fork has a label.
