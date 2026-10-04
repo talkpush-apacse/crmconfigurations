@@ -21,6 +21,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
+  // Landing on a bare client/editor link goes to the first tab. Doing it here (at the edge) means no
+  // server function and no database lookup just to bounce the visitor; an unknown slug still shows
+  // "Checklist not found" from the checklist layout.
+  async redirects() {
+    return [
+      { source: "/client/:slug", destination: "/client/:slug/welcome", permanent: false },
+      { source: "/editor/:token", destination: "/editor/:token/welcome", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

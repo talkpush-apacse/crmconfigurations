@@ -1,0 +1,171 @@
+"use client";
+
+import { useMemo } from "react";
+import { useChecklist } from "@/hooks/useChecklist";
+import { TopNav } from "@/components/layout/TopNav";
+import { Header } from "@/components/layout/Header";
+import { ChecklistContext } from "@/lib/checklist-context";
+import { getEnabledTabs, excludeTalkpushTabs } from "@/lib/tab-config";
+import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
+import type { ChecklistData, CustomTab, CustomData, TabUploadMetaMap } from "@/lib/types";
+import type { NavItem } from "@/components/layout/TopNav";
+
+/**
+ * The client-facing checklist frame (header, tab nav, save status). The checklist itself is loaded on the server and
+ * handed in as `initialData`, so the page appears with its data in the first response.
+ */
+export function ClientChecklistShell({
+  slug,
+  initialData,
+  children,
+}: {
+  slug: string;
+  initialData: ChecklistData | null;
+  children: React.ReactNode;
+}) {
+  const {
+    data,
+    loading,
+    error,
+    saveStatus,
+    saveError,
+    hasPendingChanges,
+    lastSavedAt,
+    updateField,
+    retrySave,
+    publishChanges,
+    discardChanges,
+    hasPendingChangesRef,
+  } = useChecklist(slug, "slug", initialData);
+
+  // Hooks must run in the same order on every render, so this sits above the
+  // loading and error guards below. With it underneath them, the first render
+  // (still loading) returned early and skipped the hook, and the next render
+  // called one hook more than the previous one — React treats that as fatal and
+  // the whole client-facing checklist died with a client-side exception.
+  const contextValue = useMemo(
+    () =>
+      data
+        ? {
+            data,
+            updateField,
+            saveStatus,
+            saveError,
+            hasPendingChanges,
+            lastSavedAt,
+            retrySave,
+            publishChanges,
+            discardChanges,
+            isReadOnly: false as const,
+            userRole: null,
+            basePath: `/client/${slug}`,
+          }
+        : null,
+    [
+      data,
+      updateField,
+      saveStatus,
+      saveError,
+      hasPendingChanges,
+      lastSavedAt,
+      retrySave,
+      publishChanges,
+      discardChanges,
+      slug,
+    ]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading checklist...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data || !contextValue) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-destructive">Checklist not found</p>
+          <p className="mt-2 text-sm text-muted-foreground">{error || "This checklist does not exist."}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isCustom = !!data.isCustom;
+  const customTabs = (data.customTabs as CustomTab[] | null) ?? null;
+  const customData = (data.customData as CustomData | null) ?? null;
+
+  // Tabs Talkpush fills in are hidden from the client-facing checklist — the
+  // client should only see what is being asked of them. They remain visible in
+  // the editor and admin views. This also keeps them out of the completion
+  // count below, so the percentage reflects only the client's own work.
+  const enabledTabs = isCustom
+    ? []
+    : excludeTalkpushTabs(
+        getEnabledTabs(
+          data.enabledTabs ?? null,
+          false,
+          data.tabOrder ?? null,
+          customTabs,
+          (data.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null,
+        ),
+      );
+
+  const tabUploadMeta = (data.tabUploadMeta as TabUploadMetaMap | null) ?? null;
+
+  const navItems: NavItem[] = enabledTabs.map((tab) => {
+    let status: NavItem["status"] = null;
+    if (tab.customTabId) {
+      const ct = customTabs?.find((c) => c.id === tab.customTabId);
+      if (ct) status = getCustomTabSectionState(ct, customData);
+    } else if (tab.dataKey && data) {
+      status = getSectionState((data as ChecklistData)[tab.dataKey as keyof ChecklistData], tab.dataKey);
+    }
+    const hasAttachments =
+      !!tab.dataKey && (tabUploadMeta?.[tab.dataKey]?.uploadedFiles?.length ?? 0) > 0;
+    return {
+      label: tab.label,
+      href: `/client/${slug}/${tab.slug}`,
+      status,
+      icon: tab.icon,
+      slug: tab.slug,
+      filledBy: tab.filledBy,
+      hasAttachments,
+    };
+  });
+
+  return (
+    <ChecklistContext.Provider value={contextValue}>
+      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+        <Header
+          clientName={data.clientName}
+          slug={slug}
+          items={navItems}
+          saveStatus={saveStatus}
+          saveError={saveError}
+          onRetrySave={retrySave}
+          hasPendingChanges={hasPendingChanges}
+          lastSavedAt={lastSavedAt}
+          onSave={publishChanges}
+          onDiscard={discardChanges}
+        />
+        <div className="flex flex-1 overflow-hidden">
+          {!isCustom && (
+            <TopNav items={navItems} clientName={data.clientName} hasPendingChangesRef={hasPendingChangesRef} />
+          )}
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <main className="flex-1 overflow-y-auto">
+              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </ChecklistContext.Provider>
+  );
+}

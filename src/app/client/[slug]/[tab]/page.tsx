@@ -10,51 +10,7 @@ import {
 } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { getCustomTabMode } from "@/lib/custom-tab-service";
-import { WelcomeSheet } from "@/components/sheets/WelcomeSheet";
-import { CompanyInfoSheet } from "@/components/sheets/CompanyInfoSheet";
-import { UserListSheet } from "@/components/sheets/UserListSheet";
-import { CampaignsSheet } from "@/components/sheets/CampaignsSheet";
-import { SitesSheet } from "@/components/sheets/SitesSheet";
-import { PrescreeningSheet } from "@/components/sheets/PrescreeningSheet";
-import { MessagingSheet } from "@/components/sheets/MessagingSheet";
-import { SourcesSheet } from "@/components/sheets/SourcesSheet";
-import { FoldersSheet } from "@/components/sheets/FoldersSheet";
-import { DocumentsSheet } from "@/components/sheets/DocumentsSheet";
-import { AttributesSheet } from "@/components/sheets/AttributesSheet";
-import { FacebookWhatsAppSheet } from "@/components/sheets/FacebookWhatsAppSheet";
-import { InstagramSheet } from "@/components/sheets/InstagramSheet";
-import { AICallFAQsSheet } from "@/components/sheets/AICallFAQsSheet";
-import { RejectionReasonsSheet } from "@/components/sheets/RejectionReasonsSheet";
-import { LabelsSheet } from "@/components/sheets/LabelsSheet";
-import { AgencyPortalSheet } from "@/components/sheets/AgencyPortalSheet";
-import { AdminSettingsSheet } from "@/components/sheets/AdminSettingsSheet";
-import { AtsIntegrationsSheet } from "@/components/sheets/AtsIntegrationsSheet";
-import { IntegrationsSheet } from "@/components/sheets/IntegrationsSheet";
-import { CustomChecklistForm } from "@/components/sheets/CustomChecklistForm";
-import { CustomTabSheet } from "@/components/sheets/CustomTabSheet";
-
-const sheetComponents: Record<string, React.ComponentType> = {
-  welcome: WelcomeSheet,
-  "company-info": CompanyInfoSheet,
-  users: UserListSheet,
-  campaigns: CampaignsSheet,
-  sites: SitesSheet,
-  prescreening: PrescreeningSheet,
-  messaging: MessagingSheet,
-  sources: SourcesSheet,
-  folders: FoldersSheet,
-  documents: DocumentsSheet,
-  attributes: AttributesSheet,
-  "facebook-whatsapp": FacebookWhatsAppSheet,
-  instagram: InstagramSheet,
-  "ai-call-faqs": AICallFAQsSheet,
-  "rejection-reasons": RejectionReasonsSheet,
-  labels: LabelsSheet,
-  "agency-portal": AgencyPortalSheet,
-  "admin-settings": AdminSettingsSheet,
-  "ats-integrations": AtsIntegrationsSheet,
-  integrations: IntegrationsSheet,
-};
+import { sheetComponents, LazyCustomChecklistForm, LazyCustomTabSheet } from "@/components/sheets/lazy-sheets";
 
 export default function TabPage() {
   const params = useParams();
@@ -102,17 +58,17 @@ export default function TabPage() {
   }, [isCustom, tab, tabConfig, customTab, data?.clientName]);
 
   if (isCustom) {
-    return <CustomChecklistForm />;
+    return <LazyCustomChecklistForm />;
   }
 
   // Custom tab on a standard checklist
   if (customTab) {
     // Table-based tabs (created via MCP) have columns defined
     if (getCustomTabMode(customTab) === "table") {
-      return <CustomTabSheet customTab={customTab} />;
+      return <LazyCustomTabSheet customTab={customTab} />;
     }
     // Form-based tabs (created via admin UI) use the legacy renderer
-    return <CustomChecklistForm customTabId={customTab.id} />;
+    return <LazyCustomChecklistForm customTabId={customTab.id} />;
   }
 
   if (!tabConfig) {
