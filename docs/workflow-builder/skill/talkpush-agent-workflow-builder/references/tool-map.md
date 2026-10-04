@@ -20,3 +20,12 @@
 | Share (only when asked) | `create_link`, `invite_person`, `publish_version`, `disable_link`, `revoke_person`, `list_access` |
 | Review | `list_comments`, `list_suggestions`, `accept_suggestion`, `reject_suggestion` |
 | Pages | `add_page`, `rename_page`, `delete_page` |
+
+## Things the tools do that are easy to miss
+
+- **Revision:** `get_workflow` and every reply that changes a workflow include `revision`. Pass it as `baseRevision` on the next change; the new revision comes back each time. A refusal ("changed since you read it") means someone else edited: re-read, then repeat.
+- **Labels on every path:** in `create_workflow_from_flow_table`, put the label in the first row of each path's `branch`, including main-path outputs ("Yes", "Pass"). Branch rows (3.1, 7.1.1) repeat their number on each row of the path.
+- **Entry channels:** `entryLabels: ["Facebook ad", "Careers page"]` draws one entry shape per way in. `entryLabel` still gives a single one.
+- **Notes:** `add_node` with `type: note` and `attachTo` places the note beside its step straight away; `auto_layout` is only needed after bigger changes. A connector from a decision to a note leaves from the top or bottom, never the side the real paths use.
+- **`auto_layout`** takes a snapshot first (so it can be undone) and answers with how many steps moved, not every node. **`create_version_snapshot`** answers with the version number and counts; read the content back with `diff_versions`.
+- **Gap check:** a turnaround time in an *info* note attached to the step counts; an orange note does not.

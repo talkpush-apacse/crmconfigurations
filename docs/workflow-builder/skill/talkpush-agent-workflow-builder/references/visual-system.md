@@ -19,6 +19,12 @@ Measured from the MyPal v3 and Teleperformance v5.1 reference diagrams. The tool
 
 A person who acts and then something happens automatically is **one white box**: add "The system then ..." to the text. Never split it into two boxes and never renumber for it. If it is unclear who performs a step, ask.
 
+## Short boxes, centred text, details in notes
+
+- Every shape's text is **centred**, horizontally and vertically, on screen and in every download.
+- A box says what happens in a few words. Lists, opening days, timings and explanations go in a **note** (dashed outline) attached to the step: yellow for information, orange for "To confirm with <client name>". Several notes on one step stack above (main path) or beside (branch) it, so keep it to one or two.
+- Several ways in (a Facebook ad and a careers page) are **separate entry shapes**, stacked in one column centred on the main row, each leading to the first step. Use `entryLabels` when building from a table.
+
 ## Role and tag
 
 Every white box starts with the acting role in capitals and brackets, in the client's words: `[REPORTER]`, `[HANDLER]`, `[HANDLER, then LEAD]`, `[RECRUITER]`, `[HIRING MANAGER]`, `[CANDIDATE]`. Never `[PERSON]` or `[MANUAL]`. Every white box carries the people icon.
