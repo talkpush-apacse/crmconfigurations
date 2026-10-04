@@ -1,5 +1,6 @@
 import { normalizeWorkflowEdgeData } from "./normalize";
 import { computeStepNumbers } from "./numbering";
+import { usesLanes } from "./process-map/lane-mode";
 
 /**
  * Jolo's numbering (Process Map style). The number names the BRANCH, not the position in a chain:
@@ -86,7 +87,11 @@ export function computeDecimalNumbers(nodes: any[], edges: any[]): DecimalNumber
   const pos = (id: string) => byId.get(id)?.position ?? { x: 0, y: 0 };
   const order = new Map(flowEdges.map((e, i) => [e.id, i]));
   /** Left-to-right, top-to-bottom reading order of a fork's paths; ties keep the order they were drawn in. */
+  // In a lanes diagram a step's place on the page comes FROM the numbering (lane rows, stage bands), so the order of a
+  // fork's paths follows the order the connectors were drawn instead. That keeps numbers from shifting when lanes change.
+  const lanes = usesLanes(nodes);
   const byReading = (a: any, b: any) => {
+    if (lanes) return (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
     const pa = pos(a.target);
     const pb = pos(b.target);
     return pa.y - pb.y || pa.x - pb.x || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);

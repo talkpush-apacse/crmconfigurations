@@ -31,6 +31,8 @@ export type LayoutCode =
   | "fork_mixed_connectors"
   | "far_merge"
   | "entry_row_mismatch"
+  | "step_outside_lane"
+  | "too_many_lanes"
   | "shapes_too_close";
 
 const BADGE_W = 40;
@@ -48,6 +50,8 @@ function gap(a: Rect, b: Rect): number {
 export function lintLayout(scene: Scene): LayoutFinding[] {
   const out: LayoutFinding[] = [];
   const byId = new Map(scene.shapes.map((s) => [s.id, s]));
+  const lanes = scene.containers.some((c) => c.kind === "lane");
+  const pathsOf = (e: Scene["edges"][number]) => [e.points, ...(e.extra ?? [])];
 
   // 0: shapes sitting on top of each other (notes may overlap containers but never other shapes)
   for (let i = 0; i < scene.shapes.length; i++) {
@@ -62,7 +66,7 @@ export function lintLayout(scene: Scene): LayoutFinding[] {
 
   // 1 + 2: connectors crossing shapes that are not their own ends
   for (const e of scene.edges) {
-    const segs = segmentsOf(e.points);
+    const segs = pathsOf(e).flatMap((p) => segmentsOf(p));
     for (const s of scene.shapes) {
       if (s.id === e.source || s.id === e.target) continue;
       if (!segs.some((seg) => segmentHitsRect(seg, s.rect))) continue;
@@ -127,9 +131,10 @@ export function lintLayout(scene: Scene): LayoutFinding[] {
   }
 
   // 8: paths leaving one step must share one exit and one style
+  // (A lanes diagram has no single exit for a fork: a path in the same lane leaves downward, one into another lane rightward.)
   const forks = new Map<string, typeof scene.edges>();
   for (const e of scene.edges) {
-    if (scene.numbering.edgeLabels.has(e.id) && !e.isJoin) forks.set(e.source, [...(forks.get(e.source) ?? []), e]);
+    if (!lanes && scene.numbering.edgeLabels.has(e.id) && !e.isJoin) forks.set(e.source, [...(forks.get(e.source) ?? []), e]);
   }
   for (const [source, list] of forks) {
     if (list.length < 2) continue;
@@ -150,7 +155,7 @@ export function lintLayout(scene: Scene): LayoutFinding[] {
   }
 
   // 10: the entry channel should share the main path's row
-  const spineFirst = scene.spine.map((id) => byId.get(id)).find(Boolean);
+  const spineFirst = lanes ? undefined : scene.spine.map((id) => byId.get(id)).find(Boolean);
   if (spineFirst) {
     const row = spineFirst.rect.y + spineFirst.rect.h / 2;
     const entries = scene.shapes.filter((x) => x.kind === "start");
@@ -166,6 +171,29 @@ export function lintLayout(scene: Scene): LayoutFinding[] {
       if (Math.abs((top + bottom) / 2 - row) > 4) {
         out.push({ code: "entry_row_mismatch", severity: "low", nodeId: entries[0].id, message: "The entry channels are not centred on the main path.", recommendation: "Centre the entry channels on the first step of the main path." });
       }
+    }
+  }
+
+  // 11: lanes diagrams: a step must sit inside a row of its own lane, and a stage should not have too many lanes
+  if (lanes && scene.laneOf) {
+    const rows = scene.containers.filter((c) => c.kind === "lane");
+    for (const s of scene.shapes) {
+      if (s.kind === "note" || s.kind === "start") continue;
+      const lane = scene.laneOf.get(s.id);
+      if (!lane) continue;
+      const cx = s.rect.x + s.rect.w / 2;
+      const cy = s.rect.y + s.rect.h / 2;
+      const inside = rows.some((r) => r.title === lane && cx >= r.rect.x && cx <= r.rect.x + r.rect.w && cy >= r.rect.y && cy <= r.rect.y + r.rect.h);
+      if (!inside) out.push({ code: "step_outside_lane", severity: "medium", nodeId: s.id, message: `"${name(s)}" is outside its lane ("${lane}").`, recommendation: "Re-run the layout to put it back in its lane, or change its lane." });
+    }
+    const perStage = new Map<string, number>();
+    for (const r of rows) {
+      const stage = r.id.split("_")[1];
+      perStage.set(stage, (perStage.get(stage) ?? 0) + 1);
+    }
+    for (const [stage, n] of perStage) {
+      if (n > 6) out.push({ code: "too_many_lanes", severity: "low", message: `One stage has ${n} lanes, which is hard to read.`, recommendation: "Merge lanes that are really the same actor, or split the process into more stages." });
+      void stage;
     }
   }
 

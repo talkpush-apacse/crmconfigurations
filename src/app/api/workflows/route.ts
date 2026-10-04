@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { sanitizeText } from "@/lib/workflow/text";
-import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
+import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-layout";
 
 type NodeCountRow = {
   id: string;
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         edges = template.edges;
         // Templates were drawn for the original look; arrange them for the Process Map so they open tidy.
         if (diagramStyle === "process_map" && Array.isArray(nodes) && Array.isArray(edges) && nodes.length > 0) {
-          const laid = applyLayout(nodes as never[], edges as never[], layoutProcessMap(nodes as never[], edges as never[]));
+          const laid = applyLayout(nodes as never[], edges as never[], layoutDiagram(nodes as never[], edges as never[]));
           nodes = laid.nodes;
           edges = laid.edges;
         }

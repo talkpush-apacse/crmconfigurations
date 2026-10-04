@@ -110,6 +110,9 @@ export function ArrowDefs() {
       <marker id="pm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill={PM.colors.line} />
       </marker>
+      <marker id="pm-arrow-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill={PM.colors.externalLine} />
+      </marker>
     </defs>
   );
 }
@@ -117,7 +120,17 @@ export function ArrowDefs() {
 export function EdgeBody({ edge }: { edge: SceneEdge }): ReactElement {
   return (
     <g>
-      <path d={pathFromPoints(edge.points, 0)} fill="none" stroke={PM.colors.line} strokeWidth={1.25} markerEnd="url(#pm-arrow)" />
+      {[edge.points, ...(edge.extra ?? [])].map((pts, i) => (
+        <path
+          key={i}
+          d={pathFromPoints(pts, 0)}
+          fill="none"
+          stroke={edge.external ? PM.colors.externalLine : PM.colors.line}
+          strokeWidth={edge.external ? 1.4 : 1.25}
+          strokeDasharray={edge.external ? "7 5" : undefined}
+          markerEnd={edge.external ? "url(#pm-arrow-ext)" : "url(#pm-arrow)"}
+        />
+      ))}
       {edge.label && edge.labelRect && (
         <g fontFamily={FONT}>
           <rect x={edge.labelRect.x} y={edge.labelRect.y} width={edge.labelRect.w} height={edge.labelRect.h} rx={3} fill="#FFFFFF" fillOpacity={0.92} />
@@ -130,8 +143,52 @@ export function EdgeBody({ edge }: { edge: SceneEdge }): ReactElement {
   );
 }
 
+const MARKER_FONT = 11;
+
 export function ContainerBody({ container }: { container: SceneContainer }): ReactElement {
   const { w, h } = container.rect;
+  if (container.kind === "stage") {
+    return (
+      <g fontFamily={FONT}>
+        <rect width={w} height={38} rx={4} fill={PM.colors.stageHead} />
+        <text x={w / 2} y={24} fontSize={14} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
+          {container.title}
+        </text>
+      </g>
+    );
+  }
+  if (container.kind === "lane") {
+    const ext = Boolean(container.external);
+    const fit = Math.max(8, Math.floor((h - 24) / 7.2));
+    const name = container.title.length > fit ? `${container.title.slice(0, fit - 1).trimEnd()}…` : container.title;
+    return (
+      <g fontFamily={FONT}>
+        <rect width={w} height={h} fill={ext ? PM.colors.laneExternal : (container.index ?? 0) % 2 === 0 ? PM.colors.laneA : PM.colors.laneB} stroke={PM.colors.containerBorder} strokeWidth={1.2} />
+        <rect width={56} height={h} fill={ext ? PM.colors.laneLabelExternal : PM.colors.laneLabel} />
+        <text transform={`translate(${ext ? 22 : 28} ${h / 2}) rotate(-90)`} fontSize={13} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
+          {name}
+        </text>
+        {ext && (
+          <text transform={`translate(42 ${h / 2}) rotate(-90)`} fontSize={10} fill="#DDE7F3" textAnchor="middle">
+            another system
+          </text>
+        )}
+      </g>
+    );
+  }
+  if (container.kind === "marker") {
+    const lines = container.title.split("|");
+    return (
+      <g fontFamily={FONT} textAnchor="middle">
+        <circle cx={w / 2} cy={h / 2} r={w / 2} fill={PM.colors.jump} stroke={PM.colors.jumpStroke} strokeWidth={1.25} />
+        {lines.map((l, i) => (
+          <text key={i} x={w / 2} y={h / 2 + 4 - ((lines.length - 1) * 16) / 2 + i * 16} fontSize={MARKER_FONT} fill={PM.colors.text}>
+            {l}
+          </text>
+        ))}
+      </g>
+    );
+  }
   const tabW = Math.min(w - 20, Math.max(120, container.title.length * 7.6 + 24));
   return (
     <g fontFamily={FONT}>
@@ -174,6 +231,7 @@ function Swatch({ row }: { row: LegendRow }) {
     );
   }
   if (shape === "pill") return <rect x={1} y={5} width={24} height={16} rx={8} {...common} />;
+  if (shape === "dashed-line") return <line x1={1} y1={13} x2={25} y2={13} stroke={stroke} strokeWidth={2.2} strokeDasharray="6 4" />;
   if (shape === "display") return <path d="M6 3 H20 Q25 3 25 13 Q25 23 20 23 H6 L1 13 Z" {...common} />;
   return <rect x={1} y={4} width={24} height={18} rx={2} {...common} />;
 }
