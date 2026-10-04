@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ACTION_TYPES, ACTION_TYPE_KEYS, type EndKind, type NoteKind } from "@/lib/workflow/process-map/tokens";
 import { actionTypeOf, personActs } from "@/lib/workflow/process-map/model";
 import type { WorkflowNodeData } from "@/lib/workflow/types";
@@ -28,16 +29,101 @@ const NOTE_KINDS: [NoteKind, string][] = [
 ];
 
 /** Settings that only exist in the Process Map style: tag, who acts, end state, jump target, note kind. */
+export interface LaneControls {
+  /** Existing lane names, top to bottom. */
+  lanes: string[];
+  /** Applies a lane / stage change and re-arranges the diagram (one undo step). */
+  onChange: (id: string, patch: { lane?: string; stage?: string }) => void;
+}
+
+/** Lane and stage of one step (lanes diagrams only): pick a lane, or type a new one, and say where a stage starts. */
+function LaneAndStage({ nodeId, data, controls }: { nodeId: string; data: any; controls: LaneControls }) {
+  const lane = String(data.lane ?? "");
+  const NEW = "__new__";
+  const [adding, setAdding] = useState(false);
+  const [newLane, setNewLane] = useState("");
+  const [stage, setStage] = useState<string | null>(null);
+  const commitNew = () => {
+    const name = newLane.trim();
+    setAdding(false);
+    setNewLane("");
+    if (name) controls.onChange(nodeId, { lane: name });
+  };
+  const commitStage = () => {
+    const next = (stage ?? "").trim();
+    setStage(null);
+    if (next !== String(data.stage ?? "")) controls.onChange(nodeId, { stage: next });
+  };
+  return (
+    <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-2" data-testid="lane-and-stage">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Lane and stage</p>
+      <label className="block text-sm font-medium text-gray-700">
+        Lane (who does this step)
+        <select
+          className={`${FIELD} mt-1`}
+          value={adding ? NEW : lane}
+          onChange={(e) => (e.target.value === NEW ? setAdding(true) : controls.onChange(nodeId, { lane: e.target.value }))}
+        >
+          {lane === "" && <option value="">(taken from the step&apos;s role)</option>}
+          {controls.lanes.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+          <option value={NEW}>Add a new lane…</option>
+        </select>
+      </label>
+      {adding && (
+        <input
+          autoFocus
+          aria-label="New lane name"
+          className={FIELD}
+          placeholder="Lane name, for example HRIS"
+          maxLength={60}
+          value={newLane}
+          onChange={(e) => setNewLane(e.target.value)}
+          onBlur={commitNew}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitNew();
+            if (e.key === "Escape") {
+              setAdding(false);
+              setNewLane("");
+            }
+          }}
+        />
+      )}
+      <label className="block text-sm font-medium text-gray-700">
+        Stage starts here (optional)
+        <input
+          className={`${FIELD} mt-1`}
+          placeholder="For example 2. Assessment"
+          maxLength={60}
+          value={stage ?? String(data.stage ?? "")}
+          onChange={(e) => setStage(e.target.value)}
+          onBlur={commitStage}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+        />
+        <span className="mt-0.5 block text-[11px] font-normal text-gray-400">The steps after this one stay in the same stage until the next stage starts.</span>
+      </label>
+    </div>
+  );
+}
+
 export default function ProcessMapProperties({
   nodeId,
   data,
   otherSteps,
   onChange,
+  laneControls,
 }: {
   nodeId: string;
   data: WorkflowNodeData;
   otherSteps: StepOption[];
   onChange: (id: string, updates: Partial<WorkflowNodeData>) => void;
+  /** Present only when the diagram is drawn as lanes. */
+  laneControls?: LaneControls;
 }) {
   const node = { id: nodeId, type: data.type, data };
   const d = data as any;
@@ -48,6 +134,10 @@ export default function ProcessMapProperties({
   return (
     <div className="pt-2 border-t border-gray-100 space-y-3">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Process Map</p>
+
+      {laneControls && ["stage", "communication", "integration", "wait", "manual_action", "parallel", "decision"].includes(data.type) && (
+        <LaneAndStage nodeId={nodeId} data={d} controls={laneControls} />
+      )}
 
       {isProcessStep && (
         <>

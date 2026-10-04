@@ -1,5 +1,6 @@
 "use client";
 
+import LanesPanel, { type LanesPanelProps } from "./LanesPanel";
 import { useState } from "react";
 import {
   CircleDot,
@@ -120,6 +121,8 @@ interface NodePaletteProps {
   outline: OutlineItem[];
   selectedStepId: string | null;
   onSelectStep: (nodeId: string) => void;
+  /** Process Map only: the single-row / lanes switch and the lane list. */
+  lanePanel?: LanesPanelProps;
 }
 
 /** Step kinds that exist only in the Process Map style. */
@@ -129,7 +132,7 @@ type SidebarTab = "nodes" | "outline" | "layout" | "settings";
 
 const DRAGGABLE_ITEM = "flex items-center gap-1.5 px-1.5 py-1.5 rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 cursor-grab active:cursor-grabbing active:opacity-70 group transition-colors";
 
-export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, onDiagramStyleChange, outline, selectedStepId, onSelectStep }: NodePaletteProps) {
+export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, onDiagramStyleChange, outline, selectedStepId, onSelectStep, lanePanel }: NodePaletteProps) {
   const candidateActorConfig = ACTOR_CONFIG["candidate"];
   const [activeTab, setActiveTab] = useState<SidebarTab>("nodes");
 
@@ -152,6 +155,8 @@ export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, 
           ))}
         </div>
       </div>
+
+      {diagramStyle === "process_map" && lanePanel && <LanesPanel {...lanePanel} />}
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200 shrink-0">
