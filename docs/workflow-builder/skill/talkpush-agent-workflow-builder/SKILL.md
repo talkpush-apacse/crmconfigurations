@@ -43,6 +43,8 @@ When something is unknown and routing is unclear, do not invent a path. Add an *
 - **Main-path and branch boxes stay concise**: the role or tag, a short name, and for an automated message, call or alert one `Channel · When` line (see below). No lists, no opening hours, no explanations.
 - **Extra information goes in a note shape attached to that step** (dashed outline): `add_node` with `type: note`, `attachTo` the step. Yellow (`info`) for general detail such as the four prescreening questions; orange (`needs_input`, titled "To confirm with <client name>") for anything unknown. Never put detail in a box's `notes` field to save a shape. The `timing` field is for the `When` of an automated step (and the turnaround of a manual one), not for explanations.
 - **One note per kind per step.** If a step needs both an explanation and a to-confirm, fold them into the single orange note; several notes on one step crowd the map.
+- **Plain words, for a reader who has never heard of Talkpush.** Name a step by what happens to the candidate or the work, not by system jargon: "Candidate marked as Rejected", not "Moves to Rejected"; "Sends booking link", not "Triggers autoflow". The first time the automatic steps appear, say in an info note that Talkpush is the recruiting platform doing them.
+- **End shapes say why.** "Rejected: did not pass prescreening", "Hired: offer accepted", not just "Rejected" or "Hired". The key explains the colours (green, pink, grey) only for the end states the diagram uses.
 - **Text is centred in every shape.** The tool draws it that way: do not try to align text with spaces or line breaks.
 - **A timing in a note is not seen by the gap check** unless it is an info note that states a time. An orange note keeps the turnaround assumption on the list, which is correct while the time is unknown.
 
@@ -60,6 +62,7 @@ If a convention or quirk is not covered here, say so and ask. Then extend the ma
 
 | Date | Change |
 |---|---|
+| 2026-10-04 | Key now explains end-state colours and the numbering (with an example); plain-words and "end shapes say why" rules. The key still lists no tags. |
 | 2026-10-04 | Added channel and cadence: every automated message, call or alert carries `Channel · When` in the box and a column in the flow table. |
 | 2026-10-04 | Added `delete_workflow` rule (never-shared drafts only, on explicit request, name confirmed first). |
 | 2026-10-04 | Added "Boxes are short, details live in notes", centred text, label every path, several entry channels, revision on every reply, and the numbering effect of marking a main line. Matches Workflow Builder PR #33. |

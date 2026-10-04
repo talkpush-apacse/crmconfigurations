@@ -63,7 +63,7 @@ See `numbering.md`.
 
 ## Diagram key
 
-Generated for you. Rows: green "System does it, no person needed", white "A person acts (role in brackets)", blue "Decision", then only the kinds this diagram uses (yellow Note, orange "To confirm with <Client>", pink Rejection reason, grey Out of scope, purple Jump). **The key lists colours and shapes only: no tags, no tag icons.**
+Generated for you. Rows: green "System does it, no person needed", white "A person acts (role in brackets)", blue "Decision", then only the kinds this diagram uses: the end-state colours ("Ends successfully", "Partly successful", "Ends without success", "Closed or handed off"), yellow Note, orange "To confirm with <Client>", pink Rejection reason, grey Out of scope, purple Jump, and a numbering line with an example from this diagram ("① main path · 3.1 a branch from step 3"; hidden when numbers are hidden). **The key lists colours, shapes and numbers only: no tags, no tag icons.**
 
 ## Layout (the tool does this)
 

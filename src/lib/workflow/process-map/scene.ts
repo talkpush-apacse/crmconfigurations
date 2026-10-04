@@ -74,7 +74,8 @@ export interface SceneContainer {
 export interface LegendRow {
   key: string;
   label: string;
-  swatch: { fill: string; stroke: string; dashed?: boolean; shape: "rect" | "diamond" | "circle" | "pill" | "display" | "cylinder" };
+  /** `glyph`: a character drawn inside the swatch (the circled number in the numbering line). */
+  swatch: { fill: string; stroke: string; dashed?: boolean; shape: "rect" | "diamond" | "circle" | "pill" | "display" | "cylinder"; glyph?: string };
 }
 
 export interface Scene {
@@ -229,6 +230,12 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   if (has((s) => s.kind === "process" && !personActs(s.node) && !isReject(s))) rows.push({ key: "system", label: "System does it, no person needed", swatch: { fill: C.system, stroke: C.stroke, shape: "rect" } });
   if (has((s) => s.kind === "process" && personActs(s.node) && !isReject(s))) rows.push({ key: "person", label: "A person acts (role in brackets)", swatch: { fill: C.person, stroke: C.stroke, shape: "rect" } });
   if (has((s) => s.kind === "decision")) rows.push({ key: "decision", label: "Decision", swatch: { fill: C.decision, stroke: C.stroke, shape: "diamond" } });
+  // End states: one line per colour this diagram actually uses, so green / pink / grey never has to be guessed.
+  const endKinds = new Set(shapes.filter((s) => s.kind === "end").map((s) => s.node.data?.endKind ?? "neutral"));
+  if (endKinds.has("success")) rows.push({ key: "end_success", label: "Ends successfully", swatch: { fill: C.endSuccess, stroke: C.stroke, shape: "pill" } });
+  if (endKinds.has("soft")) rows.push({ key: "end_soft", label: "Partly successful", swatch: { fill: C.endSoft, stroke: C.stroke, shape: "pill" } });
+  if (endKinds.has("failure")) rows.push({ key: "end_failure", label: "Ends without success", swatch: { fill: C.endFailure, stroke: C.stroke, shape: "pill" } });
+  if (endKinds.has("neutral")) rows.push({ key: "end_neutral", label: "Closed or handed off", swatch: { fill: C.endNeutral, stroke: C.stroke, shape: "pill" } });
   const noteKinds = new Set(shapes.filter((s) => s.kind === "note").map((s) => s.node.data?.noteKind ?? "info"));
   if (noteKinds.has("rejection") || has(isReject)) rows.push({ key: "rejection", label: "Rejection reason", swatch: { fill: C.noteRejection, stroke: C.noteRejectionStroke, dashed: true, shape: "rect" } });
   if (noteKinds.has("needs_input")) rows.push({ key: "needs", label: `To confirm with ${meta.clientName}`, swatch: { fill: C.noteOrange, stroke: C.noteOrangeStroke, dashed: true, shape: "rect" } });
@@ -236,6 +243,13 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   if (noteKinds.has("out_of_scope")) rows.push({ key: "scope", label: "Out of scope", swatch: { fill: C.noteOutOfScope, stroke: C.noteOutOfScopeStroke, dashed: true, shape: "rect" } });
   if (has((s) => s.kind === "jump")) rows.push({ key: "jump", label: "Jump to another step", swatch: { fill: C.jump, stroke: C.jumpStroke, shape: "circle" } });
   if (has((s) => s.node.data?.shapeKind === "display")) rows.push({ key: "display", label: "Screen the person sees", swatch: { fill: "#FFFFFF", stroke: C.stroke, shape: "display" } });
+  // How to read the numbers, with a real example from this diagram: circled = main path, decimal = a branch.
+  if (!meta.hideNumbers && numbering.spineNumbers.size > 0) {
+    const branch = [...numbering.branchNumbers.values()].find((v) => typeof v === "string" && v.includes("."));
+    const parent = branch ? String(branch).split(".").slice(0, -1).join(".") : "";
+    const label = branch ? `main path · ${branch} a branch from step ${parent}` : "main path steps are numbered in order";
+    rows.push({ key: "numbers", label, swatch: { fill: "#FFFFFF", stroke: C.stroke, shape: "circle", glyph: "①" } });
+  }
   const legendH = rows.length ? 56 + rows.length * 32 : 0;
   const legendX = entryContainer ? entryContainer.x : sceneBox.x;
   const legendY = entryContainer ? entryContainer.y + entryContainer.h + 40 : sceneBox.y + sceneBox.h + 40;

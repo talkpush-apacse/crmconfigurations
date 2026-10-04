@@ -161,7 +161,18 @@ function Swatch({ row }: { row: LegendRow }) {
   const { fill, stroke, dashed, shape } = row.swatch;
   const common = { fill, stroke, strokeWidth: 1.2, strokeDasharray: dashed ? "4 3" : undefined } as const;
   if (shape === "diamond") return <polygon points="13,2 25,13 13,24 1,13" {...common} />;
-  if (shape === "circle") return <circle cx={13} cy={13} r={11} {...common} />;
+  if (shape === "circle") {
+    return (
+      <>
+        <circle cx={13} cy={13} r={11} {...common} />
+        {row.swatch.glyph && (
+          <text x={13} y={18} fontSize={13} fontWeight={700} textAnchor="middle" fill={PM.colors.text}>
+            {row.swatch.glyph}
+          </text>
+        )}
+      </>
+    );
+  }
   if (shape === "pill") return <rect x={1} y={5} width={24} height={16} rx={8} {...common} />;
   if (shape === "display") return <path d="M6 3 H20 Q25 3 25 13 Q25 23 20 23 H6 L1 13 Z" {...common} />;
   return <rect x={1} y={4} width={24} height={18} rx={2} {...common} />;
