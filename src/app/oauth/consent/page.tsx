@@ -77,6 +77,11 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                     Read and change Project Tracker projects, items and metrics (it cannot delete tracker data)
                   </li>
+                  <li className="flex gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                    Read and change Workflow Builder maps, read client comments, and create or turn off client review links (it cannot
+                    delete a whole map, but it can remove steps and pages)
+                  </li>
                 </ul>
               </div>
               <p className="flex gap-2 text-muted-foreground">
