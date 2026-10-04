@@ -92,7 +92,7 @@ test("grid: a step with no lane of its own takes one from its role, and the grid
   const { nodes, edges } = threeActorMap();
   const stripped = nodes.map((n: any) => (n.id === "c" ? { ...n, data: { ...n.data, lane: undefined } } : n));
   const g = computeLaneGrid(stripped, edges);
-  assert.equal(g.laneOf.get("c"), "Talkpush", "an automated step with no lane falls back to Talkpush");
+  assert.equal(g.laneOf.get("c"), "Talkpush automation", "an automated step with no lane falls back to the one automated lane");
   assert.equal(JSON.stringify([...computeLaneGrid(nodes, edges).center]), JSON.stringify([...computeLaneGrid(nodes, edges).center]));
   assert.ok(LANE.colPitch > 0);
 });

@@ -1,4 +1,5 @@
 import { ACTION_TYPES, isActionType } from "./process-map/tokens";
+import { laneNameFor } from "./process-map/lane-mode";
 
 /**
  * Builds a diagram from an APPROVED flow table (Step, Actor, Action, Action Type, Branch / Condition). The table is
@@ -68,8 +69,9 @@ export function chooseLayout(rows: FlowRowInput[], opts: LayoutOptions = {}): La
   const asked: LayoutAsked = opts.layout === "lanes" || opts.layout === "spine" ? opts.layout : "auto";
   const steps = rows.filter((r) => r.kind !== "end" && r.kind !== "jump");
   const seen = new Map<string, string>();
+  const laneName = (r: FlowRowInput) => laneNameFor(clean(r.lane) || clean(r.actor));
   for (const r of steps) {
-    const name = clean(r.lane) || clean(r.actor);
+    const name = laneName(r);
     if (name && !seen.has(lk(name))) seen.set(lk(name), name);
   }
   const lanes = [...seen.values()];
@@ -79,17 +81,17 @@ export function chooseLayout(rows: FlowRowInput[], opts: LayoutOptions = {}): La
     if (s && !stages.includes(s)) stages.push(s);
   }
   const external = new Map<string, string>();
-  for (const n of opts.externalLanes ?? []) if (clean(n)) external.set(lk(n), clean(n));
+  for (const n of opts.externalLanes ?? []) if (clean(n)) external.set(lk(laneNameFor(n)), laneNameFor(n));
   for (const r of steps) {
-    const name = clean(r.lane) || clean(r.actor);
+    const name = laneName(r);
     if (r.external === true && name) external.set(lk(name), seen.get(lk(name)) ?? name);
   }
   // a lane named like a system a Send Data / Get Data step talks to is that system's lane
   const systems = new Set(rows.filter((r) => clean(r.system)).map((r) => lk(clean(r.system))));
   for (const l of lanes) if (systems.has(lk(l))) external.set(lk(l), l);
   const externalLanes = lanes.filter((l) => external.has(lk(l)));
-  const unusedExternal = [...new Set((opts.externalLanes ?? []).map(clean).filter((n) => n && !seen.has(lk(n))))];
-  const base = { lanes, stages, externalLanes, laneOrder: (opts.laneOrder ?? []).map(clean).filter(Boolean), unusedExternal };
+  const unusedExternal = [...new Set((opts.externalLanes ?? []).map((n) => laneNameFor(clean(n))).filter((n) => n && !seen.has(lk(n))))];
+  const base = { lanes, stages, externalLanes, laneOrder: (opts.laneOrder ?? []).map((n) => laneNameFor(clean(n))).filter(Boolean), unusedExternal };
   if (asked === "spine") return { layout: "spine", reason: "You asked for the single-row layout.", ...base };
   if (asked === "lanes") return { layout: "lanes", reason: "You asked for lanes.", ...base };
   const why: string[] = [];
@@ -140,7 +142,7 @@ export function graphFromFlowTable(rows: FlowRowInput[], choice?: LayoutChoice):
     if (!lanesOn) return {};
     const out: Record<string, unknown> = {};
     if (row.kind !== "end" && row.kind !== "jump") {
-      const name = clean(row.lane) || clean(row.actor);
+      const name = laneNameFor(clean(row.lane) || clean(row.actor));
       if (name) {
         const shown = laneDisplay.get(lk(name)) ?? name;
         out.lane = shown;
