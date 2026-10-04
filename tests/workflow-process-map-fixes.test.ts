@@ -128,3 +128,39 @@ test("a connector running up from a decision into its note puts its label outsid
   assert.deepEqual(lintLayout(scene).filter((f) => f.code === "label_overlap"), [], "and the layout check agrees");
   void laid;
 });
+
+test("the key explains the end-state colours a diagram uses, and how to read the numbers, with an example from the diagram", () => {
+  const nodes = [
+    start("s", "Entry"),
+    decision("d", "Passed?"),
+    system("a", "Moves to Hired", "move"),
+    system("b", "Moves to Rejected", "move"),
+    end("ok", "Hired", "success"),
+    end("no", "Rejected: did not pass", "failure"),
+  ];
+  const edges = [edge("e1", "s", "d"), edge("e2", "d", "a", "Yes", { isPrimary: true }), edge("e3", "d", "b", "No"), edge("e4", "a", "ok"), edge("e5", "b", "no")];
+  const { scene } = sceneOf(nodes, edges);
+  const rows = Object.fromEntries(scene.legend.rows.map((r: any) => [r.key, r]));
+  assert.equal(rows.end_success.label, "Ends successfully");
+  assert.equal(rows.end_failure.label, "Ends without success");
+  assert.ok(!rows.end_neutral && !rows.end_soft, "no row for an end colour this diagram does not use");
+  assert.match(rows.numbers.label, /^main path · \d+\.\d+ a branch from step \d+$/);
+  assert.equal(rows.numbers.swatch.glyph, "①");
+  assert.ok(!scene.legend.rows.some((r: any) => /\[|MOVE|tag/i.test(r.label)), "the key still lists no tags");
+});
+
+test("the key has no end-state or branch wording when the diagram has none", () => {
+  const nodes = [start("s", "Entry"), system("a", "Sends a message", "message"), system("b", "Records it", "add_data")];
+  const edges = [edge("e1", "s", "a"), edge("e2", "a", "b")];
+  const { scene } = sceneOf(nodes, edges);
+  assert.ok(!scene.legend.rows.some((r: any) => r.key.startsWith("end_")));
+  assert.equal(scene.legend.rows.find((r: any) => r.key === "numbers")!.label, "main path steps are numbered in order");
+});
+
+test("hiding the numbers also hides the key's number line", () => {
+  const nodes = [start("s", "Entry"), system("a", "Sends a message", "message")];
+  const edges = [edge("e1", "s", "a")];
+  const laid = applyLayout(nodes, edges, layoutProcessMap(nodes, edges));
+  const hidden = buildScene(laid.nodes, laid.edges, { ...meta, hideNumbers: true });
+  assert.ok(!hidden.legend.rows.some((r: any) => r.key === "numbers"));
+});
