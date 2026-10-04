@@ -25,14 +25,14 @@ async function load() {
   return import("../src/lib/mcp/workflows");
 }
 
-const NEW_TOOLS = ["list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table", "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions", "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person", "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow"];
+const NEW_TOOLS = ["list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table", "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions", "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person", "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow", "set_diagram_layout"];
 
-test("mcp v2: the original 29 tools are still there, plus 25 new ones, with no name clashes", async () => {
+test("mcp v2: the original 29 tools are still there, plus 26 new ones, with no name clashes", async () => {
   const { createWorkflowMcpServer } = await load();
   const client = await connect(createWorkflowMcpServer("https://example.test"));
   const names = (await client.listTools()).tools.map((t) => t.name);
   assert.equal(new Set(names).size, names.length);
-  assert.equal(names.length, 54);
+  assert.equal(names.length, 55);
   for (const n of NEW_TOOLS) assert.ok(names.includes(n), n);
 });
 

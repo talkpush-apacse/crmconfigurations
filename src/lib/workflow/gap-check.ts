@@ -1,5 +1,7 @@
 import { actionTypeOf, personActs, shapeKindOf } from "./process-map/model";
 import { computeDecimalNumbers } from "./numbering-decimal";
+import { usesLanes } from "./process-map/lane-mode";
+import { computeLaneGrid } from "./process-map/lanes";
 
 /**
  * The TA / BPO gap check: questions a recruitment process usually has to answer, asked of THIS diagram. It is rules,
@@ -69,6 +71,18 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
   for (const n of flow.filter((x) => x.type === "parallel")) {
     if ((outgoing.get(n.id) ?? []).length < 2) {
       out.push({ tier: "nice", code: "parallel_ambiguous", group: "structure", nodeId: n.id, confidence: "medium", message: `"${n.data?.label}" is marked as parallel but has fewer than two paths. Is it parallel or sequential?` });
+    }
+  }
+
+  // ---- lanes: an outside system the process sends data to but never hears back from -------------------------------
+  if (usesLanes(nodes)) {
+    const grid = computeLaneGrid(nodes, edges);
+    for (const lane of grid.laneOrder.filter((l) => grid.externalLanes.has(l.toLowerCase()))) {
+      const inLane = flow.filter((n) => grid.laneOf.get(n.id)?.toLowerCase() === lane.toLowerCase());
+      const returns = edges.some((e) => grid.laneOf.get(e.source)?.toLowerCase() === lane.toLowerCase() && grid.laneOf.has(e.target) && grid.laneOf.get(e.target)?.toLowerCase() !== lane.toLowerCase());
+      if (inLane.length > 0 && !returns) {
+        out.push({ tier: "nice", code: "external_lane_no_return", group: "structure", nodeId: inLane[0].id, confidence: "medium", message: `Information goes to "${lane}" but nothing comes back from it. Does it return a result, an ID or a status?` });
+      }
     }
   }
 

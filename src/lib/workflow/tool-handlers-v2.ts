@@ -4,7 +4,10 @@ import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-l
 import { lintLayout } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { deriveFlowTable, flowTableCsv } from "@/lib/workflow/process-map/flow-table";
-import { graphFromFlowTable, type FlowRowInput } from "@/lib/workflow/flow-table-import";
+import { chooseLayout, graphFromFlowTable, type FlowRowInput } from "@/lib/workflow/flow-table-import";
+import { computeLaneGrid, fallbackLane } from "@/lib/workflow/process-map/lanes";
+import { laneText } from "@/lib/workflow/process-map/lane-mode";
+import { shapeKindOf } from "@/lib/workflow/process-map/model";
 import { runGapCheck, summarizeGaps } from "@/lib/workflow/gap-check";
 import { diffPages, type DiffPage } from "@/lib/workflow/diff";
 import { describeOps } from "@/lib/workflow/suggestion-overlay";
@@ -40,6 +43,7 @@ export interface V2Helpers {
   Input: new (message: string) => Error;
 }
 
+const strList = (v: unknown): string[] => (Array.isArray(v) ? v.map((x) => str(x)).filter((x): x is string => Boolean(x)) : []);
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 
 async function load(workflowId: unknown, Input: V2Helpers["Input"]) {
@@ -216,13 +220,15 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       }
       const rows = (Array.isArray(input.rows) ? input.rows : []) as FlowRowInput[];
       if (rows.length === 0) throw new Input("rows must list at least one step");
-      const graph = graphFromFlowTable(rows);
+      // Lanes or the single row: asked for, or chosen from the table (3+ actors, an outside system, or stages).
+      const choice = chooseLayout(rows, { layout: str(input.layout), externalLanes: strList(input.externalLanes), laneOrder: strList(input.laneOrder) });
+      const graph = graphFromFlowTable(rows, choice);
       if (graph.problems.length) throw new Input(`The table cannot be built yet: ${graph.problems.join(" ")}`);
       // One entry shape per channel ("Facebook ad", "Careers page"), each leading to the first step. entryLabel stays for a single one.
       const listed = (Array.isArray(input.entryLabels) ? input.entryLabels : []).map((x: unknown) => str(x)).filter((x: string | undefined): x is string => Boolean(x));
       const entries = listed.length ? listed : [str(input.entryLabel) ?? "Candidate enters"];
       const entryIds = entries.map((_, i) => (i === 0 ? "entry" : `entry${i + 1}`));
-      return h.createFromSpec(
+      const built = await h.createFromSpec(
         {
           clientName: input.clientName,
           workflowName: input.workflowName,
@@ -235,6 +241,14 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
         },
         context
       );
+      // Say which layout was used and why, so the person is told.
+      return {
+        ...(built as Record<string, unknown>),
+        layout: choice.layout,
+        layoutReason: choice.reason,
+        ...(choice.layout === "lanes" ? { lanes: choice.lanes, stages: choice.stages, externalLanes: choice.externalLanes } : {}),
+        ...(choice.unusedExternal.length ? { warning: `externalLanes names ${choice.unusedExternal.map((n) => `"${n}"`).join(", ")}, but no step sits in ${choice.unusedExternal.length > 1 ? "those lanes" : "that lane"}, so no outside-system lane is drawn. Add a step in it (what that system does) or drop the name.` } : {}),
+      };
     }
     case "propose_changes": {
       const wf = await load(input.workflowId, Input);
@@ -306,6 +320,45 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const wf = await load(input.workflowId, Input);
       const v = await publishVersion(wf.id, { id: "mcp", label: context.actor ?? "Claude (MCP)" }, str(input.label));
       return { versionId: v.id, versionNumber: v.versionNumber, message: "Clients with a link now see this version by default." };
+    }
+    case "set_diagram_layout": {
+      const wf = await load(input.workflowId, Input);
+      if (wf.diagramStyle !== "process_map") throw new Input("Lanes and the single-row layout belong to the Process Map style. Switch with set_diagram_style first.");
+      const want = input.layout === "lanes" ? "lanes" : input.layout === "spine" ? "spine" : null;
+      if (!want) throw new Input('layout must be "lanes" or "spine".');
+      const { index, pages } = currentPage(wf, input.page);
+      const page = pages[index];
+      const externalKeys = new Set(strList(input.externalLanes).map((l) => l.toLowerCase()));
+      let touched = 0;
+      const nodes = (page.nodes ?? []).map((n: any) => {
+        const kind = shapeKindOf(n);
+        if (want === "spine") {
+          const d = n.data ?? {};
+          if (d.lane === undefined && d.stage === undefined && d.laneKind === undefined && d.laneRank === undefined) return n;
+          touched += 1;
+          const { lane, stage, laneKind, laneRank, ...rest } = d;
+          void lane; void stage; void laneKind; void laneRank;
+          return { ...n, data: rest };
+        }
+        if (kind !== "process" && kind !== "decision") return n;
+        const lane = laneText(n) || fallbackLane(n);
+        const ext = externalKeys.has(lane.toLowerCase());
+        if (laneText(n) && !ext) return n;
+        touched += 1;
+        return { ...n, data: { ...n.data, lane, ...(ext ? { laneKind: "external" } : {}) } };
+      });
+      const laid = applyLayout(nodes, page.edges ?? [], layoutDiagram(nodes, page.edges ?? []));
+      pages[index] = { ...page, nodes: laid.nodes, edges: laid.edges };
+      await savePages(wf.id, pages);
+      const grid = want === "lanes" ? computeLaneGrid(laid.nodes, laid.edges) : null;
+      return {
+        layout: want,
+        stepsUpdated: touched,
+        ...(grid ? { lanes: grid.laneOrder, stages: grid.stages.map((s) => s.title).filter(Boolean), externalLanes: grid.laneOrder.filter((l) => grid.externalLanes.has(l.toLowerCase())) } : {}),
+        note: want === "lanes"
+          ? "Each step without a lane took one from its role. A snapshot was taken just before this change."
+          : "Lanes and stages were removed from the steps and the map is back to a single row. A snapshot was taken just before this change; restore_version brings the lanes back.",
+      };
     }
     case "set_diagram_style": {
       const wf = await load(input.workflowId, Input);
@@ -383,5 +436,5 @@ export const V2_TOOL_NAMES = [
   "list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table",
   "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions",
   "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person",
-  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow",
+  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow", "set_diagram_layout",
 ] as const;

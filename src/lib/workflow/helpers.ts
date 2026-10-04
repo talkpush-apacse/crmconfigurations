@@ -199,6 +199,12 @@ export function processMapFields(raw: Record<string, unknown>): Record<string, u
   if (typeof raw.jumpToNodeId === "string") out.jumpToNodeId = raw.jumpToNodeId;
   if (typeof raw.attachTo === "string" && raw.attachTo) out.attachTo = raw.attachTo;
   if (typeof raw.timing === "string") out.timing = raw.timing.trim().slice(0, 80);
+  // Lanes and stages (empty text clears them). `external: true` marks the step's lane as another system.
+  if (typeof raw.lane === "string") out.lane = raw.lane.trim().slice(0, 60);
+  if (typeof raw.stage === "string") out.stage = raw.stage.trim().slice(0, 60);
+  if (raw.external === true || raw.laneKind === "external") out.laneKind = "external";
+  else if (raw.external === false || raw.laneKind === "") out.laneKind = "";
+  if (typeof raw.laneRank === "number" && Number.isFinite(raw.laneRank)) out.laneRank = raw.laneRank;
   if (raw.shapeKind === "display" || raw.shapeKind === "document") out.shapeKind = raw.shapeKind;
   if (typeof raw.internalNotes === "string") out.internalNotes = raw.internalNotes;
   if (raw.visibility === "client" || raw.visibility === "internal") out.visibility = raw.visibility;

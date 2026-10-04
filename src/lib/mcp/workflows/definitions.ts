@@ -63,6 +63,9 @@ const processMapProperties = {
   jumpToNodeId: { type: "string", description: "For a jump marker: the step it points at (a node id, or a tempId in a spec)." },
   attachTo: { type: "string", description: "For a note: the step to place it beside (a node id, or a tempId in a spec)." },
   timing: { type: "string", description: "When it happens, shown in italics on the box's last line, for example 'Day before the interview'. REQUIRED for every automated message, call or alert ('immediately', '1 hour after', '2 days after'); put its channel in data.channel ('Email', 'SMS', 'Email + SMS', 'WhatsApp', 'Voice call') and the box shows 'Email · 1 hour after'. Unknown: add an orange to-confirm note, never guess." },
+  lane: { type: "string", description: "Lanes layout: the row this step sits in, in the client's words and spelled the same everywhere (for example 'Candidate', 'Recruiter', 'Assessment platform', 'HRIS'). Leave out to use the step's actor. Empty text clears it. A diagram is drawn as lanes when its steps carry lanes." },
+  stage: { type: "string", description: "Lanes layout: the stage band this step starts, a short plain phrase (for example '2. Assessment'). Steps after it stay in that stage until the next one that sets a stage. Empty text clears it." },
+  external: { type: "boolean", description: "Lanes layout: true when this step's lane is another system (assessment platform, HRIS, a vendor): the lane is drawn blue and data crossing to or from it is a dashed line." },
   internalNotes: { type: "string", description: "Staff-only notes. Never shown to clients." },
   visibility: { type: "string", enum: ["client", "internal"], description: "internal = hidden from every client view, export and shared link." },
 };
