@@ -139,3 +139,49 @@ test("workflow MCP end to end (local database only): build from a spec, read it 
     await prisma.$disconnect();
   }
 });
+
+test("workflow MCP numbering (local database only): replies use the numbers the drawn map shows", { skip: !isLocalDb && "set WORKFLOW_TEST_DATABASE_URL to a localhost database" }, async () => {
+  const { createWorkflowMcpServer } = await load();
+  const { prisma } = await import("../src/lib/db");
+  const client = await connect(createWorkflowMcpServer("https://example.test"));
+  const nodes = [
+    { tempId: "a", type: "source", label: "Careers page", actor: "source" },
+    { tempId: "b", type: "stage", label: "Chatbot screening", actor: "automated" },
+    { tempId: "c", type: "decision", label: "Passed?", actor: "automated" },
+    { tempId: "d", type: "manual_action", label: "Recruiter review", actor: "manual", actorLabel: "Recruiter" },
+    { tempId: "e", type: "stage", label: "Move to Rejected", actor: "automated" },
+  ];
+  const edges = [
+    { sourceTempId: "a", targetTempId: "b" },
+    { sourceTempId: "b", targetTempId: "c" },
+    { sourceTempId: "c", targetTempId: "d", label: "Yes", isHappyPath: true },
+    { sourceTempId: "c", targetTempId: "e", label: "No" },
+  ];
+  const run = async (name: string, args: Record<string, unknown>) => JSON.parse(textOf(await client.callTool({ name, arguments: args })));
+  const ids: string[] = [];
+  try {
+    const pm = await run("create_workflow_from_spec", { clientName: "MCP numbering test", workflowName: "Process Map", nodes, edges, diagramStyle: "process_map" });
+    ids.push(pm.workflowId);
+    const classic = await run("create_workflow_from_spec", { clientName: "MCP numbering test", workflowName: "Classic", nodes, edges, diagramStyle: "classic" });
+    ids.push(classic.workflowId);
+
+    const pmNumbers = Object.values(pm.numbering.stepNumbers as Record<string, string>);
+    assert.ok(pmNumbers.includes("2.1"), `the "No" branch is numbered 2.1, got ${pmNumbers.join(", ")}`);
+    assert.ok(pmNumbers.every((n) => /^\d+(\.\d+)*$/.test(n)), `no letter numbers in Process Map: ${pmNumbers.join(", ")}`);
+    const classicNumbers = Object.values(classic.numbering.stepNumbers as Record<string, string>);
+    assert.ok(classicNumbers.some((n) => /^\d+[a-z]/.test(n)), `Classic keeps letters: ${classicNumbers.join(", ")}`);
+
+    // every other tool that reports numbers agrees with the creation reply
+    const got = await run("get_workflow", { workflowId: pm.workflowId });
+    assert.deepEqual(got.stepNumbers, pm.numbering.stepNumbers);
+    const renumbered = await run("renumber_steps", { workflowId: pm.workflowId });
+    assert.deepEqual(renumbered.stepNumbers, pm.numbering.stepNumbers);
+    const validated = await run("validate_workflow", { workflowId: pm.workflowId });
+    assert.deepEqual(validated.numbering.stepNumbers, pm.numbering.stepNumbers);
+    const gotClassic = await run("get_workflow", { workflowId: classic.workflowId });
+    assert.deepEqual(gotClassic.stepNumbers, classic.numbering.stepNumbers);
+  } finally {
+    for (const id of ids) await prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
+    await prisma.$disconnect();
+  }
+});

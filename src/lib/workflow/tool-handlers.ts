@@ -5,6 +5,7 @@ import { nanoid } from "@/lib/workflow/ids";
 import type { Prisma } from "@/generated/prisma/client";
 import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
+import { computeNumbers, type NumberingScheme } from "@/lib/workflow/numbering-decimal";
 import { validateWorkflow } from "@/lib/workflow/validation";
 import { createVersionSnapshot } from "@/lib/workflow/versioning";
 import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
@@ -263,8 +264,13 @@ function countFindings(findings: WorkflowValidationFinding[]) {
   }, {});
 }
 
-function serializeNumbering(nodes: FlowNode[], edges: FlowEdge[]) {
-  const { stepNumbers, warnings, recoveryEdges } = computeStepNumbers(nodes, edges);
+/** The numbers a workflow shows follow its drawing style: Process Map = 1, 2, 5.1, 11.1.1; Classic = 1, 2, 2a. */
+function schemeFor(diagramStyle: string | null | undefined): NumberingScheme {
+  return diagramStyle === "process_map" ? "decimal" : "letters";
+}
+
+function serializeNumbering(nodes: FlowNode[], edges: FlowEdge[], scheme: NumberingScheme = "letters") {
+  const { stepNumbers, warnings, recoveryEdges } = computeNumbers(nodes, edges, scheme);
   return {
     stepNumbers: Object.fromEntries(stepNumbers),
     warnings: Array.from(warnings),
@@ -593,7 +599,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
       findings,
       counts: countFindings(findings),
     },
-    numbering: serializeNumbering(finalNodes, finalEdges),
+    numbering: serializeNumbering(finalNodes, finalEdges, processMap ? "decimal" : "letters"),
     artifactsCount: artifacts.length + 1,
     summaryArtifactId: summaryArtifact.id,
     summary,
@@ -610,7 +616,7 @@ async function getWorkflow(args: ToolArguments) {
   }
 
   const { nodes, edges } = getCanvas(workflow);
-  const { stepNumbers } = computeStepNumbers(nodes, edges);
+  const { stepNumbers } = computeNumbers(nodes, edges, schemeFor(workflow.diagramStyle));
   return {
     id: workflow.id,
     clientName: workflow.clientName,
@@ -829,7 +835,7 @@ async function validateWorkflowTool(args: ToolArguments) {
   return {
     findings,
     counts: countFindings(findings),
-    numbering: serializeNumbering(nodes, edges),
+    numbering: serializeNumbering(nodes, edges, schemeFor(workflow.diagramStyle)),
     ...(processMap ? { layout, layoutCounts: countFindings(layout.map((f) => ({ severity: f.severity })) as never) } : {}),
     sanitization,
     note: processMap ? "Layout findings come from the same drawing a client sees. Fix high ones before sharing." : undefined,
@@ -1303,7 +1309,7 @@ async function addRecoveryEdge(args: ToolArguments) {
     data: edgeDataFromValue(args.data),
   });
   const addedEdges = [...edges, edge];
-  const { recoveryEdges, stepNumbers } = computeStepNumbers(nodes, addedEdges);
+  const { recoveryEdges, stepNumbers } = computeNumbers(nodes, addedEdges, schemeFor(workflow.diagramStyle));
   const recoveryLabel =
     recoveryEdges.get(edge.id) ??
     (stepNumbers.has(targetNodeId)
@@ -1367,7 +1373,7 @@ async function renumberSteps(args: ToolArguments) {
   }
 
   const { nodes, edges } = getCanvas(workflow);
-  const { stepNumbers, warnings } = computeStepNumbers(nodes, edges);
+  const { stepNumbers, warnings } = computeNumbers(nodes, edges, schemeFor(workflow.diagramStyle));
   return {
     stepNumbers: Object.fromEntries(stepNumbers),
     warnings: Array.from(warnings),
