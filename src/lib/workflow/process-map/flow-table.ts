@@ -1,6 +1,7 @@
 import { computeDecimalNumbers } from "../numbering-decimal";
 import { actionTypeOf, personActs, shapeKindOf } from "./model";
 import { ACTION_TYPES, circled } from "./tokens";
+import { channelWhen } from "./channel";
 
 /**
  * The flow table: the diagram written out as rows (Step, Actor, Action, Action Type, Branch / Condition). It is the
@@ -18,6 +19,8 @@ export interface FlowTableRow {
   actor: string;
   action: string;
   actionType: string;
+  /** "Email · 1 hour after" for an automated message, call or alert; "" otherwise. */
+  channelWhen: string;
   branch: string;
   nodeId: string;
 }
@@ -75,12 +78,15 @@ export function deriveFlowTable(nodes: any[], edges: any[]): FlowTable {
       actor,
       action: [String(n.data?.label ?? "").trim(), String(n.data?.notes ?? "").trim()].filter(Boolean).join(". "),
       actionType: type ? ACTION_TYPES[type].label : "",
+      channelWhen: kind === "decision" ? "" : channelWhen(n),
       branch: edgeLabel || "—",
       nodeId: n.id,
     });
   }
   void byId;
-  return { columns: ["Step", "Actor", "Action", "Action Type", "Branch / Condition"], rows, unusualActors };
+  // The Channel · When column only appears when at least one step has something to say, so older tables read as before.
+  const withWhen = rows.some((r) => r.channelWhen);
+  return { columns: withWhen ? ["Step", "Actor", "Action", "Action Type", "Channel · When", "Branch / Condition"] : ["Step", "Actor", "Action", "Action Type", "Branch / Condition"], rows, unusualActors };
 }
 
 function actorWordForDecision(node: any): string {
@@ -93,7 +99,8 @@ const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` 
 
 /** CSV that opens cleanly in Excel (UTF-8 with a byte-order mark). */
 export function flowTableCsv(table: FlowTable): string {
+  const withWhen = table.columns.includes("Channel · When");
   const lines = [table.columns.join(",")];
-  for (const r of table.rows) lines.push([r.stepDisplay, r.actor, r.action, r.actionType, r.branch].map(csvCell).join(","));
+  for (const r of table.rows) lines.push((withWhen ? [r.stepDisplay, r.actor, r.action, r.actionType, r.channelWhen, r.branch] : [r.stepDisplay, r.actor, r.action, r.actionType, r.branch]).map(csvCell).join(","));
   return `﻿${lines.join("\r\n")}\r\n`;
 }

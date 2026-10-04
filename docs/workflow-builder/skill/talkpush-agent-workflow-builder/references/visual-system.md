@@ -22,8 +22,25 @@ A person who acts and then something happens automatically is **one white box**:
 ## Short boxes, centred text, details in notes
 
 - Every shape's text is **centred**, horizontally and vertically, on screen and in every download.
-- A box says what happens in a few words. Lists, opening days, timings and explanations go in a **note** (dashed outline) attached to the step: yellow for information, orange for "To confirm with <client name>". Several notes on one step stack above (main path) or beside (branch) it, so keep it to one or two.
+- A box says what happens in a few words. Lists, opening days and explanations go in a **note** (dashed outline) attached to the step: yellow for information, orange for "To confirm with <client name>". Several notes on one step stack above (main path) or beside (branch) it, so keep it to one or two.
 - Several ways in (a Facebook ad and a careers page) are **separate entry shapes**, stacked in one column centred on the main row, each leading to the first step. Use `entryLabels` when building from a table.
+
+## Channel and cadence on automated steps
+
+Every automated message, call or alert (tags `[MESSAGE]`, `[ALERT]`, `[CALL]`, `[AI]`) carries one short italic last line, **Channel · When**. It is the one detail, besides role/tag and a few-word name, that belongs inside the box.
+
+| Example | Reads as |
+|---|---|
+| Sends rejection notice | `Email · 1 hour after` |
+| Reminder to book | `SMS · 2 days after` |
+| Confirms the interview | `Email + SMS · immediately` |
+| Calls to confirm | `Voice call · the day before the interview` |
+
+- Channels: Email, SMS, WhatsApp, Messenger, Voice call, Web, LINE, or the client's own word (shown as typed). Several: `Email + SMS`.
+- When: `immediately`, `N hours/days after <event>`, `N hours/days before <event>`. Anchor it to what triggers it.
+- **A cadence ladder** (reminders at 1H, 3H, 24H, 48H, 72H) is summarised in the box ("SMS · 6 reminders over 3 days") and written out in a note attached to the step. Use a **Wait** step only where the flow really pauses and then branches (no reply, then Rejected).
+- Unknown channel or timing: orange "To confirm" note. Never guess. The gap check lists every automated message, call or alert that is missing either.
+- Show the message a rejected candidate receives, or say plainly that none is sent.
 
 ## Role and tag
 

@@ -86,3 +86,35 @@ test("tool replies (local DB): revision everywhere, short snapshot and layout re
     if (id) await prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
   }
 });
+
+test("channel and cadence (local DB): rows carry channel and timing onto the box, the flow table and the gap check", { skip }, async () => {
+  process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:1/test";
+  const { createWorkflowMcpServer } = await import("../src/lib/mcp/workflows");
+  const { prisma } = await import("../src/lib/db");
+  const client = await connect(createWorkflowMcpServer("https://example.test"));
+  const call = async (name: string, args: Record<string, unknown>) => client.callTool({ name, arguments: args });
+  let id = "";
+  try {
+    const rows = [
+      { step: "1", actor: "Talkpush", action: "Moves to Rejected", actionType: "Move" },
+      { step: "2", actor: "Talkpush", action: "Sends rejection notice", actionType: "Message", channel: "Email", timing: "1 hour after" },
+      { step: "3", actor: "Talkpush", action: "Sends reminder", actionType: "Message" },
+      { step: "4", actor: "Talkpush", action: "Done", kind: "end", endKind: "neutral" },
+    ];
+    id = json(await call("create_workflow_from_flow_table", { clientName: "Cadence test", workflowName: "Cadence", rows, approved: true })).workflowId;
+
+    const table = json(await call("get_flow_table", { workflowId: id }));
+    assert.ok(table.columns.includes("Channel · When"));
+    assert.equal(table.rows.find((r: any) => r.action === "Sends rejection notice").channelWhen, "Email · 1 hour after");
+
+    const preview = json(await call("render_preview", { workflowId: id, audience: "client" }));
+    assert.ok(preview.svg.includes("Email · 1 hour after"), "the box shows Channel · When");
+
+    const gaps = json(await call("run_gap_check", { workflowId: id }));
+    const missing = gaps.findings.filter((f: any) => f.code === "comm_channel_or_timing_missing");
+    assert.equal(missing.length, 1, "only the reminder with nothing set is listed");
+    assert.match(missing[0].message, /Sends reminder/);
+  } finally {
+    if (id) await prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
+  }
+});

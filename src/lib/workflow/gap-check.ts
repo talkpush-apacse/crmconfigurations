@@ -77,6 +77,16 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
     if (shapeKindOf(n) === "process" && personActs(n) && n.data?.actor !== "candidate" && !n.data?.timing && !n.data?.data?.waitDuration && !hasTimingNote(flow, n.id)) {
       out.push({ tier: "assumption", code: "sla_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `No turnaround time is given for the manual step "${n.data?.label}".`, assumption: "Assumed the person acts within one working day. If incorrect, add the real time and a reminder path." });
     }
+    const commType = actionTypeOf(n);
+    if (shapeKindOf(n) === "process" && !personActs(n) && (commType === "message" || commType === "alert" || commType === "call" || commType === "ai" || n.type === "communication")) {
+      const noChannel = !String(n.data?.data?.channel ?? "").trim();
+      const noTiming = !String(n.data?.timing ?? "").trim() && !n.data?.data?.waitDuration && !hasTimingNote(flow, n.id);
+      if (noChannel || noTiming) {
+        const missing = noChannel && noTiming ? "which channel it uses or when it goes out" : noChannel ? "which channel it uses" : "when it goes out";
+        const guess = [noChannel ? "by email" : "", noTiming ? "straight away" : ""].filter(Boolean).join(" and ");
+        out.push({ tier: "assumption", code: "comm_channel_or_timing_missing", group: "operations", nodeId: n.id, confidence: "high", message: `"${n.data?.label}" goes out automatically but does not say ${missing}.`, assumption: `Assumed it is sent ${guess}. If incorrect, the message template, channel setup and any delay or reminder timing change.` });
+      }
+    }
     const type = actionTypeOf(n);
     if ((type === "send_data" || type === "get_data" || type === "call") && (outgoing.get(n.id) ?? []).length <= 1) {
       out.push({ tier: "assumption", code: "exception_path_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `"${n.data?.label}" has no path for when it fails (outside system down, no answer, partial data).`, assumption: "Assumed it always succeeds. If incorrect, a failure path and an owner are needed." });
