@@ -52,6 +52,7 @@ A diagram can be drawn as **lanes**: stage bands stacked down the page, each wit
 - **Stages** are short plain phrases ("2. Assessment"). A stage change shows a purple "continues in ..." circle at the end of one band and a "from ..." circle at the start of the next.
 - **The key** adds a line for an outside system, the dashed line and the stage circle, only when used. Still no tags.
 - Numbers, short boxes, notes, Channel · When and centred text work exactly as in the single row.
+- **Staff can also change lanes by hand** in the editor (sidebar Layout: Single row / Lanes, rename, reorder, "another system" tick; and a step's Lane and stage fields). Each change re-arranges and is one undo. So before you change a lanes map, read it with `get_workflow` first and pass `baseRevision`; never assume the lane order you built is still the order on screen.
 
 ## Role and tag
 
