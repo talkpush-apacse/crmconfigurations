@@ -287,12 +287,12 @@ function placeNotesAndTables(
  * layout but measured from where that step actually is now. Nothing else moves. Null when the note has no valid
  * `attachTo`, so the caller keeps its own default.
  */
-export function positionForNewNote(nodes: any[], edges: any[], note: any): { x: number; y: number } | null {
+export function positionForNewNote(nodes: any[], edges: any[], note: any, layout: (nodes: any[], edges: any[]) => LayoutResult = layoutProcessMap): { x: number; y: number } | null {
   const attach: string | undefined = note?.data?.attachTo;
   const actual = attach ? nodes.find((n) => n.id === attach) : undefined;
   if (!attach || !actual?.position) return null;
   try {
-    const result = layoutProcessMap([...nodes, note], edges);
+    const result = layout([...nodes, note], edges);
     const target = result.positions.get(attach);
     const spot = result.positions.get(note.id);
     if (!target || !spot) return null;

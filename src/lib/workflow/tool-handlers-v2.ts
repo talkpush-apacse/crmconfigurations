@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
+import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-layout";
 import { lintLayout } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { deriveFlowTable, flowTableCsv } from "@/lib/workflow/process-map/flow-table";
@@ -312,7 +312,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const style = input.style === "classic" ? "classic" : "process_map";
       const pages = pagesOf(wf).map((p) => {
         if (style !== "process_map") return p;
-        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutProcessMap(p.nodes ?? [], p.edges ?? []));
+        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutDiagram(p.nodes ?? [], p.edges ?? []));
         return { ...p, nodes: laid.nodes, edges: laid.edges };
       });
       const first = pages[0];

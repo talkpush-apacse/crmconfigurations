@@ -30,6 +30,13 @@ export const PM = {
     containerBorder: "#CFCFCF",
     containerTab: "#8A8A8A",
     containerTabText: "#1A1A1A",
+    laneA: "#FAFAFA",
+    laneB: "#F3F3F3",
+    laneExternal: "#E3EAF2",
+    laneLabel: "#8A8A8A",
+    laneLabelExternal: "#37608F",
+    stageHead: "#546E7A",
+    externalLine: "#1565C0",
     badgeSystem: "#00ACC1", // cyan: people / gear
     badgeData: "#7E57C2", // purple: tag / message
     text: "#1A1A1A",

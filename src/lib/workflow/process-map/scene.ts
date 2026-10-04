@@ -1,5 +1,7 @@
 import { computeDecimalNumbers, type DecimalNumbering } from "../numbering-decimal";
 import { numbersFor } from "./layout";
+import { computeLaneGrid, LANE } from "./lanes";
+import { laneKey, usesLanes } from "./lane-mode";
 import { actionTypeOf, fillFor, personActs, shapeKindOf, type ShapeKind } from "./model";
 import { handlePoint, pointAlong, routePoints, segmentsOf, type P, type Pos, type Rect } from "./route";
 import { boxFor, wrapText, type BoxSpec } from "./text-fit";
@@ -52,6 +54,10 @@ export interface SceneEdge {
   label: string;
   labelRect: Rect | null;
   edge: any;
+  /** A connector that changes stage is drawn in two pieces, with a marker circle between them: this is the second. */
+  extra?: P[][];
+  /** The connector goes to or comes from another system (a lane marked as external): drawn dashed and blue. */
+  external?: boolean;
 }
 
 export interface SceneTable {
@@ -69,13 +75,19 @@ export interface SceneContainer {
   id: string;
   title: string;
   rect: Rect;
+  /** journey / entry: the classic frames. stage / lane / marker: the lanes layout (a stage band, a row in it, a "continues in" circle). */
+  kind?: "journey" | "entry" | "stage" | "lane" | "marker";
+  /** A lane that is another system (assessment platform, HRIS, a vendor). */
+  external?: boolean;
+  /** For a lane: its position among the lanes of its stage, to alternate the shading. */
+  index?: number;
 }
 
 export interface LegendRow {
   key: string;
   label: string;
   /** `glyph`: a character drawn inside the swatch (the circled number in the numbering line). */
-  swatch: { fill: string; stroke: string; dashed?: boolean; shape: "rect" | "diamond" | "circle" | "pill" | "display" | "cylinder"; glyph?: string };
+  swatch: { fill: string; stroke: string; dashed?: boolean; shape: "rect" | "diamond" | "circle" | "pill" | "display" | "cylinder" | "dashed-line"; glyph?: string };
 }
 
 export interface Scene {
@@ -88,6 +100,8 @@ export interface Scene {
   bounds: Rect;
   numbering: DecimalNumbering;
   spine: string[];
+  /** Lanes layout only: the lane each step sits in (display name). */
+  laneOf?: Map<string, string>;
 }
 
 const C = PM.colors;
@@ -111,6 +125,13 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   const numbering = computeDecimalNumbers(nodes, edges);
   const numbers = meta.hideNumbers ? new Map() : numbersFor(nodes, numbering);
   if (meta.hideNumbers) numbering.edgeLabels.clear();
+
+  const lanesMode = usesLanes(nodes);
+  const grid = lanesMode ? computeLaneGrid(nodes, edges, numbering) : null;
+  const markerRect = (id: string): Rect | null => {
+    const m = grid?.markers.find((x) => x.id === id);
+    return m ? { x: m.cx - LANE.markerD / 2, y: m.cy - LANE.markerD / 2, w: LANE.markerD, h: LANE.markerD } : null;
+  };
 
   const shapes: SceneShape[] = [];
   const byId = new Map<string, SceneShape>();
@@ -143,7 +164,19 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
     const [dS, dT] = defaultHandles(a.rect, b.rect);
     const sHandle = (e.sourceHandle as Pos) ?? dS;
     const tHandle = (e.targetHandle as Pos) ?? dT;
-    const points = routePoints(handlePoint(a.rect, sHandle), sHandle, handlePoint(b.rect, tHandle), tHandle);
+    let points = routePoints(handlePoint(a.rect, sHandle), sHandle, handlePoint(b.rect, tHandle), tHandle);
+    let extra: P[][] | undefined;
+    const crossing = grid?.crossings.get(e.id);
+    if (crossing) {
+      // a connector that changes stage runs into a "continues in" circle, and a matching "from" circle runs on to the target
+      const mo = markerRect(crossing.out);
+      const mi = markerRect(crossing.in);
+      if (mo && mi) {
+        points = routePoints(handlePoint(a.rect, "right"), "right", handlePoint(mo, "left"), "left");
+        extra = [routePoints(handlePoint(mi, "right"), "right", handlePoint(b.rect, "left"), "left")];
+      }
+    }
+    const external = Boolean(grid && (grid.externalLanes.has(laneKey(grid.laneOf.get(e.source) ?? "")) || grid.externalLanes.has(laneKey(grid.laneOf.get(e.target) ?? ""))));
     const text = String(numbering.edgeLabels.get(e.id) ?? e.data?.label ?? e.label ?? "").trim();
     let rect: Rect | null = null;
     if (text) {
@@ -174,6 +207,8 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
       label: text,
       labelRect: rect,
       edge: e,
+      ...(extra ? { extra } : {}),
+      ...(external ? { external: true } : {}),
     });
   }
 
@@ -194,19 +229,27 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   const grow = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, w: r.w + 2 * p, h: r.h + 2 * p });
 
   const containers: SceneContainer[] = [];
+  if (grid) {
+    // Lanes layout: stage bands, a row per actor inside each, and the "continues in" circles. No journey / entry frames.
+    for (const st of grid.stages) {
+      if (grid.hasTitles) containers.push({ id: `stage_${st.index}`, kind: "stage", title: st.title, rect: { x: 0, y: st.y, w: grid.width, h: st.h } });
+      st.lanes.forEach((ln, i) => containers.push({ id: `lane_${st.index}_${i}`, kind: "lane", title: ln.name, external: ln.external, index: i, rect: { x: 0, y: ln.y, w: grid.width, h: ln.h } }));
+    }
+    for (const m of grid.markers) containers.push({ id: m.id, kind: "marker", title: m.text, rect: markerRect(m.id)! });
+  }
   const journeyRects = [...journeyShapes.map(withBadge), ...tableRects, ...sceneEdges.map((e) => e.labelRect).filter((r): r is Rect => Boolean(r))];
   const journeyBox = union(journeyRects);
   const entryBox = union(entryShapes.map(withBadge));
   let entryContainer: Rect | null = null;
   let journeyContainer: Rect | null = null;
-  if (journeyBox) {
+  if (journeyBox && !grid) {
     journeyContainer = grow(journeyBox, PAD);
-    containers.push({ id: "container_journey", title: `${meta.processName ?? meta.workflowName} Journey`, rect: journeyContainer });
+    containers.push({ id: "container_journey", kind: "journey", title: `${meta.processName ?? meta.workflowName} Journey`, rect: journeyContainer });
   }
-  if (entryBox) {
+  if (entryBox && !grid) {
     entryContainer = grow(entryBox, PAD * 0.75);
     // The entry container is as tall as the room it needs; it sits to the left of the journey container.
-    containers.push({ id: "container_entry", title: meta.entryTitle ?? "Candidate entry", rect: entryContainer });
+    containers.push({ id: "container_entry", kind: "entry", title: meta.entryTitle ?? "Candidate entry", rect: entryContainer });
   }
 
   // ---- title block ------------------------------------------------------------------------------------------------
@@ -243,6 +286,11 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   if (noteKinds.has("out_of_scope")) rows.push({ key: "scope", label: "Out of scope", swatch: { fill: C.noteOutOfScope, stroke: C.noteOutOfScopeStroke, dashed: true, shape: "rect" } });
   if (has((s) => s.kind === "jump")) rows.push({ key: "jump", label: "Jump to another step", swatch: { fill: C.jump, stroke: C.jumpStroke, shape: "circle" } });
   if (has((s) => s.node.data?.shapeKind === "display")) rows.push({ key: "display", label: "Screen the person sees", swatch: { fill: "#FFFFFF", stroke: C.stroke, shape: "display" } });
+  if (grid) {
+    if (grid.stages.some((st) => st.lanes.some((l) => l.external))) rows.push({ key: "external_lane", label: "Another system (blue lane)", swatch: { fill: C.laneExternal, stroke: C.laneLabelExternal, shape: "rect" } });
+    if (sceneEdges.some((e) => e.external)) rows.push({ key: "external_flow", label: "Dashed line: data crosses systems", swatch: { fill: "none", stroke: C.externalLine, shape: "dashed-line" } });
+    if (grid.markers.length > 0) rows.push({ key: "stage_jump", label: "Circle: carries on in the next stage", swatch: { fill: C.jump, stroke: C.jumpStroke, shape: "circle" } });
+  }
   // How to read the numbers, with a real example from this diagram: circled = main path, decimal = a branch.
   if (!meta.hideNumbers && numbering.spineNumbers.size > 0) {
     const branch = [...numbering.branchNumbers.values()].find((v) => typeof v === "string" && v.includes("."));
@@ -253,11 +301,11 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   const legendH = rows.length ? 56 + rows.length * 32 : 0;
   const legendX = entryContainer ? entryContainer.x : sceneBox.x;
   const legendY = entryContainer ? entryContainer.y + entryContainer.h + 40 : sceneBox.y + sceneBox.h + 40;
-  const legend = { rows, rect: { x: legendX, y: legendY, w: Math.max(260, entryContainer?.w ?? 260), h: legendH } };
+  const legend = { rows, rect: { x: legendX, y: legendY, w: grid ? 340 : Math.max(260, entryContainer?.w ?? 260), h: legendH } };
 
   const parts: Rect[] = [...containers.map((c) => c.rect), title.rect, ...(rows.length ? [legend.rect] : []), ...sceneEdges.map((e) => e.labelRect).filter((r): r is Rect => Boolean(r))];
   const bounds = union(parts) ?? sceneBox;
-  return { shapes, edges: sceneEdges, tables, containers, title, legend, bounds: grow(bounds, 40), numbering, spine: numbering.spineOrder };
+  return { shapes, edges: sceneEdges, tables, containers, title, legend, bounds: grow(bounds, 40), numbering, spine: numbering.spineOrder, ...(grid ? { laneOf: grid.laneOf } : {}) };
 }
 
 

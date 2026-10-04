@@ -145,7 +145,7 @@ import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
 import { computeDecimalNumbers } from "@/lib/workflow/numbering-decimal";
 import { buildOutline } from "@/lib/workflow/outline";
-import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
+import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-layout";
 import { lintLayout, type LayoutFinding } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { ProcessMapContext } from "./process-map/context";
@@ -2301,7 +2301,7 @@ function EditorInner({
   /** Process Map layout. It never silently overwrites hand-placed steps: it says how many will move first. */
   function handleProcessMapArrange() {
     if (nodes.length === 0) return;
-    const result = layoutProcessMap(nodes, edges);
+    const result = layoutDiagram(nodes, edges);
     const laid = applyLayout(nodes, edges, result);
     const moved = laid.nodes.filter((n, i) => {
       const before = nodes[i]?.position;

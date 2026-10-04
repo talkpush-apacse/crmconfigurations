@@ -8,7 +8,7 @@ import { computeStepNumbers } from "@/lib/workflow/numbering";
 import { computeNumbers, type NumberingScheme } from "@/lib/workflow/numbering-decimal";
 import { validateWorkflow } from "@/lib/workflow/validation";
 import { createVersionSnapshot } from "@/lib/workflow/versioning";
-import { applyLayout, layoutProcessMap, positionForNewNote } from "@/lib/workflow/process-map/layout";
+import { applyLayout, layoutDiagram, positionForNewNote } from "@/lib/workflow/process-map/diagram-layout";
 import { lintLayout } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { lintPagesForClient } from "@/lib/workflow/access/client-view";
@@ -534,7 +534,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
   let finalEdges = edges;
   if (spec.autoLayout !== false && nodes.length > 0) {
     const layouted = (processMap
-      ? applyLayout(nodes, edges, layoutProcessMap(nodes, edges))
+      ? applyLayout(nodes, edges, layoutDiagram(nodes, edges))
       : getLayoutedElements(nodes, edges, spec.layoutDirection ?? "TB")) as {
       nodes: FlowNode[];
       edges: FlowEdge[];
@@ -1303,7 +1303,7 @@ async function addEdgeTool(args: ToolArguments) {
   // A connector to or from a note is drawn from the side the layout would use, not the default right-to-bottom.
   if (workflow.diagramStyle === "process_map" && [sourceNodeId, targetNodeId].some((id) => nodes.find((n) => n.id === id)?.data?.type === "note")) {
     try {
-      const route = layoutProcessMap(nodes, [...nextEdges, edge]).edges.get(edge.id);
+      const route = layoutDiagram(nodes, [...nextEdges, edge]).edges.get(edge.id);
       if (route) Object.assign(edge, { sourceHandle: route.sourceHandle, targetHandle: route.targetHandle });
     } catch {
       /* keep the default handles */
@@ -1384,7 +1384,7 @@ async function autoLayout(args: ToolArguments) {
   // Process Map workflows use the spine layout (main path on one row, branches dropping below).
   const layouted =
     workflow.diagramStyle === "process_map"
-      ? (applyLayout(nodes, edges, layoutProcessMap(nodes, edges)) as { nodes: FlowNode[]; edges: FlowEdge[] })
+      ? (applyLayout(nodes, edges, layoutDiagram(nodes, edges)) as { nodes: FlowNode[]; edges: FlowEdge[] })
       : (getLayoutedElements(nodes, edges, direction) as { nodes: FlowNode[]; edges: FlowEdge[] });
 
   await prisma.workflowProject.update({
