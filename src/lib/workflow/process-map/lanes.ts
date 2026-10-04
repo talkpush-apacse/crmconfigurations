@@ -86,7 +86,7 @@ const FLOW_KINDS = new Set(["process", "decision", "end", "jump", "start"]);
 
 const cx = (col: number) => LANE.labelW + LANE.sidePad + LANE.colPitch / 2 + col * LANE.colPitch;
 
-function fallbackLane(n: any): string {
+export function fallbackLane(n: any): string {
   const d = n?.data ?? {};
   if (d.actor === "candidate" || actionTypeOf(n) === "candidate") return "Candidate";
   if (personActs(n)) return String(d.actorLabel || d.data?.ownerRole || "").trim() || "Team";

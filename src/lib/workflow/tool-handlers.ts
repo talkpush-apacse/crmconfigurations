@@ -65,7 +65,7 @@ const READ_ONLY_TOOLS = new Set([
 ]);
 
 /** Changes that touch many steps at once. A snapshot is taken first, so nothing a person did by hand can be lost. */
-const SNAPSHOT_FIRST_TOOLS = new Set(["auto_layout", "delete_node", "design_campaign_structure", "clear_campaign_structure", "create_workflow_from_flow_table", "set_diagram_style", "delete_page"]);
+const SNAPSHOT_FIRST_TOOLS = new Set(["auto_layout", "delete_node", "design_campaign_structure", "clear_campaign_structure", "create_workflow_from_flow_table", "set_diagram_style", "set_diagram_layout", "delete_page"]);
 
 export class McpToolInputError extends Error {
   constructor(message: string) {

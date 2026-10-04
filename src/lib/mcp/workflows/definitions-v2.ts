@@ -17,6 +17,10 @@ const flowRow = {
     jumpTo: { type: "string", description: "For a jump row: the step number it points at." },
     notes: { type: "string" },
     timing: { type: "string", description: "When it happens. REQUIRED for every automated message, call or alert: when it goes out, for example 'immediately', '1 hour after', '2 days after', 'the day before the interview'. Shown in italics on the box." },
+    lane: { type: "string", description: "Lanes layout: the row this step sits in, in the client's words and spelled the same on every row (for example 'Candidate', 'Recruiter', 'Assessment platform', 'HRIS'). Leave out to use the actor. Leave out on end and jump rows." },
+    stage: { type: "string", description: "Lanes layout: write the stage name on the FIRST row of each stage (a short plain phrase, for example '2. Assessment'); the rows after it stay in that stage until the next one." },
+    external: { type: "boolean", description: "Lanes layout: this row's lane is another system (assessment platform, HRIS, a vendor), drawn as a blue lane." },
+    system: { type: "string", description: "For a Send Data or Get Data row: the other system it talks to (for example 'HRIS'). A lane with that name is treated as an outside system." },
     channel: { type: "string", description: "REQUIRED for every automated message, call or alert: the channel(s), for example 'Email', 'SMS', 'Email + SMS', 'WhatsApp', 'Voice call'. Shown with the timing on the box ('Email · 1 hour after'). If it is not known, leave it out and add an orange to-confirm note; never guess." },
   },
   required: ["step", "actor", "action"],
@@ -70,6 +74,9 @@ export const v2Definitions: McpToolDefinition[] = [
         workflowName: { type: "string" },
         description: { type: "string" },
         entryLabel: { type: "string", description: "Name of the entry channel shape, for example 'Employee has a concern'. Use entryLabels when there is more than one way in." },
+        layout: { type: "string", enum: ["auto", "lanes", "spine"], description: "auto (default): lanes when the table has 3 or more different actors, any outside system or stages, otherwise the classic single-row layout. 'lanes' or 'spine' (single row) forces one. The reply says which was used and why: tell the person." },
+        externalLanes: { type: "array", items: { type: "string" }, description: "Lanes that are other systems, for example ['Assessment platform', 'HRIS']. Drawn as blue lanes; data crossing to or from them is a dashed line." },
+        laneOrder: { type: "array", items: { type: "string" }, description: "Lane names in the order they should appear, top to bottom. Default: the order they first act." },
         entryLabels: { type: "array", items: { type: "string" }, description: "One entry channel shape per way in, for example ['Facebook ad', 'Careers page']. Each leads to the first step." },
         rows: { type: "array", items: flowRow },
         approved: { type: "boolean", description: "Must be true, and only after the user approved the table in chat." },
@@ -78,6 +85,12 @@ export const v2Definitions: McpToolDefinition[] = [
       },
       ["clientName", "workflowName", "rows", "approved"]
     ),
+  },
+  {
+    name: "set_diagram_layout",
+    description:
+      "Switch a Process Map between lanes (stage bands with a row per actor, outside systems as blue lanes) and the classic single-row layout. Lanes: each step without a lane takes one from its role. Single row: lanes and stages are removed from the steps. A snapshot is taken first, so restore_version undoes it. Use it when a map has grown to 3 or more actors or gained an outside system, or when the person asks.",
+    inputSchema: object({ workflowId, page, layout: { type: "string", enum: ["lanes", "spine"], description: "lanes, or spine for the classic single row." }, externalLanes: { type: "array", items: { type: "string" }, description: "Lanes that are other systems (blue)." } }, ["workflowId", "layout"]),
   },
   {
     name: "propose_changes",

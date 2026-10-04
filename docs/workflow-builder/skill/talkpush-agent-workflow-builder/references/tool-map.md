@@ -19,6 +19,7 @@
 | Switch look | `set_diagram_style` |
 | Share (only when asked) | `create_link`, `invite_person`, `publish_version`, `disable_link`, `revoke_person`, `list_access` |
 | Review | `list_comments`, `list_suggestions`, `accept_suggestion`, `reject_suggestion` |
+| Switch an existing map between lanes and the single row | `set_diagram_layout` |
 | Pages | `add_page`, `rename_page`, `delete_page` |
 | Delete a whole workflow (only when asked, only if never shared, name confirmed) | `delete_workflow` |
 
@@ -31,3 +32,4 @@
 - **`auto_layout`** takes a snapshot first (so it can be undone) and answers with how many steps moved, not every node. **`create_version_snapshot`** answers with the version number and counts; read the content back with `diff_versions`.
 - **Gap check:** a turnaround time in an *info* note attached to the step counts; an orange note does not.
 - **Channel and cadence:** in `create_workflow_from_flow_table` give every automated message, call or alert a `channel` and a `timing` (rows); on `add_node` / `update_node` use `data: {channel}` and `timing`. The box shows `Channel · When`; `get_flow_table` adds a Channel · When column when any step has one. The gap check lists automated steps missing either.
+- **Lanes:** `create_workflow_from_flow_table` takes `layout` (`auto` by default, `lanes`, `spine`), `externalLanes`, `laneOrder`, and per row `lane`, `stage` (on the first row of each stage), `external`, `system`. The reply says `layout`, `layoutReason`, and for lanes `lanes`, `stages`, `externalLanes`: tell the SE. `add_node` / `update_node` take `lane`, `stage`, `external`. `get_flow_table` adds Stage and Lane columns for a lanes map.

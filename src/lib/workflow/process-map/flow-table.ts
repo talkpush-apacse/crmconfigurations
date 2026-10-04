@@ -2,6 +2,8 @@ import { computeDecimalNumbers } from "../numbering-decimal";
 import { actionTypeOf, personActs, shapeKindOf } from "./model";
 import { ACTION_TYPES, circled } from "./tokens";
 import { channelWhen } from "./channel";
+import { usesLanes } from "./lane-mode";
+import { computeLaneGrid } from "./lanes";
 
 /**
  * The flow table: the diagram written out as rows (Step, Actor, Action, Action Type, Branch / Condition). It is the
@@ -21,6 +23,11 @@ export interface FlowTableRow {
   actionType: string;
   /** "Email · 1 hour after" for an automated message, call or alert; "" otherwise. */
   channelWhen: string;
+  /** Lanes layout: the lane this step sits in, and its stage. Empty in a single-row diagram. */
+  lane: string;
+  stage: string;
+  /** True on the first row of each stage: the table shows the stage name only there. */
+  stageStart: boolean;
   branch: string;
   nodeId: string;
 }
@@ -45,6 +52,7 @@ function actorWord(node: any): string {
 
 export function deriveFlowTable(nodes: any[], edges: any[]): FlowTable {
   const numbering = computeDecimalNumbers(nodes, edges);
+  const grid = usesLanes(nodes) ? computeLaneGrid(nodes, edges, numbering) : null;
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const rows: FlowTableRow[] = [];
   const unusualActors: FlowTable["unusualActors"] = [];
@@ -70,7 +78,8 @@ export function deriveFlowTable(nodes: any[], edges: any[]): FlowTable {
     const incoming = edges.find((e) => numbering.enteredVia.get(n.id) === e.id);
     const edgeLabel = incoming ? (numbering.edgeLabels.get(incoming.id) ?? String(incoming.data?.label ?? "").trim()) : "";
     const actor = kind === "decision" ? actorWordForDecision(n) : actorWord(n);
-    if (!FLOW_TABLE_ACTORS.includes(actor as (typeof FLOW_TABLE_ACTORS)[number])) unusualActors.push({ nodeId: n.id, actor });
+    // In a lanes diagram the lanes ARE the actors, and any text is a lane, so no actor word is unusual.
+    if (!grid && !FLOW_TABLE_ACTORS.includes(actor as (typeof FLOW_TABLE_ACTORS)[number])) unusualActors.push({ nodeId: n.id, actor });
     const spine = numbering.spineNumbers.get(n.id);
     rows.push({
       step: num,
@@ -79,14 +88,28 @@ export function deriveFlowTable(nodes: any[], edges: any[]): FlowTable {
       action: [String(n.data?.label ?? "").trim(), String(n.data?.notes ?? "").trim()].filter(Boolean).join(". "),
       actionType: type ? ACTION_TYPES[type].label : "",
       channelWhen: kind === "decision" ? "" : channelWhen(n),
+      lane: grid?.laneOf.get(n.id) ?? "",
+      stage: grid?.hasTitles ? grid.stages[grid.cell.get(n.id)?.stage ?? 0]?.title ?? "" : "",
+      stageStart: false,
       branch: edgeLabel || "—",
       nodeId: n.id,
     });
   }
   void byId;
-  // The Channel · When column only appears when at least one step has something to say, so older tables read as before.
+  const seenStages = new Set<string>();
+  for (const r of rows) {
+    if (r.stage && !seenStages.has(r.stage)) {
+      seenStages.add(r.stage);
+      r.stageStart = true;
+    }
+  }
+  // Optional columns appear only when they have something to say, so older tables read as before.
   const withWhen = rows.some((r) => r.channelWhen);
-  return { columns: withWhen ? ["Step", "Actor", "Action", "Action Type", "Channel · When", "Branch / Condition"] : ["Step", "Actor", "Action", "Action Type", "Branch / Condition"], rows, unusualActors };
+  const withStage = rows.some((r) => r.stage);
+  const columns = grid
+    ? [...(withStage ? ["Stage"] : []), "Step", "Lane", "Action", "Action Type", ...(withWhen ? ["Channel · When"] : []), "Branch / Condition"]
+    : ["Step", "Actor", "Action", "Action Type", ...(withWhen ? ["Channel · When"] : []), "Branch / Condition"];
+  return { columns, rows, unusualActors };
 }
 
 function actorWordForDecision(node: any): string {
@@ -99,8 +122,9 @@ const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` 
 
 /** CSV that opens cleanly in Excel (UTF-8 with a byte-order mark). */
 export function flowTableCsv(table: FlowTable): string {
-  const withWhen = table.columns.includes("Channel · When");
+  const cell = (r: FlowTableRow, col: string): string =>
+    ({ Stage: r.stageStart ? r.stage : "", Step: r.stepDisplay, Lane: r.lane, Actor: r.actor, Action: r.action, "Action Type": r.actionType, "Channel · When": r.channelWhen, "Branch / Condition": r.branch })[col] ?? "";
   const lines = [table.columns.join(",")];
-  for (const r of table.rows) lines.push((withWhen ? [r.stepDisplay, r.actor, r.action, r.actionType, r.channelWhen, r.branch] : [r.stepDisplay, r.actor, r.action, r.actionType, r.branch]).map(csvCell).join(","));
+  for (const r of table.rows) lines.push(table.columns.map((c) => csvCell(cell(r, c))).join(","));
   return `﻿${lines.join("\r\n")}\r\n`;
 }

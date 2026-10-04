@@ -27,6 +27,78 @@ export interface FlowRowInput {
   timing?: string;
   /** For an automated message, call or alert: the channel(s), "Email", "SMS", "Email + SMS", "WhatsApp", "Voice call". Free text is kept as typed. */
   channel?: string | string[];
+  /** Lanes layout: the row this step sits in. Defaults to the actor. Free text, the client's words. */
+  lane?: string;
+  /** Lanes layout: the stage band this step starts. Steps after it stay in that stage until the next one that sets a stage. */
+  stage?: string;
+  /** Lanes layout: this step's lane is another system (assessment platform, HRIS, a vendor). */
+  external?: boolean;
+  /** For a Send Data or Get Data step: the other system it talks to. A lane with that name is treated as an outside system. */
+  system?: string;
+}
+
+export type LayoutAsked = "auto" | "lanes" | "spine";
+export interface LayoutOptions {
+  layout?: string;
+  /** Names of lanes that are other systems, for example ["Assessment platform", "HRIS"]. */
+  externalLanes?: string[];
+  /** Lane names in the order they should appear, top to bottom. Default: the order they first act. */
+  laneOrder?: string[];
+}
+export interface LayoutChoice {
+  layout: "lanes" | "spine";
+  /** Plain words: why this layout was chosen, to say to the person. */
+  reason: string;
+  lanes: string[];
+  stages: string[];
+  externalLanes: string[];
+  laneOrder: string[];
+  /** Names given as outside systems that no step sits in: they cannot be drawn, so the person should be told. */
+  unusedExternal: string[];
+}
+
+const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const lk = (s: string) => s.trim().toLowerCase();
+
+/**
+ * Lanes or the single row? Asked for explicitly, or chosen automatically when the process has 3 or more different
+ * actors, any outside system, or stages. Always says why.
+ */
+export function chooseLayout(rows: FlowRowInput[], opts: LayoutOptions = {}): LayoutChoice {
+  const asked: LayoutAsked = opts.layout === "lanes" || opts.layout === "spine" ? opts.layout : "auto";
+  const steps = rows.filter((r) => r.kind !== "end" && r.kind !== "jump");
+  const seen = new Map<string, string>();
+  for (const r of steps) {
+    const name = clean(r.lane) || clean(r.actor);
+    if (name && !seen.has(lk(name))) seen.set(lk(name), name);
+  }
+  const lanes = [...seen.values()];
+  const stages: string[] = [];
+  for (const r of rows) {
+    const s = clean(r.stage);
+    if (s && !stages.includes(s)) stages.push(s);
+  }
+  const external = new Map<string, string>();
+  for (const n of opts.externalLanes ?? []) if (clean(n)) external.set(lk(n), clean(n));
+  for (const r of steps) {
+    const name = clean(r.lane) || clean(r.actor);
+    if (r.external === true && name) external.set(lk(name), seen.get(lk(name)) ?? name);
+  }
+  // a lane named like a system a Send Data / Get Data step talks to is that system's lane
+  const systems = new Set(rows.filter((r) => clean(r.system)).map((r) => lk(clean(r.system))));
+  for (const l of lanes) if (systems.has(lk(l))) external.set(lk(l), l);
+  const externalLanes = lanes.filter((l) => external.has(lk(l)));
+  const unusedExternal = [...new Set((opts.externalLanes ?? []).map(clean).filter((n) => n && !seen.has(lk(n))))];
+  const base = { lanes, stages, externalLanes, laneOrder: (opts.laneOrder ?? []).map(clean).filter(Boolean), unusedExternal };
+  if (asked === "spine") return { layout: "spine", reason: "You asked for the single-row layout.", ...base };
+  if (asked === "lanes") return { layout: "lanes", reason: "You asked for lanes.", ...base };
+  const why: string[] = [];
+  if (lanes.length >= 3) why.push(`${lanes.length} different actors (${lanes.join(", ")})`);
+  if (externalLanes.length) why.push(`outside system${externalLanes.length > 1 ? "s" : ""} (${externalLanes.join(", ")})`);
+  if (stages.length) why.push(`${stages.length} stage${stages.length > 1 ? "s" : ""} (${stages.join("; ")})`);
+  return why.length
+    ? { layout: "lanes", reason: `Lanes, because the process has ${why.join(", and ")}.`, ...base }
+    : { layout: "spine", reason: `Single row, because the process has ${lanes.length} actor${lanes.length === 1 ? "" : "s"}, no outside system and no stages.`, ...base };
 }
 
 const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
@@ -49,7 +121,7 @@ export interface FlowTableGraph {
   problems: string[];
 }
 
-export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
+export function graphFromFlowTable(rows: FlowRowInput[], choice?: LayoutChoice): FlowTableGraph {
   const problems: string[] = [];
   const nodes: any[] = [];
   const edges: any[] = [];
@@ -58,6 +130,27 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
   const idByStep = new Map<string, string>();
   const spineOrder: string[] = [];
   let n = 0;
+  const lanesOn = choice?.layout === "lanes";
+  const laneDisplay = new Map<string, string>();
+  for (const l of choice?.lanes ?? []) laneDisplay.set(lk(l), l);
+  const externalKeys = new Set((choice?.externalLanes ?? []).map(lk));
+  const rankOf = new Map((choice?.laneOrder ?? []).map((l, i) => [lk(l), i]));
+  /** lane / stage / outside-system fields for a row, only when the diagram is drawn as lanes */
+  const laneFields = (row: FlowRowInput): Record<string, unknown> => {
+    if (!lanesOn) return {};
+    const out: Record<string, unknown> = {};
+    if (row.kind !== "end" && row.kind !== "jump") {
+      const name = clean(row.lane) || clean(row.actor);
+      if (name) {
+        const shown = laneDisplay.get(lk(name)) ?? name;
+        out.lane = shown;
+        if (externalKeys.has(lk(shown))) out.laneKind = "external";
+        if (rankOf.has(lk(shown))) out.laneRank = rankOf.get(lk(shown));
+      }
+    }
+    if (clean(row.stage)) out.stage = clean(row.stage);
+    return out;
+  };
 
   const isMain = (key: string) => /^\d+$/.test(key);
   const parentKey = (key: string) => key.split(".").slice(0, -1).join(".");
@@ -81,9 +174,9 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
     const person = !isSystem && !isDecision && row.kind !== "end" && row.kind !== "jump";
 
     let node: any;
-    if (row.kind === "end") node = { tempId, type: "terminator", label: row.action, endKind: row.endKind ?? "neutral" };
-    else if (row.kind === "jump") node = { tempId, type: "jump", label: "Go to step", jumpToNodeId: row.jumpTo ? normalizeStep(row.jumpTo) : "" };
-    else if (isDecision) node = { tempId, type: "decision", label: row.action, actor: isSystem || !actor ? "automated" : "manual", ...(actor && !isSystem ? { actorLabel: actor } : {}) };
+    if (row.kind === "end") node = { tempId, type: "terminator", label: row.action, endKind: row.endKind ?? "neutral", ...laneFields(row) };
+    else if (row.kind === "jump") node = { tempId, type: "jump", label: "Go to step", jumpToNodeId: row.jumpTo ? normalizeStep(row.jumpTo) : "", ...laneFields(row) };
+    else if (isDecision) node = { tempId, type: "decision", label: row.action, actor: isSystem || !actor ? "automated" : "manual", ...(actor && !isSystem ? { actorLabel: actor } : {}), ...laneFields(row) };
     else {
       const type = actionKey === "message" || actionKey === "alert" ? "communication" : actionKey === "send_data" || actionKey === "get_data" ? "integration" : actionKey === "wait" ? "wait" : person ? "manual_action" : "stage";
       node = {
@@ -96,7 +189,8 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
         personActs: person,
         ...(actionKey ? { actionType: actionKey } : person ? { actionType: null } : {}),
         ...(row.timing ? { timing: row.timing } : {}),
-        ...(channelOf(row) ? { data: { channel: channelOf(row) } } : {}),
+        ...(channelOf(row) || clean(row.system) ? { data: { ...(channelOf(row) ? { channel: channelOf(row) } : {}), ...(clean(row.system) ? { integrationSystem: clean(row.system) } : {}) } } : {}),
+        ...laneFields(row),
       };
     }
     nodes.push(node);
