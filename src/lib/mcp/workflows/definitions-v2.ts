@@ -16,7 +16,8 @@ const flowRow = {
     endKind: { type: "string", enum: ["success", "failure", "neutral", "soft"] },
     jumpTo: { type: "string", description: "For a jump row: the step number it points at." },
     notes: { type: "string" },
-    timing: { type: "string" },
+    timing: { type: "string", description: "When it happens. REQUIRED for every automated message, call or alert: when it goes out, for example 'immediately', '1 hour after', '2 days after', 'the day before the interview'. Shown in italics on the box." },
+    channel: { type: "string", description: "REQUIRED for every automated message, call or alert: the channel(s), for example 'Email', 'SMS', 'Email + SMS', 'WhatsApp', 'Voice call'. Shown with the timing on the box ('Email · 1 hour after'). If it is not known, leave it out and add an orange to-confirm note; never guess." },
   },
   required: ["step", "actor", "action"],
   additionalProperties: false,
@@ -62,7 +63,7 @@ export const v2Definitions: McpToolDefinition[] = [
   {
     name: "create_workflow_from_flow_table",
     description:
-      "Build a Process Map diagram from a flow table the user has APPROVED. ALWAYS show the proposed flow table in chat first and wait for an explicit yes; there is no fast path. Pass approved: true only after that yes. Rows are laid out automatically; run lint_layout and render_preview afterwards. Put the connector label for every path out of a decision in the first row of that path's `branch` (main-path outputs too: 'Yes', 'Pass'). Keep step text short and put detail in notes with add_node (type note).",
+      "Build a Process Map diagram from a flow table the user has APPROVED. ALWAYS show the proposed flow table in chat first and wait for an explicit yes; there is no fast path. Pass approved: true only after that yes. Rows are laid out automatically; run lint_layout and render_preview afterwards. Put the connector label for every path out of a decision in the first row of that path's `branch` (main-path outputs too: 'Yes', 'Pass'). Keep step text short and put detail in notes with add_node (type note); the exception is channel and timing on automated messages, calls and alerts, which go inside the box.",
     inputSchema: object(
       {
         clientName: { type: "string" },

@@ -1,5 +1,6 @@
 import { PM, circled } from "./tokens";
 import { actionTypeOf, personActs, roleBracket, shapeKindOf, tagOf, type ShapeKind } from "./model";
+import { channelWhen } from "./channel";
 
 /**
  * Text and box sizes, worked out from a formula instead of measuring the screen. That is what keeps a diagram
@@ -135,7 +136,9 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   if (head.length) lines.push({ runs: head });
   if (label) for (const t of wrapText(label, max)) lines.push(plain(t));
   if (notes && notes !== label) for (const t of wrapText(notes, max)) lines.push(plain(t, { size: 11 }));
-  if (d.timing) for (const t of wrapText(String(d.timing), max)) lines.push(plain(t, { italic: true }));
+  // "Channel · When" for automated messages, calls and alerts; for any other step, just its timing.
+  const when = channelWhen(node);
+  if (when) for (const t of wrapText(when, max)) lines.push(plain(t, { italic: true }));
   const height = Math.max(S.processMinH, 32 + lines.length * PM.type.lineH);
   const badge = people
     ? { icon: "Users", color: PM.colors.badgeSystem }

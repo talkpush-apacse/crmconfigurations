@@ -23,7 +23,10 @@ export interface FlowRowInput {
   /** For a jump: the step number it points to. */
   jumpTo?: string;
   notes?: string;
+  /** When timing: for an automated message, call or alert, when it goes out ("immediately", "1 hour after", "2 days after"). */
   timing?: string;
+  /** For an automated message, call or alert: the channel(s), "Email", "SMS", "Email + SMS", "WhatsApp", "Voice call". Free text is kept as typed. */
+  channel?: string | string[];
 }
 
 const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
@@ -58,6 +61,7 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
 
   const isMain = (key: string) => /^\d+$/.test(key);
   const parentKey = (key: string) => key.split(".").slice(0, -1).join(".");
+  const channelOf = (row: FlowRowInput) => (Array.isArray(row.channel) ? row.channel.map((c) => String(c).trim()).filter(Boolean).join(" + ") : String(row.channel ?? "").trim());
   /** The connector label for a row: its branch text without a leading step number ("3.1 · No" -> "No"). */
   const branchLabel = (row: FlowRowInput) => String(row.branch ?? "").replace(/^\s*\d+(\.\d+)*\s*[·.\-:]?\s*/, "").trim();
 
@@ -92,6 +96,7 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
         personActs: person,
         ...(actionKey ? { actionType: actionKey } : person ? { actionType: null } : {}),
         ...(row.timing ? { timing: row.timing } : {}),
+        ...(channelOf(row) ? { data: { channel: channelOf(row) } } : {}),
       };
     }
     nodes.push(node);

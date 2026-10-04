@@ -28,7 +28,8 @@ When something is unknown and routing is unclear, do not invent a path. Add an *
 
 1. **Ask first: internal or client-facing?** Client-facing means sanitization applies (see `references/sanitization.md`).
 2. **Draft the flow table in chat** (Step, Actor, Action, Action Type, Branch / Condition). `Actor` is one of Candidate, Talkpush, Recruiter, Referrer/Vendor; if the process needs another word (HANDLER, REPORTER) say so, do not invent a fifth silently. Candidate-actor steps are `[CANDIDATE]` even when AI facilitates. Do not assume something mentioned in passing is decoration: round-robin assignment looked like a note and was a real `[Add Data]` step.
-   **Keep the table's Action column short** (a few words: "Chatbot prescreening", "Sends booking link"). Anything extra, such as the list of questions, opening days or a timing, goes in a Notes line under the table and becomes a dashed note on the map, not text inside the box. Give every path out of a decision a label, the main path included ("Yes", "Pass").
+   **Keep the table's Action column short** (a few words: "Chatbot prescreening", "Sends booking link"). Anything extra, such as the list of questions or opening days, goes in a Notes line under the table and becomes a dashed note on the map, not text inside the box (the one exception is Channel · When, below). Give every path out of a decision a label, the main path included ("Yes", "Pass").
+   **Channel and cadence (an exception to "short boxes"):** every **automated** message, call or alert (tags `[MESSAGE]`, `[ALERT]`, `[CALL]`, `[AI]`) gets a `Channel · When` value, and the flow table you draft has a **Channel · When** column for those rows (for example "Email · 1 hour after", "SMS · 2 days after", "Email + SMS · immediately"). Channel and timing are what the client actually approves, so they are the one detail that goes inside the box. If the SE or client has not said, ask; if it stays unknown, add an orange "To confirm" note. Never fill it in from habit. Do not move a candidate to Rejected without showing the message they receive (or saying plainly that none is sent).
 3. **Wait for an explicit yes.** There is no fast path. Then call `create_workflow_from_flow_table` with `approved: true`.
 4. **Run the gap check** (`run_gap_check`). Blockers: list them and stop. Assumptions: "Assumed X because Y. If incorrect, Z changes." Nice to know: mention briefly. These are for the SE, never text inside a diagram shape. See `references/gap-check.md`.
 5. **Check your work by looking at it.** Call `lint_layout` and `render_preview` (audience `client` for client-facing work) after every change. A success message proves nothing. Fix every high finding before saying it is done.
@@ -39,8 +40,8 @@ When something is unknown and routing is unclear, do not invent a path. Add an *
 
 ## Boxes are short, details live in notes (Jolo's standing preference)
 
-- **Main-path and branch boxes stay concise**: the role or tag, a short name, nothing else. No lists, no hours, no days, no explanations.
-- **Extra information goes in a note shape attached to that step** (dashed outline): `add_node` with `type: note`, `attachTo` the step. Yellow (`info`) for general detail such as the four prescreening questions; orange (`needs_input`, titled "To confirm with <client name>") for anything unknown. Never put detail in a box's `notes` or `timing` field to save a shape.
+- **Main-path and branch boxes stay concise**: the role or tag, a short name, and for an automated message, call or alert one `Channel · When` line (see below). No lists, no opening hours, no explanations.
+- **Extra information goes in a note shape attached to that step** (dashed outline): `add_node` with `type: note`, `attachTo` the step. Yellow (`info`) for general detail such as the four prescreening questions; orange (`needs_input`, titled "To confirm with <client name>") for anything unknown. Never put detail in a box's `notes` field to save a shape. The `timing` field is for the `When` of an automated step (and the turnaround of a manual one), not for explanations.
 - **One note per kind per step.** If a step needs both an explanation and a to-confirm, fold them into the single orange note; several notes on one step crowd the map.
 - **Text is centred in every shape.** The tool draws it that way: do not try to align text with spaces or line breaks.
 - **A timing in a note is not seen by the gap check** unless it is an info note that states a time. An orange note keeps the turnaround assumption on the list, which is correct while the time is unknown.
@@ -59,6 +60,7 @@ If a convention or quirk is not covered here, say so and ask. Then extend the ma
 
 | Date | Change |
 |---|---|
+| 2026-10-04 | Added channel and cadence: every automated message, call or alert carries `Channel · When` in the box and a column in the flow table. |
 | 2026-10-04 | Added `delete_workflow` rule (never-shared drafts only, on explicit request, name confirmed first). |
 | 2026-10-04 | Added "Boxes are short, details live in notes", centred text, label every path, several entry channels, revision on every reply, and the numbering effect of marking a main line. Matches Workflow Builder PR #33. |
 | 2026-10-04 | First version for the Workflow Builder: adapted from the Lucid skill. `[ALERT]` is the 15th tag; the diagram key lists colours and shapes only (no tag icons); a table appears only after the flow table is approved. |

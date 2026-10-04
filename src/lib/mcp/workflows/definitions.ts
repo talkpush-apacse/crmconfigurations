@@ -62,7 +62,7 @@ const processMapProperties = {
   noteKind: { type: "string", enum: ["info", "rejection", "needs_input", "out_of_scope"], description: "For a note: info = yellow, needs_input = orange 'To confirm with the client' (title it 'To confirm with <client name>' to match the diagram key), rejection = pink, out_of_scope = grey." },
   jumpToNodeId: { type: "string", description: "For a jump marker: the step it points at (a node id, or a tempId in a spec)." },
   attachTo: { type: "string", description: "For a note: the step to place it beside (a node id, or a tempId in a spec)." },
-  timing: { type: "string", description: "Timing or cadence, shown in italics on the box's last line, for example 'Day before the interview'." },
+  timing: { type: "string", description: "When it happens, shown in italics on the box's last line, for example 'Day before the interview'. REQUIRED for every automated message, call or alert ('immediately', '1 hour after', '2 days after'); put its channel in data.channel ('Email', 'SMS', 'Email + SMS', 'WhatsApp', 'Voice call') and the box shows 'Email · 1 hour after'. Unknown: add an orange to-confirm note, never guess." },
   internalNotes: { type: "string", description: "Staff-only notes. Never shown to clients." },
   visibility: { type: "string", enum: ["client", "internal"], description: "internal = hidden from every client view, export and shared link." },
 };
