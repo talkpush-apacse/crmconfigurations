@@ -50,6 +50,51 @@ async function load(workflowId: unknown, Input: V2Helpers["Input"]) {
   return wf;
 }
 
+/**
+ * "Never shared": a draft that nobody outside the team has ever been given a way to see or comment on. Claude may only
+ * delete these. The same conditions are used to explain a refusal (sharedEvidence) and to guard the delete itself.
+ */
+function neverSharedWhere(id: string): Prisma.WorkflowProjectWhereInput {
+  return {
+    id,
+    status: "draft",
+    shareToken: null,
+    publishedVersionId: null,
+    shareVersionId: null,
+    generalAccess: "restricted",
+    links: { none: {} },
+    members: { none: {} },
+    comments: { none: {} },
+    suggestions: { none: {} },
+    accessRequests: { none: {} },
+    feedback: { none: {} },
+    versions: { none: { status: { not: "draft" } } },
+  };
+}
+
+async function sharedEvidence(wf: { id: string; status: string; shareToken: string | null; publishedVersionId: string | null; shareVersionId: string | null; generalAccess: string }): Promise<string[]> {
+  const [links, members, comments, suggestions, accessRequests, feedback, versions] = await Promise.all([
+    prisma.workflowLink.count({ where: { workflowId: wf.id } }),
+    prisma.workflowMember.count({ where: { workflowId: wf.id } }),
+    prisma.workflowComment.count({ where: { workflowId: wf.id } }),
+    prisma.workflowSuggestion.count({ where: { workflowId: wf.id } }),
+    prisma.workflowAccessRequest.count({ where: { workflowId: wf.id } }),
+    prisma.workflowFeedback.count({ where: { workflowId: wf.id } }),
+    prisma.workflowVersion.count({ where: { workflowId: wf.id, status: { not: "draft" } } }),
+  ]);
+  const out: string[] = [];
+  if (wf.status !== "draft") out.push(`its status is "${wf.status}"`);
+  if (wf.shareToken || wf.generalAccess !== "restricted") out.push("it has a public link");
+  if (links) out.push(`${links} review link${links === 1 ? "" : "s"} created`);
+  if (members) out.push(`${members} named ${members === 1 ? "person" : "people"} invited`);
+  if (wf.publishedVersionId || wf.shareVersionId || versions) out.push("a version was published or approved");
+  if (comments) out.push(`${comments} comment${comments === 1 ? "" : "s"}`);
+  if (suggestions) out.push(`${suggestions} suggested change${suggestions === 1 ? "" : "s"}`);
+  if (accessRequests) out.push("an access request");
+  if (feedback) out.push("client feedback");
+  return out;
+}
+
 const pagesOf = (wf: { pages: unknown }): any[] => (Array.isArray(wf.pages) ? (wf.pages as any[]) : []);
 const staffFor = (context: V2Context): ActingAs => staffActing({ id: "mcp", label: context.actor ?? "Claude (MCP)" }, ADMIN);
 
@@ -108,6 +153,25 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const [removed] = pages.splice(index, 1);
       await savePages(wf.id, pages);
       return { success: true, removed: removed.name, note: "A snapshot was taken just before, so this can be undone with restore_version." };
+    }
+
+    // ---------------------------------------------------------------- deleting a whole workflow
+    case "delete_workflow": {
+      const wf = await load(input.workflowId, Input);
+      const confirmName = str(input.confirmName);
+      if (confirmName !== wf.workflowName) {
+        throw new Input(`To delete this workflow, ask the user to confirm its name, then pass confirmName exactly as it is: "${wf.workflowName}".`);
+      }
+      const blockers = await sharedEvidence(wf);
+      if (blockers.length) {
+        throw new Input(`This workflow cannot be deleted through Claude because it has been shared or reviewed (${blockers.join("; ")}). Delete it from the workflows list in the staff site instead.`);
+      }
+      // The same conditions again inside the delete itself, so a link created a moment ago cannot slip past the check above.
+      const result = await prisma.workflowProject.deleteMany({ where: neverSharedWhere(wf.id) });
+      if (result.count !== 1) throw new Input("The workflow changed while it was being deleted (it may have just been shared), so nothing was deleted. Check it and try again.");
+      // The audit trail lives with the workflow and goes with it, so leave one line in the server log.
+      console.log(`[workflow-mcp] deleted workflow ${wf.id} ("${wf.workflowName}", client "${wf.clientName}") by ${context.actor ?? "Claude (MCP)"}`);
+      return { deleted: true, workflowId: wf.id, workflowName: wf.workflowName, clientName: wf.clientName, note: "Permanently deleted. This cannot be undone." };
     }
 
     // ---------------------------------------------------------------- connectors
@@ -319,5 +383,5 @@ export const V2_TOOL_NAMES = [
   "list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table",
   "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions",
   "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person",
-  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments",
+  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow",
 ] as const;

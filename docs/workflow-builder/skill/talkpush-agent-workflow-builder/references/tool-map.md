@@ -20,6 +20,7 @@
 | Share (only when asked) | `create_link`, `invite_person`, `publish_version`, `disable_link`, `revoke_person`, `list_access` |
 | Review | `list_comments`, `list_suggestions`, `accept_suggestion`, `reject_suggestion` |
 | Pages | `add_page`, `rename_page`, `delete_page` |
+| Delete a whole workflow (only when asked, only if never shared, name confirmed) | `delete_workflow` |
 
 ## Things the tools do that are easy to miss
 
