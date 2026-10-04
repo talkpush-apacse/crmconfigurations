@@ -73,7 +73,6 @@ import {
   Plus,
   Redo2,
   Share2,
-  Sparkles,
   StretchHorizontal,
   Trash2,
   Undo2,
@@ -141,7 +140,6 @@ import ShareDialog from "./share/ShareDialog";
 import ReviewPanel from "./share/ReviewPanel";
 import VersionHistory from "./panels/VersionHistory";
 import PageTabs, { type PageTabsItem } from "./panels/PageTabs";
-import AIGenerateModal from "./modals/AIGenerateModal";
 import { toMermaid } from "@/lib/workflow/mermaid";
 import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
@@ -511,13 +509,11 @@ function EditorInner({
     sourceHandle: null,
   });
 
-  // ── AI Generate modal ───────────────────────────────────────────────────────
-  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // ── Measure-before-layout ───────────────────────────────────────────────────
   // React Flow reports real rendered dimensions after nodes mount. We cache
-  // them here and, when a "net-new nodes arrived" pass is pending (AI generate,
-  // template load, MCP inject), re-run Dagre with actual sizes so long labels
+  // them here and, when a "net-new nodes arrived" pass is pending (nothing sets the flag
+  // right now), re-run Dagre with actual sizes so long labels
   // don't overlap.
   const nodeDimensionsRef = useRef<Map<string, { width: number; height: number }>>(
     new Map()
@@ -2371,52 +2367,6 @@ function EditorInner({
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }
 
-  // ── AI Generate — apply generated nodes to canvas ──────────────────────────
-  function handleApplyGenerated(generatedNodes: FlowNode[], generatedEdges: Edge[]) {
-    // Offset generated nodes below existing canvas content so they don't overlap
-    const existingMaxY =
-      nodes.length > 0
-        ? Math.max(...nodes.map((n) => (n.position?.y ?? 0) + 80))
-        : 0;
-    const yOffset = nodes.length > 0 ? existingMaxY + 120 : 0;
-
-    const offsetNodes = generatedNodes.map((n) => ({
-      ...n,
-      position: { x: n.position.x, y: n.position.y + yOffset },
-    }));
-
-    const combinedNodes = [...nodes, ...offsetNodes];
-    const combinedEdges = [
-      ...edges,
-      ...generatedEdges.map((edge) => {
-        const data = normalizeWorkflowEdgeData(edge.data);
-        return applyEdgeRendering({ ...edge, type: "custom", data }, data);
-      }),
-    ];
-
-    const { nodes: layouted, edges: layoutedEdges } = getLayoutedElements(
-      combinedNodes,
-      combinedEdges,
-      { nodeDimensions: nodeDimensionsRef.current }
-    );
-
-    const nextNodes = layouted as FlowNode[];
-    const nextEdges = layoutedEdges as Edge[];
-
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    pushHistory(nextNodes, nextEdges);
-    triggerSave(nextNodes, nextEdges, activePageIdRef.current);
-    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
-
-    // Net-new nodes — wait for React Flow to report their rendered sizes, then
-    // re-run layout with real dimensions. See handleNodesChange for the
-    // debounced trigger.
-    // TODO: also flip this flag after MCP canvas-inject completes if that path
-    // lands in the editor.
-    measurementPendingRef.current = true;
-  }
-
   // ── PDF Export ──────────────────────────────────────────────────────────────
   // Builds a vector PDF directly from the nodes/edges data — no rasterization,
   // no embedded PNG. See src/lib/workflow-pdf-export.ts for the renderer.
@@ -3148,19 +3098,6 @@ function EditorInner({
           <span className="hidden xl:inline">Share</span>
         </Button>
 
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
-
-        {/* AI Generate — always show text label (marquee feature) */}
-        <Button
-          variant="cta"
-          size="sm"
-          onClick={() => setAiModalOpen(true)}
-          className="gap-1.5 text-xs shrink-0"
-          title="Generate workflow with AI"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          AI Generate
-        </Button>
       </div>
 
       <div className="lg:hidden border-b border-amber-200 bg-amber-50 px-4 py-3 shrink-0">
@@ -3584,13 +3521,6 @@ function EditorInner({
         onOpenChange={setShareDialogOpen}
         legacyLinkActive={Boolean(shareToken)}
         onStopLegacyLink={() => void handleRevokeShareLink()}
-      />
-
-      {/* AI Generate Modal */}
-      <AIGenerateModal
-        open={aiModalOpen}
-        onOpenChange={setAiModalOpen}
-        onApply={handleApplyGenerated}
       />
 
       {edgeContextMenu && activeEdgeContextEdge && (
