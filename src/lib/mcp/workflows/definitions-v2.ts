@@ -55,13 +55,14 @@ export const v2Definitions: McpToolDefinition[] = [
   {
     name: "create_workflow_from_flow_table",
     description:
-      "Build a Process Map diagram from a flow table the user has APPROVED. ALWAYS show the proposed flow table in chat first and wait for an explicit yes; there is no fast path. Pass approved: true only after that yes. Rows are laid out automatically; run lint_layout and render_preview afterwards.",
+      "Build a Process Map diagram from a flow table the user has APPROVED. ALWAYS show the proposed flow table in chat first and wait for an explicit yes; there is no fast path. Pass approved: true only after that yes. Rows are laid out automatically; run lint_layout and render_preview afterwards. Put the connector label for every path out of a decision in the first row of that path's `branch` (main-path outputs too: 'Yes', 'Pass'). Keep step text short and put detail in notes with add_node (type note).",
     inputSchema: object(
       {
         clientName: { type: "string" },
         workflowName: { type: "string" },
         description: { type: "string" },
-        entryLabel: { type: "string", description: "Name of the entry channel shape, for example 'Employee has a concern'." },
+        entryLabel: { type: "string", description: "Name of the entry channel shape, for example 'Employee has a concern'. Use entryLabels when there is more than one way in." },
+        entryLabels: { type: "array", items: { type: "string" }, description: "One entry channel shape per way in, for example ['Facebook ad', 'Careers page']. Each leads to the first step." },
         rows: { type: "array", items: flowRow },
         approved: { type: "boolean", description: "Must be true, and only after the user approved the table in chat." },
         artifacts: { type: "array", items: { type: "object", additionalProperties: true } },

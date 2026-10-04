@@ -154,13 +154,17 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       if (rows.length === 0) throw new Input("rows must list at least one step");
       const graph = graphFromFlowTable(rows);
       if (graph.problems.length) throw new Input(`The table cannot be built yet: ${graph.problems.join(" ")}`);
+      // One entry shape per channel ("Facebook ad", "Careers page"), each leading to the first step. entryLabel stays for a single one.
+      const listed = (Array.isArray(input.entryLabels) ? input.entryLabels : []).map((x: unknown) => str(x)).filter((x: string | undefined): x is string => Boolean(x));
+      const entries = listed.length ? listed : [str(input.entryLabel) ?? "Candidate enters"];
+      const entryIds = entries.map((_, i) => (i === 0 ? "entry" : `entry${i + 1}`));
       return h.createFromSpec(
         {
           clientName: input.clientName,
           workflowName: input.workflowName,
           description: input.description,
-          nodes: [{ tempId: "entry", type: "source", label: str(input.entryLabel) ?? "Candidate enters", actor: "source" }, ...graph.nodes],
-          edges: [{ sourceTempId: "entry", targetTempId: graph.nodes[0].tempId }, ...graph.edges],
+          nodes: [...entries.map((label, i) => ({ tempId: entryIds[i], type: "source", label, actor: "source" })), ...graph.nodes],
+          edges: [...entryIds.map((id) => ({ sourceTempId: id, targetTempId: graph.nodes[0].tempId })), ...graph.edges],
           artifacts: input.artifacts,
           summary: input.summary,
           diagramStyle: "process_map",

@@ -22,8 +22,10 @@ const TERMINAL_LABELS = [
 
 export function validateWorkflow(
   nodes: Node[],
-  edges: Edge[]
+  edges: Edge[],
+  options: { diagramStyle?: string | null } = {}
 ): WorkflowValidationFinding[] {
+  const processMap = options.diagramStyle === "process_map";
   // Exclude annotation nodes — they carry no workflow logic
   const flowNodes = (nodes as FlowNode[]).filter((n) => !(n.data as { isAnnotation?: boolean })?.isAnnotation);
   const flowEdges = edges as FlowEdge[];
@@ -83,8 +85,12 @@ export function validateWorkflow(
           recommendation: "Add the missing branch or change the node type.",
         });
       }
+      // In a Process Map, a fork with no main line is fine when every path out of it is named: the Process Map numbers each of them
+      // (7.1.1, 7.1.2). It only needs a main line when some path is unlabelled and so cannot be told apart.
+      const everyPathNamed = processMap && nodeOutgoing.every((edge) => String(edge.data?.label ?? "").trim());
       if (
         nodeOutgoing.length >= 2 &&
+        !everyPathNamed &&
         !nodeOutgoing.some((edge) => edge.data?.isHappyPath || edge.data?.isPrimary)
       ) {
         findings.push({

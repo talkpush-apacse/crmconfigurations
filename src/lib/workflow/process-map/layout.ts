@@ -38,6 +38,8 @@ export interface LayoutResult {
 }
 
 const L = PM.layout;
+/** Space between two notes stacked on the same step. */
+const NOTE_GAP = 24;
 
 /** What to print on each step: its number(s), and for a jump the number of the step it points at. */
 export function numbersFor(nodes: any[], numbering: DecimalNumbering): Map<string, NodeNumbers> {
@@ -158,12 +160,16 @@ export function layoutProcessMap(nodes: any[], edges: any[]): LayoutResult {
   // ---- the entry channel sits on the same row, to the left ----------------------------------------------
   const sources = nodes.filter((n) => shapeKindOf(n) === "start");
   const firstX = spine.length ? (positions.get(spine[0])?.x ?? 0) : 0;
-  let entryX = firstX - L.containerGap * 2 - L.containerPad * 2;
-  [...sources].reverse().forEach((n) => {
+  // One entry channel is level with the main row. Several are stacked in one column, centred on that row, so each has its own
+  // straight run to the first step and none sits in another's way.
+  const entryRight = firstX - L.containerGap * 2 - L.containerPad * 2;
+  const entryHeights = sources.map((n) => size(n.id).h);
+  const entryStack = entryHeights.reduce((a, h) => a + h, 0) + L.branchGap * Math.max(0, sources.length - 1);
+  let entryY = rowCenterY - entryStack / 2;
+  sources.forEach((n) => {
     const { w, h } = size(n.id);
-    entryX -= w;
-    positions.set(n.id, { x: entryX, y: rowCenterY - h / 2 });
-    entryX -= L.spineGap;
+    positions.set(n.id, { x: entryRight - w, y: entryY });
+    entryY += h + L.branchGap;
   });
 
   // ---- steps that are not connected to the flow: a tidy row below ---------------------------------------
@@ -195,7 +201,17 @@ export function layoutProcessMap(nodes: any[], edges: any[]): LayoutResult {
     let targetHandle: Handle = "top";
     const bothOnRow = onSpine.has(e.source) && onSpine.has(e.target);
     const fromEntry = shapeKindOf(nodes.find((n) => n.id === e.source)) === "start";
-    if (fromEntry || (bothOnRow && !isJoin) || (bothOnRow && t.x > s.x)) {
+    const touchesNote = shapeKindOf(nodes.find((n) => n.id === e.source)) === "note" || shapeKindOf(nodes.find((n) => n.id === e.target)) === "note";
+    if (touchesNote) {
+      // A connector to or from a note is not a path of the process: keep it off the sides the real paths use. Go straight up or down to a note above or below, sideways only when it sits level.
+      if (Math.abs(t.y - s.y) >= 40) {
+        sourceHandle = t.y < s.y ? "top" : "bottom";
+        targetHandle = t.y < s.y ? "bottom" : "top";
+      } else {
+        sourceHandle = t.x >= s.x ? "right" : "left";
+        targetHandle = t.x >= s.x ? "left" : "right";
+      }
+    } else if (fromEntry || (bothOnRow && !isJoin) || (bothOnRow && t.x > s.x)) {
       sourceHandle = t.x >= s.x ? "right" : "left";
       targetHandle = t.x >= s.x ? "left" : "right";
     } else if (isJoin) {
@@ -230,6 +246,8 @@ function placeNotesAndTables(
   const onSpine = new Set(spine);
   let stackAbove = 0;
   let tableX = rightEdge;
+  // Several notes can belong to one step: stack them (upwards above a main-path step, downwards beside a branch step) so they never sit on top of each other.
+  const stackedHeight = new Map<string, number>();
   for (const n of nodes) {
     const kind = shapeKindOf(n);
     if (kind === "note") {
@@ -238,12 +256,14 @@ function placeNotesAndTables(
       const s = sizes.get(n.id) ?? { w: PM.size.noteW, h: 80 };
       if (attach && target) {
         const ts = sizes.get(attach) ?? { w: PM.size.processW, h: PM.size.processMinH };
+        const used = stackedHeight.get(attach) ?? 0;
+        stackedHeight.set(attach, used + s.h + NOTE_GAP);
         if (onSpine.has(attach)) {
           // above a main-path step, clear of its badge and connectors
-          positions.set(n.id, { x: target.x + ts.w / 2 - s.w / 2, y: target.y - s.h - PM.size.badgeH - 70 });
+          positions.set(n.id, { x: target.x + ts.w / 2 - s.w / 2, y: target.y - s.h - PM.size.badgeH - 70 - used });
         } else {
           // to the right of a step in a branch
-          positions.set(n.id, { x: target.x + ts.w + 50, y: target.y });
+          positions.set(n.id, { x: target.x + ts.w + 50, y: target.y + used });
         }
       } else {
         const topOfRow = Math.min(0, ...spine.map((id) => positions.get(id)?.y ?? 0));
@@ -262,6 +282,26 @@ function placeNotesAndTables(
 }
 
 /** Applies a layout to workflow nodes and edges, returning NEW arrays (the inputs are untouched). */
+/**
+ * Where a NEW note goes so it sits beside the step it is attached to straight away, using the same rule as the full
+ * layout but measured from where that step actually is now. Nothing else moves. Null when the note has no valid
+ * `attachTo`, so the caller keeps its own default.
+ */
+export function positionForNewNote(nodes: any[], edges: any[], note: any): { x: number; y: number } | null {
+  const attach: string | undefined = note?.data?.attachTo;
+  const actual = attach ? nodes.find((n) => n.id === attach) : undefined;
+  if (!attach || !actual?.position) return null;
+  try {
+    const result = layoutProcessMap([...nodes, note], edges);
+    const target = result.positions.get(attach);
+    const spot = result.positions.get(note.id);
+    if (!target || !spot) return null;
+    return { x: actual.position.x + (spot.x - target.x), y: actual.position.y + (spot.y - target.y) };
+  } catch {
+    return null;
+  }
+}
+
 export function applyLayout(nodes: any[], edges: any[], result: LayoutResult): { nodes: any[]; edges: any[] } {
   return {
     nodes: nodes.map((n) => {

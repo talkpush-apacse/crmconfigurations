@@ -153,9 +153,18 @@ export function lintLayout(scene: Scene): LayoutFinding[] {
   const spineFirst = scene.spine.map((id) => byId.get(id)).find(Boolean);
   if (spineFirst) {
     const row = spineFirst.rect.y + spineFirst.rect.h / 2;
-    for (const s of scene.shapes.filter((x) => x.kind === "start")) {
+    const entries = scene.shapes.filter((x) => x.kind === "start");
+    if (entries.length === 1) {
+      const s = entries[0];
       if (Math.abs(s.rect.y + s.rect.h / 2 - row) > 4) {
         out.push({ code: "entry_row_mismatch", severity: "low", nodeId: s.id, message: `"${name(s)}" is not level with the main path.`, recommendation: "Align the entry step with the first step of the main path." });
+      }
+    } else if (entries.length > 1) {
+      // Several entry channels are stacked in a column: the column as a whole should be centred on the main row.
+      const top = Math.min(...entries.map((s) => s.rect.y));
+      const bottom = Math.max(...entries.map((s) => s.rect.y + s.rect.h));
+      if (Math.abs((top + bottom) / 2 - row) > 4) {
+        out.push({ code: "entry_row_mismatch", severity: "low", nodeId: entries[0].id, message: "The entry channels are not centred on the main path.", recommendation: "Centre the entry channels on the first step of the main path." });
       }
     }
   }

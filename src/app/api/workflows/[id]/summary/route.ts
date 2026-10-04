@@ -28,6 +28,7 @@ export async function POST(
         edges: true,
         pages: true,
         viewport: true,
+        diagramStyle: true,
       },
     });
     if (!workflow) {
@@ -35,7 +36,7 @@ export async function POST(
     }
 
     const { nodes, edges } = getCanvas(workflow);
-    const findings = validateWorkflow(nodes, edges);
+    const findings = validateWorkflow(nodes, edges, { diagramStyle: workflow.diagramStyle });
     const artifacts = await listScopingArtifacts({ workflowId: id });
     const editUrl = `${request.nextUrl.origin}/admin/workflows/${id}`;
     const summary = generateCustomerSummaryText({

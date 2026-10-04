@@ -59,7 +59,7 @@ const processMapProperties = {
     description: "true = a person acts in this step (white box, role in brackets, people icon). false = the system does it (green). Leave out to work it out from the actor.",
   },
   endKind: { type: "string", enum: ["success", "failure", "neutral", "soft"], description: "For a terminator: success = dark green, failure = pink, neutral = grey hand-off, soft = light green." },
-  noteKind: { type: "string", enum: ["info", "rejection", "needs_input", "out_of_scope"], description: "For a note: info = yellow, needs_input = orange 'To confirm with the client', rejection = pink, out_of_scope = grey." },
+  noteKind: { type: "string", enum: ["info", "rejection", "needs_input", "out_of_scope"], description: "For a note: info = yellow, needs_input = orange 'To confirm with the client' (title it 'To confirm with <client name>' to match the diagram key), rejection = pink, out_of_scope = grey." },
   jumpToNodeId: { type: "string", description: "For a jump marker: the step it points at (a node id, or a tempId in a spec)." },
   attachTo: { type: "string", description: "For a note: the step to place it beside (a node id, or a tempId in a spec)." },
   timing: { type: "string", description: "Timing or cadence, shown in italics on the box's last line, for example 'Day before the interview'." },
@@ -409,7 +409,7 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "create_version_snapshot",
     description:
-      "Save the current workflow canvas as a version snapshot before a major scoping revision or customer review.",
+      "Save the current workflow canvas as a version snapshot before a major scoping revision or customer review. Returns the version's number, label and counts, not the whole canvas; read it back with diff_versions.",
     inputSchema: {
       type: "object",
       properties: {
@@ -493,7 +493,7 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "get_workflow",
     description:
-      "Fetch a workflow with nodes, edges, status, and server-computed step numbers.",
+      "Fetch a workflow with nodes, edges, status, server-computed step numbers and its current `revision` (pass it as baseRevision on changes).",
     inputSchema: {
       type: "object",
       properties: {
@@ -603,7 +603,7 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "auto_layout",
     description:
-      "Run server-side Dagre layout on the current workflow and persist updated node positions.",
+      "Run the layout on the current workflow and save the new positions (Process Map style keeps the main path on one row and puts each note beside its step). A snapshot is taken first, so it can be undone. Returns how many steps moved, not every node.",
     inputSchema: {
       type: "object",
       properties: {
@@ -726,7 +726,7 @@ function withCommonOptions(def: McpToolDefinition): McpToolDefinition {
   if (props.workflowId && !NO_REVISION_GUARD.has(def.name) && !props.baseRevision) {
     props.baseRevision = {
       type: "integer",
-      description: "Optional safety check: the revision you last read (from get_workflow). If someone changed the workflow since, the change is refused instead of overwriting their work.",
+      description: "Optional safety check: the revision you last read (get_workflow shows it, and every change returns the new one). If someone changed the workflow since, the change is refused instead of overwriting their work.",
     };
   }
   return { ...def, inputSchema: { ...def.inputSchema, properties: props } };

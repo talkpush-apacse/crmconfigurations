@@ -124,7 +124,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
     const max = charsPerLine(width);
     if (label) for (const t of wrapText(label, max)) lines.push(plain(t, { bold: true }));
     if (notes) for (const t of wrapText(notes, max)) lines.push(plain(t));
-    return { kind, width, height: Math.max(56, 32 + lines.length * PM.type.lineH), lines, align: "top", badgeSpace: 0, badge: null, people: false };
+    return { kind, width, height: Math.max(56, 32 + lines.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
   // process boxes
@@ -142,7 +142,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
     : actionType
       ? { icon: ACTION_BADGE(actionType).icon, color: ACTION_BADGE(actionType).color }
       : null;
-  return { kind, width, height, lines, align: "top", badgeSpace: badge ? S.badgeH + 6 : 0, badge, people };
+  return { kind, width, height, lines, align: "center", badgeSpace: badge ? S.badgeH + 6 : 0, badge, people };
 }
 
 import { ACTION_TYPES, type ActionType } from "./tokens";
