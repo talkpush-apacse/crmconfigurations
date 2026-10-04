@@ -116,7 +116,7 @@ export async function callWorkflowTool(
 
   const result = await pageContext.run({ page: cleanString(input.page) }, () => dispatchWorkflowTool(name, input, context));
 
-  if (mutating && workflowId) {
+  if (mutating && workflowId && name !== "delete_workflow") {
     await recordAudit({ workflowId, actorType: "mcp", actorName: context.actor ?? "Claude (MCP)", action: `mcp.${name}`, detail: { page: cleanString(input.page) ?? null } });
   }
   return withRevision(result, workflowId, mutating || name === "get_workflow");

@@ -35,6 +35,7 @@ When something is unknown and routing is unclear, do not invent a path. Add an *
 5. **Check your work by looking at it.** Call `lint_layout` and `render_preview` (audience `client` for client-facing work) after every change. A success message proves nothing. Fix every high finding before saying it is done.
 6. **Never rebuild over a human's edits.** Before changing an existing workflow: `get_workflow` (note the revision), `diff_versions` against the last version you built or the client approved, and ask which is the source of truth. Pass `baseRevision` on changes. Prefer `propose_changes`, which creates a suggestion the owner accepts. Big changes take a snapshot automatically.
 7. **Share only when asked.** `create_link`, `invite_person`, `publish_version`, `accept_suggestion`, `reject_suggestion` and `share_workflow` are for explicit requests only. Nothing is emailed: give the SE the address to copy.
+   **Deleting a whole workflow** (`delete_workflow`) is the same kind of explicit-request tool: only when the SE names the map and asks, only for a map that was never shared (still a draft: no links, invited people, published version or comments), and only after confirming its exact name in chat. It cannot be undone. A shared map is deleted by the SE from the workflows list. Never delete as tidy-up.
 8. **Hand off** to CRM configuration planning with: the workflow id and page, the title, the tenant subdomain, **every orange "To confirm" note**, and every "Pending from <person>" rejection reason, so those rows are marked blocked instead of guessed.
 
 ## Boxes are short, details live in notes (Jolo's standing preference)
@@ -60,5 +61,6 @@ If a convention or quirk is not covered here, say so and ask. Then extend the ma
 | Date | Change |
 |---|---|
 | 2026-10-04 | Added channel and cadence: every automated message, call or alert carries `Channel · When` in the box and a column in the flow table. |
+| 2026-10-04 | Added `delete_workflow` rule (never-shared drafts only, on explicit request, name confirmed first). |
 | 2026-10-04 | Added "Boxes are short, details live in notes", centred text, label every path, several entry channels, revision on every reply, and the numbering effect of marking a main line. Matches Workflow Builder PR #33. |
 | 2026-10-04 | First version for the Workflow Builder: adapted from the Lucid skill. `[ALERT]` is the 15th tag; the diagram key lists colours and shapes only (no tag icons); a table appears only after the flow table is approved. |
