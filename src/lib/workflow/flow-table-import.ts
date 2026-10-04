@@ -58,6 +58,8 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
 
   const isMain = (key: string) => /^\d+$/.test(key);
   const parentKey = (key: string) => key.split(".").slice(0, -1).join(".");
+  /** The connector label for a row: its branch text without a leading step number ("3.1 · No" -> "No"). */
+  const branchLabel = (row: FlowRowInput) => String(row.branch ?? "").replace(/^\s*\d+(\.\d+)*\s*[·.\-:]?\s*/, "").trim();
 
   for (const row of rows) {
     const key = normalizeStep(row.step);
@@ -99,13 +101,13 @@ export function graphFromFlowTable(rows: FlowRowInput[]): FlowTableGraph {
     const isFirstInGroup = !lastOfGroup.has(key);
     if (isFirstInGroup && isMain(key)) {
       const prev = spineOrder[spineOrder.length - 1];
-      if (prev) edges.push({ sourceTempId: prev, targetTempId: tempId, isPrimary: true, isHappyPath: true, label: "" });
+      if (prev) edges.push({ sourceTempId: prev, targetTempId: tempId, isPrimary: true, isHappyPath: true, label: branchLabel(row) });
       spineOrder.push(tempId);
     } else if (isFirstInGroup) {
       const parentGroupKey = parentKey(key);
       const parent = isMain(parentGroupKey) ? idByStep.get(parentGroupKey) : lastOfGroup.get(parentGroupKey);
       if (!parent) problems.push(`Step ${key} ("${row.action}") has no step ${parentGroupKey} to branch from.`);
-      else edges.push({ sourceTempId: parent, targetTempId: tempId, label: String(row.branch ?? "").replace(/^\s*\d+(\.\d+)*\s*[·.\-:]?\s*/, "").trim() });
+      else edges.push({ sourceTempId: parent, targetTempId: tempId, label: branchLabel(row) });
       firstOfGroup.set(key, tempId);
     } else {
       edges.push({ sourceTempId: lastOfGroup.get(key)!, targetTempId: tempId, label: "" });

@@ -96,7 +96,7 @@ export function ShapeBody({ shape }: { shape: SceneShape }): ReactElement {
       return (
         <g>
           {body}
-          <Lines lines={box.lines} w={w} h={h} align={box.align} fill={textColor} anchor="start" />
+          <Lines lines={box.lines} w={w} h={h} align={box.align} fill={textColor} anchor="middle" />
           {box.badge && <Badge icon={box.badge.icon} color={box.badge.color} />}
         </g>
       );

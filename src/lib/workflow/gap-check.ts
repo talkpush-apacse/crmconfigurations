@@ -26,6 +26,10 @@ export interface GapFinding {
 const TERMINAL_KINDS = new Set(["end", "jump", "note", "table", "container", "none"]);
 const text = (n: any) => `${n.data?.label ?? ""} ${n.data?.notes ?? ""}`.toLowerCase();
 const has = (nodes: any[], re: RegExp) => nodes.some((n) => re.test(text(n)));
+const TIME_WORDS = /\b(minutes?|hours?|days?|weeks?|working day|same day|next day|within|before|after|\d+\s*(h|hr|hrs|d)\b)/i;
+/** True when an information note attached to this step states a time. An orange "To confirm" note does not count: it says the time is not known yet. */
+const hasTimingNote = (nodes: any[], stepId: string) =>
+  nodes.some((x) => shapeKindOf(x) === "note" && x.data?.attachTo === stepId && x.data?.noteKind !== "needs_input" && TIME_WORDS.test(text(x)));
 
 export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
   const out: GapFinding[] = [];
@@ -70,7 +74,7 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
 
   // ---- operations --------------------------------------------------------------------------------------
   for (const n of steps) {
-    if (shapeKindOf(n) === "process" && personActs(n) && n.data?.actor !== "candidate" && !n.data?.timing && !n.data?.data?.waitDuration) {
+    if (shapeKindOf(n) === "process" && personActs(n) && n.data?.actor !== "candidate" && !n.data?.timing && !n.data?.data?.waitDuration && !hasTimingNote(flow, n.id)) {
       out.push({ tier: "assumption", code: "sla_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `No turnaround time is given for the manual step "${n.data?.label}".`, assumption: "Assumed the person acts within one working day. If incorrect, add the real time and a reminder path." });
     }
     const type = actionTypeOf(n);

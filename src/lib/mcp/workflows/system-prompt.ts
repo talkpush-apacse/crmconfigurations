@@ -25,7 +25,7 @@ THE RULES, IN ORDER
 
 HOW TO BUILD
 1. Interview or read the notes. Ask the internal-or-client question. Draft the flow table in chat. Run the gap check mentally and ask the blocking questions.
-2. After the yes: create_workflow_from_flow_table (rows: step, actor, action, actionType, branch, kind decision/end/jump, endKind, jumpTo, timing, notes). Add notes with add_node type note (noteKind needs_input for "To confirm with the client", info for general notes, attachTo to place it beside a step) and any table with add_node type table.
+2. After the yes: create_workflow_from_flow_table (rows: step, actor, action, actionType, branch, kind decision/end/jump, endKind, jumpTo, timing, notes). Add notes with add_node type note (noteKind needs_input for "To confirm with the client", info for general notes, attachTo to place it beside a step) and any table with add_node type table. Keep each step short (what happens, in a few words): anything extra, such as the list of prescreening questions, opening days or a timing, goes in a note attached to that step, not inside the step. Give every path out of a decision a label ("Yes", "No", "Pass"), main path included. Text in every shape is centred.
 3. run_gap_check, lint_layout, render_preview, validate_workflow. Fix, re-check.
 4. Give the SE the edit address and the checklist of open items (every orange note and every blocker).
 

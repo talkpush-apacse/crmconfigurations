@@ -22,7 +22,7 @@ export async function POST(
     }
 
     const { nodes, edges } = getCanvas(workflow);
-    const findings = validateWorkflow(nodes, edges);
+    const findings = validateWorkflow(nodes, edges, { diagramStyle: workflow.diagramStyle });
     const { stepNumbers, warnings } = computeStepNumbers(nodes, edges);
 
     return NextResponse.json({

@@ -8,7 +8,7 @@ import { computeStepNumbers } from "@/lib/workflow/numbering";
 import { computeNumbers, type NumberingScheme } from "@/lib/workflow/numbering-decimal";
 import { validateWorkflow } from "@/lib/workflow/validation";
 import { createVersionSnapshot } from "@/lib/workflow/versioning";
-import { applyLayout, layoutProcessMap } from "@/lib/workflow/process-map/layout";
+import { applyLayout, layoutProcessMap, positionForNewNote } from "@/lib/workflow/process-map/layout";
 import { lintLayout } from "@/lib/workflow/process-map/lint";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { lintPagesForClient } from "@/lib/workflow/access/client-view";
@@ -98,7 +98,7 @@ export async function callWorkflowTool(
       const current = await prisma.workflowProject.findUnique({ where: { id: workflowId }, select: { revision: true } });
       if (current && current.revision !== input.baseRevision) {
         throw new McpToolInputError(
-          `This workflow changed since you read it (it is at revision ${current.revision}, you had ${input.baseRevision}). Read it again with get_workflow, then repeat the change.`
+          `This workflow changed since you read it (it is at revision ${current.revision}, you had ${input.baseRevision}). Read it again with get_workflow (it shows the current revision), then repeat the change.`
         );
       }
     }
@@ -119,7 +119,21 @@ export async function callWorkflowTool(
   if (mutating && workflowId) {
     await recordAudit({ workflowId, actorType: "mcp", actorName: context.actor ?? "Claude (MCP)", action: `mcp.${name}`, detail: { page: cleanString(input.page) ?? null } });
   }
-  return result;
+  return withRevision(result, workflowId, mutating || name === "get_workflow");
+}
+
+/**
+ * Callers need the workflow's current revision to use `baseRevision`. Say it on get_workflow and on every reply that
+ * changed the workflow, so nobody has to provoke a refusal to find out. Never fails the tool.
+ */
+async function withRevision(result: unknown, workflowId: string | undefined, wanted: boolean) {
+  if (!wanted || !workflowId || !result || typeof result !== "object" || Array.isArray(result) || "revision" in result) return result;
+  try {
+    const current = await prisma.workflowProject.findUnique({ where: { id: workflowId }, select: { revision: true } });
+    return current ? { ...(result as Record<string, unknown>), revision: current.revision } : result;
+  } catch {
+    return result;
+  }
 }
 
 async function dispatchWorkflowTool(
@@ -564,7 +578,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
     spec.artifacts ?? [],
     { source: "mcp" }
   );
-  const findings = validateWorkflow(finalNodes, finalEdges);
+  const findings = validateWorkflow(finalNodes, finalEdges, { diagramStyle: processMap ? "process_map" : "classic" });
   const editUrl = workflowEditUrl(context, workflow.id);
   const summary =
     spec.summary ??
@@ -823,7 +837,7 @@ async function validateWorkflowTool(args: ToolArguments) {
   if (!workflow) throw new McpToolInputError("Workflow not found");
 
   const { nodes, edges } = getCanvas(workflow);
-  const findings = validateWorkflow(nodes, edges);
+  const findings = validateWorkflow(nodes, edges, { diagramStyle: workflow.diagramStyle });
   const processMap = workflow.diagramStyle === "process_map";
   const scene = processMap ? buildScene(nodes, edges, { clientName: workflow.clientName, workflowName: workflow.workflowName }) : null;
   const layout = scene ? lintLayout(scene) : [];
@@ -933,7 +947,9 @@ async function createVersionSnapshotTool(args: ToolArguments) {
     createdByName: cleanString(args.createdByName),
     triggerDetail: cleanString(args.triggerDetail) ?? "MCP snapshot",
   });
-  return { version };
+  // A summary, not the whole canvas: the full copy is stored and can be read with diff_versions / restore_version.
+  const { id, versionNumber, label, status, triggeredBy, triggerDetail, createdByName, nodeCount, edgeCount, createdAt } = version;
+  return { version: { id, versionNumber, label, status, triggeredBy, triggerDetail, createdByName, nodeCount, edgeCount, createdAt } };
 }
 
 async function listVersions(args: ToolArguments) {
@@ -1142,6 +1158,12 @@ async function addNode(args: ToolArguments) {
     extra: processMapFields(args),
   });
 
+  // A note attached to a step goes beside that step now, not at the bottom-left until someone runs auto_layout.
+  if (workflow.diagramStyle === "process_map" && type === "note") {
+    const spot = positionForNewNote(nodes, edges, node);
+    if (spot) node.position = spot;
+  }
+
   await prisma.workflowProject.update({
     where: { id: workflowId },
     data: updateFirstPage(workflow, [...nodes, node], edges),
@@ -1278,6 +1300,16 @@ async function addEdgeTool(args: ToolArguments) {
     data: edgeDataFromValue(args.data),
   });
 
+  // A connector to or from a note is drawn from the side the layout would use, not the default right-to-bottom.
+  if (workflow.diagramStyle === "process_map" && [sourceNodeId, targetNodeId].some((id) => nodes.find((n) => n.id === id)?.data?.type === "note")) {
+    try {
+      const route = layoutProcessMap(nodes, [...nextEdges, edge]).edges.get(edge.id);
+      if (route) Object.assign(edge, { sourceHandle: route.sourceHandle, targetHandle: route.targetHandle });
+    } catch {
+      /* keep the default handles */
+    }
+  }
+
   await prisma.workflowProject.update({
     where: { id: workflowId },
     data: updateFirstPage(workflow, nodes, [...nextEdges, edge]),
@@ -1360,7 +1392,10 @@ async function autoLayout(args: ToolArguments) {
     data: updateFirstPage(workflow, layouted.nodes, layouted.edges.map((e) => ({ ...e, data: normalizeEdgeData(e.data) }))),
   });
 
-  return { nodes: layouted.nodes, style: workflow.diagramStyle };
+  // A summary, not every node: callers can read the result with get_workflow.
+  const before = new Map(nodes.map((n) => [n.id, n.position]));
+  const moved = layouted.nodes.filter((n) => { const p = before.get(n.id); return !p || p.x !== n.position.x || p.y !== n.position.y; }).length;
+  return { style: workflow.diagramStyle, nodeCount: layouted.nodes.length, moved };
 }
 
 async function renumberSteps(args: ToolArguments) {
