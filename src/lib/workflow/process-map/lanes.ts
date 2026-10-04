@@ -1,7 +1,7 @@
 import { computeDecimalNumbers, type DecimalNumbering } from "../numbering-decimal";
 import { boxFor } from "./text-fit";
 import { actionTypeOf, personActs, shapeKindOf } from "./model";
-import { laneKey, laneText, stageText } from "./lane-mode";
+import { AUTOMATED_LANE, laneKey, laneNameFor, laneText, stageText } from "./lane-mode";
 import { numbersFor, type EdgeRoute, type Handle, type LayoutResult, type Size } from "./layout";
 
 /**
@@ -90,7 +90,7 @@ export function fallbackLane(n: any): string {
   const d = n?.data ?? {};
   if (d.actor === "candidate" || actionTypeOf(n) === "candidate") return "Candidate";
   if (personActs(n)) return String(d.actorLabel || d.data?.ownerRole || "").trim() || "Team";
-  return String(d.actorLabel || "").trim() || "Talkpush";
+  return laneNameFor(d.actorLabel) || AUTOMATED_LANE;
 }
 
 export function computeLaneGrid(nodes: any[], edges: any[], numberingIn?: DecimalNumbering): LaneGrid {

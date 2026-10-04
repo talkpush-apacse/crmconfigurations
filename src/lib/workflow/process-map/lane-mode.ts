@@ -17,6 +17,19 @@ const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 /** Steps that can carry a lane (notes follow the step they are attached to; tables and annotations have none). */
 const LANE_TYPES = new Set(["note", "table", "annotation", "dangling_endpoint", "swimlane", "frame"]);
 
+/** The one default lane for steps the system does. Talkpush's own labels for it all mean the same lane. */
+export const AUTOMATED_LANE = "Talkpush automation";
+
+/**
+ * The lane name for an actor or step label. "Talkpush", "Talkpush Automation", "System", "Autoflow" and the like are all the
+ * automated lane, so a table that says "Talkpush" and a map switched from the single row end up with the SAME lane.
+ * Anything else (a role, an employee, a vendor, a client's own system) is kept exactly as typed.
+ */
+export function laneNameFor(label: unknown): string {
+  const t = text(label);
+  return /^(talkpush( automation)?|system|automation|automated|autoflow)$/i.test(t) ? AUTOMATED_LANE : t;
+}
+
 export const laneText = (node: any): string => text(node?.data?.lane);
 export const stageText = (node: any): string => text(node?.data?.stage);
 export const laneKey = (name: string): string => name.trim().toLowerCase();

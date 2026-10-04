@@ -17,7 +17,7 @@ test("layout choice: 3 or more actors, an outside system, or stages give lanes; 
   assert.match(chooseLayout(TWO).reason, /Single row.*2 actors.*no outside system.*no stages/);
   const three = chooseLayout(THREE);
   assert.equal(three.layout, "lanes");
-  assert.match(three.reason, /3 different actors \(Candidate, Talkpush, Recruiter\)/);
+  assert.match(three.reason, /3 different actors \(Candidate, Talkpush automation, Recruiter\)/);
   const withHris = [...TWO.slice(0, 2), R("3", "HRIS", "Creates the record")];
   assert.equal(chooseLayout(withHris, { externalLanes: ["HRIS"] }).layout, "lanes", "an outside system alone is enough");
   const unused = chooseLayout(TWO, { externalLanes: ["HRIS"] });
@@ -39,7 +39,7 @@ test("layout choice: asked for explicitly it wins, and end and jump rows are not
 test("layout choice: lane names unify by spelling, and a lane named like the system a Send Data row talks to is an outside system", () => {
   const rows = [R("1", "Candidate", "Applies"), R("2", "talkpush", "Sends details", { actionType: "Send Data", system: "HRIS" }), R("3", "Talkpush", "Receives", { actionType: "Get Data" }), R("4", "Recruiter", "x", { lane: "HRIS" })];
   const c = chooseLayout(rows);
-  assert.deepEqual(c.lanes, ["Candidate", "talkpush", "HRIS"], "talkpush and Talkpush are one lane, first spelling kept");
+  assert.deepEqual(c.lanes, ["Candidate", "Talkpush automation", "HRIS"], "talkpush and Talkpush are one lane, and the automated lane has one name");
   assert.deepEqual(c.externalLanes, ["HRIS"]);
   assert.equal(c.layout, "lanes");
 });
@@ -55,7 +55,7 @@ test("rows to steps: lanes carry lane, stage, outside-system flag and order; a s
   const { nodes } = graphFromFlowTable(rows, choice);
   assert.equal(nodes[0].lane, "Candidate");
   assert.equal(nodes[0].stage, "1. Apply");
-  assert.equal(nodes[1].lane, "Talkpush");
+  assert.equal(nodes[1].lane, "Talkpush automation");
   assert.equal(nodes[1].data.integrationSystem, "Assessment platform");
   assert.equal(nodes[2].laneKind, "external");
   assert.equal(nodes[2].laneRank, 2);
@@ -68,6 +68,8 @@ test("rows to steps: lanes carry lane, stage, outside-system flag and order; a s
 
 test("step fields: lane, stage and the outside-system flag are accepted, trimmed, and cleared by empty text", () => {
   assert.deepEqual(processMapFields({ lane: "  HRIS ", stage: " 4. Hire ", external: true }), { lane: "HRIS", stage: "4. Hire", laneKind: "external" });
+  assert.equal(processMapFields({ lane: "Talkpush" }).lane, "Talkpush automation", "the automated lane has one name everywhere");
+  assert.equal(processMapFields({ lane: "Billing system" }).lane, "Billing system", "a custom lane is kept as typed");
   assert.deepEqual(processMapFields({ lane: "", stage: "", external: false }), { lane: "", stage: "", laneKind: "" });
   assert.deepEqual(processMapFields({}), {});
 });
@@ -96,4 +98,11 @@ test("gap check: an outside system that is sent information but returns nothing 
   assert.match(noReturn[0].message, /Assessment platform/);
   assert.equal(noReturn[0].tier, "nice");
   assert.equal(runGapCheck(pilotLike().nodes, pilotLike().edges).filter((f) => f.code === "external_lane_no_return").length, 0, "single-row maps never ask");
+});
+
+test("lane naming: every Talkpush label for the automated lane is one lane; anything else is kept", async () => {
+  const { laneNameFor, AUTOMATED_LANE } = await import("../src/lib/workflow/process-map/lane-mode");
+  for (const label of ["Talkpush", "talkpush", "Talkpush Automation", "TALKPUSH AUTOMATION", "System", "Autoflow", "automated"]) assert.equal(laneNameFor(label), AUTOMATED_LANE, label);
+  assert.equal(AUTOMATED_LANE, "Talkpush automation");
+  for (const label of ["Candidate", "Recruiter", "Billing system", "Employee", ""]) assert.equal(laneNameFor(label), label);
 });

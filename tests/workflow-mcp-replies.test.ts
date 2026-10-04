@@ -149,8 +149,8 @@ test("lanes through the connector (local DB): chosen from the table, said in the
     const auto = json(await call("create_workflow_from_flow_table", { clientName: "Lanes test", workflowName: "Three actors", rows: THREE_ACTORS, approved: true }));
     ids.push(auto.workflowId);
     assert.equal(auto.layout, "lanes");
-    assert.match(auto.layoutReason, /3 different actors \(Candidate, Talkpush, Recruiter\)/);
-    assert.deepEqual(auto.lanes, ["Candidate", "Talkpush", "Recruiter"]);
+    assert.match(auto.layoutReason, /3 different actors \(Candidate, Talkpush automation, Recruiter\)/);
+    assert.deepEqual(auto.lanes, ["Candidate", "Talkpush automation", "Recruiter"]);
     const stored = await prisma.workflowProject.findUniqueOrThrow({ where: { id: auto.workflowId } });
     assert.ok((stored.nodes as any[]).some((n) => n.data.lane === "Recruiter"), "the lane is stored on the step");
 
@@ -230,7 +230,7 @@ test("switching a map between lanes and the single row (local DB): nothing lost,
 
     const toLanes = json(await call("set_diagram_layout", { workflowId: m.workflowId, layout: "lanes" }));
     assert.equal(toLanes.layout, "lanes");
-    assert.deepEqual(toLanes.lanes, ["Candidate", "Talkpush Automation", "Recruiter"], "an existing step takes its lane from its own actor label");
+    assert.deepEqual(toLanes.lanes, ["Candidate", "Talkpush automation", "Recruiter"], "a table and a switched map give the automated steps the same lane");
     assert.ok(toLanes.stepsUpdated > 0);
     assert.deepEqual(await steps(m.workflowId), before, "same steps, same numbers");
     assert.ok((await prisma.workflowVersion.count({ where: { workflowId: m.workflowId } })) > versions0, "a snapshot was taken first");

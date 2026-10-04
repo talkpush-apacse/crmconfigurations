@@ -1,4 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
+import { laneNameFor } from "./process-map/lane-mode";
 import { nanoid } from "@/lib/workflow/ids";
 import type { Prisma } from "@/generated/prisma/client";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -200,7 +201,7 @@ export function processMapFields(raw: Record<string, unknown>): Record<string, u
   if (typeof raw.attachTo === "string" && raw.attachTo) out.attachTo = raw.attachTo;
   if (typeof raw.timing === "string") out.timing = raw.timing.trim().slice(0, 80);
   // Lanes and stages (empty text clears them). `external: true` marks the step's lane as another system.
-  if (typeof raw.lane === "string") out.lane = raw.lane.trim().slice(0, 60);
+  if (typeof raw.lane === "string") out.lane = laneNameFor(raw.lane.trim()).slice(0, 60);
   if (typeof raw.stage === "string") out.stage = raw.stage.trim().slice(0, 60);
   if (raw.external === true || raw.laneKind === "external") out.laneKind = "external";
   else if (raw.external === false || raw.laneKind === "") out.laneKind = "";

@@ -47,7 +47,7 @@ Every automated message, call or alert (tags `[MESSAGE]`, `[ALERT]`, `[CALL]`, `
 A diagram can be drawn as **lanes**: stage bands stacked down the page, each with one row per actor, and every step in the row of whoever does it.
 
 - **Used automatically** when the process has 3 or more different actors, any outside system, or stages. Otherwise the classic single row. The SE can ask for either.
-- **Lane names** are the client's words (Candidate, Recruiter, an employee role, a vendor, HRIS), spelled identically everywhere. A lane appears in a stage only where someone acts. Lanes keep one order across the whole map: the order they first act.
+- **Lane names** are the client's words (steps the system does default to **Talkpush automation**) (Candidate, Recruiter, an employee role, a vendor, HRIS), spelled identically everywhere. A lane appears in a stage only where someone acts. Lanes keep one order across the whole map: the order they first act.
 - **Outside systems** (assessment platform, HRIS, a vendor) are blue lanes. Information going to or from them is a **dashed blue line**. Steps in that lane are what the system does; the Talkpush side is a Send Data or Get Data step naming the system. If data goes out and nothing comes back, the gap check asks.
 - **Stages** are short plain phrases ("2. Assessment"). A stage change shows a purple "continues in ..." circle at the end of one band and a "from ..." circle at the start of the next.
 - **The key** adds a line for an outside system, the dashed line and the stage circle, only when used. Still no tags.
