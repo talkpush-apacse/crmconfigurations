@@ -46,20 +46,24 @@ export interface PhaseStep {
   open: number;
 }
 
-/** Sequential phase cards joined by chevrons. Finished = green, the one in progress = blue, the rest outlined. */
+/**
+ * Sequential phase cards. Finished = green, the one in progress = blue, the rest outlined.
+ * The row wraps instead of scrolling sideways, so no phase is ever cut off: a grid of cards on phones,
+ * and a wrapping row joined by chevrons from md up.
+ */
 export function PhaseFlow({ phases }: { phases: PhaseStep[] }) {
   const currentIndex = phases.findIndex((p) => p.open > 0);
   return (
-    <ol className="flex snap-x gap-0 overflow-x-auto pb-1" aria-label="Project phases">
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:flex md:flex-wrap md:gap-x-0 md:gap-y-3" aria-label="Project phases">
       {phases.map((p, i) => {
         const complete = p.total > 0 && p.open === 0;
         const current = i === currentIndex;
         const state = complete ? "Complete" : current ? "In progress" : p.total === 0 ? "No items" : "Upcoming";
         return (
-          <li key={p.name} className="flex shrink-0 snap-start items-stretch">
+          <li key={p.name} className="flex items-stretch md:shrink-0">
             <div
               className={cn(
-                "w-32 rounded-[10px] border p-3 md:w-36",
+                "w-full rounded-[10px] border p-3 md:w-36",
                 complete ? "border-transparent bg-[var(--es-green-soft)]" : current ? "border-transparent bg-[var(--es-blue-soft)]" : "border-[var(--es-line)] bg-[var(--es-card)]"
               )}
             >
@@ -67,7 +71,7 @@ export function PhaseFlow({ phases }: { phases: PhaseStep[] }) {
               <p className="mt-1 text-xs tabular-nums text-[var(--es-muted)]">{p.total === 0 ? "No items" : `${p.done} of ${p.total} done`}</p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--es-ink)]">{state}</p>
             </div>
-            {i < phases.length - 1 && <ChevronRight className="my-auto h-4 w-4 shrink-0 text-[var(--es-muted)]" aria-hidden="true" />}
+            {i < phases.length - 1 && <ChevronRight className="my-auto hidden h-4 w-4 shrink-0 text-[var(--es-muted)] md:block" aria-hidden="true" />}
           </li>
         );
       })}

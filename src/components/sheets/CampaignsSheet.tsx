@@ -32,8 +32,8 @@ const campaignIdColumn: ColumnDef = {
 
 // Campaign type definitions, shown in the tab tooltip.
 const referenceData = [
-  { type: "Evergreen", description: "Continuous hiring pipeline — always open for applications, no specific requisition number." },
-  { type: "Requisition-based", description: "Tied to a specific job requisition — has a defined number of openings and closing date." },
+  { type: "Evergreen", description: "Continuous hiring pipeline. Always open for applications, no specific requisition number." },
+  { type: "Requisition-based", description: "Tied to a specific job requisition. Has a defined number of openings and closing date." },
 ];
 
 export function CampaignsSheet() {
@@ -160,7 +160,7 @@ export function CampaignsSheet() {
             </p>
             {referenceData.map((r) => (
               <p key={r.type}>
-                <strong>{r.type}</strong> — {r.description}
+                <strong>{r.type}</strong>: {r.description}
               </p>
             ))}
           </>

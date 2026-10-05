@@ -26,17 +26,17 @@ function LaneRow({ lane, first, last, onRename, onToggleExternal, onMove }: { la
     if (next && next !== lane.name) onRename(lane.name, next);
   };
   return (
-    <li className={`rounded-md border px-2 py-1.5 ${lane.external ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-white"}`} data-lane={lane.name}>
+    <li className={`rounded-md border px-2 py-1.5 ${lane.external ? "border-brand-lavender bg-brand-lavender-lightest" : "border-border bg-card"}`} data-lane={lane.name}>
       <div className="flex items-center gap-1">
         {draft === null ? (
-          <button type="button" className="flex-1 truncate text-left text-[12px] font-medium text-gray-800 hover:text-teal-700" title="Click to rename this lane" onClick={() => setDraft(lane.name)}>
+          <button type="button" className="min-h-11 flex-1 truncate text-left text-[13px] font-medium text-foreground hover:underline md:min-h-0" title="Click to rename this lane" onClick={() => setDraft(lane.name)}>
             {lane.name}
           </button>
         ) : (
           <input
             autoFocus
             aria-label={`Rename the lane ${lane.name}`}
-            className="min-w-0 flex-1 rounded border border-gray-300 px-1.5 py-0.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="min-w-0 flex-1 rounded border border-input px-1.5 py-0.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"
             value={draft}
             maxLength={60}
             onFocus={(e) => e.currentTarget.select()}
@@ -48,15 +48,15 @@ function LaneRow({ lane, first, last, onRename, onToggleExternal, onMove }: { la
             }}
           />
         )}
-        <span className="shrink-0 text-[10px] text-gray-400">{lane.steps}</span>
-        <button type="button" aria-label={`Move ${lane.name} up`} disabled={first} onClick={() => onMove(lane.name, -1)} className="rounded p-0.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
-          <ChevronUp className="h-3.5 w-3.5" />
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" title={`${lane.steps} steps`}>{lane.steps}</span>
+        <button type="button" aria-label={`Move ${lane.name} up`} disabled={first} onClick={() => onMove(lane.name, -1)} className="flex min-h-11 min-w-11 items-center justify-center rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 md:min-h-0 md:min-w-0">
+          <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
-        <button type="button" aria-label={`Move ${lane.name} down`} disabled={last} onClick={() => onMove(lane.name, 1)} className="rounded p-0.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
-          <ChevronDown className="h-3.5 w-3.5" />
+        <button type="button" aria-label={`Move ${lane.name} down`} disabled={last} onClick={() => onMove(lane.name, 1)} className="flex min-h-11 min-w-11 items-center justify-center rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30 md:min-h-0 md:min-w-0">
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
-      <label className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-600">
+      <label className="mt-1 flex min-h-11 items-center gap-1.5 text-[11px] text-foreground/70 md:min-h-0">
         <input type="checkbox" checked={lane.external} onChange={(e) => onToggleExternal(lane.name, e.target.checked)} />
         Another system (assessment platform, HRIS, a vendor)
       </label>
@@ -66,9 +66,9 @@ function LaneRow({ lane, first, last, onRename, onToggleExternal, onMove }: { la
 
 export default function LanesPanel({ lanesMode, lanes, onSetMode, onRename, onToggleExternal, onMove }: LanesPanelProps) {
   return (
-    <div className="border-b border-gray-200 p-2 shrink-0" data-testid="lanes-panel">
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Layout</p>
-      <div role="group" aria-label="Layout" className="flex overflow-hidden rounded-md border border-gray-200 text-[11px]">
+    <div className="border-b border-border p-2 shrink-0" data-testid="lanes-panel">
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Rows or lanes</p>
+      <div role="group" aria-label="Rows or lanes" className="flex overflow-hidden rounded-md border border-border text-xs">
         {([["spine", "Single row"], ["lanes", "Lanes"]] as const).map(([value, label]) => {
           const on = (value === "lanes") === lanesMode;
           return (
@@ -77,23 +77,23 @@ export default function LanesPanel({ lanesMode, lanes, onSetMode, onRename, onTo
               type="button"
               aria-pressed={on}
               onClick={() => (on ? undefined : onSetMode(value))}
-              className={`flex-1 py-1.5 font-medium ${on ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+              className={`min-h-11 flex-1 py-1.5 font-medium md:min-h-8 ${on ? "bg-primary text-primary-foreground" : "bg-card text-foreground/70 hover:bg-secondary"}`}
             >
               {label}
             </button>
           );
         })}
       </div>
-      {!lanesMode && <p className="mt-1.5 text-[11px] leading-snug text-gray-400">One row for the main path. Use Lanes when several actors or another system are involved.</p>}
+      {!lanesMode && <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">One row for the main path. Use Lanes when several actors or another system are involved.</p>}
       {lanesMode && (
         <>
-          <p className="mb-1 mt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Lanes, top to bottom</p>
+          <p className="mb-1 mt-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Lanes, top to bottom</p>
           <ul className="space-y-1">
             {lanes.map((lane, i) => (
               <LaneRow key={lane.name} lane={lane} first={i === 0} last={i === lanes.length - 1} onRename={onRename} onToggleExternal={onToggleExternal} onMove={onMove} />
             ))}
           </ul>
-          <p className="mt-1.5 text-[11px] leading-snug text-gray-400">Click a name to rename it. Set a step&apos;s lane and stage in its properties.</p>
+          <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">Click a name to rename it. Set a step&apos;s lane and stage in its properties.</p>
         </>
       )}
     </div>

@@ -13,7 +13,8 @@ export function PageHeader({
         <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {/* Below md, header actions are 44px touch targets; desktop keeps the denser buttons. */}
+      {actions && <div className="flex flex-wrap gap-2 max-md:[&_a]:min-h-11 max-md:[&_button]:min-h-11">{actions}</div>}
     </div>
   );
 }

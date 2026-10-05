@@ -26,7 +26,10 @@ export function AdminHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card px-4">
       <div className="flex items-center gap-2">
-        <Link href="/admin/home" className="text-sm font-semibold text-foreground sm:text-base">
+        <Link
+          href="/admin/home"
+          className="flex min-h-11 items-center rounded-md text-sm font-semibold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-base md:min-h-0"
+        >
           <span className="hidden sm:inline">Talkpush Implementation Hub</span>
           <span className="sm:hidden">Implementation Hub</span>
         </Link>
@@ -35,7 +38,7 @@ export function AdminHeader() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex min-h-6 items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="flex min-h-11 items-center gap-1 rounded-md bg-primary/10 px-3 py-1 text-xs font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 md:min-h-6 md:px-2"
                 aria-label={`Switch module (current: ${activeModule.label})`}
               >
                 {activeModule.shortLabel}
@@ -45,7 +48,7 @@ export function AdminHeader() {
             <DropdownMenuContent align="start" className="w-56">
               {PORTAL_MODULES.map((m) => (
                 <DropdownMenuItem key={m.id} asChild className="cursor-pointer">
-                  <Link href={m.href} className="flex items-center justify-between gap-2">
+                  <Link href={m.href} className="flex min-h-11 items-center justify-between gap-2 md:min-h-0">
                     {m.label}
                     {m.id === activeModule.id && <Check className="h-4 w-4" />}
                   </Link>
@@ -53,7 +56,7 @@ export function AdminHeader() {
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/admin/home" className="flex items-center gap-2">
+                <Link href="/admin/home" className="flex min-h-11 items-center gap-2 md:min-h-0">
                   <LayoutGrid className="h-4 w-4" />
                   All modules
                 </Link>
@@ -66,7 +69,7 @@ export function AdminHeader() {
       <div className="ml-auto">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2" aria-label="User menu">
+            <Button variant="ghost" size="sm" className="min-h-11 min-w-11 gap-2 md:min-h-0 md:min-w-0" aria-label="User menu">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <User className="h-4 w-4" />
               </span>
@@ -77,14 +80,14 @@ export function AdminHeader() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/admin/connections" className="flex items-center gap-2">
+              <Link href="/admin/connections" className="flex min-h-11 items-center gap-2 md:min-h-0">
                 <PlugZap className="h-4 w-4" />
                 Connected apps
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
+              className="min-h-11 cursor-pointer text-destructive focus:text-destructive md:min-h-0"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />

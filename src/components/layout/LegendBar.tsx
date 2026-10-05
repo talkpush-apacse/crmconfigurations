@@ -1,7 +1,7 @@
 export function LegendBar() {
   return (
     <div className="flex items-center gap-4 px-4 py-1.5 bg-muted border-b border-border text-[11px] text-muted-foreground shrink-0">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
         Section Status:
       </span>
       <span className="flex items-center gap-1.5">

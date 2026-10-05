@@ -96,12 +96,12 @@ export default function PortfolioPage() {
                   placeholder="Search by project or account"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 max-md:h-11"
                 />
               </div>
             )}
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger aria-label="Filter by status" className="w-full sm:w-52">
+              <SelectTrigger aria-label="Filter by status" className="w-full max-md:h-11! sm:w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

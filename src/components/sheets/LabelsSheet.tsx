@@ -16,7 +16,7 @@ const labelColumns: ColumnDef[] = [
     required: true,
     example: "Priority Candidate",
     description:
-      "The tag recruiters will see and apply to candidates. Keep it short — it appears as a chip on the candidate record.",
+      "The tag recruiters will see and apply to candidates. Keep it short. It appears as a chip on the candidate record.",
   },
   {
     key: "color",
@@ -120,7 +120,7 @@ export function LabelsSheet() {
                 height: 16,
                 borderRadius: "50%",
                 backgroundColor: value || "#6366F1",
-                border: "1px solid rgba(15, 23, 42, 0.2)",
+                border: "1px solid var(--border)",
                 flexShrink: 0,
               }}
             />

@@ -110,7 +110,7 @@ export default function TemplatePickerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Start from Template</DialogTitle>
+          <DialogTitle>Start from template</DialogTitle>
         </DialogHeader>
 
         <div className="flex gap-1 mb-4">
@@ -128,12 +128,12 @@ export default function TemplatePickerModal({
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : templates.length === 0 ? (
           <div className="text-center py-12">
-            <LayoutTemplate className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">No templates found</p>
+            <LayoutTemplate className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No templates found</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -146,22 +146,22 @@ export default function TemplatePickerModal({
                       onSelect(t.id, t.name);
                       onOpenChange(false);
                     }}
-                    className="w-full text-left border border-gray-200 rounded-lg p-4 hover:border-teal-300 hover:shadow-sm transition-all"
+                    className="w-full text-left border border-border rounded-lg p-4 hover:border-brand-lavender hover:shadow-sm transition-all"
                   >
                     <div className="flex items-start justify-between mb-2 pr-6">
-                      <span className="text-sm font-medium text-gray-900 group-hover:text-teal-700">
+                      <span className="text-sm font-medium text-foreground group-hover:text-foreground">
                         {t.name}
                       </span>
-                      <span className="text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 shrink-0">
+                      <span className="text-[11px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
                         {t.industry}
                       </span>
                     </div>
                     {t.description && (
-                      <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
                         {t.description}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {t.nodeCount} nodes
                     </p>
                   </button>
@@ -172,8 +172,8 @@ export default function TemplatePickerModal({
                     title={isConfirming ? "Click again to confirm delete" : "Delete template"}
                     className={`absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded transition-all ${
                       isConfirming
-                        ? "opacity-100 text-red-600 scale-110"
-                        : "opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500"
+                        ? "opacity-100 text-destructive scale-110"
+                        : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     }`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />

@@ -53,7 +53,7 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
-        className=""
+        className="max-md:min-h-11 "
       />
     </div>
   );
@@ -93,7 +93,7 @@ function DropdownField({
         {label}
       </Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full sm:max-w-[300px]">
+        <SelectTrigger className="max-md:min-h-11 w-full sm:max-w-[300px]">
           <SelectValue placeholder={placeholder ?? `Select ${label.toLowerCase()}`} />
         </SelectTrigger>
         <SelectContent>
@@ -128,7 +128,7 @@ function FileField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Paste URL or file path"
-        className=""
+        className="max-md:min-h-11 "
       />
     </div>
   );
@@ -261,10 +261,10 @@ function BusinessHoursEditor({
     <div className="rounded-lg border overflow-hidden">
       {/* Header */}
       <div className="grid grid-cols-[120px_60px_1fr_1fr] sm:grid-cols-[160px_60px_1fr_1fr] bg-primary text-primary-foreground">
-        <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Day</div>
-        <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Active</div>
-        <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Start</div>
-        <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">End</div>
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Day</div>
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Active</div>
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Start</div>
+        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">End</div>
       </div>
       {normalizedHours.map((entry, idx) => (
         <div
@@ -289,7 +289,7 @@ function BusinessHoursEditor({
               value={entry.openTime}
               onChange={(e) => updateDay(idx, "openTime", e.target.value)}
               disabled={!entry.isOpen}
-              className="h-8 text-sm disabled:opacity-40"
+              className="max-md:min-h-11 h-8 text-sm disabled:opacity-40"
             />
           </div>
           <div className="px-2 py-1.5">
@@ -298,7 +298,7 @@ function BusinessHoursEditor({
               value={entry.closeTime}
               onChange={(e) => updateDay(idx, "closeTime", e.target.value)}
               disabled={!entry.isOpen}
-              className="h-8 text-sm disabled:opacity-40"
+              className="max-md:min-h-11 h-8 text-sm disabled:opacity-40"
             />
           </div>
         </div>

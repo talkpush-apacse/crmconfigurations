@@ -363,7 +363,7 @@ export default function CustomEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: "all",
             }}
-            className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 shadow-sm"
+            className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-foreground/70 shadow-sm"
           >
             {label}
           </div>

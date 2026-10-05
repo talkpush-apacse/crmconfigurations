@@ -95,7 +95,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
           <div key={tab.slug}>
             {groupLabel && (
               <div className="mt-3 mb-1 flex items-center gap-2 px-1">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                   {groupLabel}
                 </span>
                 <div className="h-px flex-1 bg-border" />
@@ -139,7 +139,7 @@ export function TabNavigation({ slug, data }: TabNavigationProps) {
 
       {/* Legend */}
       <div className="mt-3 border-t pt-3 px-1">
-        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
           Section status
         </p>
         <div className="flex flex-col gap-1">

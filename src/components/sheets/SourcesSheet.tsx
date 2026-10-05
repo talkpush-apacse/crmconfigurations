@@ -104,7 +104,7 @@ export function SourcesSheet() {
         <ul className="list-disc pl-4 space-y-0.5">
           <li><strong>Job Boards</strong> | Indeed | https://indeed.com/company-page</li>
           <li><strong>Social Media</strong> | Facebook Jobs | https://facebook.com/company/jobs</li>
-          <li><strong>Referral</strong> | Employee Referral Program | &mdash;</li>
+          <li><strong>Referral</strong> | Employee Referral Program | None</li>
         </ul>
       </ExampleHint>
 

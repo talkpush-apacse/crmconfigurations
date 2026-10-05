@@ -122,16 +122,16 @@ export default function NodeSuggestionPopup({
         top: popupPosition.y - 8,
         zIndex: 1000,
       }}
-      className="w-[200px] rounded-xl border border-border bg-white p-1.5 shadow-lg"
+      className="w-[200px] rounded-xl border border-border bg-card p-1.5 shadow-lg"
     >
       {showHappyPathToggle && (
-        <label className="mb-1 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-600 hover:bg-muted">
+        <label className="mb-1 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-foreground/70 hover:bg-muted">
           <span
             className={cn(
               "flex h-4 w-4 items-center justify-center rounded border",
               markHappyPath
-                ? "border-teal-500 bg-teal-500 text-white"
-                : "border-gray-300 bg-white"
+                ? "border-primary bg-primary text-white"
+                : "border-input bg-card"
             )}
           >
             {markHappyPath && <Check className="h-3 w-3" />}
@@ -153,7 +153,7 @@ export default function NodeSuggestionPopup({
             key={type}
             type="button"
             onClick={() => onSelect(type, showHappyPathToggle && markHappyPath)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium text-gray-700 hover:bg-muted"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium text-foreground/85 hover:bg-muted"
           >
             <span
               className="h-3 w-3 shrink-0 rounded-full"

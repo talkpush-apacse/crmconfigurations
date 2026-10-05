@@ -211,7 +211,7 @@ function TextField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label className="text-sm font-medium text-gray-700">{label}</Label>
-      <Input
+      <Input className="max-md:min-h-11"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -265,7 +265,7 @@ function SelectField<T extends string>({
     <div className="flex flex-col gap-1.5">
       <Label className="text-sm font-medium text-gray-700">{label}</Label>
       <Select value={value} onValueChange={(next) => onChange(next as T)}>
-        <SelectTrigger>
+        <SelectTrigger className="max-md:min-h-11">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -394,7 +394,7 @@ function CopyTextarea({
           type="button"
           variant="outline"
           size="sm"
-          className="absolute right-2 top-2 h-8 bg-white"
+          className="max-md:min-h-11 absolute right-2 top-2 h-8 bg-white"
           onClick={async () => {
             await navigator.clipboard.writeText(value);
             onCopied(copyKey);
@@ -481,7 +481,7 @@ export function AtsIntegrationsSheet() {
           Track integration scope, required client credentials, and vendor handoff details.
         </p>
         {!isReadOnly && (
-          <Button type="button" onClick={addIntegration} className="w-full sm:w-auto">
+          <Button type="button" onClick={addIntegration} className="max-md:min-h-11 w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Add Integration
           </Button>
@@ -522,7 +522,7 @@ export function AtsIntegrationsSheet() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:bg-red-50 hover:text-destructive"
+                    className="max-md:min-h-11 text-muted-foreground hover:bg-red-50 hover:text-destructive"
                     onClick={() => setDeleteTargetId(integration.id)}
                   >
                     <Trash2 className="mr-1 h-4 w-4" />
@@ -847,7 +847,7 @@ export function AtsIntegrationsSheet() {
                               }
                             />
                             {integration.checklist.deduplicationNeeded === "Yes" && (
-                              <Input
+                              <Input className="max-md:min-h-11"
                                 value={integration.checklist.deduplicationNotes}
                                 onChange={(event) =>
                                   updateIntegration(integration.id, (current) => ({
@@ -864,7 +864,7 @@ export function AtsIntegrationsSheet() {
                           </div>
                         </ChecklistRow>
                         <ChecklistRow label="API rate limit">
-                          <Input
+                          <Input className="max-md:min-h-11"
                             value={integration.checklist.apiRateLimit}
                             onChange={(event) =>
                               updateIntegration(integration.id, (current) => ({

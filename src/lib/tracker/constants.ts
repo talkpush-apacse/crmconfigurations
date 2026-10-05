@@ -107,7 +107,7 @@ export const DEFAULT_PHASES = [
  * Health thresholds, all in one place so they are easy to change.
  *
  * Confirmed with Jolo: off track = a milestone overdue by more than 5 days;
- * at risk = 2 or more blocked items, or an item due within 7 days that has not
+ * at risk = 1 or more blocked items (Jolo lowered this from 2 on 2026-10-05, so one serious blocker is never reported as On track), or an item due within 7 days that has not
  * started.
  *
  * Added by the implementation (flagged for review):
@@ -117,6 +117,6 @@ export const DEFAULT_PHASES = [
 export const HEALTH_THRESHOLDS = {
   offTrackMilestoneOverdueDays: 5,
   offTrackTargetOverdueDays: 5,
-  atRiskBlockedItems: 2,
+  atRiskBlockedItems: 1,
   atRiskNotStartedDueWithinDays: 7,
 } as const;

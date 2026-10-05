@@ -12,7 +12,7 @@ interface AnnotationNodeProps {
 
 // Match BaseNode's handle style but muted purple for annotations
 const HANDLE_CLASSES =
-  "!w-2.5 !h-2.5 !bg-gray-400 !border-2 !border-white !z-20 hover:!bg-purple-500 transition-colors";
+  "!w-2.5 !h-2.5 !bg-gray-400 !border-2 !border-white !z-20 hover:!bg-ring transition-colors";
 
 function getBorderStyleValue(borderStyle: AnnotationNodeData["borderStyle"]) {
   if (borderStyle === "none") return undefined;
@@ -94,8 +94,8 @@ export default function AnnotationNode({ id, data, selected }: AnnotationNodePro
           isVisible={selected}
           minWidth={100}
           minHeight={24}
-          lineStyle={{ borderColor: "#9CA3AF", borderWidth: 1 }}
-          handleStyle={{ width: 7, height: 7, borderColor: "#6B7280", backgroundColor: "white" }}
+          lineStyle={{ borderColor: "var(--ring)", borderWidth: 1 }}
+          handleStyle={{ width: 7, height: 7, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
         />
         <AnnotationHandles />
         <div style={{ opacity: cssOpacity }} className="w-full flex flex-col justify-center pointer-events-none">
@@ -132,8 +132,8 @@ export default function AnnotationNode({ id, data, selected }: AnnotationNodePro
           isVisible={selected}
           minWidth={60}
           minHeight={24}
-          lineStyle={{ borderColor: "#9CA3AF", borderWidth: 1 }}
-          handleStyle={{ width: 7, height: 7, borderColor: "#6B7280", backgroundColor: "white" }}
+          lineStyle={{ borderColor: "var(--ring)", borderWidth: 1 }}
+          handleStyle={{ width: 7, height: 7, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
         />
         <AnnotationHandles />
         <div style={{ opacity: cssOpacity, justifyContent: data.textAlign === "center" ? "center" : data.textAlign === "right" ? "flex-end" : "flex-start" }} className="w-full h-full flex items-center">
@@ -175,8 +175,8 @@ export default function AnnotationNode({ id, data, selected }: AnnotationNodePro
           isVisible={selected}
           minWidth={minWidth}
           minHeight={minHeight}
-          lineStyle={{ borderColor: "#9CA3AF", borderWidth: 1 }}
-          handleStyle={{ width: 7, height: 7, borderColor: "#6B7280", backgroundColor: "white" }}
+          lineStyle={{ borderColor: "var(--ring)", borderWidth: 1 }}
+          handleStyle={{ width: 7, height: 7, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
         />
         <AnnotationHandles />
         {/* Diamond via rotated square */}
@@ -233,8 +233,8 @@ export default function AnnotationNode({ id, data, selected }: AnnotationNodePro
           isVisible={selected}
           minWidth={minWidth}
           minHeight={minHeight}
-          lineStyle={{ borderColor: "#9CA3AF", borderWidth: 1 }}
-          handleStyle={{ width: 7, height: 7, borderColor: "#6B7280", backgroundColor: "white" }}
+          lineStyle={{ borderColor: "var(--ring)", borderWidth: 1 }}
+          handleStyle={{ width: 7, height: 7, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
         />
         <AnnotationHandles />
         {/* Circle visual */}
@@ -290,8 +290,8 @@ export default function AnnotationNode({ id, data, selected }: AnnotationNodePro
         isVisible={selected}
         minWidth={minWidth}
         minHeight={minHeight}
-        lineStyle={{ borderColor: "#9CA3AF", borderWidth: 1 }}
-        handleStyle={{ width: 7, height: 7, borderColor: "#6B7280", backgroundColor: "white" }}
+        lineStyle={{ borderColor: "var(--ring)", borderWidth: 1 }}
+        handleStyle={{ width: 7, height: 7, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
       />
       <AnnotationHandles />
       {/* Visual background/border layer */}

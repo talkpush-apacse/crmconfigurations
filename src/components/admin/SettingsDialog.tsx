@@ -60,7 +60,7 @@ export function SettingsDialog({
       <DialogContent className="max-h-[80vh] w-full max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">
-            Settings — {editing?.clientName}
+            Settings: {editing?.clientName}
           </DialogTitle>
         </DialogHeader>
         {editing && (
@@ -94,7 +94,7 @@ export function SettingsDialog({
 
             <div className="space-y-2">
               <Label htmlFor="ownerEmail">Owner email (notifications)</Label>
-              <Input
+              <Input className="max-md:min-h-11"
                 id="ownerEmail"
                 type="email"
                 value={editing.ownerEmail}
@@ -130,10 +130,10 @@ export function SettingsDialog({
               </>
             )}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button className="max-md:min-h-11" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={onSave} disabled={saving}>
+              <Button className="max-md:min-h-11" onClick={onSave} disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>

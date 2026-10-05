@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
+import { SectionSelect } from "@/components/layout/SectionSelect";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -150,7 +151,7 @@ export function EditorChecklistShell({
           onSave={publishChanges}
           onDiscard={discardChanges}
         />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {!isCustom && (
             <TopNav
               items={navItems}
@@ -160,7 +161,10 @@ export function EditorChecklistShell({
               onOwnershipChange={isAdmin ? handleOwnershipChange : undefined}
             />
           )}
-          <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {!isCustom && (
+              <SectionSelect items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
+            )}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
             </main>

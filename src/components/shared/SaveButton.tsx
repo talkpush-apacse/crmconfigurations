@@ -67,7 +67,8 @@ export function SaveButton({
   }, [lastSavedAt]);
 
   const compact = variant === "compact";
-  const sizing = compact ? "h-7 px-2.5 text-xs" : "h-10 px-4 text-sm";
+  // 44px tall below md for touch, denser on desktop.
+  const sizing = compact ? "h-11 px-3 text-xs md:h-8 md:px-2.5" : "h-11 px-4 text-sm md:h-10";
 
   if (status === "error") {
     return (
@@ -79,12 +80,12 @@ export function SaveButton({
             onClick={onRetry ?? onSave}
             className={cn(
               sizing,
-              "gap-1.5 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800",
+              "gap-1.5 border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive",
               className
             )}
           >
             <AlertCircle className={compact ? "h-3 w-3" : "h-4 w-4"} />
-            {compact ? "Save failed" : "Save failed — retry"}
+            Save failed. Retry.
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
@@ -102,7 +103,7 @@ export function SaveButton({
         type="button"
         variant="outline"
         disabled
-        className={cn(sizing, "gap-1.5 border-brand-lavender/40 bg-brand-lavender-lightest text-brand-lavender-darker", className)}
+        className={cn(sizing, "gap-1.5 border-brand-lavender/40 bg-brand-lavender-lightest text-foreground", className)}
       >
         <Loader2 className={cn("animate-spin", compact ? "h-3 w-3" : "h-4 w-4")} />
         Saving…
@@ -111,11 +112,14 @@ export function SaveButton({
   }
 
   if (hasPendingChanges) {
+    // The header copy is the one primary action in the checklist bar. The footer
+    // copy sits next to "Continue", which is the primary there, so it steps back.
     return (
       <Button
         type="button"
         onClick={onSave}
-        className={cn(sizing, "gap-1.5 bg-brand-sage-darker text-white hover:bg-brand-sage-darker/85 active:scale-95", className)}
+        variant={compact ? "default" : "outline"}
+        className={cn(sizing, "gap-1.5", className)}
       >
         <Save className={compact ? "h-3 w-3" : "h-4 w-4"} />
         Save changes
@@ -123,8 +127,9 @@ export function SaveButton({
     );
   }
 
-  // Nothing to save. Kept visible and stating when the last save landed —
-  // a control that disappears when idle is what made this feel absent.
+  // Nothing to save. Kept visible and stating when the last save landed, since
+  // a control that disappears when idle is what made this feel absent. Neutral
+  // on purpose: green is reserved for "Complete" (DESIGN.md, The Meaning Rule).
   const savedLabel = lastSavedAt
     ? `Saved ${formatSavedAt(lastSavedAt, now)}`
     : "All changes saved";
@@ -134,13 +139,13 @@ export function SaveButton({
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "inline-flex cursor-default items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50/90 font-medium text-emerald-700",
-            sizing,
+            "inline-flex cursor-default items-center gap-1.5 whitespace-nowrap px-1 font-medium text-muted-foreground",
+            compact ? "h-8 text-xs" : "h-10 text-sm",
             className
           )}
         >
-          <Check className={compact ? "h-3 w-3" : "h-4 w-4"} />
-          {compact && lastSavedAt ? formatSavedAt(lastSavedAt, now) : savedLabel}
+          <Check className={compact ? "h-3 w-3" : "h-4 w-4"} aria-hidden="true" />
+          {savedLabel}
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs">
