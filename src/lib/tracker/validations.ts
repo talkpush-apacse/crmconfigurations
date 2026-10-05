@@ -10,6 +10,7 @@ import {
   REMARK_VISIBILITIES,
 } from "./constants";
 import { isDateOnly } from "./dates";
+import { MAX_JIRA_LINKS, parseJiraUrl, type JiraLink } from "./jira";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const optionalText = (max: number) =>
@@ -81,6 +82,13 @@ export const projectUpdateSchema = z.object({
   archived: z.boolean().optional(),
 });
 
+export const phaseCreateSchema = z.object({
+  name: text(80),
+  startDate: dateField,
+  endDate: dateField,
+  exitCriteria: optionalText(1000),
+});
+
 export const phaseUpdateSchema = z.object({
   name: text(80).optional(),
   startDate: dateField,
@@ -88,7 +96,24 @@ export const phaseUpdateSchema = z.object({
   exitCriteria: optionalText(1000),
 });
 
-const linkSchema = z.object({ label: text(120), url: z.string().trim().url().max(500) });
+/**
+ * An item's links are Talkpush Jira tickets and nothing else (see jira.ts). The label is always rebuilt from the
+ * address, so the ticket key shown is the one the link really goes to. Repeats of the same ticket are dropped.
+ */
+const jiraLinkSchema = z
+  .object({ url: z.string().max(500), label: z.string().max(120).optional() })
+  .transform((value, ctx): JiraLink => {
+    const parsed = parseJiraUrl(value.url);
+    if (!parsed.ok) {
+      ctx.addIssue({ code: "custom", message: parsed.error, path: ["url"] });
+      return z.NEVER;
+    }
+    return parsed.link;
+  });
+const jiraLinksSchema = z
+  .array(jiraLinkSchema)
+  .max(MAX_JIRA_LINKS)
+  .transform((links) => links.filter((l, i) => links.findIndex((x) => x.url === l.url) === i));
 
 export const itemCreateSchema = z.object({
   title: text(200),
@@ -105,7 +130,7 @@ export const itemCreateSchema = z.object({
   blockerReason: optionalText(500),
   waitingOn: optionalText(200),
   externalDependency: optionalText(300),
-  links: z.array(linkSchema).max(20).optional(),
+  links: jiraLinksSchema.optional(),
   checklistTabSlug: optionalText(80),
   blockedByItemIds: z.array(id).max(50).optional(),
 });
@@ -125,7 +150,7 @@ export const itemUpdateSchema = z.object({
   blockerReason: optionalText(500),
   waitingOn: optionalText(200),
   externalDependency: optionalText(300),
-  links: z.array(linkSchema).max(20).optional(),
+  links: jiraLinksSchema.optional(),
   checklistTabSlug: optionalText(80),
   sortOrder: z.number().int().min(0).max(1_000_000).optional(),
   blockedByItemIds: z.array(id).max(50).optional(),

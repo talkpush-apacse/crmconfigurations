@@ -15,6 +15,7 @@ const SECRET_NOTE = "SECRET_OVERRIDE_NOTE";
 const SECRET_REMARK = "SECRET_INTERNAL_REMARK";
 const SECRET_METRIC = "SECRET_INTERNAL_METRIC";
 const SECRET_CHECKLIST = "SECRET_CHECKLIST_ID";
+const SECRET_JIRA = "https://talkpush.atlassian.net/browse/TP-11000";
 
 function input(): ClientViewInput {
   const base = {
@@ -29,6 +30,7 @@ function input(): ClientViewInput {
     blockerReason: null,
     waitingOn: null,
     visibility: "client_visible",
+    links: [{ label: "TP-11000", url: SECRET_JIRA }],
   };
   return {
     project: {
@@ -73,7 +75,7 @@ function input(): ClientViewInput {
 
 test("the client view never contains anything internal", () => {
   const json = JSON.stringify(buildClientView(input()));
-  for (const secret of [SECRET_EMAIL, SECRET_INTERNAL_ITEM, SECRET_BLOCKER, SECRET_NOTE, SECRET_REMARK, SECRET_METRIC, SECRET_CHECKLIST, "shared remark on a hidden item", "Archived thing"]) {
+  for (const secret of [SECRET_EMAIL, SECRET_INTERNAL_ITEM, SECRET_BLOCKER, SECRET_NOTE, SECRET_REMARK, SECRET_METRIC, SECRET_CHECKLIST, SECRET_JIRA, "TP-11000", "atlassian", "shared remark on a hidden item", "Archived thing"]) {
     assert.equal(json.includes(secret), false, `leaked: ${secret}`);
   }
   assert.equal(json.includes("@"), false, "no email address of any kind");

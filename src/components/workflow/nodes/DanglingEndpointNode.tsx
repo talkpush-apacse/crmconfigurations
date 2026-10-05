@@ -17,7 +17,7 @@ export default function DanglingEndpointNode({ selected }: DanglingEndpointNodeP
     <div
       className={cn(
         "relative flex items-center justify-center w-4 h-4 rounded-full border-2 border-dashed bg-white transition-colors",
-        selected ? "border-teal-500" : "border-gray-400"
+        selected ? "border-ring" : "border-muted-foreground"
       )}
     >
       {/* All handles are source type — ConnectionMode.Loose lets edges reconnect from either end */}

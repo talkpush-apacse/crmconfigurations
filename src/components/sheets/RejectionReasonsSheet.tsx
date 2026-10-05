@@ -88,14 +88,14 @@ export function RejectionReasonsSheet() {
                   onChange={(e) => setNewReason(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a new rejection reason…"
-                  className="max-w-sm border border-gray-300 bg-white placeholder:text-gray-400 focus:border-brand-lavender-darker focus:ring-2 focus:ring-brand-lavender/40 focus:outline-none"
+                  className="max-md:min-h-11 max-w-sm border border-gray-300 bg-white placeholder:text-gray-400 focus:border-brand-lavender-darker focus:ring-2 focus:ring-brand-lavender/40 focus:outline-none"
                 />
                 <Button
                   type="button"
                   onClick={handleAdd}
                   disabled={!newReason.trim()}
                   size="sm"
-                  className="shrink-0"
+                  className="max-md:min-h-11 shrink-0"
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Add

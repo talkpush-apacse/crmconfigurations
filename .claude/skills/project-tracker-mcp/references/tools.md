@@ -14,6 +14,8 @@ projects apart). Item tools accept `item_id` or `item` (title, exact or unique p
 | `list_open_items` | List items in a project. Defaults to open items (not done or dropped). Filter by owner name, status, or overdue. | `project_id`, `project`, `account`, `owner`, `status`, `overdue_only`, `include_closed` |
 | `list_accounts` | List client accounts (companies). | none |
 | `list_people` | List Talkpush staff plus, optionally, one account's client contacts and vendors. Use this to find owner names. | `account` |
+| `get_project_timeline` | The project's plan as dates: project start, target and go-live, every phase with its start and end, and every item with phase, owner, start, due, milestone flag, status and what it waits for. Use this to draw a Gantt chart, or to compare a Gantt you have been given with what is already in the tracker. | `project_id`, `project`, `account` |
+| `list_project_files` | List the files kept with a project (contracts, Gantt charts, notes): name, kind, size, who uploaded it and when. Names only: Claude cannot open them, and staff download them from the project's Settings. | `project_id`, `project`, `account` |
 
 ## Write
 
@@ -21,12 +23,13 @@ projects apart). Item tools accept `item_id` or `item` (title, exact or unique p
 |---|---|---|
 | `create_account` | Create a client account (company). | `name`*, `notes` |
 | `create_person` | Add a person who can own items: Talkpush staff (omit account), or a client contact or vendor (give account). | `name`*, `side`*, `account`, `email`, `title`, `organisation` |
-| `create_project` | Create a project for an account. It starts with the standard phases (Scoping, Configuration, Integration, UAT, Training, Go-live, Hypercare). | `account`*, `title`*, `objective`, `start_date`, `target_date`, `go_live_date`, `owner`, `sponsor` |
+| `create_project` | Create a project for an account. It starts with the standard phases (Scoping, Configuration, UAT, Training, Go-live, Hypercare). | `account`*, `title`*, `objective`, `start_date`, `target_date`, `go_live_date`, `owner`, `sponsor` |
 | `update_project` | Change project details. Moving the target date counts as a reschedule and is shown on the project. Setting health_override needs health_override_note; use 'calculated' to clear it. | `project_id`, `project`, `account`, `title`, `objective`, `status`, `start_date`, `target_date`, `go_live_date`, `owner`, `sponsor`, `health_override`, `health_override_note` |
 | `update_phase` | Set a phase's start date, end date or exit criteria. | `project_id`, `project`, `account`, `phase`*, `start_date`, `end_date`, `exit_criteria` |
+| `add_phases` | Add phases to a project, after the ones it already has, in the order given. Use this when a timeline has phases the standard set does not (for example from a Gantt chart). Phase names must be unique in the project; use update_phase to change an existing phase. | `project_id`, `project`, `account`, `phases`* |
 | `add_open_items` | Add one or more items to a project. All names are checked before anything is created, so a typo creates nothing. Items are visible to the client by default. Use visibility 'internal' for anything the client should not see. | `project_id`, `project`, `account`, `items`* |
 | `update_item_status` | Change an item's status. Moving to blocked needs blocker_reason. Optionally leave a remark in the same call. | `project_id`, `project`, `account`, `item_id`, `item`, `status`*, `blocker_reason`, `remark`, `remark_visibility` |
-| `update_item` | Change an item's details (not its status; use update_item_status for that). Pass null to clear owner, phase or dates. | `project_id`, `project`, `account`, `item_id`, `item`, `title`, `description`, `type`, `priority`, `visibility`, `is_milestone`, `phase`, `owner`, `start_date`, `due_date`, `waiting_on`, `external_dependency` |
+| `update_item` | Change an item's details (not its status; use update_item_status for that). Pass null to clear owner, phase or dates. | `project_id`, `project`, `account`, `item_id`, `item`, `title`, `description`, `type`, `priority`, `visibility`, `is_milestone`, `phase`, `owner`, `start_date`, `due_date`, `waiting_on`, `external_dependency`, `jira_links` |
 | `add_item_remark` | Add a remark to an item. Internal by default; set visibility 'shared' only for text the client may read. | `project_id`, `project`, `account`, `item_id`, `item`, `body`*, `visibility` |
 | `set_item_dependency` | Say which items an item is waiting for. mode 'add' (default) adds to the list, 'remove' removes, 'replace' sets the exact list. Loops are rejected. | `project_id`, `project`, `account`, `item_id`, `item`, `blocked_by`*, `mode` |
 | `archive_item` | Hide an item from the project. Nothing is deleted: the activity history keeps it. | `project_id`, `project`, `account`, `item_id`, `item` |

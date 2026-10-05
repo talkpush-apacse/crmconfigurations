@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, LayoutList, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { TabSelector } from "@/components/admin/TabSelector";
 import { ChannelSelector } from "@/components/admin/ChannelSelector";
 import { CustomFieldBuilder } from "@/components/admin/CustomFieldBuilder";
@@ -103,9 +104,10 @@ export default function NewChecklistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-2xl p-6">
-        <Link href="/admin" className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+    <div className="min-h-screen bg-background">
+      <AdminHeader />
+      <div className="mx-auto max-w-2xl p-4 md:p-6">
+        <Link href="/admin" className="mb-4 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground md:mb-6 md:min-h-0">
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to dashboard
         </Link>
@@ -124,6 +126,7 @@ export default function NewChecklistPage() {
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="e.g., Acme Corporation"
                   required
+                  className="h-11 md:h-9"
                 />
               </div>
               <div>
@@ -134,6 +137,7 @@ export default function NewChecklistPage() {
                   value={ownerEmail}
                   onChange={(e) => setOwnerEmail(e.target.value)}
                   placeholder="owner@example.com"
+                  className="h-11 md:h-9"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   Receives an email when editors make changes or upload files. Leave blank to disable.
@@ -153,7 +157,7 @@ export default function NewChecklistPage() {
                   <button
                     type="button"
                     onClick={() => setIsCustom(false)}
-                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
+                    className={`flex min-h-11 items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
                       !isCustom
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-gray-200 text-muted-foreground hover:border-gray-300"
@@ -168,7 +172,7 @@ export default function NewChecklistPage() {
                   <button
                     type="button"
                     onClick={() => setIsCustom(true)}
-                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
+                    className={`flex min-h-11 items-center gap-2 rounded-lg border-2 p-3 text-left text-sm transition-colors ${
                       isCustom
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-gray-200 text-muted-foreground hover:border-gray-300"
@@ -201,7 +205,7 @@ export default function NewChecklistPage() {
               )}
 
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading || !clientName.trim()}>
+              <Button type="submit" className="h-11 w-full md:h-9" disabled={loading || !clientName.trim()}>
                 {loading ? "Creating..." : "Create Checklist"}
               </Button>
             </form>

@@ -51,7 +51,7 @@ const ACTOR_ICONS: Record<string, React.ComponentType<IconProps>> = {
 };
 
 function handleClasses(hovered: boolean) {
-  return `!w-3.5 !h-3.5 !bg-white !border-2 ${hovered ? "!border-teal-300" : "!border-gray-400"} !z-20 hover:!bg-teal-500 hover:!border-teal-500 transition-colors`;
+  return `!w-3.5 !h-3.5 !bg-white !border-2 ${hovered ? "!border-brand-lavender-darker" : "!border-muted-foreground"} !z-20 hover:!bg-ring hover:!border-ring transition-colors`;
 }
 
 interface BaseNodeProps {
@@ -154,10 +154,10 @@ export default function BaseNode({
         if (event.key === "Escape") cancelLabelEdit();
       }}
       onClick={(event) => event.stopPropagation()}
-      className="min-w-0 flex-1 rounded border border-teal-300 bg-white px-1 py-0.5 text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-teal-500"
+      className="min-w-0 flex-1 rounded border border-ring bg-card px-1 py-0.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring"
     />
   ) : (
-    <span className="truncate text-[13px] font-semibold leading-tight text-gray-800">
+    <span className="truncate text-[13px] font-semibold leading-tight text-foreground">
       {data.label}
     </span>
   );
@@ -173,10 +173,10 @@ export default function BaseNode({
         if (event.key === "Escape") cancelLabelEdit();
       }}
       onClick={(event) => event.stopPropagation()}
-      className="w-[120px] rounded border border-teal-300 bg-white px-1 py-0.5 text-center text-[12px] font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-teal-500"
+      className="w-[120px] rounded border border-ring bg-card px-1 py-0.5 text-center text-[12px] font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring"
     />
   ) : (
-    <span className="max-w-[120px] text-[12px] font-semibold leading-tight text-gray-800">
+    <span className="max-w-[120px] text-[12px] font-semibold leading-tight text-foreground">
       {data.label}
     </span>
   );
@@ -196,7 +196,7 @@ export default function BaseNode({
         )}
         aria-label="Add node to the right"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-teal-500 shadow-sm hover:bg-teal-600">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary shadow-sm hover:bg-primary/85">
           +
         </span>
       </button>
@@ -211,7 +211,7 @@ export default function BaseNode({
         )}
         aria-label="Add node below"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-teal-500 shadow-sm hover:bg-teal-600">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary shadow-sm hover:bg-primary/85">
           +
         </span>
       </button>
@@ -225,7 +225,7 @@ export default function BaseNode({
       className={cn(
         "relative w-full min-w-[140px] px-2.5 py-2 rounded-lg border-2 bg-white transition-shadow",
         borderStyle,
-        selected && "ring-2 ring-offset-1 ring-teal-500",
+        selected && "ring-2 ring-offset-1 ring-ring",
         pillShape && "rounded-full",
         doubleBorder && "outline outline-2 outline-offset-2"
       )}
@@ -242,7 +242,7 @@ export default function BaseNode({
           {stepNumbersVisible && data.isOverflow && (
             <span
               className="rounded-full bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700 shadow-sm"
-              title="Subprocess extraction recommended — max nesting depth exceeded"
+              title="Subprocess extraction recommended: max nesting depth exceeded"
             >
               ⚠ deep
             </span>
@@ -265,8 +265,8 @@ export default function BaseNode({
         isVisible={selected}
         minWidth={140}
         minHeight={60}
-        lineStyle={{ borderColor: "#00BFA5", borderWidth: 1.5 }}
-        handleStyle={{ width: 8, height: 8, borderColor: "#00BFA5", backgroundColor: "white" }}
+        lineStyle={{ borderColor: "var(--ring)", borderWidth: 1.5 }}
+        handleStyle={{ width: 8, height: 8, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
       />
 
       {/* In Loose mode, source handles can also receive connector endpoints. */}
@@ -323,7 +323,7 @@ export default function BaseNode({
             className="w-3 h-3 shrink-0"
             style={{ color: actorConfig.color }}
           />
-          <span className="text-[10px] text-gray-500 truncate">
+          <span className="text-[11px] text-muted-foreground truncate">
             {data.actorLabel || actorConfig.label}
           </span>
         </div>
@@ -331,7 +331,7 @@ export default function BaseNode({
 
       {/* Notes preview — line-clamp-1 (not truncate) avoids white-space:nowrap expanding node width */}
       {data.notes && (
-        <p className="text-[10px] text-gray-400 line-clamp-1">{data.notes}</p>
+        <p className="text-[11px] text-muted-foreground line-clamp-1">{data.notes}</p>
       )}
     </div>
   );
@@ -350,7 +350,7 @@ export default function BaseNode({
             {stepNumbersVisible && data.isOverflow && (
               <span
                 className="rounded-full bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700 shadow-sm"
-                title="Subprocess extraction recommended — max nesting depth exceeded"
+                title="Subprocess extraction recommended: max nesting depth exceeded"
               >
                 ⚠ deep
               </span>
@@ -358,7 +358,7 @@ export default function BaseNode({
             {stepNumbersVisible && !data.isOverflow && data.stepNumber && (
               <span className={
                 /[a-zA-Z]/.test(data.stepNumber)
-                  ? "rounded-full border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[10px] italic text-gray-400 shadow-sm"
+                  ? "rounded-full border border-gray-200 bg-white px-1.5 py-0.5 font-mono text-[11px] italic text-muted-foreground shadow-sm"
                   : "rounded-full bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 shadow-sm"
               }>
                 {data.stepNumber}
@@ -376,8 +376,8 @@ export default function BaseNode({
           minWidth={140}
           minHeight={140}
           keepAspectRatio
-          lineStyle={{ borderColor: "#00BFA5", borderWidth: 1.5 }}
-          handleStyle={{ width: 8, height: 8, borderColor: "#00BFA5", backgroundColor: "white" }}
+          lineStyle={{ borderColor: "var(--ring)", borderWidth: 1.5 }}
+          handleStyle={{ width: 8, height: 8, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
         />
         {/* In Loose mode, source handles can also receive connector endpoints. */}
         <Handle
@@ -396,7 +396,7 @@ export default function BaseNode({
           className={cn(
             "absolute rotate-45 rounded-md border-2",
             borderStyle,
-            selected && "ring-2 ring-offset-2 ring-teal-500"
+            selected && "ring-2 ring-offset-2 ring-ring"
           )}
           style={{
             width: "70.7%",
@@ -414,7 +414,7 @@ export default function BaseNode({
           {data.actor && actorConfig && (
             <div className="flex items-center gap-1">
               <ActorIcon className="w-3 h-3" style={{ color: actorConfig.color }} />
-              <span className="text-[9px] text-gray-500">{data.actorLabel || actorConfig.label}</span>
+              <span className="text-[11px] text-muted-foreground">{data.actorLabel || actorConfig.label}</span>
             </div>
           )}
         </div>

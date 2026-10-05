@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { ExecSummary } from "@/components/tracker/ExecSummary";
-import { ErrorBlock, LoadingBlock } from "@/components/tracker/PageHeader";
+import { ErrorBlock } from "@/components/tracker/PageHeader";
+import { SummarySkeleton } from "@/components/tracker/SummarySkeleton";
 import type { ClientView } from "@/lib/tracker/client-view";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
 
@@ -15,14 +16,14 @@ export default function ClientPreviewPage() {
 
   return (
     <>
-      <Link href={`/admin/tracker/projects/${id}`} className="mb-3 inline-flex min-h-8 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href={`/admin/tracker/projects/${id}`} className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm md:min-h-8 text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-4 w-4" />
         Back to project
       </Link>
       {error && !data ? (
         <ErrorBlock message={error} onRetry={reload} />
       ) : !data ? (
-        <LoadingBlock label="Loading client view" />
+        <SummarySkeleton context="client" label="Loading client view" />
       ) : (
         <ExecSummary
           data={data}

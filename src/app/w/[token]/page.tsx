@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import ClientWorkflowGate from "@/components/workflow/client/ClientWorkflowGate";
 import type { ApiProblem } from "@/components/workflow/client/api";
 import { recordAudit } from "@/lib/workflow/access/audit";
@@ -42,6 +43,7 @@ export default async function ClientWorkflowPage({ params }: { params: Promise<{
   const payload = await buildClientPagePayload(access.workflowId, who, { needsName: access.needsName, pinnedVersionId: access.pinnedVersionId });
   if (!payload) return <ClientWorkflowGate token={token} initial={null} initialProblem={{ status: 404, error: "Not found", title: "We could not find this page", message: "The link may be mistyped.", canRequestAccess: false }} />;
 
-  await recordAudit({ workflowId: access.workflowId, ...actorOf(who), action: "link.opened", detail: { via: access.source.type } });
+  // The audit line is bookkeeping: write it after the page has been sent, not before.
+  after(() => recordAudit({ workflowId: access.workflowId, ...actorOf(who), action: "link.opened", detail: { via: access.source.type } }));
   return <ClientWorkflowGate token={token} initial={payload} initialProblem={null} />;
 }

@@ -1,6 +1,6 @@
 import PreviewClient from "./PreviewClient";
 
-export const metadata = { title: "Preview | Workflow Builder" };
+export const metadata = { title: "Preview | Workflow builder | Talkpush Implementation Hub" };
 
 const LABELS: Record<string, string> = {
   viewer: "a Viewer",

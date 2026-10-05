@@ -563,12 +563,12 @@ export default function AdminDashboard() {
                   Manage client configuration checklists
                 </p>
               </div>
-              <Link href="/admin/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
+              <Button asChild className="min-h-11 shrink-0 md:min-h-0">
+                <Link href="/admin/new">
+                  <Plus className="h-4 w-4" />
                   New Checklist
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
 
             {/* P1-01: Proper delete confirmation dialog */}
@@ -582,11 +582,12 @@ export default function AdminDashboard() {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                  <Button variant="outline" className="min-h-11 md:min-h-0" onClick={() => setDeleteTarget(null)}>
                     Cancel
                   </Button>
                   <Button
                     variant="destructive"
+                    className="min-h-11 md:min-h-0"
                     onClick={() => deleteTarget && handleConfirmDelete(deleteTarget)}
                   >
                     Delete
@@ -627,10 +628,10 @@ export default function AdminDashboard() {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setRegenTarget(null)}>
+                  <Button variant="outline" className="min-h-11 md:min-h-0" onClick={() => setRegenTarget(null)}>
                     Cancel
                   </Button>
-                  <Button variant="destructive" onClick={handleConfirmRegenToken}>
+                  <Button variant="destructive" className="min-h-11 md:min-h-0" onClick={handleConfirmRegenToken}>
                     Regenerate
                   </Button>
                 </DialogFooter>
@@ -664,7 +665,7 @@ export default function AdminDashboard() {
                     deleted in 5 seconds.
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleUndo} className="shrink-0">
+                <Button variant="outline" size="sm" onClick={handleUndo} className="min-h-11 shrink-0 md:min-h-0">
                   Undo
                 </Button>
               </div>
@@ -684,13 +685,13 @@ export default function AdminDashboard() {
                       <label htmlFor="checklist-search" className="sr-only">
                         Search checklists
                       </label>
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground md:top-2.5" />
                       <Input
                         id="checklist-search"
                         placeholder="Search clients..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-9 border-input pl-8"
+                        className="h-11 border-input pl-8 md:h-9"
                       />
                     </div>
                   )}
@@ -719,11 +720,9 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Create your first client checklist to get started.
                     </p>
-                    <Link href="/admin/new">
-                      <Button variant="outline" className="mt-4">
-                        Create first checklist
-                      </Button>
-                    </Link>
+                    <Button asChild variant="outline" className="mt-4 min-h-11 md:min-h-0">
+                      <Link href="/admin/new">Create first checklist</Link>
+                    </Button>
                   </div>
                 ) : (
                   <>
@@ -736,7 +735,7 @@ export default function AdminDashboard() {
                         </p>
                         <button
                           type="button"
-                          className="mt-2 text-sm text-primary underline-offset-2 hover:underline"
+                          className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline-offset-2 hover:underline md:min-h-0"
                           onClick={() => setSearchQuery("")}
                         >
                           Clear search
@@ -766,12 +765,12 @@ export default function AdminDashboard() {
                           {(c.isCustom || c.ownerEmail) && (
                             <div className="mt-3 flex flex-wrap gap-1.5">
                               {c.isCustom && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
+                                <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
                                   Custom
                                 </Badge>
                               )}
                               {c.ownerEmail && (
-                                <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
+                                <Badge variant="outline" className="gap-1 text-[11px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
                                   <Mail className="h-3 w-3" />
                                   Owner email
                                 </Badge>
@@ -795,7 +794,7 @@ export default function AdminDashboard() {
                           </dl>
 
                           <div className="mt-4 flex items-center gap-2">
-                            <Button asChild size="sm" className="h-9 flex-1 gap-1.5">
+                            <Button asChild size="sm" className="h-11 flex-1 gap-1.5">
                               <Link href={`/admin/checklists/${c.id}/welcome`}>
                                 Open checklist
                                 <ExternalLink className="h-3.5 w-3.5" />
@@ -807,7 +806,7 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="h-9 w-9"
+                                  className="size-11"
                                   aria-label={`More actions for ${c.clientName}`}
                                 >
                                   <MoreHorizontal className="h-4 w-4" />
@@ -915,7 +914,7 @@ export default function AdminDashboard() {
                             </p>
                             <button
                               type="button"
-                              className="mt-2 text-sm text-primary underline-offset-2 hover:underline"
+                              className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline-offset-2 hover:underline md:min-h-0"
                               onClick={() => setSearchQuery("")}
                             >
                               Clear search
@@ -942,12 +941,12 @@ export default function AdminDashboard() {
                                   {c.clientName}
                                 </Link>
                                 {c.isCustom && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
+                                  <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
                                     Custom
                                   </Badge>
                                 )}
                                 {c.ownerEmail && (
-                                  <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
+                                  <Badge variant="outline" className="gap-1 text-[11px] px-1.5 py-0 font-medium text-emerald-700 border-emerald-300">
                                     <Mail className="h-3 w-3" />
                                     Owner email
                                   </Badge>
@@ -996,7 +995,7 @@ export default function AdminDashboard() {
                             >
                               {/* P2-05: Separator between safe actions and destructive delete */}
                               <div className="flex items-center justify-end gap-2">
-                                <Button asChild size="sm" variant="outline" className="h-8 gap-1.5 px-3">
+                                <Button asChild size="sm" variant="outline" className="max-md:min-h-11 h-8 gap-1.5 px-3">
                                   <Link href={`/admin/checklists/${c.id}/welcome`} target="_blank">
                                     Open
                                     <ExternalLink className="h-3.5 w-3.5" />
@@ -1010,7 +1009,7 @@ export default function AdminDashboard() {
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-8 w-8"
+                                          className="max-md:min-h-11 max-md:min-w-11 h-8 w-8"
                                           aria-label={`More actions for ${c.clientName}`}
                                         >
                                           <MoreHorizontal className="h-4 w-4" />
@@ -1090,7 +1089,7 @@ export default function AdminDashboard() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="size-11 md:size-6"
                       disabled={currentPage <= 1 || loading}
                       onClick={() => { setSearchQuery(""); fetchChecklists(currentPage - 1); }}
                       aria-label="Previous page"
@@ -1103,7 +1102,7 @@ export default function AdminDashboard() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="size-11 md:size-6"
                       disabled={currentPage >= Math.ceil(total / pageSize) || loading}
                       onClick={() => { setSearchQuery(""); fetchChecklists(currentPage + 1); }}
                       aria-label="Next page"

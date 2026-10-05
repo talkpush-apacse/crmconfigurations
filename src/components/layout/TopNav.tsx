@@ -22,7 +22,6 @@ import {
   Paperclip,
   Phone,
   PlugZap,
-  Plus,
   Briefcase,
   Shield,
   Tags,
@@ -50,8 +49,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button } from "@/components/ui/button";
 import { cn, arrayMove } from "@/lib/utils";
+import { chunkSections, getSectionGroupId } from "./section-groups";
+
+/** Past this many sections in one owner group, the rail adds named chunks. */
+const CHUNK_THRESHOLD = 6;
 
 export type NavItem = {
   label: string;
@@ -105,11 +107,11 @@ function getStatusLabel(status: NavItem["status"]) {
 
 function StatusIndicator({ status }: { status: NavItem["status"] }) {
   if (status === "complete") {
-    return <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.14)]" />;
+    return <span className="h-2.5 w-2.5 rounded-full bg-brand-sage-darker" />;
   }
 
   if (status === "in-progress") {
-    return <span className="h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_0_4px_rgba(251,191,36,0.14)]" />;
+    return <span className="h-2.5 w-2.5 rounded-full bg-brand-amber" />;
   }
 
   if (status === "not-started") {
@@ -119,13 +121,26 @@ function StatusIndicator({ status }: { status: NavItem["status"] }) {
   return <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />;
 }
 
-function GroupHeader({ label }: { label: string }) {
+/** Thin rule between groups on the icon-only rail, where there is no room for a label. */
+function RailDivider() {
+  return <div className="mx-3 my-2 h-px bg-border xl:hidden" aria-hidden="true" />;
+}
+
+/** Names who fills in the sections below it. Sentence case, wide screens only. */
+function OwnerHeader({ label }: { label: string }) {
   return (
-    <div className="mb-2 mt-4 hidden items-center gap-3 px-4 xl:flex first:mt-0">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-        {label}
-      </span>
+    <div className="mb-2 hidden items-center gap-3 px-4 xl:flex">
+      <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">{label}</span>
       <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** Names a chunk of related sections. Wide screens only. */
+function ChunkHeader({ label }: { label: string }) {
+  return (
+    <div className="mb-1 hidden px-4 text-[11px] font-medium text-muted-foreground xl:block">
+      {label}
     </div>
   );
 }
@@ -172,7 +187,7 @@ function SortableNavItem({
           <div
             className={cn(
               "group relative rounded-[22px] transition-all",
-              isDragging && "bg-secondary shadow-[0_12px_24px_-16px_rgba(15,23,42,0.15)]"
+              isDragging && "bg-secondary shadow-md"
             )}
           >
             {canReorder && (
@@ -182,6 +197,7 @@ function SortableNavItem({
                 {...listeners}
                 className="absolute left-2 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground active:cursor-grabbing xl:flex xl:opacity-0 xl:group-hover:opacity-100"
                 title="Drag to reorder within this group"
+                aria-label={`Reorder ${item.label}`}
               >
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
@@ -196,7 +212,7 @@ function SortableNavItem({
                 "relative flex min-h-[52px] items-center justify-center gap-3 rounded-[20px] px-3 py-3 text-sm transition-all duration-200 active:scale-[0.98] xl:justify-start xl:px-4 xl:pl-11",
                 canChangeOwnership && "xl:pr-12",
                 isActive
-                  ? "bg-brand-sage-lightest text-foreground ring-1 ring-inset ring-brand-sage-darker/25 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]"
+                  ? "bg-brand-sage-lightest text-foreground ring-1 ring-inset ring-brand-sage-darker/25"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
               aria-label={item.label}
@@ -308,19 +324,34 @@ export function TopNav({
     [items]
   );
 
-  // Combined visual order: client group first, then talkpush group.
-  const combinedItems = useMemo(
-    () => [...clientItems, ...talkpushItems],
-    [clientItems, talkpushItems]
-  );
-
   // The group labels only mean something as a contrast between the two groups.
-  // With one group — the client view, where Talkpush tabs are hidden — the
+  // With one group (the client view, where Talkpush tabs are hidden) the
   // header labels nothing, so it is dropped.
   const showGroupHeaders = clientItems.length > 0 && talkpushItems.length > 0;
+
+  // A long list gets named chunks (see section-groups.ts). Short lists stay flat.
+  const ownerGroups = useMemo(() => {
+    const build = (owner: "client" | "talkpush", groupItems: NavItem[]) => ({
+      owner,
+      label: owner === "talkpush" ? "Filled in by Talkpush" : `Filled in by ${clientName}`,
+      items: groupItems,
+      chunks: groupItems.length > CHUNK_THRESHOLD ? chunkSections(groupItems) : null,
+    });
+    return [
+      ...(clientItems.length > 0 ? [build("client", clientItems)] : []),
+      ...(talkpushItems.length > 0 ? [build("talkpush", talkpushItems)] : []),
+    ];
+  }, [clientItems, talkpushItems, clientName]);
+
+  // The order sections are drawn in: client group first, then Talkpush group,
+  // each one chunk by chunk when it has chunks.
+  const displayItems = useMemo(
+    () => ownerGroups.flatMap((g) => (g.chunks ? g.chunks.flatMap((c) => c.items) : g.items)),
+    [ownerGroups]
+  );
   const combinedIds = useMemo(
-    () => combinedItems.map((item) => item.slug || item.href),
-    [combinedItems]
+    () => displayItems.map((item) => item.slug || item.href),
+    [displayItems]
   );
 
   function confirmNavigation(href: string): boolean {
@@ -344,14 +375,20 @@ export function TopNav({
     const newIndex = combinedIds.indexOf(overId);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const activeItem = combinedItems[oldIndex];
-    const overItem = combinedItems[newIndex];
+    const activeItem = displayItems[oldIndex];
+    const overItem = displayItems[newIndex];
     const activeGroup = activeItem.filledBy === "talkpush" ? "talkpush" : "client";
     const overGroup = overItem.filledBy === "talkpush" ? "talkpush" : "client";
 
     // Reordering must not change who fills a module in. Crossing this boundary
     // changes client visibility, so ownership needs a separate explicit action.
     if (activeGroup !== overGroup) {
+      return;
+    }
+
+    // Chunks are labels, not containers: a section stays in its own chunk.
+    const owner = ownerGroups.find((g) => g.owner === activeGroup);
+    if (owner?.chunks && getSectionGroupId(activeItem.slug) !== getSectionGroupId(overItem.slug)) {
       return;
     }
 
@@ -377,7 +414,7 @@ export function TopNav({
 
   const canReorder = Boolean(onReorder);
 
-  const renderGroup = (groupItems: NavItem[]) =>
+  const renderItems = (groupItems: NavItem[]) =>
     groupItems.map((item) => {
       const isActive = pathname === item.href;
       return (
@@ -392,67 +429,49 @@ export function TopNav({
       );
     });
 
+  const renderOwnerGroups = () =>
+    ownerGroups.map((group, groupIndex) => (
+      <div key={group.owner} className={groupIndex > 0 ? "xl:mt-5" : undefined}>
+        {showGroupHeaders && (
+          <>
+            {groupIndex > 0 && <RailDivider />}
+            <OwnerHeader label={group.label} />
+          </>
+        )}
+        {group.chunks
+          ? group.chunks.map((chunk, chunkIndex) => (
+              <div key={chunk.id} className={chunkIndex > 0 ? "xl:mt-3" : undefined}>
+                {chunkIndex > 0 && <RailDivider />}
+                <ChunkHeader label={chunk.label} />
+                {renderItems(chunk.items)}
+              </div>
+            ))
+          : renderItems(group.items)}
+      </div>
+    ));
+
   const navContent = (
     <aside
       ref={navRef}
-      className="flex h-screen w-16 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-foreground shadow-[4px_0_24px_-8px_rgba(15,23,42,0.07)] xl:w-72"
+      aria-label="Sections"
+      className="hidden w-16 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-foreground sm:flex xl:w-72"
     >
-      <div className="border-b border-border px-2 py-3 xl:px-4 xl:py-5">
-        <div className="flex items-center justify-center gap-3 xl:justify-start">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-secondary text-sm font-semibold tracking-[0.18em] text-foreground">
-            TP
-          </div>
-          <div className="hidden min-w-0 xl:block">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Workspace
-            </p>
-            <p className="truncate text-sm font-medium text-foreground">
-              CRM Modules
-            </p>
-          </div>
-        </div>
+      <div className="hidden border-b border-border px-4 py-3 xl:block">
+        <p className="text-[13px] font-semibold text-foreground">Sections</p>
       </div>
 
       <div className="relative flex-1 overflow-hidden">
-        <nav ref={scrollRef} className="scrollbar-thin h-full overflow-y-auto py-4">
+        <nav ref={scrollRef} className="scrollbar-thin absolute inset-0 overflow-y-auto py-4">
           {canReorder ? (
             <SortableContext items={combinedIds} strategy={verticalListSortingStrategy}>
-              {clientItems.length > 0 && (
-                <>
-                  {showGroupHeaders && (
-                    <GroupHeader label={`Filled Up by ${clientName}`} />
-                  )}
-                  {renderGroup(clientItems)}
-                </>
-              )}
-              {talkpushItems.length > 0 && (
-                <>
-                  {showGroupHeaders && <GroupHeader label="Filled Up by Talkpush" />}
-                  {renderGroup(talkpushItems)}
-                </>
-              )}
+              {renderOwnerGroups()}
             </SortableContext>
           ) : (
-            <>
-              {clientItems.length > 0 && (
-                <>
-                  {showGroupHeaders && (
-                    <GroupHeader label={`Filled Up by ${clientName}`} />
-                  )}
-                  {renderGroup(clientItems)}
-                </>
-              )}
-              {talkpushItems.length > 0 && (
-                <>
-                  {showGroupHeaders && <GroupHeader label="Filled Up by Talkpush" />}
-                  {renderGroup(talkpushItems)}
-                </>
-              )}
-            </>
+            renderOwnerGroups()
           )}
         </nav>
 
-        {/* Bottom fade + chevron to signal more tabs below */}
+        {/* Bottom fade + static chevron to signal more sections below */}
         <div
           className={cn(
             "pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-1 transition-opacity duration-300",
@@ -460,22 +479,8 @@ export function TopNav({
           )}
         >
           <div className="h-12 w-full bg-gradient-to-t from-card to-transparent" />
-          <ChevronDown className="absolute bottom-1 h-4 w-4 animate-bounce text-muted-foreground" />
+          <ChevronDown className="absolute bottom-1 h-4 w-4 text-muted-foreground" />
         </div>
-      </div>
-
-      <div className="border-t border-border p-2 xl:p-4">
-        <Button
-          type="button"
-          disabled
-          className="h-11 w-full rounded-2xl bg-primary text-primary-foreground shadow-[0_18px_32px_-22px_oklch(0.12_0.01_240/0.4)] hover:bg-primary/85 active:scale-95 disabled:cursor-not-allowed disabled:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden xl:inline">New Module</span>
-        </Button>
-        <p className="mt-2 hidden text-[11px] leading-5 text-muted-foreground xl:block">
-          Module creation is staged outside this shared configuration editor.
-        </p>
       </div>
     </aside>
   );

@@ -10,7 +10,7 @@ import {
 } from "@/lib/workflow/types";
 
 const HANDLE_CLASSES =
-  "!w-2.5 !h-2.5 !bg-gray-400 !border-2 !border-white !z-20 hover:!bg-teal-500 transition-colors";
+  "!w-2.5 !h-2.5 !bg-muted-foreground !border-2 !border-white !z-20 hover:!bg-ring transition-colors";
 
 type TableWorkflowData = WorkflowNodeData & Partial<TableNodeData>;
 
@@ -55,9 +55,9 @@ export default function TableNode({ data, selected }: NodeProps) {
       className={cn(
         "relative w-fit max-w-[560px] overflow-hidden rounded-lg border bg-white shadow-sm",
         widthClass,
-        selected && "border-teal-500 ring-2 ring-teal-500 ring-offset-1"
+        selected && "ring-2 ring-ring ring-offset-1"
       )}
-      style={{ borderColor: selected ? "#14B8A6" : "#475569" }}
+      style={{ borderColor: selected ? "var(--ring)" : "#475569" }}
     >
       <Handle
         type="source"
@@ -140,7 +140,7 @@ export default function TableNode({ data, selected }: NodeProps) {
       ))}
 
       {hiddenCount > 0 && (
-        <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-center text-[10px] font-medium text-slate-500">
+        <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-center text-[11px] font-medium text-slate-500">
           +{hiddenCount} more row{hiddenCount === 1 ? "" : "s"}
         </div>
       )}

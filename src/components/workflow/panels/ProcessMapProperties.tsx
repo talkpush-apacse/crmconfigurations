@@ -12,7 +12,7 @@ export interface StepOption {
   number: string;
 }
 
-const FIELD = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none";
+const FIELD = "w-full rounded-md border border-input bg-card px-2 py-1.5 text-sm focus:ring-2 focus:ring-ring focus:outline-none";
 
 const END_KINDS: [EndKind, string][] = [
   ["success", "Success (dark green)"],
@@ -55,9 +55,9 @@ function LaneAndStage({ nodeId, data, controls }: { nodeId: string; data: any; c
     if (next !== String(data.stage ?? "")) controls.onChange(nodeId, { stage: next });
   };
   return (
-    <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-2" data-testid="lane-and-stage">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Lane and stage</p>
-      <label className="block text-sm font-medium text-gray-700">
+    <div className="space-y-2 rounded-md border border-border bg-secondary p-2" data-testid="lane-and-stage">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lane and stage</p>
+      <label className="block text-sm font-medium text-foreground/85">
         Lane (who does this step)
         <select
           className={`${FIELD} mt-1`}
@@ -92,7 +92,7 @@ function LaneAndStage({ nodeId, data, controls }: { nodeId: string; data: any; c
           }}
         />
       )}
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-foreground/85">
         Stage starts here (optional)
         <input
           className={`${FIELD} mt-1`}
@@ -105,7 +105,7 @@ function LaneAndStage({ nodeId, data, controls }: { nodeId: string; data: any; c
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
         />
-        <span className="mt-0.5 block text-[11px] font-normal text-gray-400">The steps after this one stay in the same stage until the next stage starts.</span>
+        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">The steps after this one stay in the same stage until the next stage starts.</span>
       </label>
     </div>
   );
@@ -132,8 +132,8 @@ export default function ProcessMapProperties({
   const person = personActs(node);
 
   return (
-    <div className="pt-2 border-t border-gray-100 space-y-3">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Process Map</p>
+    <div className="pt-2 border-t border-border/50 space-y-3">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Process Map</p>
 
       {laneControls && ["stage", "communication", "integration", "wait", "manual_action", "parallel", "decision"].includes(data.type) && (
         <LaneAndStage nodeId={nodeId} data={d} controls={laneControls} />
@@ -141,7 +141,7 @@ export default function ProcessMapProperties({
 
       {isProcessStep && (
         <>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground/85">
             Does a person act in this step?
             <select
               className={`${FIELD} mt-1`}
@@ -152,10 +152,10 @@ export default function ProcessMapProperties({
               <option value="true">Yes: white box, role in brackets</option>
               <option value="false">No: green box, the system does it</option>
             </select>
-            <span className="mt-1 block text-xs font-normal text-gray-500">The box colour follows who acts, never the tag. If a person acts and the system then does something, keep one white box and say so in the text.</span>
+            <span className="mt-1 block text-xs font-normal text-muted-foreground">The box colour follows who acts, never the tag. If a person acts and the system then does something, keep one white box and say so in the text.</span>
           </label>
 
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground/85">
             Action type (the tag)
             <select
               className={`${FIELD} mt-1`}
@@ -168,19 +168,19 @@ export default function ProcessMapProperties({
                 <option key={k} value={k}>{ACTION_TYPES[k].tag} {ACTION_TYPES[k].label}</option>
               ))}
             </select>
-            {inferred && <span className="mt-1 block text-xs font-normal text-gray-500">{ACTION_TYPES[inferred].use}</span>}
+            {inferred && <span className="mt-1 block text-xs font-normal text-muted-foreground">{ACTION_TYPES[inferred].use}</span>}
           </label>
 
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground/85">
             Timing or cadence (optional)
             <input className={`${FIELD} mt-1`} value={d.timing ?? ""} maxLength={80} placeholder="For example: Day before the interview" onChange={(e) => onChange(nodeId, { timing: e.target.value } as Partial<WorkflowNodeData>)} />
-            <span className="mt-1 block text-xs font-normal text-gray-500">Shown in italics on the last line of the box.</span>
+            <span className="mt-1 block text-xs font-normal text-muted-foreground">Shown in italics on the last line of the box.</span>
           </label>
         </>
       )}
 
       {data.type === "terminator" && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-foreground/85">
           What kind of ending is this?
           <select className={`${FIELD} mt-1`} value={d.endKind ?? "neutral"} onChange={(e) => onChange(nodeId, { endKind: e.target.value } as Partial<WorkflowNodeData>)}>
             {END_KINDS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
@@ -189,31 +189,31 @@ export default function ProcessMapProperties({
       )}
 
       {data.type === "jump" && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-foreground/85">
           Which step does this point to?
           <select className={`${FIELD} mt-1`} value={d.jumpToNodeId ?? ""} onChange={(e) => onChange(nodeId, { jumpToNodeId: e.target.value } as Partial<WorkflowNodeData>)}>
             <option value="">Choose a step…</option>
             {otherSteps.map((s) => <option key={s.id} value={s.id}>{s.number ? `${s.number}. ` : ""}{s.label}</option>)}
           </select>
-          <span className="mt-1 block text-xs font-normal text-gray-500">The marker reads “Go to step N” and updates itself when steps are renumbered.</span>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">The marker reads “Go to step N” and updates itself when steps are renumbered.</span>
         </label>
       )}
 
       {data.type === "note" && (
         <>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground/85">
             Kind of note
             <select className={`${FIELD} mt-1`} value={d.noteKind ?? "info"} onChange={(e) => onChange(nodeId, { noteKind: e.target.value } as Partial<WorkflowNodeData>)}>
               {NOTE_KINDS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </label>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground/85">
             Place it beside
             <select className={`${FIELD} mt-1`} value={d.attachTo ?? ""} onChange={(e) => onChange(nodeId, { attachTo: e.target.value || undefined } as Partial<WorkflowNodeData>)}>
               <option value="">No particular step</option>
               {otherSteps.map((s) => <option key={s.id} value={s.id}>{s.number ? `${s.number}. ` : ""}{s.label}</option>)}
             </select>
-            <span className="mt-1 block text-xs font-normal text-gray-500">The heading is the step name above; the text goes in Notes.</span>
+            <span className="mt-1 block text-xs font-normal text-muted-foreground">The heading is the step name above; the text goes in Notes.</span>
           </label>
         </>
       )}

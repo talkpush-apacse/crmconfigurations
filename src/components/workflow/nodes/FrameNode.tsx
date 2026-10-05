@@ -32,8 +32,8 @@ export default function FrameNode({ id, data, selected }: FrameNodeProps) {
         isVisible={selected}
         minWidth={200}
         minHeight={150}
-        lineStyle={{ borderColor: "#9CA3AF", borderWidth: 2 }}
-        handleStyle={{ width: 8, height: 8, borderColor: "#6B7280", backgroundColor: "white" }}
+        lineStyle={{ borderColor: "var(--ring)", borderWidth: 2 }}
+        handleStyle={{ width: 8, height: 8, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
       />
 
       {/* Dashed border container */}
@@ -55,7 +55,7 @@ export default function FrameNode({ id, data, selected }: FrameNodeProps) {
               }
             }}
             onClick={(e) => e.stopPropagation()}
-            className="text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-teal-500 w-32"
+            className="text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-ring w-32"
           />
         ) : (
           <span

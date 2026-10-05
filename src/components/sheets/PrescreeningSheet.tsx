@@ -54,7 +54,7 @@ const columns: ColumnDef[] = [
         <p>The input format candidates will use to answer.</p>
         {referenceData.map((r) => (
           <p key={r.type}>
-            <strong>{r.type}</strong> — {r.description}
+            <strong>{r.type}</strong>: {r.description}
           </p>
         ))}
       </>
@@ -115,7 +115,7 @@ const detailColumns: ColumnDef[] = [
     key: "clientComments",
     label: "Client Comments",
     type: "textarea",
-    description: "Client-facing comments on this question — distinct from the internal Comments field above",
+    description: "Client-facing comments on this question. Distinct from the internal Comments field above",
   },
 ];
 

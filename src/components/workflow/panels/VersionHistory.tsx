@@ -50,14 +50,13 @@ import TableNode from "../nodes/TableNode";
 import SwimlaneNode from "../nodes/SwimlaneNode";
 import FrameNode from "../nodes/FrameNode";
 import CustomEdge from "../edges/CustomEdge";
+import { statusStyle } from "../status-style";
 import {
   DEFAULT_EDGE_DATA,
   type EdgeMarkerType,
-  WORKFLOW_STATUS_CONFIG,
   type WorkflowEdgeData,
   type WorkflowNodeData,
   type WorkflowProject,
-  type WorkflowStatus,
   type WorkflowVersion,
 } from "@/lib/workflow/types";
 
@@ -215,32 +214,32 @@ export default function VersionHistory({
 
   return (
     <>
-      <div className="w-80 h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
+      <div className="w-80 h-full bg-card border-l border-border flex flex-col overflow-hidden max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-30 max-md:!w-[min(20rem,90vw)] max-md:shadow-xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Version History</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h2 className="text-sm font-semibold text-foreground">Version History</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Snapshots, restores, and pinned-share history
             </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+            className="h-11 w-11 p-0 text-muted-foreground hover:text-foreground/70 md:h-7 md:w-7"
             onClick={onClose}
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
 
-        <div className="px-4 py-3 border-b border-gray-100 shrink-0 space-y-3">
+        <div className="px-4 py-3 border-b border-border/50 shrink-0 space-y-3">
           {showSaveForm ? (
             <div className="space-y-2">
               <Input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
                 placeholder="Optional version label"
-                className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
               />
               <div className="flex items-center justify-end gap-2">
                 <Button
@@ -282,70 +281,69 @@ export default function VersionHistory({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {loading ? (
             <div className="h-full flex items-center justify-center">
-              <Loader2 className="w-5 h-5 animate-spin text-teal-500" />
+              <Loader2 className="w-5 h-5 animate-spin text-foreground" />
             </div>
           ) : versions.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
-              <p className="text-sm font-medium text-gray-700">No versions yet</p>
-              <p className="text-xs text-gray-400 mt-1">
+            <div className="rounded-lg border border-dashed border-border bg-secondary px-4 py-6 text-center">
+              <p className="text-sm font-medium text-foreground/85">No versions yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 The first snapshot appears after a save or status transition.
               </p>
             </div>
           ) : (
             <div className="relative pl-6">
-              <div className="absolute left-[11px] top-0 bottom-0 border-l-2 border-gray-200" />
+              <div className="absolute bottom-0 left-[11px] top-0 w-0.5 bg-border" />
               <div className="space-y-4">
                 {versions.map((version) => {
-                  const statusConfig =
-                    WORKFLOW_STATUS_CONFIG[version.status as WorkflowStatus];
+                  const statusConfig = statusStyle(version.status);
                   const isCurrent = version.versionNumber === currentVersion;
 
                   return (
                     <div key={version.id} className="relative">
                       <span
                         className={`absolute -left-[3px] top-5 h-3 w-3 rounded-full border-2 border-white ring-2 ring-white ${
-                          isCurrent ? "bg-green-500" : "bg-gray-300"
+                          isCurrent ? "bg-brand-sage-darker" : "bg-border"
                         }`}
                       />
 
-                      <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                      <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
                         <div className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="bg-teal-50 text-teal-700 font-mono text-xs rounded-full px-2 py-0.5">
+                              <span className="bg-brand-lavender-lightest text-foreground font-mono text-xs rounded-full px-2 py-0.5">
                                 v{version.versionNumber}
                               </span>
                               <span
                                 className={`text-[11px] font-medium rounded-full px-2 py-0.5 ${
-                                  statusConfig?.className ?? "bg-gray-100 text-gray-600"
+                                  statusConfig.className
                                 }`}
                               >
-                                {statusConfig?.label ?? version.status}
+                                {statusConfig.label}
                               </span>
                             </div>
 
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-muted-foreground mt-2">
                               {format(new Date(version.createdAt), "MMM d, yyyy 'at' h:mm a")}
                             </p>
 
                             {version.triggerDetail && (
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-muted-foreground mt-1">
                                 {version.triggerDetail}
                               </p>
                             )}
 
                             {version.createdByName && (
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-muted-foreground mt-1">
                                 By {version.createdByName}
                               </p>
                             )}
 
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {version.nodeCount} nodes · {version.edgeCount} edges
                             </p>
 
                             {version.label && (
-                              <p className="text-xs italic text-gray-500 mt-1">
+                              <p className="text-xs italic text-muted-foreground mt-1">
                                 “{version.label}”
                               </p>
                             )}
@@ -370,7 +368,7 @@ export default function VersionHistory({
                               variant="ghost"
                               size="sm"
                               onClick={() => setRestoreTarget(version)}
-                              className="h-7 px-2 text-xs text-teal-700 hover:text-teal-800 hover:bg-teal-50"
+                              className="h-7 px-2 text-xs text-foreground hover:text-foreground hover:bg-brand-lavender-lightest"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                               <span className="ml-1">Restore</span>
@@ -396,10 +394,10 @@ export default function VersionHistory({
         }}
       >
         <DialogContent className="max-w-5xl w-[95vw] h-[80vh] p-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 border-b border-gray-200">
+          <DialogHeader className="px-6 py-4 border-b border-border">
             <DialogTitle>
               {previewVersion
-                ? `Preview v${previewVersion.versionNumber}${previewVersion.label ? ` — ${previewVersion.label}` : ""}`
+                ? `Preview v${previewVersion.versionNumber}${previewVersion.label ? `: ${previewVersion.label}` : ""}`
                 : "Version preview"}
             </DialogTitle>
             <DialogDescription>
@@ -420,13 +418,13 @@ export default function VersionHistory({
                 elementsSelectable={false}
                 fitView
                 fitViewOptions={{ padding: 0.15 }}
-                className="bg-gray-50"
+                className="bg-secondary"
               >
                 <Background
                   variant={BackgroundVariant.Dots}
                   gap={16}
                   size={1}
-                  color="#e5e7eb"
+                  color="var(--border)"
                 />
                 <Controls showInteractive={false} position="bottom-left" />
               </ReactFlow>
@@ -458,7 +456,7 @@ export default function VersionHistory({
             <AlertDialogAction
               onClick={confirmRestore}
               disabled={restoring}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-primary hover:bg-primary/85 text-white"
             >
               {restoring && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Restore

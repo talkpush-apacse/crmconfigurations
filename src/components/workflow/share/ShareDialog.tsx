@@ -268,7 +268,7 @@ export default function ShareDialog({
                     <li key={level} className="rounded-lg border border-border p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">{title}{link ? <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">On</span> : <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Off</span>}</p>
+                          <p className="font-medium">{title}{link ? <span className="ml-2 rounded-full bg-brand-sage/25 px-2 py-0.5 text-[11px] font-semibold text-foreground">On</span> : <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Off</span>}</p>
                           <p className="text-xs text-muted-foreground">{caption}</p>
                         </div>
                         {!link ? (
@@ -318,7 +318,7 @@ export default function ShareDialog({
               </ul>
               <p className="mt-2 text-xs text-muted-foreground">For safety a link is shown only when it is created. To copy one again, get a new one; the old one then stops working.</p>
               {legacyLinkActive && (
-                <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-900">
+                <p className="mt-2 rounded-md bg-brand-amber/15 p-2 text-xs text-foreground">
                   This workflow also has an older single share link that still works for anyone who has it.{" "}
                   <button type="button" className="font-medium underline" onClick={onStopLegacyLink}>Turn it off</button>
                 </p>

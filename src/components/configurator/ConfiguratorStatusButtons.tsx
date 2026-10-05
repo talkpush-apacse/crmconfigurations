@@ -47,7 +47,7 @@ export function ConfiguratorStatusButtons({ value, onChange }: ConfiguratorStatu
             type="button"
             variant={active ? "default" : "outline"}
             size="sm"
-            className={cn("h-9 rounded-md", active ? option.activeClassName : option.className)}
+            className={cn("h-11 rounded-md md:h-9", active ? option.activeClassName : option.className)}
             onClick={() => onChange(option.value)}
           >
             {option.label}

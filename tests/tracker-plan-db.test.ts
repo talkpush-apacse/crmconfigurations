@@ -53,7 +53,7 @@ test("the standard plan: load, tailor, tick and untick", { skip }, async () => {
       title: "Plan test project",
       startDate: new Date("2026-10-05T00:00:00.000Z"), // a Monday
       ownerPersonId: owner.id,
-      phases: { create: ["Scoping", "Configuration", "Integration", "UAT", "Training", "Go-live", "Hypercare"].map((name, sortOrder) => ({ name, sortOrder })) },
+      phases: { create: ["Scoping", "Configuration", "UAT", "Training", "Go-live", "Hypercare"].map((name, sortOrder) => ({ name, sortOrder })) },
     },
   });
   const bare = await prisma.trackerProject.create({
