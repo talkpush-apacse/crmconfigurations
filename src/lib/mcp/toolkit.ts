@@ -17,6 +17,11 @@ export type ToolAccess = "read" | "write";
 /** Who is calling. Handlers use `ctx.actor` for the activity log, never a hard-coded name. */
 export interface ToolContext {
   actor: Actor;
+  /**
+   * True for a connection made by a read-only login. Such a connection is only given the tools that look at data;
+   * tools that change data are not even offered to Claude.
+   */
+  readOnly?: boolean;
 }
 
 export interface ToolDefinition<S extends ZodRawShape = ZodRawShape> {
@@ -50,6 +55,8 @@ export interface ToolModule {
    * onto defineTool; they behave exactly as before. Prefer `tools`.
    */
   legacy?: (server: McpServer) => void;
+  /** Which of the legacy tools only read. A read-only connection gets these and no other legacy tool. */
+  legacyReadTools?: ReadonlySet<string>;
   /** Errors whose message is written for people and safe to show as it is. Everything else gets a generic message. */
   isUserError?: (err: unknown) => err is Error;
   /** Prefix for server-side error logs, for example "tracker-mcp". */
@@ -99,13 +106,32 @@ export function assertUniqueToolNames(modules: ToolModule[]): void {
   }
 }
 
+/**
+ * A view of the server that only accepts the named tools. Used for the older, untagged tools: registering them through
+ * this view means anything not on the list is simply never offered.
+ */
+export function onlyTools(server: McpServer, allowed: ReadonlySet<string>): McpServer {
+  return new Proxy(server, {
+    get(target, prop, receiver) {
+      if (prop === "tool") {
+        return (name: string, ...rest: unknown[]) =>
+          allowed.has(name) ? (target.tool as (...a: unknown[]) => unknown)(name, ...rest) : undefined;
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
 export function registerModule(server: McpServer, module: ToolModule, ctx: ToolContext): void {
   for (const tool of module.tools) {
+    if (ctx.readOnly && tool.access !== "read") continue;
     server.tool(tool.name, tool.description, tool.input, async (args) =>
       runTool(module, () => tool.handler(args as never, ctx))
     );
   }
-  module.legacy?.(server);
+  if (module.legacy) {
+    module.legacy(ctx.readOnly ? onlyTools(server, module.legacyReadTools ?? new Set()) : server);
+  }
 }
 
 export interface ServerInfo {
@@ -117,7 +143,10 @@ export interface ServerInfo {
 /** One MCP server serving the given modules for one caller. Stateless: build a fresh one per request. */
 export function buildMcpServer(info: ServerInfo, modules: ToolModule[], ctx: ToolContext): McpServer {
   assertUniqueToolNames(modules);
-  const instructions = info.instructions ?? modules.map((m) => m.instructions).filter(Boolean).join("\n\n");
+  const base = info.instructions ?? modules.map((m) => m.instructions).filter(Boolean).join("\n\n");
+  const instructions = ctx.readOnly
+    ? `This connection is READ-ONLY (the person who connected it has a read-only login). Only tools that look at data are available. If asked to change anything, say it needs someone with an editor login.\n\n${base}`
+    : base;
   const server = new McpServer(
     { name: info.name, version: info.version },
     instructions ? { instructions } : undefined

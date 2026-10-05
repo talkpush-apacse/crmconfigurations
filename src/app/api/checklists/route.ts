@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Protected: list all checklists (all authenticated users see everything)
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();

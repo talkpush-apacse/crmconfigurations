@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useState } from "react";
 import { Eye, LineChart, Lock, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function MetricsView({ projectId, today }: { projectId: string; today: st
   const { data, error, reload } = useApiResource<{ metrics: MetricDTO[]; readings: Record<string, { asOf: string; value: number }[]> }>(
     `/api/tracker/projects/${projectId}/metrics`
   );
+  const { canEdit } = useCurrentUser();
   const [editing, setEditing] = useState<MetricDTO | null>(null);
   const [adding, setAdding] = useState(false);
   const [recording, setRecording] = useState<MetricDTO | null>(null);
@@ -43,7 +45,7 @@ export function MetricsView({ projectId, today }: { projectId: string; today: st
       <h2 className="sr-only">Success metrics</h2>
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">Numbers that show whether the project is working. Each has a baseline, a target and a history.</p>
-        {data.metrics.length > 0 && addButton}
+        {data.metrics.length > 0 && canEdit && addButton}
       </div>
 
       {data.metrics.length === 0 ? (
@@ -51,7 +53,7 @@ export function MetricsView({ projectId, today }: { projectId: string; today: st
           icon={LineChart}
           title="No success metrics yet"
           description="Add a baseline and a target, for example time to hire from 21 days down to 14. Record readings as you measure."
-          action={addButton}
+          action={canEdit ? addButton : undefined}
         />
       ) : (
         <ul className="grid gap-4 lg:grid-cols-2">
@@ -69,9 +71,11 @@ export function MetricsView({ projectId, today }: { projectId: string; today: st
                       {m.source ? `. Source: ${m.source}` : ""}
                     </p>
                   </div>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Edit ${m.name}`} onClick={() => setEditing(m)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {canEdit && (
+                    <Button variant="ghost" size="icon-sm" aria-label={`Edit ${m.name}`} onClick={() => setEditing(m)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
                 <dl className="mt-4 grid grid-cols-3 gap-3">
@@ -118,12 +122,14 @@ export function MetricsView({ projectId, today }: { projectId: string; today: st
                   </details>
                 )}
 
-                <div className="mt-4">
-                  <Button variant="outline" size="sm" onClick={() => setRecording(m)}>
-                    <Plus className="h-4 w-4" />
-                    Record a reading
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="mt-4">
+                    <Button variant="outline" size="sm" onClick={() => setRecording(m)}>
+                      <Plus className="h-4 w-4" />
+                      Record a reading
+                    </Button>
+                  </div>
+                )}
               </li>
             );
           })}

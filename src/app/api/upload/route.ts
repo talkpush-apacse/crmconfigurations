@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendOwnerNotification } from "@/lib/email";
@@ -67,7 +68,17 @@ export async function POST(request: NextRequest) {
     // that resolves to an existing checklist. The link itself is the access
     // control (same pattern as PUT /api/checklists/by-token/[token]).
     const adminCookie = request.cookies.get("admin_token")?.value;
-    const isAdmin = !!adminCookie && !!verifyToken(adminCookie);
+    let isAdmin = false;
+    if (adminCookie && verifyToken(adminCookie)) {
+      // A signed-in login is checked against the database: a read-only login may not upload, and a removed login
+      // is treated as a visitor (it then needs a valid editor or client link, below).
+      const auth = await requireAuth(request);
+      if (auth instanceof NextResponse) {
+        if (auth.status === 403) return auth;
+      } else {
+        isAdmin = true;
+      }
+    }
 
     if (!isAdmin) {
       const editorToken = (formData.get("editorToken") as string) || "";

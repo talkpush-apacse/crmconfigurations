@@ -25,6 +25,7 @@ import { computeGlobalOrder, dropAnchor } from "@/lib/tracker/board-order";
 import { describeDue, overdueDays } from "@/lib/tracker/dates";
 import { unmetDependencies } from "@/lib/tracker/dependencies";
 import { formatShortDate } from "@/lib/tracker/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
 import { ItemStatusBadge } from "./badges";
@@ -153,6 +154,7 @@ function Column({ status, items, children }: { status: ItemStatus; items: ItemDT
 }
 
 export function BoardView({ items, people, today, onOpen, onStatusChange, onReorder }: Props) {
+  const { canEdit } = useCurrentUser();
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -287,7 +289,7 @@ export function BoardView({ items, people, today, onOpen, onStatusChange, onReor
       )}
 
       <DndContext
-        sensors={sensors}
+        sensors={canEdit ? sensors : []}
         collisionDetection={closestCorners}
         accessibility={{ announcements }}
         onDragStart={handleDragStart}

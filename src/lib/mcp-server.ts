@@ -8,6 +8,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { CHECKLIST_READ_TOOLS } from "@/lib/mcp/checklist-read-tools";
+import { onlyTools } from "@/lib/mcp/toolkit";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   getCustomTabSectionState,
@@ -526,12 +528,13 @@ async function appendToAtsIntegration<
 // MCP Server Factory
 // ---------------------------------------------------------------------------
 
-export function createMcpServer(): McpServer {
+export function createMcpServer(options: { readOnly?: boolean } = {}): McpServer {
   const server = new McpServer({
     name: "CRM Config Checklist",
     version: "1.0.0",
   });
-  registerChecklistTools(server);
+  // A read-only connection is given the tools that look at data and no others.
+  registerChecklistTools(options.readOnly ? onlyTools(server, CHECKLIST_READ_TOOLS) : server);
   return server;
 }
 

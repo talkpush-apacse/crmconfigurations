@@ -13,6 +13,7 @@ import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from "@/components/t
 import { ProgressBar } from "@/components/tracker/ProgressBar";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
+import { useCurrentUser } from "@/lib/use-current-user";
 import type { AccountDTO, PortfolioProjectDTO } from "@/lib/tracker/client-types";
 import { formatDate, formatShortDate, plural } from "@/lib/tracker/format";
 
@@ -41,6 +42,7 @@ export default function PortfolioPage() {
     projectsRes.reload();
     accountsRes.reload();
   };
+  const { canEdit } = useCurrentUser();
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("current");
@@ -66,7 +68,7 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <PageHeader title="Project Tracker" description="Every client implementation, worst health first." actions={newProjectButton} />
+      <PageHeader title="Project Tracker" description="Every client implementation, worst health first." actions={canEdit ? newProjectButton : undefined} />
 
       {error ? (
         <ErrorBlock message={error} onRetry={load} />

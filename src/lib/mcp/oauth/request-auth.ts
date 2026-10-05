@@ -48,6 +48,11 @@ export function unauthorizedResponse(
   );
 }
 
+/** A connection made by a read-only login only gets tools that look at data. The older shared keys are unchanged. */
+export function isReadOnlyCaller(caller: McpCaller): boolean {
+  return caller.via === "oauth" && caller.connection.role !== "editor";
+}
+
 /** Name shown in the Activity log for changes made through this connection. */
 export function actorLabelFor(caller: McpCaller): string {
   return caller.via === "oauth" ? `Claude for ${caller.connection.email}` : "Claude (MCP)";

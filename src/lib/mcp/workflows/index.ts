@@ -46,7 +46,14 @@ export function createWorkflowModule(origin: string): ToolModule {
       description: def.description,
       access: WORKFLOW_READ_TOOLS.has(def.name) ? "read" : "write",
       input: inputShape(def.inputSchema),
-      handler: async (args, ctx) => callWorkflowTool(def.name, args, { origin, actor: ctx.actor.label }),
+      handler: async (args, ctx) => {
+        // run_gap_check is a "read" tool, but it can also SAVE its findings into the workflow. A read-only connection may
+        // run the check and read the result; it may not save.
+        if (ctx.readOnly && (args as { saveAsArtifacts?: unknown }).saveAsArtifacts === true) {
+          throw new McpToolInputError("This connection is read-only, so findings cannot be saved. Run the check again without saveAsArtifacts.");
+        }
+        return callWorkflowTool(def.name, args, { origin, actor: ctx.actor.label });
+      },
     })
   );
   return {

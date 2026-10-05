@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, FolderKanban, Pencil, Plus } from "lucide-react";
@@ -31,6 +32,7 @@ export default function AccountDetailPage() {
     accountRes.reload();
     projectsRes.reload();
   };
+  const { canEdit } = useCurrentUser();
   const [editingAccount, setEditingAccount] = useState(false);
   const [addingPerson, setAddingPerson] = useState(false);
   const [editingPerson, setEditingPerson] = useState<PersonDTO | null>(null);
@@ -50,6 +52,7 @@ export default function AccountDetailPage() {
         title={account.name}
         description={account.notes ?? undefined}
         actions={
+          canEdit ? (
           <>
             <Button variant="outline" onClick={() => setEditingAccount(true)}>
               <Pencil className="h-4 w-4" />
@@ -60,6 +63,7 @@ export default function AccountDetailPage() {
               New project
             </Button>
           </>
+          ) : undefined
         }
       />
 
@@ -73,10 +77,12 @@ export default function AccountDetailPage() {
             title="No projects for this account"
             description="Create the first project to start tracking open items."
             action={
-              <Button onClick={() => setCreatingProject(true)}>
-                <Plus className="h-4 w-4" />
-                New project
-              </Button>
+              canEdit ? (
+                <Button onClick={() => setCreatingProject(true)}>
+                  <Plus className="h-4 w-4" />
+                  New project
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -118,10 +124,12 @@ export default function AccountDetailPage() {
           <h2 id="people-heading" className="text-lg font-semibold tracking-tight">
             Contacts
           </h2>
-          <Button variant="outline" size="sm" className="max-md:h-11" onClick={() => setAddingPerson(true)}>
-            <Plus className="h-4 w-4" />
-            Add contact
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" className="max-md:h-11" onClick={() => setAddingPerson(true)}>
+              <Plus className="h-4 w-4" />
+              Add contact
+            </Button>
+          )}
         </div>
         {account.people.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
@@ -150,9 +158,11 @@ export default function AccountDetailPage() {
                     <TableCell>{PERSON_SIDE_LABELS[p.side as PersonSide] ?? p.side}</TableCell>
                     <TableCell className="hidden sm:table-cell">{p.email ?? ""}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditingPerson(p)}>
-                        Edit
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditingPerson(p)}>
+                          Edit
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
