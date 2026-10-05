@@ -32,7 +32,7 @@ export function AdminHeader() {
       <div className="flex items-center gap-2">
         <Link
           href="/admin/home"
-          className="flex min-h-11 items-center rounded-md text-sm font-semibold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-base md:min-h-0"
+          className="flex min-h-11 items-center rounded-md text-sm font-semibold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:text-base md:min-h-0"
         >
           <span className="hidden sm:inline">Talkpush Implementation Hub</span>
           <span className="sm:hidden">Implementation Hub</span>
@@ -42,7 +42,7 @@ export function AdminHeader() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex min-h-11 items-center gap-1 rounded-md bg-primary/10 px-3 py-1 text-xs font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 md:min-h-6 md:px-2"
+                className="flex min-h-11 items-center gap-1 rounded-md bg-primary/10 px-3 py-1 text-xs font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-6 md:px-2"
                 aria-label={`Switch module (current: ${activeModule.label})`}
               >
                 {activeModule.shortLabel}

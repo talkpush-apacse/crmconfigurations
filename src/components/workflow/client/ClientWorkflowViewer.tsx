@@ -851,7 +851,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                 <h2 className="text-base font-semibold">Send your suggestion</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{draftOps.length} change{draftOps.length === 1 ? "" : "s"}. Add a short note so the owner knows what you meant.</p>
                 <textarea
-                  className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
                   rows={3}
                   maxLength={200}
                   value={suggestSummary}

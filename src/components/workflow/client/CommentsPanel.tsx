@@ -84,7 +84,7 @@ function ReplyBox({ onSend }: { onSend: (body: string) => Promise<void> }) {
         }
       }}
     >
-      <input className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a reply" aria-label="Write a reply" maxLength={2000} autoFocus />
+      <input className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a reply" aria-label="Write a reply" maxLength={2000} autoFocus />
       <Button size="sm" type="submit" disabled={busy || !body.trim()}>Send</Button>
     </form>
   );
@@ -112,7 +112,7 @@ export function NewComment({ placeholder, onSend }: { placeholder: string; onSen
         }
       }}
     >
-      <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" rows={2} placeholder={placeholder} aria-label={placeholder} value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} />
+      <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70" rows={2} placeholder={placeholder} aria-label={placeholder} value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} />
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <Button size="sm" type="submit" disabled={busy || !body.trim()}>Comment</Button>
     </form>

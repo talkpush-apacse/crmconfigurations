@@ -48,7 +48,7 @@ export default async function AdminHomePage() {
                 <Link
                   key={module.id}
                   href={module.href}
-                  className="group flex min-h-11 flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="group flex min-h-11 flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/70"
                 >
                   <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary text-foreground">
                     <Icon className="h-5 w-5" aria-hidden="true" />

@@ -66,7 +66,7 @@ export default function SignOffBar({
             <label className="text-sm font-medium text-foreground" htmlFor="wf-changes">What needs to change?</label>
             <textarea
               id="wf-changes"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}

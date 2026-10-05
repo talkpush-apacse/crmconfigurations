@@ -72,7 +72,7 @@ export default function ProblemPage({
             <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} aria-label="Your name" />
             <Input type="email" placeholder="Your email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Your email" />
             <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70"
               rows={3}
               placeholder="Anything to add? (optional)"
               value={message}
