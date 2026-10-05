@@ -37,6 +37,9 @@ async function setup() {
 
 test("the standard plan: load, tailor, tick and untick", { skip }, async () => {
   const { call, prisma } = await setup();
+  // Both test files use the one global plan catalogue, and the test runner runs files at the same time.
+  // A database lock makes them take turns (the pool has one connection, so the lock lasts the whole test).
+  await prisma.$executeRaw`SELECT pg_advisory_lock(727001)`;
   const templateRoute = await import("../src/app/api/tracker/plan-template/route");
   const itemRoute = await import("../src/app/api/tracker/plan-template/items/[id]/route");
   const planRoute = await import("../src/app/api/tracker/projects/[id]/plan/route");
@@ -201,6 +204,7 @@ test("the standard plan: load, tailor, tick and untick", { skip }, async () => {
     await prisma.trackerProject.deleteMany({ where: { id: { in: [project.id, bare.id] } } });
     await prisma.trackerPerson.deleteMany({ where: { id: owner.id } });
     await prisma.trackerAccount.deleteMany({ where: { id: account.id } });
+    await prisma.$executeRaw`SELECT pg_advisory_unlock(727001)`;
     await prisma.$disconnect();
   }
 });

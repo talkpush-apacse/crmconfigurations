@@ -12,6 +12,8 @@ export interface HealthItem {
   isMilestone: boolean;
   archived: boolean;
   title?: string;
+  /** Added by a client and not yet reviewed by staff: left out of the health maths. */
+  needsReview?: boolean;
 }
 
 export interface HealthProject {
@@ -48,7 +50,7 @@ export function computeHealth(
   const t = HEALTH_THRESHOLDS;
   const offTrack: string[] = [];
   const atRisk: string[] = [];
-  const open = items.filter(isOpen);
+  const open = items.filter((i) => isOpen(i) && !i.needsReview);
 
   // Off track
   for (const m of open.filter((i) => i.isMilestone)) {

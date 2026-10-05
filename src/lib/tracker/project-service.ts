@@ -5,6 +5,7 @@ import { getChecklistProgress } from "@/lib/section-status";
 import type { Actor } from "./actor";
 import { diffFields, logActivity } from "./activity";
 import { DEFAULT_PHASES } from "./constants";
+import { needsStaffReview } from "./review";
 import { parseDateOnly, toDateOnly, todayDateOnly } from "./dates";
 import { listPeople } from "./directory-service";
 import { badRequest, notFound } from "./errors";
@@ -92,7 +93,7 @@ export async function listPortfolio(opts: { includeArchived?: boolean; accountId
       ...PROJECT_INCLUDE,
       items: {
         where: { archived: false },
-        select: { title: true, status: true, dueDate: true, isMilestone: true, archived: true },
+        select: { title: true, status: true, dueDate: true, isMilestone: true, archived: true, createdVia: true, staffReviewedAt: true },
       },
     },
   });
@@ -112,6 +113,7 @@ export async function listPortfolio(opts: { includeArchived?: boolean; accountId
         dueDate: toDateOnly(i.dueDate),
         isMilestone: i.isMilestone,
         archived: i.archived,
+        needsReview: needsStaffReview(i),
       })),
       today
     );
@@ -328,6 +330,7 @@ export async function getProjectDetail(id: string, opts: { includeArchived?: boo
       dueDate: i.dueDate,
       isMilestone: i.isMilestone,
       archived: i.archived,
+      needsReview: i.needsReview,
     })),
     todayDateOnly()
   );

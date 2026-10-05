@@ -245,6 +245,7 @@ model TrackerItem {
   archived           Boolean  @default(false)
   createdVia         String   @default("web")
   templateItemKey    String?  // which standard-plan item this was created from (null = added by hand)
+  staffReviewedAt    DateTime? // when staff reviewed an item a client added (null on a client-added item = still needs review)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -68,6 +68,15 @@ function ProjectWorkspace() {
     setSheetOpen(true);
   };
 
+  const markAllReviewed = async () => {
+    try {
+      await api(`/api/tracker/projects/${id}/review-all`, { method: "POST" });
+      load();
+    } catch (err) {
+      window.alert(errorMessage(err));
+    }
+  };
+
   const reorder = async (itemIds: string[]): Promise<string | null> => {
     try {
       await api(`/api/tracker/projects/${id}/order`, { method: "PUT", body: { itemIds } });
@@ -158,7 +167,18 @@ function ProjectWorkspace() {
       </header>
 
       <section aria-label="Project items">
-        <Tabs value={view} onValueChange={setView} className="gap-4">
+        {items.some((i) => i.needsReview) && (
+        <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-status-pending/50 bg-status-pending/15 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            {plural(items.filter((i) => i.needsReview).length, "item")} added by the client {items.filter((i) => i.needsReview).length === 1 ? "needs" : "need"} your review. The client can see them, but they do not count toward project health until you review them.
+          </p>
+          <Button variant="outline" size="sm" onClick={markAllReviewed}>
+            Mark all reviewed
+          </Button>
+        </div>
+      )}
+
+      <Tabs value={view} onValueChange={setView} className="gap-4">
           <TabsList aria-label="Project views" className="scrollbar-thin max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="list">List</TabsTrigger>
@@ -215,7 +235,7 @@ function ProjectWorkspace() {
         people={people}
         onSaved={() => void load()}
       />
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} />
       <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ProjectDialog
         open={settingsOpen}
