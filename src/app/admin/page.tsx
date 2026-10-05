@@ -833,14 +833,6 @@ export default function AdminDashboard() {
                                   {editorLinkCopied === c.id ? "Editor link copied" : "Copy editor link"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/admin/${c.slug}/configurator`}>
-                                    <FileText className="h-4 w-4" />
-                                    {c.configuratorChecklist
-                                      ? "View configurator checklist"
-                                      : "Generate configurator checklist"}
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
                                   <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
                                     <Download className="h-4 w-4" />
                                     Export to XLS
@@ -1041,14 +1033,6 @@ export default function AdminDashboard() {
                                         <Link2 className="h-4 w-4" />
                                       )}
                                       {editorLinkCopied === c.id ? "Editor link copied" : "Copy editor link"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                      <Link href={`/admin/${c.slug}/configurator`}>
-                                        <FileText className="h-4 w-4" />
-                                        {c.configuratorChecklist
-                                          ? "View configurator checklist"
-                                          : "Generate configurator checklist"}
-                                      </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                       <a href={`/api/export/${c.slug}`} target="_blank" rel="noopener noreferrer">
