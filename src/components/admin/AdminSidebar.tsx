@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutList, ChevronLeft, ChevronRight, FolderKanban, Building2, Users, GitBranch } from "lucide-react";
+import { ClipboardList, LayoutList, ChevronLeft, ChevronRight, FolderKanban, Building2, Users, GitBranch, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getActiveModule } from "@/lib/modules";
 
@@ -32,6 +32,7 @@ export function AdminSidebar() {
     { href: "/admin/tracker", label: "Portfolio", icon: FolderKanban, exact: true },
     { href: "/admin/tracker/accounts", label: "Accounts", icon: Building2, exact: false },
     { href: "/admin/tracker/team", label: "Team", icon: Users, exact: false },
+    { href: "/admin/tracker/plan", label: "Standard plan", icon: ListChecks, exact: false },
   ];
   const workflowNav = [{ href: "/admin/workflows", label: "Workflows", icon: GitBranch, exact: false }];
   const activeModule = getActiveModule(pathname);

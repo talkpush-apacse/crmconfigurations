@@ -3,10 +3,11 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ExternalLink, Plus, Settings, Share2 } from "lucide-react";
+import { ChevronLeft, ExternalLink, ListChecks, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
+import { BuildPlanDialog } from "@/components/tracker/BuildPlanDialog";
 import { MetricsView } from "@/components/tracker/MetricsView";
 import { ShareDialog } from "@/components/tracker/ShareDialog";
 import { SummaryView } from "@/components/tracker/SummaryView";
@@ -47,6 +48,7 @@ function ProjectWorkspace() {
   const [editingItem, setEditingItem] = useState<ItemDTO | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   const changeStatus = async (item: ItemDTO, status: ItemStatus, blockerReason?: string): Promise<string | null> => {
     try {
@@ -131,6 +133,10 @@ function ProjectWorkspace() {
           )}
         </div>
         <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={() => setPlanOpen(true)}>
+            <ListChecks className="h-4 w-4" />
+            Build plan
+          </Button>
           <Button variant="outline" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" />
             Share
@@ -210,6 +216,7 @@ function ProjectWorkspace() {
         onSaved={() => void load()}
       />
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} />
+      <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ProjectDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
