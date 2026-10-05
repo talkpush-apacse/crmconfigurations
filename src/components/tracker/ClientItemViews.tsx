@@ -1,12 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Flag } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Flag } from "lucide-react";
 import type { ClientView } from "@/lib/tracker/client-view";
 import { describeDue, overdueDays } from "@/lib/tracker/dates";
 import { unmetDependencies } from "@/lib/tracker/dependencies";
 import { formatShortDate } from "@/lib/tracker/format";
 import { ITEM_STATUS_LABELS, OPEN_ITEM_STATUSES, type ItemStatus } from "@/lib/tracker/constants";
+import {
+  DUE_FILTERS,
+  DUE_FILTER_LABELS,
+  SORT_KEY_LABELS,
+  SORT_OPTIONS,
+  ariaSort,
+  matchesDue,
+  nextSort,
+  sortFromValue,
+  sortRows,
+  sortToValue,
+  type DueFilter,
+  type SortKey,
+  type SortState,
+} from "@/lib/tracker/list-controls";
 import { cn } from "@/lib/utils";
 import { ItemStatusBadge } from "./badges";
 
@@ -71,46 +86,132 @@ function Owner({ item }: { item: PlanItem }) {
   );
 }
 
+const ALL = "__all";
+const OPEN = "__open";
+const NO_OWNER = "__no_owner";
+const NO_PHASE = "__no_phase";
+
+function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-h-10 w-full rounded-lg border border-[var(--es-line)] bg-[var(--es-card)] px-3 text-sm text-[var(--es-ink)] outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--es-ink)]/40 md:w-auto"
+    >
+      {children}
+    </select>
+  );
+}
+
+function SortHeader({ label, sortKey, sort, onSort }: { label: string; sortKey: SortKey; sort: SortState; onSort: (key: SortKey) => void }) {
+  const active = sort?.key === sortKey;
+  const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <th scope="col" aria-sort={ariaSort(sort, sortKey)} className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em]">
+      <button type="button" onClick={() => onSort(sortKey)} className="-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase tracking-[0.1em] outline-none focus-visible:ring-[3px] focus-visible:ring-white/60">
+        {label}
+        <Icon className={cn("h-3 w-3", active ? "opacity-100" : "opacity-60")} aria-hidden="true" />
+      </button>
+    </th>
+  );
+}
+
 export function ClientItemsList({ items, phases, today }: { items: readonly PlanItem[]; phases: readonly PlanPhase[]; today: string }) {
-  const [scope, setScope] = useState<"open" | "all">("open");
+  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [ownerFilter, setOwnerFilter] = useState(ALL);
+  const [phaseFilter, setPhaseFilter] = useState(ALL);
+  const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [sort, setSort] = useState<SortState>(null);
   const unmet = useUnmet(items);
   const phaseOrder = useMemo(() => new Map(phases.map((p, i) => [p.id, i])), [phases]);
   const openCount = items.filter((i) => isOpen(i.status)).length;
+  const owners = useMemo(() => [...new Set(items.map((i) => i.ownerName).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b)), [items]);
+  const hasUnowned = items.some((i) => !i.ownerName);
+  const statuses = useMemo(() => (Object.keys(ITEM_STATUS_LABELS) as ItemStatus[]).filter((s) => items.some((i) => i.status === s)), [items]);
   const visible = useMemo(
     () =>
-      items
-        .filter((i) => scope === "all" || isOpen(i.status))
-        .sort((a, b) => (a.phaseId ? (phaseOrder.get(a.phaseId) ?? 99) : 100) - (b.phaseId ? (phaseOrder.get(b.phaseId) ?? 99) : 100) || a.sortOrder - b.sortOrder),
-    [items, scope, phaseOrder]
+      sortRows(
+        items
+          .filter((i) => (statusFilter === ALL ? true : statusFilter === OPEN ? isOpen(i.status) : i.status === statusFilter))
+          .filter((i) => (ownerFilter === ALL ? true : ownerFilter === NO_OWNER ? !i.ownerName : i.ownerName === ownerFilter))
+          .filter((i) => (phaseFilter === ALL ? true : phaseFilter === NO_PHASE ? !i.phaseId : i.phaseId === phaseFilter))
+          .filter((i) => matchesDue(i, dueFilter, today)),
+        sort,
+        phaseOrder
+      ),
+    [items, statusFilter, ownerFilter, phaseFilter, dueFilter, today, sort, phaseOrder]
   );
+  const filtersActive = statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any";
+  const clearFilters = () => {
+    setStatusFilter(ALL);
+    setOwnerFilter(ALL);
+    setPhaseFilter(ALL);
+    setDueFilter("any");
+  };
 
   return (
     <div>
-      <div role="group" aria-label="Which items to show" className="mb-4 inline-flex rounded-lg bg-[var(--es-line)] p-[3px]">
-        {(
-          [
-            ["open", `Open items (${openCount})`],
-            ["all", `All items (${items.length})`],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={scope === value}
-            onClick={() => setScope(value)}
-            className={cn(
-              "min-h-9 rounded-md px-3 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--es-ink)]/40",
-              scope === value ? "bg-[var(--es-card)] font-medium shadow-sm" : "text-[var(--es-muted)] hover:text-[var(--es-ink)]"
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4 grid grid-cols-2 gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
+        <FilterSelect label="Filter by status" value={statusFilter} onChange={setStatusFilter}>
+          <option value={ALL}>All items ({items.length})</option>
+          <option value={OPEN}>Open items ({openCount})</option>
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {ITEM_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect label="Filter by owner" value={ownerFilter} onChange={setOwnerFilter}>
+          <option value={ALL}>All owners</option>
+          {owners.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+          {hasUnowned && <option value={NO_OWNER}>No owner yet</option>}
+        </FilterSelect>
+        <FilterSelect label="Filter by phase" value={phaseFilter} onChange={setPhaseFilter}>
+          <option value={ALL}>All phases</option>
+          {phases.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+          <option value={NO_PHASE}>No phase</option>
+        </FilterSelect>
+        <FilterSelect label="Filter by due date" value={dueFilter} onChange={(v) => setDueFilter(v as DueFilter)}>
+          {DUE_FILTERS.map((f) => (
+            <option key={f} value={f}>
+              {DUE_FILTER_LABELS[f]}
+            </option>
+          ))}
+        </FilterSelect>
+        <div className="col-span-2 md:hidden">
+          <FilterSelect label="Sort by" value={sortToValue(sort)} onChange={(v) => setSort(sortFromValue(v))}>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.value === "default" ? o.label : `Sort: ${o.label}`}
+              </option>
+            ))}
+          </FilterSelect>
+        </div>
       </div>
 
       {visible.length === 0 ? (
         <p className="rounded-[10px] border border-dashed border-[var(--es-line)] bg-[var(--es-card)] px-4 py-10 text-center text-sm text-[var(--es-muted)]">
-          {items.length === 0 ? "No items have been shared on this project yet." : "No open items right now."}
+          {items.length === 0 ? (
+            "No items have been shared on this project yet."
+          ) : (
+            <>
+              No items match these filters.{" "}
+              {filtersActive && (
+                <button type="button" className="font-medium text-[var(--es-ink)] underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--es-ink)]/40" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              )}
+            </>
+          )}
         </p>
       ) : (
         <>
@@ -118,10 +219,8 @@ export function ClientItemsList({ items, phases, today }: { items: readonly Plan
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-[var(--es-ink)] text-white">
-                  {["Item", "Status", "Owner", "Phase", "Due"].map((h) => (
-                    <th key={h} scope="col" className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em]">
-                      {h}
-                    </th>
+                  {(["item", "status", "owner", "phase", "due"] as const).map((key) => (
+                    <SortHeader key={key} label={SORT_KEY_LABELS[key]} sortKey={key} sort={sort} onSort={(k) => setSort(nextSort(sort, k))} />
                   ))}
                 </tr>
               </thead>

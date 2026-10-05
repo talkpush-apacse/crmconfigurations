@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Flag, Lock, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Flag, Lock, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,21 @@ import { ITEM_STATUSES, ITEM_STATUS_LABELS, OPEN_ITEM_STATUSES, type ItemStatus 
 import { unmetDependencies } from "@/lib/tracker/dependencies";
 import { describeDue, overdueDays } from "@/lib/tracker/dates";
 import { formatShortDate } from "@/lib/tracker/format";
+import {
+  DUE_FILTERS,
+  DUE_FILTER_LABELS,
+  SORT_KEY_LABELS,
+  SORT_OPTIONS,
+  ariaSort,
+  matchesDue,
+  nextSort,
+  sortFromValue,
+  sortRows,
+  sortToValue,
+  type DueFilter,
+  type SortKey,
+  type SortState,
+} from "@/lib/tracker/list-controls";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
@@ -63,12 +78,31 @@ function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status
   );
 }
 
+function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey: SortKey; sort: SortState; onSort: (key: SortKey) => void }) {
+  const active = sort?.key === sortKey;
+  const Icon = !active ? ArrowUpDown : sort.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead aria-sort={ariaSort(sort, sortKey)} className="text-xs font-semibold uppercase tracking-wider">
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase tracking-wider outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        {label}
+        <Icon className={cn("h-3 w-3", active ? "text-foreground" : "text-muted-foreground")} aria-hidden="true" />
+      </button>
+    </TableHead>
+  );
+}
+
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange }: Props) {
   const { canEdit } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState(ALL);
   const reviewCount = items.filter((i) => i.needsReview).length;
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
+  const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
   const [pendingBlock, setPendingBlock] = useState<ItemDTO | null>(null);
   const [rowError, setRowError] = useState("");
@@ -79,7 +113,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items
+    const filtered = items
       .filter((i) => {
         if (statusFilter === REVIEW) return i.needsReview;
         if (statusFilter === OPEN) return (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status);
@@ -89,12 +123,9 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       .filter((i) => (ownerFilter === ALL ? true : ownerFilter === UNASSIGNED ? !i.ownerPersonId : i.ownerPersonId === ownerFilter))
       .filter((i) => (phaseFilter === ALL ? true : phaseFilter === NONE ? !i.phaseId : i.phaseId === phaseFilter))
       .filter((i) => !q || i.title.toLowerCase().includes(q))
-      .sort((a, b) => {
-        const pa = a.phaseId ? (phaseOrder.get(a.phaseId) ?? 99) : 100;
-        const pb = b.phaseId ? (phaseOrder.get(b.phaseId) ?? 99) : 100;
-        return pa - pb || a.sortOrder - b.sortOrder;
-      });
-  }, [items, statusFilter, ownerFilter, phaseFilter, query, phaseOrder]);
+      .filter((i) => matchesDue(i, dueFilter, today));
+    return sortRows(filtered, sort, phaseOrder);
+  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today, sort, phaseOrder]);
 
   // Done and dropped items that the "Open items" filter is hiding, counted against the owner, phase and search
   // filters so the number matches what "Show all" would reveal.
@@ -107,19 +138,33 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       if (ownerFilter !== ALL && (ownerFilter === UNASSIGNED ? i.ownerPersonId : i.ownerPersonId !== ownerFilter)) continue;
       if (phaseFilter !== ALL && (phaseFilter === NONE ? i.phaseId : i.phaseId !== phaseFilter)) continue;
       if (q && !i.title.toLowerCase().includes(q)) continue;
+      if (!matchesDue(i, dueFilter, today)) continue;
       counts[i.status] += 1;
     }
     return counts;
-  }, [items, statusFilter, ownerFilter, phaseFilter, query]);
+  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today]);
+
+  const filtersActive = statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any" || query.trim() !== "";
+  const clearFilters = () => {
+    setStatusFilter(ALL);
+    setOwnerFilter(ALL);
+    setPhaseFilter(ALL);
+    setDueFilter("any");
+    setQuery("");
+  };
+
   // Plain-language description of the filters, for the header of an exported file.
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
-    parts.push(statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`);
+    parts.push(
+      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
+    );
     if (ownerFilter !== ALL) parts.push(`Owner: ${ownerFilter === UNASSIGNED ? "Unassigned" : (people.find((p) => p.id === ownerFilter)?.name ?? "Unknown")}`);
     if (phaseFilter !== ALL) parts.push(`Phase: ${phaseFilter === NONE ? "No phase" : (phases.find((p) => p.id === phaseFilter)?.name ?? "Unknown")}`);
+    if (dueFilter !== "any") parts.push(`Due: ${DUE_FILTER_LABELS[dueFilter]}`);
     if (query.trim()) parts.push(`Search: "${query.trim()}"`);
     return `${parts.join(". ")}.`;
-  }, [statusFilter, ownerFilter, phaseFilter, query, people, phases]);
+  }, [statusFilter, ownerFilter, phaseFilter, dueFilter, query, people, phases]);
 
   useEffect(() => {
     onVisibleChange?.({ items: visible, filterLabel });
@@ -183,9 +228,9 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+      <div className="mb-4 grid grid-cols-2 gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
         {items.length >= SEARCH_THRESHOLD && (
-          <div className="relative md:max-w-xs md:flex-1">
+          <div className="relative col-span-2 md:col-span-1 md:max-w-xs md:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input aria-label="Search items" placeholder="Search items" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
           </div>
@@ -233,6 +278,30 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             ))}
           </SelectContent>
         </Select>
+        <Select value={dueFilter} onValueChange={(v) => setDueFilter(v as DueFilter)}>
+          <SelectTrigger aria-label="Filter by due date" className="w-full md:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DUE_FILTERS.map((f) => (
+              <SelectItem key={f} value={f}>
+                {DUE_FILTER_LABELS[f]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortToValue(sort)} onValueChange={(v) => setSort(sortFromValue(v))}>
+          <SelectTrigger aria-label="Sort by" className="col-span-2 w-full md:hidden">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.value === "default" ? o.label : `Sort: ${o.label}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {rowError && (
@@ -256,7 +325,18 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
 
       {visible.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-          {items.length === 0 ? "No items yet. Add the first one." : "No items match these filters."}
+          {items.length === 0 ? (
+            "No items yet. Add the first one."
+          ) : (
+            <>
+              No items match these filters.{" "}
+              {filtersActive && (
+                <button type="button" className="font-medium text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              )}
+            </>
+          )}
         </p>
       ) : (
         <>
@@ -264,11 +344,9 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary hover:bg-secondary">
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Item</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Owner</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Phase</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Due</TableHead>
+                  {(["item", "status", "owner", "phase", "due"] as const).map((key) => (
+                    <SortableHead key={key} label={SORT_KEY_LABELS[key]} sortKey={key} sort={sort} onSort={(k) => setSort(nextSort(sort, k))} />
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
