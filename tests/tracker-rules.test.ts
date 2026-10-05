@@ -162,11 +162,15 @@ test("a milestone more than 5 days overdue is off track; exactly 5 is not", () =
   assert.equal(five.level, "at_risk"); // overdue, but not past the milestone threshold
 });
 
-test("two blocked items make a project at risk; one does not", () => {
+test("one blocked item is enough to make a project at risk", () => {
+  const one = computeHealth(project, [item({ status: "blocked" })], TODAY);
+  assert.equal(one.level, "at_risk");
+  assert.deepEqual(one.reasons, ["1 item is blocked."]);
   const two = computeHealth(project, [item({ status: "blocked" }), item({ status: "blocked" })], TODAY);
   assert.equal(two.level, "at_risk");
-  const one = computeHealth(project, [item({ status: "blocked" })], TODAY);
-  assert.equal(one.level, "on_track");
+  assert.deepEqual(two.reasons, ["2 items are blocked."]);
+  const none = computeHealth(project, [item({ status: "in_progress" })], TODAY);
+  assert.equal(none.level, "on_track");
 });
 
 test("an item due within 7 days and not started is at risk", () => {

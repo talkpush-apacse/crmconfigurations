@@ -55,14 +55,20 @@ function snapshot(items: SnapshotItem[], projectOver: Partial<SnapshotInput["pro
 
 test("the headline never hides a single blocked or overdue item", () => {
   const s = snapshot([item({ id: "a", title: "A", status: "blocked", blockerReason: "IT window", ownerSide: "talkpush" })]);
-  assert.equal(s.health.level, "on_track"); // one blocked item is below the at-risk threshold
+  assert.equal(s.health.level, "at_risk"); // one blocked item is enough to make a project at risk
   assert.match(s.headline, /1 item is blocked/);
   assert.doesNotMatch(s.headline, /nothing is overdue or blocked/);
 });
 
 test("on track with an exception leads with the exception and keeps the target", () => {
+  // A blocked item now makes health At risk, so the On track wording is reached with a manual On track setting.
+  assert.equal(
+    buildHeadline({ level: "on_track", firstReason: null, targetDate: "2026-12-01", projectStatus: "active", waitingOnClientCount: 0, clientOwnedOpenCount: 0, blockedCount: 1 }),
+    "On track for 1 Dec 2026, but 1 item is blocked."
+  );
+  // The computed case: At risk, reason first, and the blocker's free-text reason stays out of the headline.
   const s = snapshot([item({ id: "a", title: "A", status: "blocked", blockerReason: "IT window", ownerSide: "talkpush" })]);
-  assert.equal(s.headline, "On track for 1 Dec 2026, but 1 item is blocked.");
+  assert.match(s.headline, /^At risk\. 1 item is blocked\. Target 1 Dec 2026\./);
   assert.doesNotMatch(s.headline, /IT window/, "the blocker reason stays out of the headline");
 });
 

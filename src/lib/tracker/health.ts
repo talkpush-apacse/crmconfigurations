@@ -67,7 +67,7 @@ export function computeHealth(
   // At risk
   const blocked = open.filter((i) => i.status === "blocked").length;
   if (blocked >= t.atRiskBlockedItems) {
-    atRisk.push(`${blocked} items are blocked.`);
+    atRisk.push(`${blocked} ${blocked === 1 ? "item is" : "items are"} blocked.`);
   }
   const soon = addDays(today, t.atRiskNotStartedDueWithinDays);
   const notStartedSoon = open.filter(
