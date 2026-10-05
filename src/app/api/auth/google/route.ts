@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import { NextRequest, NextResponse } from "next/server";
+import { planGoogleSignIn } from "@/lib/google-sign-in";
 
 const GOOGLE_STATE_COOKIE = "admin_google_oauth_state";
 const STATE_MAX_AGE_SECONDS = 10 * 60;
@@ -27,6 +28,11 @@ export async function GET(request: NextRequest) {
   if (!config) {
     return redirectToLogin(request, "google_config");
   }
+
+  // Sign-in has to start on the address Google will return to (see lib/google-sign-in.ts).
+  const plan = planGoogleSignIn(request.url, process.env.GOOGLE_REDIRECT_URI?.trim());
+  if (plan.action === "move") return NextResponse.redirect(plan.url);
+  if (plan.action === "unavailable") return redirectToLogin(request, "google_unavailable");
 
   const state = randomBytes(32).toString("hex");
   const client = new OAuth2Client(

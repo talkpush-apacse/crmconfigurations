@@ -24,11 +24,15 @@ export default function AdminLoginPage() {
     const errorCode = params.get("error");
 
     if (errorCode === "unauthorized") {
-      setError("This Google account is not authorized. Contact an administrator.");
+      setError(
+        "This Google account has not been given access yet. Ask an editor to add your email under Users, then try again. Make sure you choose your talkpush.com Google account."
+      );
     } else if (errorCode === "google_config") {
       setError("Google sign-in is not configured. Contact an administrator.");
     } else if (errorCode === "oauth_state") {
-      setError("Google sign-in expired. Please try again.");
+      setError("Google sign-in did not finish. Please click the Google button again and complete it in the same tab.");
+    } else if (errorCode === "google_unavailable") {
+      setError("Google sign-in is not available on this address. Use the live site, or sign in with your email and password.");
     }
   }, []);
 
