@@ -42,7 +42,7 @@ export default function DeleteConfirmDialog({
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Delete

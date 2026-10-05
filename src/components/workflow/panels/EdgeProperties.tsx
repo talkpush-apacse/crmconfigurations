@@ -78,13 +78,13 @@ export default function EdgeProperties({
   const data = normalizeData(edge.data);
 
   return (
-    <div className="w-80 h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
-        <h2 className="text-sm font-semibold text-gray-900">Edge Properties</h2>
+    <div className="w-80 h-full bg-card border-l border-border flex flex-col overflow-hidden max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-30 max-md:!w-[min(20rem,90vw)] max-md:shadow-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <h2 className="text-sm font-semibold text-foreground">Edge Properties</h2>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+          className="h-11 w-11 p-0 text-muted-foreground hover:text-foreground/70 md:h-7 md:w-7"
           onClick={onClose}
         >
           <X className="w-4 h-4" />
@@ -93,7 +93,7 @@ export default function EdgeProperties({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <section>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
+          <label className="text-sm font-medium text-foreground/85 mb-2 block">
             Line Type
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -110,8 +110,8 @@ export default function EdgeProperties({
                   className={cn(
                     "flex min-h-16 flex-col items-center justify-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-colors",
                     active
-                      ? "border-teal-600 bg-teal-600 text-white"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                      ? "border-primary bg-primary text-white"
+                      : "border-border bg-card text-foreground/70 hover:border-brand-lavender hover:bg-brand-lavender-lightest hover:text-foreground"
                   )}
                 >
                   <LinePreview type={lineType.value} />
@@ -122,12 +122,12 @@ export default function EdgeProperties({
           </div>
         </section>
 
-        <section className="space-y-3 border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <section className="space-y-3 border-t border-border/50 pt-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Markers
           </p>
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
+            <label className="text-sm font-medium text-foreground/85 mb-1 block">
               Start Point
             </label>
             <Select
@@ -136,7 +136,7 @@ export default function EdgeProperties({
                 onChange(edge.id, { markerStart: value as EdgeMarkerType })
               }
             >
-              <SelectTrigger className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500">
+              <SelectTrigger className="border border-input bg-card focus:ring-2 focus:ring-ring">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -149,7 +149,7 @@ export default function EdgeProperties({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
+            <label className="text-sm font-medium text-foreground/85 mb-1 block">
               End Point
             </label>
             <Select
@@ -158,7 +158,7 @@ export default function EdgeProperties({
                 onChange(edge.id, { markerEnd: value as EdgeMarkerType })
               }
             >
-              <SelectTrigger className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500">
+              <SelectTrigger className="border border-input bg-card focus:ring-2 focus:ring-ring">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,23 +172,23 @@ export default function EdgeProperties({
           </div>
         </section>
 
-        <section className="border-t border-gray-100 pt-4">
-          <label className="text-sm font-medium text-gray-700 mb-1 block">
+        <section className="border-t border-border/50 pt-4">
+          <label className="text-sm font-medium text-foreground/85 mb-1 block">
             Edge Label
           </label>
           <Input
             value={data.label ?? ""}
             onChange={(event) => onChange(edge.id, { label: event.target.value })}
             placeholder="e.g. Yes, No, If qualified..."
-            className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
           />
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Labels appear on the connector line
           </p>
         </section>
 
-        <section className="border-t border-gray-100 pt-4 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <section className="border-t border-border/50 pt-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Path Type
           </p>
           <Select
@@ -197,7 +197,7 @@ export default function EdgeProperties({
               onChange(edge.id, { pathSemantic: value as PathSemantic })
             }
           >
-            <SelectTrigger className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500">
+            <SelectTrigger className="border border-input bg-card focus:ring-2 focus:ring-ring">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -210,14 +210,14 @@ export default function EdgeProperties({
 
           {data.pathSemantic === "recovery" && (
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
+              <label className="text-sm font-medium text-foreground/85 mb-1 block">
                 Recovery Label
               </label>
               <Input
                 value={data.recoveryLabel ?? ""}
                 onChange={(e) => onChange(edge.id, { recoveryLabel: e.target.value })}
                 placeholder="e.g. Return to screening"
-                className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
               />
             </div>
           )}
@@ -227,43 +227,43 @@ export default function EdgeProperties({
             role="switch"
             aria-checked={data.isPrimary !== false}
             onClick={() => onChange(edge.id, { isPrimary: data.isPrimary === false })}
-            className="flex w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-left transition-colors hover:bg-gray-50"
+            className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-secondary"
           >
             <div>
-              <span className="text-sm font-medium text-gray-700 block">
+              <span className="text-sm font-medium text-foreground/85 block">
                 Primary path
               </span>
-              <span className="text-xs text-gray-400">
-                Main hiring flow — gets whole step numbers when Re-numbered
+              <span className="text-xs text-muted-foreground">
+                Main hiring flow. Gets whole step numbers when re-numbered.
               </span>
             </div>
             <span
               className={cn(
                 "relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors",
-                data.isPrimary !== false ? "bg-teal-600" : "bg-gray-200"
+                data.isPrimary !== false ? "bg-primary" : "bg-muted-foreground/40"
               )}
             >
               <span
                 className={cn(
-                  "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                  "absolute top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform",
                   data.isPrimary !== false ? "translate-x-4" : "translate-x-0.5"
                 )}
               />
             </span>
           </button>
           {data.isPrimary === false && (
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Branch edges receive decimal suffixes (e.g. 4.1, 4.2) when Re-numbered.
             </p>
           )}
         </section>
 
-        <section className="space-y-4 border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <section className="space-y-4 border-t border-border/50 pt-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Appearance
           </p>
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground/85 mb-2 block">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -278,7 +278,7 @@ export default function EdgeProperties({
                     onClick={() => onChange(edge.id, { strokeColor: color.value })}
                     className={cn(
                       "h-7 w-7 rounded-full border-2 border-white shadow-sm transition",
-                      active && "ring-2 ring-gray-800 ring-offset-1"
+                      active && "ring-2 ring-foreground ring-offset-1"
                     )}
                     style={{ backgroundColor: color.value }}
                   />
@@ -288,7 +288,7 @@ export default function EdgeProperties({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground/85 mb-2 block">
               Width
             </label>
             <div className="flex gap-2">
@@ -302,8 +302,8 @@ export default function EdgeProperties({
                     className={cn(
                       "h-8 w-10 rounded-md border text-xs font-medium transition-colors",
                       active
-                        ? "border-teal-600 bg-teal-600 text-white"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-teal-200 hover:bg-teal-50"
+                        ? "border-primary bg-primary text-white"
+                        : "border-border bg-card text-foreground/70 hover:border-brand-lavender hover:bg-brand-lavender-lightest"
                     )}
                   >
                     {width}
@@ -318,20 +318,20 @@ export default function EdgeProperties({
             role="switch"
             aria-checked={Boolean(data.animated)}
             onClick={() => onChange(edge.id, { animated: !data.animated })}
-            className="flex w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-left transition-colors hover:bg-gray-50"
+            className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-secondary"
           >
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-foreground/85">
               Animated (dashed)
             </span>
             <span
               className={cn(
                 "relative h-5 w-9 rounded-full transition-colors",
-                data.animated ? "bg-teal-600" : "bg-gray-200"
+                data.animated ? "bg-primary" : "bg-muted-foreground/40"
               )}
             >
               <span
                 className={cn(
-                  "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                  "absolute top-0.5 h-4 w-4 rounded-full bg-card shadow transition-transform",
                   data.animated ? "translate-x-4" : "translate-x-0.5"
                 )}
               />

@@ -14,9 +14,9 @@ import { downloadTalkpushUsersCsv } from "@/lib/talkpush-export";
 
 // Role definitions, shown in the Access Type column tooltip.
 const referenceData = [
-  { role: "Owner", description: "Full platform access — can manage users, campaigns, settings, and all data." },
-  { role: "Manager", description: "Standard access — can manage candidates, campaigns, and view reports." },
-  { role: "Limited Manager", description: "Read-only access — can view data but cannot make changes." },
+  { role: "Owner", description: "Full platform access. Can manage users, campaigns, settings, and all data." },
+  { role: "Manager", description: "Standard access. Can manage candidates, campaigns, and view reports." },
+  { role: "Limited Manager", description: "Read-only access. Can view data but cannot make changes." },
 ];
 
 const columns: ColumnDef[] = [
@@ -26,7 +26,7 @@ const columns: ColumnDef[] = [
         <p>Role determining platform access level</p>
         {referenceData.map((r) => (
           <p key={r.role}>
-            <strong>{r.role}</strong> — {r.description}
+            <strong>{r.role}</strong>: {r.description}
           </p>
         ))}
       </>

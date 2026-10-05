@@ -133,7 +133,7 @@ function SortableTemplateItem({
                   {template.name || "Untitled Template"}
                 </span>
                 {notApplicable && (
-                  <span className="rounded-full border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="rounded-full border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Not applicable
                   </span>
                 )}
@@ -162,7 +162,7 @@ function SortableTemplateItem({
                   }
                 />
                 <span className="text-xs text-gray-700">
-                  Not applicable to us — leave this template out of the build
+                  Not applicable to us. Leave this template out of the build
                 </span>
               </label>
             )}
@@ -176,7 +176,7 @@ function SortableTemplateItem({
                   value={template.name}
                   onChange={(e) => handleUpdate(idx, "name", e.target.value)}
                   placeholder="e.g., Invitation"
-                  className={`mt-1 ${nameEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
+                  className={`max-md:min-h-11 mt-1 ${nameEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
                 />
                 {nameEmpty && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
@@ -190,7 +190,7 @@ function SortableTemplateItem({
                   value={template.language}
                   onChange={(e) => handleUpdate(idx, "language", e.target.value)}
                   placeholder="e.g., English"
-                  className="mt-1"
+                  className="max-md:min-h-11 mt-1"
                 />
               </div>
             </div>
@@ -202,7 +202,7 @@ function SortableTemplateItem({
                   value={template.purpose}
                   onChange={(e) => handleUpdate(idx, "purpose", e.target.value)}
                   placeholder="What this template is used for"
-                  className={`mt-1 ${purposeEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
+                  className={`max-md:min-h-11 mt-1 ${purposeEmpty ? "border-red-400 focus:ring-red-400 focus:border-red-400" : ""}`}
                 />
                 {purposeEmpty && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
@@ -216,7 +216,7 @@ function SortableTemplateItem({
                   value={template.folder}
                   onChange={(e) => handleUpdate(idx, "folder", e.target.value)}
                   placeholder="e.g., Inbox"
-                  className="mt-1"
+                  className="max-md:min-h-11 mt-1"
                 />
               </div>
             </div>
@@ -241,7 +241,7 @@ function SortableTemplateItem({
                           value={template.emailSubject || ""}
                           onChange={(e) => handleUpdate(idx, "emailSubject", e.target.value)}
                           placeholder="Enter email subject line..."
-                          className="mt-1 text-sm"
+                          className="max-md:min-h-11 mt-1 text-sm"
                         />
                       </div>
                     )}
@@ -281,7 +281,7 @@ function SortableTemplateItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-primary"
+                  className="max-md:min-h-11 text-primary"
                   onClick={() => handleDuplicate(idx)}
                 >
                   <Copy className="mr-1 h-3.5 w-3.5" />
@@ -290,7 +290,7 @@ function SortableTemplateItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={confirmingDelete ? "text-destructive bg-red-50 scale-105" : "text-destructive"}
+                  className={confirmingDelete ? "text-destructive bg-destructive/10 scale-105 max-md:min-h-11" : "text-destructive max-md:min-h-11"}
                   onClick={handleDeleteClick}
                   title={confirmingDelete ? "Click again to confirm delete" : "Delete template"}
                 >
@@ -455,7 +455,7 @@ export function MessagingSheet() {
 
       {!isReadOnly && (
         <div className="mt-4 flex items-center gap-3">
-          <Button
+          <Button className="max-md:min-h-11"
             variant="outline"
             onClick={handleAdd}
             disabled={hasValidationErrors}

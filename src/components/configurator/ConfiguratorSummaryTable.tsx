@@ -33,7 +33,7 @@ export function ConfiguratorSummaryTable({ sourceData, onExport, exporting }: Co
           size="sm"
           onClick={onExport}
           disabled={exporting}
-          className="rounded-md bg-emerald-800 text-white hover:bg-emerald-900"
+          className="max-md:min-h-11 rounded-md bg-emerald-800 text-white hover:bg-emerald-900"
         >
           <Download className="h-4 w-4" />
           {exporting ? "Preparing..." : "Export Steps as Spreadsheet"}

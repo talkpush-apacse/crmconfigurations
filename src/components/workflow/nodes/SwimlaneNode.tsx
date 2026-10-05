@@ -33,8 +33,8 @@ export default function SwimlaneNode({ id, data, selected }: SwimlaneNodeProps) 
         isVisible={selected}
         minWidth={300}
         minHeight={150}
-        lineStyle={{ borderColor: "#0EA5E9", borderWidth: 2 }}
-        handleStyle={{ width: 8, height: 8, borderColor: "#0EA5E9", backgroundColor: "white" }}
+        lineStyle={{ borderColor: "var(--ring)", borderWidth: 2 }}
+        handleStyle={{ width: 8, height: 8, borderColor: "var(--ring)", backgroundColor: "var(--card)" }}
       />
 
       {/* Outer border */}
@@ -72,7 +72,7 @@ export default function SwimlaneNode({ id, data, selected }: SwimlaneNodeProps) 
           </span>
         )}
         {selected && (
-          <span className="ml-auto text-[9px] text-sky-400 shrink-0">double-click to rename</span>
+          <span className="ml-auto text-[11px] text-sky-600 shrink-0">double-click to rename</span>
         )}
       </div>
     </div>

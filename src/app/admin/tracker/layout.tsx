@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { TrackerMobileNav } from "@/components/tracker/TrackerMobileNav";
+
+// Every tracker page names itself in the browser tab. Child routes give a short title and the template adds the site name.
+export const metadata: Metadata = {
+  title: { default: "Tracker | Talkpush Implementation Hub", template: "%s | Talkpush Implementation Hub" },
+};
 
 export default function TrackerLayout({ children }: { children: React.ReactNode }) {
   return (

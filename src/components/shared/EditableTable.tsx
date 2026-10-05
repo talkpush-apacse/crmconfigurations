@@ -405,12 +405,12 @@ function SortableRow<TRow extends EditableRow>({
                 {!isExpanded && detailFilledCount && detailFilledCount.total > 0 && (
                   <span
                     className={cn(
-                      "mt-0.5 rounded px-1 text-[9px] font-semibold leading-tight",
+                      "mt-0.5 rounded px-1 text-[11px] font-semibold leading-tight",
                       detailFilledCount.filled === 0
                         ? "bg-gray-100 text-gray-500"
                         : detailFilledCount.filled === detailFilledCount.total
-                          ? "bg-brand-sage-lightest text-green-700"
-                          : "bg-amber-100 text-amber-700"
+                          ? "bg-brand-sage-lightest text-foreground"
+                          : "bg-brand-amber-lightest text-foreground"
                     )}
                   >
                     {detailFilledCount.filled}/{detailFilledCount.total}
@@ -479,7 +479,7 @@ function SortableRow<TRow extends EditableRow>({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                  className="max-md:min-h-11 max-md:min-w-11 h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
                   onClick={() => onDuplicate(rowIdx)}
                   title="Duplicate row"
                 >
@@ -491,7 +491,7 @@ function SortableRow<TRow extends EditableRow>({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
+                    className="max-md:min-h-11 h-7 px-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
                     onClick={() => handleDeleteClick(sortableId, rowIdx)}
                     title="Confirm delete"
                   >
@@ -500,7 +500,7 @@ function SortableRow<TRow extends EditableRow>({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:bg-gray-100"
+                    className="max-md:min-h-11 max-md:min-w-11 h-8 w-8 text-muted-foreground hover:bg-gray-100"
                     onClick={clearConfirmingDelete}
                     title="Cancel"
                   >
@@ -511,7 +511,7 @@ function SortableRow<TRow extends EditableRow>({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
+                  className="max-md:min-h-11 max-md:min-w-11 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={() => requestDelete ? requestDelete(rowIdx) : handleDeleteClick(sortableId, rowIdx)}
                   title="Delete row"
                 >
@@ -525,7 +525,7 @@ function SortableRow<TRow extends EditableRow>({
       {(detailColumns || renderDetail) && isExpanded && (
         <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
           <TableCell colSpan={columns.length + 2 + (bulkRow?.enabled ? 1 : 0)} className="p-0">
-            <div className="px-6 py-4 ml-8 border-l-2 border-primary/20 bg-gray-50 rounded-sm">
+            <div className="ml-8 rounded-md border border-border bg-gray-50 px-6 py-4">
               {renderDetail ? (
                 renderDetail({ row, rowIdx })
               ) : (
@@ -653,7 +653,7 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                className="size-11 text-muted-foreground hover:text-primary hover:bg-gray-100"
                 onClick={() => onDuplicate(rowIdx)}
                 title="Duplicate row"
                 aria-label={`Duplicate row ${rowIdx + 1}`}
@@ -664,7 +664,7 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
+              className="size-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={() => onDelete(rowIdx)}
               title="Delete row"
               aria-label={`Delete row ${rowIdx + 1}`}
@@ -1033,7 +1033,7 @@ export function EditableTable<TRow extends EditableRow>({
       const cellsWritten = grid.length - droppedRows;
       if (droppedRows > 0) {
         showPasteNotice(
-          `Pasted ${cellsWritten} row${cellsWritten === 1 ? "" : "s"}. ${droppedRows} more ${droppedRows === 1 ? "was" : "were"} not added — a single paste can add at most ${maxNewRows} rows.`,
+          `Pasted ${cellsWritten} row${cellsWritten === 1 ? "" : "s"}. ${droppedRows} more ${droppedRows === 1 ? "was" : "were"} not added. A single paste can add at most ${maxNewRows} rows.`,
           "warn"
         );
       } else if (droppedColumns > 0) {
@@ -1237,9 +1237,11 @@ export function EditableTable<TRow extends EditableRow>({
   const stickyLeftFor = (colIdx: number): number | undefined =>
     stickyColumns && colIdx === 0 ? firstDataColLeft : undefined;
 
-  // Only give the table its own scroll viewport once there's enough content to
-  // warrant it — a short table shouldn't grow an inner scrollbar.
-  const useStickyViewport = spreadsheetMode && data.length > 8;
+  // The spreadsheet is its own scroll viewport sized to the screen, so the pinned
+  // header always sticks and the grid fills the space under the page chrome
+  // instead of sitting in a short box. Rows scroll inside it; a short table
+  // keeps a floor height so it reads as a work surface, not a strip.
+  const useStickyViewport = spreadsheetMode;
 
   const tableContent = (
     <div>
@@ -1254,11 +1256,11 @@ export function EditableTable<TRow extends EditableRow>({
         />
       )}
       {showCompleteState && (
-        <div className="mb-2 flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+        <div className="mb-2 flex items-start gap-2 rounded-md border border-brand-sage-darker/30 bg-brand-sage-lightest px-3 py-2 text-sm text-foreground">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p className="font-medium">Section complete</p>
-            <p className="mt-0.5 text-xs text-green-800">All required fields in this table are filled.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">All required fields in this table are filled.</p>
           </div>
         </div>
       )}
@@ -1288,7 +1290,7 @@ export function EditableTable<TRow extends EditableRow>({
               size="sm"
               variant="outline"
               onClick={() => jumpToIssue()}
-              className="h-8 shrink-0 border-amber-300 bg-white text-xs text-amber-950 hover:bg-amber-100"
+              className="min-h-11 shrink-0 border-amber-300 bg-white text-xs text-amber-950 hover:bg-amber-100 md:h-8 md:min-h-0"
             >
               <ArrowDownCircle className="mr-1.5 h-3.5 w-3.5" />
               Jump to first issue
@@ -1302,8 +1304,8 @@ export function EditableTable<TRow extends EditableRow>({
           className={cn(
             "mb-2 flex items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-xs",
             pasteNotice.tone === "warn"
-              ? "border-amber-200 bg-amber-50 text-amber-800"
-              : "border-green-200 bg-green-50 text-green-700"
+              ? "border-brand-amber/50 bg-brand-amber-lightest text-foreground"
+              : "border-border bg-secondary text-foreground"
           )}
         >
           {pasteNotice.tone === "warn" ? (
@@ -1330,7 +1332,7 @@ export function EditableTable<TRow extends EditableRow>({
         <div className="space-y-3 md:hidden">
           {sampleRow && (
             <div className="rounded-lg border border-brand-lavender/30 bg-brand-lavender-lightest p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-lavender-darker">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
                 Sample row
               </p>
               <div className="mt-3 space-y-2">
@@ -1339,8 +1341,8 @@ export function EditableTable<TRow extends EditableRow>({
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       {col.label}
                     </p>
-                    <p className="mt-0.5 break-words text-sm text-brand-lavender-darker">
-                      {sampleRow[col.key] || "—"}
+                    <p className="mt-0.5 break-words text-sm italic text-foreground/75">
+                      {sampleRow[col.key] || "Empty"}
                     </p>
                   </div>
                 ))}
@@ -1361,7 +1363,7 @@ export function EditableTable<TRow extends EditableRow>({
                   variant="outline"
                   size="sm"
                   onClick={onAdd}
-                  className="mt-4 border-primary/40 text-primary hover:border-primary/70"
+                  className="mt-4 min-h-11 border-primary/40 text-primary hover:border-primary/70 md:min-h-0"
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   {hasRequiredCompletionSignal ? `${addLabel} to start` : addLabel}
@@ -1416,7 +1418,7 @@ export function EditableTable<TRow extends EditableRow>({
 
           {!isReadOnly && !hideAddButton && data.length > 0 && (
             <div className="rounded-lg border border-dashed border-border p-2">
-              <Button variant="outline" size="sm" onClick={onAdd} className="w-full text-primary border-primary/30 hover:border-primary/60">
+              <Button variant="outline" size="sm" onClick={onAdd} className="min-h-11 w-full text-primary border-primary/30 hover:border-primary/60 md:min-h-0">
                 <Plus className="mr-1 h-4 w-4" />
                 {addLabel}
               </Button>
@@ -1441,7 +1443,8 @@ export function EditableTable<TRow extends EditableRow>({
         <Table
           containerRef={scrollBoxRef}
           containerClassName={cn(
-            useStickyViewport && "max-h-[70vh] overflow-y-auto"
+            useStickyViewport &&
+              "max-h-[calc(100dvh-16rem)] min-h-[max(18rem,calc(100dvh-20rem))] overflow-y-auto"
           )}
           // Fixed layout so declared widths are honoured instead of the
           // browser redistributing them by content length.
@@ -1522,9 +1525,11 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableHead
                   key={col.key}
                   className={cn(
-                    "text-[12px] font-semibold uppercase tracking-[0.05em]",
+                    "text-[11px] font-semibold uppercase tracking-[0.05em]",
                     spreadsheetMode ? "text-slate-600" : "text-white",
-                    spreadsheetMode && "relative",
+                    // Fixed column widths clip a long label ("APPLICATION ..."), so let
+                    // it wrap onto a second line instead of cutting it off.
+                    spreadsheetMode && "relative h-auto min-h-10 whitespace-normal break-words py-1.5 leading-tight",
                     stickyColumns && [
                       spreadsheetMode ? "sticky top-0 bg-slate-100" : "sticky top-0 bg-primary",
                       // Border-collapse drops borders on sticky cells, so the
@@ -1612,7 +1617,7 @@ export function EditableTable<TRow extends EditableRow>({
           <TableBody>
             {/* Pinned sample row — read-only reference, not counted in real row numbering */}
             {sampleRow && (
-              <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest border-l-4 border-brand-lavender">
+              <TableRow className="bg-brand-lavender-lightest hover:bg-brand-lavender-lightest">
                 {bulkEnabled && (
                   <TableCell
                     className={cn(
@@ -1628,7 +1633,7 @@ export function EditableTable<TRow extends EditableRow>({
                   )}
                   style={stickyColumns ? { left: numColLeft } : undefined}
                 >
-                  <span className="inline-flex items-center rounded bg-[#DBEAFE] px-1.5 py-0.5 text-[10px] font-semibold text-[#1D4ED8] uppercase tracking-wider">
+                  <span className="inline-flex items-center rounded bg-brand-lavender-lighter px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-foreground">
                     SAMPLE
                   </span>
                 </TableCell>
@@ -1645,8 +1650,8 @@ export function EditableTable<TRow extends EditableRow>({
                         : undefined
                     }
                   >
-                    <span className="block text-sm text-brand-lavender-darker italic px-1">
-                      {sampleRow[col.key] || "—"}
+                    <span className="block px-1 text-sm italic text-foreground/75">
+                      {sampleRow[col.key] || "Empty"}
                     </span>
                   </TableCell>
                 ))}
@@ -1680,7 +1685,7 @@ export function EditableTable<TRow extends EditableRow>({
                           variant="outline"
                           size="sm"
                           onClick={onAdd}
-                          className="border-primary/40 text-primary hover:border-primary/70"
+                          className="min-h-11 border-primary/40 text-primary hover:border-primary/70 md:min-h-0"
                         >
                           <Plus className="mr-1 h-4 w-4" />
                           {hasRequiredCompletionSignal ? `${addLabel} to start` : addLabel}
@@ -1760,7 +1765,7 @@ export function EditableTable<TRow extends EditableRow>({
       </div>
       {!isReadOnly && !hideAddButton && (
       <div className="border-t p-2">
-        <Button variant="outline" size="sm" onClick={onAdd} className="text-primary border-primary/30 hover:border-primary/60">
+        <Button variant="outline" size="sm" onClick={onAdd} className="min-h-11 text-primary border-primary/30 hover:border-primary/60 md:min-h-0">
           <Plus className="mr-1 h-4 w-4" />
           {addLabel}
         </Button>

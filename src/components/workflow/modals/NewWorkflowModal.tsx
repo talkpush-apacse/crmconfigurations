@@ -89,7 +89,7 @@ export default function NewWorkflowModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {templateId ? `New Workflow from "${templateName}"` : "New Workflow"}
+            {templateId ? `New workflow from "${templateName}"` : "New workflow"}
           </DialogTitle>
           <DialogDescription>
             Set the client name and workflow title before opening the editor.
@@ -98,31 +98,31 @@ export default function NewWorkflowModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Client Name <span className="text-red-500">*</span>
+            <label className="text-sm font-medium text-foreground/85 mb-1 block">
+              Client Name <span className="text-destructive">*</span>
             </label>
             <Input
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="e.g. TaskUs, Inspiro"
-              className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Workflow Name <span className="text-red-500">*</span>
+            <label className="text-sm font-medium text-foreground/85 mb-1 block">
+              Workflow Name <span className="text-destructive">*</span>
             </label>
             <Input
               value={workflowName}
               onChange={(e) => setWorkflowName(e.target.value)}
               placeholder="e.g. CSR Screening Flow"
-              className="border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
+            <label className="text-sm font-medium text-foreground/85 mb-1 block">
               Description
             </label>
             <textarea
@@ -130,7 +130,7 @@ export default function NewWorkflowModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of this workflow..."
               rows={3}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
+              className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring focus:outline-none"
             />
           </div>
 

@@ -55,9 +55,38 @@ function snapshot(items: SnapshotItem[], projectOver: Partial<SnapshotInput["pro
 
 test("the headline never hides a single blocked or overdue item", () => {
   const s = snapshot([item({ id: "a", title: "A", status: "blocked", blockerReason: "IT window", ownerSide: "talkpush" })]);
-  assert.equal(s.health.level, "on_track"); // one blocked item is below the at-risk threshold
+  assert.equal(s.health.level, "at_risk"); // one blocked item is enough to make a project at risk
   assert.match(s.headline, /1 item is blocked/);
   assert.doesNotMatch(s.headline, /nothing is overdue or blocked/);
+});
+
+test("on track with an exception leads with the exception and keeps the target", () => {
+  // A blocked item now makes health At risk, so the On track wording is reached with a manual On track setting.
+  assert.equal(
+    buildHeadline({ level: "on_track", firstReason: null, targetDate: "2026-12-01", projectStatus: "active", waitingOnClientCount: 0, clientOwnedOpenCount: 0, blockedCount: 1 }),
+    "On track for 1 Dec 2026, but 1 item is blocked."
+  );
+  // The computed case: At risk, reason first, and the blocker's free-text reason stays out of the headline.
+  const s = snapshot([item({ id: "a", title: "A", status: "blocked", blockerReason: "IT window", ownerSide: "talkpush" })]);
+  assert.match(s.headline, /^At risk\. 1 item is blocked\. Target 1 Dec 2026\./);
+  assert.doesNotMatch(s.headline, /IT window/, "the blocker reason stays out of the headline");
+});
+
+test("on track but behind plan says so, with every exception in one sentence", () => {
+  // An item due today and not done: not overdue yet, but one item behind the plan line.
+  const due = snapshot([item({ id: "a", title: "A", dueDate: TODAY, ownerSide: "talkpush" })]);
+  assert.equal(due.health.level, "on_track");
+  assert.equal(due.headline, "On track for 1 Dec 2026, but the project is 1 item behind plan.");
+
+  assert.equal(
+    buildHeadline({ level: "on_track", firstReason: null, targetDate: "2026-11-10", projectStatus: "active", waitingOnClientCount: 4, clientOwnedOpenCount: 4, blockedCount: 1, overdueCount: 0, behindPlanBy: 1 }),
+    "On track for 10 Nov 2026, but 1 item is blocked and the project is 1 item behind plan. 4 open items need the client."
+  );
+  // At risk keeps its reason-first wording.
+  assert.match(
+    buildHeadline({ level: "at_risk", firstReason: "2 items are blocked.", targetDate: "2026-11-10", projectStatus: "active", waitingOnClientCount: 0, clientOwnedOpenCount: 0, blockedCount: 2, behindPlanBy: 3 }),
+    /^At risk\. 2 items are blocked\. Target 10 Nov 2026\.$/
+  );
 });
 
 test("a clean project says so plainly", () => {

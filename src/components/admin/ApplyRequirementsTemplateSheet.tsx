@@ -44,6 +44,11 @@ type TemplateWithSummary = RequirementsTemplate & { summary?: TemplateSummary };
 interface ApplyRequirementsTemplateSheetProps {
   checklistId: string;
   clientName: string;
+  /** Controlled open state, for when another control (a menu item) opens the sheet. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hides the built-in "Apply template" button when something else opens the sheet. */
+  hideTrigger?: boolean;
 }
 
 function summaryFor(template: TemplateWithSummary): TemplateSummary {
@@ -66,9 +71,17 @@ function fieldTypeLabel(type: string) {
 export function ApplyRequirementsTemplateSheet({
   checklistId,
   clientName,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
 }: ApplyRequirementsTemplateSheetProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [templates, setTemplates] = useState<TemplateWithSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -163,12 +176,14 @@ export function ApplyRequirementsTemplateSheet({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button size="sm" className="shrink-0">
-          <ClipboardList className="h-4 w-4" />
-          Apply template
-        </Button>
-      </SheetTrigger>
+      {!hideTrigger && (
+        <SheetTrigger asChild>
+          <Button size="sm" variant="outline" className="min-h-11 shrink-0 md:min-h-0">
+            <ClipboardList className="h-4 w-4" />
+            Apply template
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent className="w-full gap-0 p-0 sm:max-w-3xl">
         <SheetHeader className="border-b px-6 py-5">
           <SheetTitle className="text-lg">Apply requirements template</SheetTitle>
@@ -188,7 +203,7 @@ export function ApplyRequirementsTemplateSheet({
                 id="template-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="pl-9"
+                className="max-md:min-h-11 pl-9"
                 placeholder="Referral, AI, ATS..."
               />
             </div>
@@ -283,7 +298,7 @@ export function ApplyRequirementsTemplateSheet({
                   <div className="grid gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="template-tab-name">Tab name</Label>
-                      <Input
+                      <Input className="max-md:min-h-11"
                         id="template-tab-name"
                         value={tabNameOverride}
                         onChange={(event) => setTabNameOverride(event.target.value)}
@@ -353,7 +368,7 @@ export function ApplyRequirementsTemplateSheet({
           <p className="text-xs text-muted-foreground">
             Applying creates a new custom requirements tab. Existing tabs and responses stay untouched.
           </p>
-          <Button onClick={handleApply} disabled={!selected || applying || !tabNameOverride.trim()}>
+          <Button className="max-md:min-h-11" onClick={handleApply} disabled={!selected || applying || !tabNameOverride.trim()}>
             {applying ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />

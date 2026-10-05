@@ -193,7 +193,7 @@ function CustomFormFileField({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={() => removeFile(index)}
             >
               <X className="h-3.5 w-3.5" />
@@ -216,7 +216,7 @@ function CustomFormFileField({
             type="button"
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="max-md:min-h-11 gap-2"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
           >
@@ -296,7 +296,7 @@ function RepeaterField({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      className="max-md:min-h-11 max-md:min-w-11 h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={() => deleteRow(rowIndex)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -314,7 +314,7 @@ function RepeaterField({
       )}
 
       {!readOnly && (
-        <Button type="button" variant="outline" size="sm" className="gap-2" onClick={addRow}>
+        <Button type="button" variant="outline" size="sm" className="max-md:min-h-11 gap-2" onClick={addRow}>
           <Plus className="h-4 w-4" />
           Add Row
         </Button>
@@ -352,7 +352,7 @@ function RepeaterCell({
   if (column.type === "select") {
     return (
       <Select value={stringValue || undefined} onValueChange={onChange} disabled={readOnly}>
-        <SelectTrigger>
+        <SelectTrigger className="max-md:min-h-11">
           <SelectValue placeholder={column.placeholder ?? "Select"} />
         </SelectTrigger>
         <SelectContent>
@@ -375,7 +375,7 @@ function RepeaterCell({
   }
 
   return (
-    <Input
+    <Input className="max-md:min-h-11"
       type={column.type === "number" ? "number" : column.type === "email" ? "email" : column.type === "url" ? "url" : column.type === "date" ? "date" : "text"}
       value={stringValue}
       onChange={(event) => onChange(column.type === "number" && event.target.value !== "" ? Number(event.target.value) : event.target.value)}
@@ -528,7 +528,7 @@ function CustomField({
       </Label>
 
       {field.type === "text" && (
-        <Input
+        <Input className="max-md:min-h-11"
           value={stringVal}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onTouched}
@@ -563,7 +563,7 @@ function CustomField({
       )}
 
       {field.type === "number" && (
-        <Input
+        <Input className="max-md:min-h-11"
           type="number"
           min={field.min}
           max={field.max}
@@ -579,7 +579,7 @@ function CustomField({
       )}
 
       {field.type === "date" && (
-        <Input
+        <Input className="max-md:min-h-11"
           type="date"
           value={stringVal}
           onChange={(e) => onChange(e.target.value)}
@@ -589,7 +589,7 @@ function CustomField({
       )}
 
       {field.type === "email" && (
-        <Input
+        <Input className="max-md:min-h-11"
           type="email"
           value={stringVal}
           onChange={(e) => onChange(e.target.value)}
@@ -600,7 +600,7 @@ function CustomField({
       )}
 
       {field.type === "url" && (
-        <Input
+        <Input className="max-md:min-h-11"
           type="url"
           value={stringVal}
           onChange={(e) => onChange(e.target.value)}
@@ -619,7 +619,7 @@ function CustomField({
           }}
           disabled={readOnly}
         >
-          <SelectTrigger>
+          <SelectTrigger className="max-md:min-h-11">
             <SelectValue placeholder={field.placeholder ?? "Select an option"} />
           </SelectTrigger>
           <SelectContent>

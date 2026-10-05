@@ -10,7 +10,7 @@ import { ArrowDefs, ContainerBody, EdgeBody, LegendBody, ShapeBody, TableBody, T
 import { useProcessMapScene } from "./context";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const DOT = "!h-2.5 !w-2.5 !border-2 !border-white !bg-slate-400 opacity-0 transition-opacity group-hover:opacity-100 hover:!bg-teal-500";
+const DOT = "!h-2.5 !w-2.5 !border-2 !border-white !bg-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:!bg-ring";
 
 /** The scene's shape for a step; for a step that is not in the scene yet (a suggested addition) a standalone one. */
 function shapeFor(scene: Scene | null, id: string, node: any): SceneShape {
@@ -59,7 +59,7 @@ export function ProcessMapTable({ id, selected }: NodeProps) {
   const table = scene?.tables.find((t) => t.id === id);
   if (!table) return null;
   return (
-    <svg width={table.rect.w} height={table.rect.h} style={{ overflow: "visible", display: "block", outline: selected ? "2px dashed #2563eb" : undefined, outlineOffset: 4 }}>
+    <svg width={table.rect.w} height={table.rect.h} style={{ overflow: "visible", display: "block", outline: selected ? "2px dashed var(--ring)" : undefined, outlineOffset: 4 }}>
       <TableBody table={table} />
     </svg>
   );

@@ -96,7 +96,7 @@ export function HybridPicker({
                 setActiveIndex(0);
               }}
               onKeyDown={handleKeyDown}
-              className="h-9 pr-8 text-sm"
+              className="max-md:min-h-11 h-9 pr-8 text-sm"
               role="combobox"
               aria-expanded={open}
               aria-autocomplete="list"

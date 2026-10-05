@@ -43,7 +43,7 @@ const companyDetailsFields: KeyValueField[] = [
   {
     key: "privacyPolicyUrl",
     label: "Privacy Policy URL",
-    description: "Link to the company's privacy policy page. Mandatory for GDPR/CCPA compliance — displayed to candidates during application.",
+    description: "Link to the company's privacy policy page. Mandatory for GDPR/CCPA compliance. Displayed to candidates during application.",
     type: "text",
     placeholder: "https://www.yourcompany.com/privacy-policy",
     example: "https://www.taskus.com/privacy-policy",
@@ -219,10 +219,10 @@ export function CompanyInfoSheet() {
         <ul className="list-disc pl-4 space-y-0.5">
           <li><strong>Company Name:</strong> TaskUs</li>
           <li><strong>Website:</strong> https://www.taskus.com/</li>
-          <li><strong>Facebook Page:</strong> TaskUs &mdash; Page ID from Facebook Page Settings</li>
+          <li><strong>Facebook Page:</strong> TaskUs. Page ID from Facebook Page Settings.</li>
           <li><strong>Logo:</strong> Provide shareable links (Google Drive, Dropbox, etc.)</li>
-          <li><strong>Allow Duplicates:</strong> No &mdash; Most clients prevent duplicate profiles.</li>
-          <li><strong>Cooling Period:</strong> 90 &mdash; A 90-day cooling period is typical.</li>
+          <li><strong>Allow Duplicates:</strong> No. Most clients prevent duplicate profiles.</li>
+          <li><strong>Cooling Period:</strong> 90. A 90-day cooling period is typical.</li>
         </ul>
       </ExampleHint>
 
@@ -285,10 +285,10 @@ export function CompanyInfoSheet() {
         />
         <div className="overflow-hidden rounded-lg border">
           <div className="grid grid-cols-[110px_72px_1fr_1fr] bg-primary text-primary-foreground sm:grid-cols-[160px_90px_1fr_1fr]">
-            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Day</div>
-            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Open</div>
-            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Opening Time</div>
-            <div className="px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.05em]">Closing Time</div>
+            <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Day</div>
+            <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Open</div>
+            <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Opening Time</div>
+            <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em]">Closing Time</div>
           </div>
           {businessHours.map((entry, idx) => (
             <div
@@ -315,7 +315,7 @@ export function CompanyInfoSheet() {
                   value={entry.openTime}
                   onChange={(e) => handleBusinessHourChange(idx, "openTime", e.target.value)}
                   disabled={!entry.isOpen}
-                  className="h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
+                  className="max-md:min-h-11 h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
                 />
               </div>
               <div className="px-2 py-1.5">
@@ -324,7 +324,7 @@ export function CompanyInfoSheet() {
                   value={entry.closeTime}
                   onChange={(e) => handleBusinessHourChange(idx, "closeTime", e.target.value)}
                   disabled={!entry.isOpen}
-                  className="h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
+                  className="max-md:min-h-11 h-8 text-sm disabled:bg-slate-100 disabled:opacity-50"
                 />
               </div>
             </div>

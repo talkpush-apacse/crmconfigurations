@@ -176,7 +176,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5"
+                  className="max-md:min-h-11 max-md:min-w-11 h-5 w-5"
                   onClick={() => moveUp(index)}
                   disabled={index === 0}
                 >
@@ -185,7 +185,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5"
+                  className="max-md:min-h-11 max-md:min-w-11 h-5 w-5"
                   onClick={() => moveDown(index)}
                   disabled={index === value.length - 1}
                 >
@@ -225,7 +225,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0"
+                className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 shrink-0"
                 onClick={() => openEdit(index)}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                 onClick={() => handleDelete(index)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -245,14 +245,14 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={openAdd}>
+        <Button variant="outline" className="max-md:min-h-11 flex-1" onClick={openAdd}>
           <Plus className="mr-2 h-4 w-4" />
           Add Custom Tab
         </Button>
         {checklistId && (
           <Button
             variant="outline"
-            className="flex-1"
+            className="max-md:min-h-11 flex-1"
             onClick={() => setImportOpen(true)}
           >
             <FileSpreadsheet className="mr-2 h-4 w-4" />
@@ -281,7 +281,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
           <div className="space-y-4">
             <div>
               <Label htmlFor="tab-label">Tab Name</Label>
-              <Input
+              <Input className="max-md:min-h-11"
                 id="tab-label"
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
@@ -314,7 +314,7 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  This is a table tab. Renaming it here is safe — its columns and
+                  This is a table tab. Renaming it here is safe. Its columns and
                   data are left untouched.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -334,10 +334,10 @@ export function CustomTabManager({ value, onChange, checklistId }: CustomTabMana
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button className="max-md:min-h-11" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!canSave}>
+              <Button className="max-md:min-h-11" onClick={handleSave} disabled={!canSave}>
                 {editingIndex !== null ? "Save Tab" : "Add Tab"}
               </Button>
             </div>
