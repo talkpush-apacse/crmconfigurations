@@ -103,8 +103,8 @@ export function InstagramSheet() {
         <p className="mb-1 font-medium">Sample configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
           <li><strong>Instagram Account:</strong> @companyph_careers</li>
-          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; same name across all channels for consistency</li>
-          <li><strong>Chatbot Persona:</strong> Friendly and conversational &mdash; matches Instagram&apos;s casual tone</li>
+          <li><strong>Chatbot Name:</strong> &quot;Ava&quot;. Same name across all channels for consistency.</li>
+          <li><strong>Chatbot Persona:</strong> Friendly and conversational. Matches Instagram&apos;s casual tone.</li>
         </ul>
       </ExampleHint>
 

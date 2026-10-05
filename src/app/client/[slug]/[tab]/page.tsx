@@ -93,11 +93,11 @@ export default function TabPage() {
   // Dynamic browser tab title
   useEffect(() => {
     if (isCustom && data?.clientName) {
-      document.title = `Custom Checklist — ${data.clientName} | Talkpush CRM`;
+      document.title = `Custom Checklist | ${data.clientName} | Talkpush CRM`;
     } else if (customTab && data?.clientName) {
-      document.title = `${customTab.label} — ${data.clientName} | Talkpush CRM`;
+      document.title = `${customTab.label} | ${data.clientName} | Talkpush CRM`;
     } else if (tabConfig && data?.clientName) {
-      document.title = `${tabConfig.label} — ${data.clientName} | Talkpush CRM`;
+      document.title = `${tabConfig.label} | ${data.clientName} | Talkpush CRM`;
     }
   }, [isCustom, tab, tabConfig, customTab, data?.clientName]);
 

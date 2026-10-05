@@ -53,7 +53,7 @@ export function WorkflowToaster() {
       {list.map((t) => {
         const Icon = t.kind === "success" ? CheckCircle2 : t.kind === "error" ? XCircle : Info;
         const tone =
-          t.kind === "success" ? "text-emerald-600" : t.kind === "error" ? "text-red-600" : "text-slate-600";
+          t.kind === "success" ? "text-brand-sage-darker" : t.kind === "error" ? "text-destructive" : "text-foreground/70";
         return (
           <div
             key={t.id}

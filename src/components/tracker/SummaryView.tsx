@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import type { ProjectSnapshot } from "@/lib/tracker/snapshot";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { ExecSummary } from "./ExecSummary";
-import { ErrorBlock, LoadingBlock } from "./PageHeader";
+import { ErrorBlock } from "./PageHeader";
+import { SummarySkeleton } from "./SummarySkeleton";
 
 type Readings = Record<string, { asOf: string; value: number }[]>;
 
@@ -16,7 +17,7 @@ export function SummaryView({ projectId, refreshKey }: { projectId: string; refr
   const metrics = useApiResource<{ readings: Readings }>(`/api/tracker/projects/${projectId}/metrics?k=${encodeURIComponent(refreshKey)}`);
 
   if (snapshot.error && !snapshot.data) return <ErrorBlock message={snapshot.error} onRetry={snapshot.reload} />;
-  if (!snapshot.data) return <LoadingBlock label="Loading summary" />;
+  if (!snapshot.data) return <SummarySkeleton context="staff" label="Loading summary" />;
 
   return (
     <ExecSummary
@@ -29,7 +30,7 @@ export function SummaryView({ projectId, refreshKey }: { projectId: string; refr
           <p className="text-muted-foreground">
             <span className="font-medium text-foreground">Internal view.</span> Includes team-only items and blocker reasons. Clients never see these.
           </p>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="max-md:h-11">
             <Link href={`/admin/tracker/projects/${projectId}/client-preview`}>
               <Eye className="h-4 w-4" />
               View as client

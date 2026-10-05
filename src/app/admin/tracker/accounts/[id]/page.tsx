@@ -12,6 +12,7 @@ import { PersonDialog } from "@/components/tracker/PersonDialog";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from "@/components/tracker/PageHeader";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
+import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import type { AccountDTO, PersonDTO, PortfolioProjectDTO } from "@/lib/tracker/client-types";
 import { PERSON_SIDE_LABELS, type PersonSide } from "@/lib/tracker/constants";
 import { formatDate } from "@/lib/tracker/format";
@@ -34,13 +35,14 @@ export default function AccountDetailPage() {
   const [addingPerson, setAddingPerson] = useState(false);
   const [editingPerson, setEditingPerson] = useState<PersonDTO | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
+  useDocumentTitle(account?.name);
 
   if (error) return <ErrorBlock message={error} onRetry={load} />;
   if (!account) return <LoadingBlock label="Loading account" />;
 
   return (
     <>
-      <Link href="/admin/tracker/accounts" className="mb-3 inline-flex min-h-8 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/admin/tracker/accounts" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm md:min-h-8 text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-4 w-4" />
         All accounts
       </Link>
@@ -116,7 +118,7 @@ export default function AccountDetailPage() {
           <h2 id="people-heading" className="text-lg font-semibold tracking-tight">
             Contacts
           </h2>
-          <Button variant="outline" size="sm" onClick={() => setAddingPerson(true)}>
+          <Button variant="outline" size="sm" className="max-md:h-11" onClick={() => setAddingPerson(true)}>
             <Plus className="h-4 w-4" />
             Add contact
           </Button>
@@ -148,7 +150,7 @@ export default function AccountDetailPage() {
                     <TableCell>{PERSON_SIDE_LABELS[p.side as PersonSide] ?? p.side}</TableCell>
                     <TableCell className="hidden sm:table-cell">{p.email ?? ""}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => setEditingPerson(p)}>
+                      <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditingPerson(p)}>
                         Edit
                       </Button>
                     </TableCell>

@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Plain 1px field with a token focus ring, 44px tall on phones. Overrides the
+// thicker border and wide shadow the shared Input ships with.
+const FIELD_CLASS =
+  "h-11 border border-muted-foreground/40 shadow-none hover:border-muted-foreground/60 focus-visible:border-ring focus-visible:shadow-none focus-visible:ring-ring/40 md:h-9";
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -59,7 +64,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Admin Login</CardTitle>
@@ -75,6 +80,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className={FIELD_CLASS}
               />
             </div>
             <div>
@@ -85,6 +91,7 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className={FIELD_CLASS}
               />
             </div>
             {error && (
@@ -95,20 +102,20 @@ export default function AdminLoginPage() {
                 {error}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="h-11 w-full md:h-9" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
           <div className="relative flex items-center">
-            <div className="flex-1 border-t border-gray-200" />
-            <span className="mx-3 text-xs font-medium uppercase text-muted-foreground">
+            <div className="flex-1 border-t border-border" />
+            <span className="mx-3 text-[11px] font-medium uppercase text-muted-foreground">
               or
             </span>
-            <div className="flex-1 border-t border-gray-200" />
+            <div className="flex-1 border-t border-border" />
           </div>
 
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="h-11 w-full md:h-9">
             <a href="/api/auth/google">
               <svg
                 aria-hidden="true"

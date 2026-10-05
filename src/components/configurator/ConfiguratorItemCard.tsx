@@ -40,12 +40,14 @@ function formatDateTime(value: string): string {
   });
 }
 
+// Status shows as a full 1px border plus a soft tint (never a side stripe). The
+// state is also written out by the buttons inside the card.
 function accentForStatus(status: ConfiguratorStatus | null): string {
-  if (status === "completed") return "border-l-emerald-700";
-  if (status === "in_progress") return "border-l-blue-600";
-  if (status === "in_progress_with_dependency") return "border-l-amber-500";
-  if (status === "blocked") return "border-l-red-600";
-  return "border-l-slate-200";
+  if (status === "completed") return "border-brand-sage-darker/40 bg-brand-sage-lightest/40";
+  if (status === "in_progress") return "border-brand-lavender-darker/40 bg-brand-lavender-lightest/50";
+  if (status === "in_progress_with_dependency") return "border-brand-amber-darker/40 bg-brand-amber-lightest/40";
+  if (status === "blocked") return "border-destructive/40 bg-destructive/5";
+  return "border-border";
 }
 
 function formatRelativeTime(value: string): string {
@@ -68,7 +70,7 @@ export function ConfiguratorItemCard({ step, item, state, sourceData, onUpdate }
   const sourceContexts = getConfiguratorSourceContext(item.id, sourceData);
 
   return (
-    <Card className={cn("rounded-lg border-l-4 shadow-sm", accentForStatus(state.status))}>
+    <Card className={cn("rounded-lg border shadow-sm", accentForStatus(state.status))}>
       <CardContent className="space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="rounded-full bg-emerald-800 text-white hover:bg-emerald-800">
@@ -95,7 +97,7 @@ export function ConfiguratorItemCard({ step, item, state, sourceData, onUpdate }
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
           <label
             htmlFor={`configured-${state.itemId}`}
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-400"
+            className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm md:min-h-0 font-medium text-gray-700 hover:border-gray-400"
           >
             <Checkbox
               id={`configured-${state.itemId}`}
@@ -130,7 +132,7 @@ export function ConfiguratorItemCard({ step, item, state, sourceData, onUpdate }
             type="button"
             variant="ghost"
             size="sm"
-            className="rounded-md text-slate-600"
+            className="min-h-11 rounded-md text-slate-600 md:min-h-0"
             onClick={() => setNotesOpen(true)}
           >
             <MessageSquarePlus className="h-4 w-4" />

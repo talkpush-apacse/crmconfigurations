@@ -53,12 +53,12 @@ export function SectionFooter() {
     progress.totalCount > 0 && progress.completeCount === progress.totalCount;
 
   return (
-    <div className="mt-10 flex flex-col gap-4 rounded-[24px] bg-white/[0.82] px-5 py-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-10 flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Previous link */}
       {prevTab && prevTab.slug !== "welcome" ? (
         <Link
           href={`${basePath}/${prevTab.slug}`}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Previous: {prevTab.label}
@@ -67,7 +67,7 @@ export function SectionFooter() {
         <span />
       )}
 
-      {/* Save — repeated here so it is reachable after a long table */}
+      {/* Save, repeated here so it is reachable after a long table */}
       {!isReadOnly && (
         <div className="sm:ml-auto sm:mr-3">
           <SaveButton
@@ -84,12 +84,16 @@ export function SectionFooter() {
 
       {/* Next / Complete button */}
       {isLastSection ? (
-        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200/70">
-          <CheckCircle2 className="h-4 w-4" />
-          {allSectionsComplete ? "All sections complete" : "End of checklist"}
-        </div>
+        allSectionsComplete ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-brand-sage-darker/30 bg-brand-sage-lightest px-3 py-2 text-sm font-medium text-foreground">
+            <CheckCircle2 className="h-4 w-4 text-brand-sage-darker" />
+            All sections complete
+          </div>
+        ) : (
+          <span className="text-sm font-medium text-muted-foreground">End of checklist</span>
+        )
       ) : nextTab ? (
-        <Button asChild size="sm" className="h-11 gap-2 rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/85 active:scale-95">
+        <Button asChild size="sm" className="h-11 gap-2 px-4">
           <Link href={`${basePath}/${nextTab.slug}`}>
             Continue to {nextTab.label}
             <ArrowRight className="h-4 w-4" />

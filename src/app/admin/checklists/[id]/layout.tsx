@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
+import { SectionSelect } from "@/components/layout/SectionSelect";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ApplyRequirementsTemplateSheet } from "@/components/admin/ApplyRequirementsTemplateSheet";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
@@ -14,6 +17,7 @@ import type { NavItem } from "@/components/layout/TopNav";
 export default function AdminChecklistLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const id = params.id as string;
+  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false);
   const {
     data,
     loading,
@@ -116,7 +120,10 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
       }}
     >
       <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+        {/* The shared Implementation Hub header, so staff can switch modules from here. */}
+        <AdminHeader />
         <Header
+          variant="staff"
           clientName={data.clientName}
           slug={data.slug}
           items={navItems}
@@ -129,8 +136,9 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           onSave={publishChanges}
           onDiscard={discardChanges}
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
+          onApplyTemplate={isCustom ? undefined : () => setApplyTemplateOpen(true)}
         />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {!isCustom && (
             <TopNav
               items={navItems}
@@ -140,28 +148,24 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
               onOwnershipChange={handleOwnershipChange}
             />
           )}
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {!isCustom && (
-              <div className="border-b bg-background/95 px-4 py-3 sm:px-6 lg:px-8 xl:px-10">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Requirements forms</p>
-                    <p className="text-xs text-muted-foreground">
-                      Apply a reusable questionnaire as a new client-facing custom tab.
-                    </p>
-                  </div>
-                  <ApplyRequirementsTemplateSheet
-                    checklistId={id}
-                    clientName={data.clientName}
-                  />
-                </div>
-              </div>
+              <SectionSelect items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
             )}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
             </main>
           </div>
         </div>
+        {!isCustom && (
+          <ApplyRequirementsTemplateSheet
+            checklistId={id}
+            clientName={data.clientName}
+            open={applyTemplateOpen}
+            onOpenChange={setApplyTemplateOpen}
+            hideTrigger
+          />
+        )}
       </div>
     </ChecklistContext.Provider>
   );

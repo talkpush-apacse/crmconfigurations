@@ -149,7 +149,7 @@ export function TabSelector({ selectedTabs, onChange }: TabSelectorProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Enabled Tabs</p>
-        <Button type="button" variant="ghost" size="sm" onClick={toggleAll}>
+        <Button className="max-md:min-h-11" type="button" variant="ghost" size="sm" onClick={toggleAll}>
           {allSelected ? "Deselect All" : "Select All"}
         </Button>
       </div>

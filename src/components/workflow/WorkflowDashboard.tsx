@@ -14,6 +14,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/workflow/ui/skeleton";
 import {
@@ -23,10 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  WORKFLOW_STATUS_CONFIG,
-  type WorkflowStatus,
-} from "@/lib/workflow/types";
+import type { WorkflowStatus } from "@/lib/workflow/types";
+import { statusStyle } from "./status-style";
 import DeleteConfirmDialog from "@/components/workflow/ui/DeleteConfirmDialog";
 import { useDebouncedSearch } from "@/components/workflow/ui/useDebouncedSearch";
 import NewWorkflowModal from "./modals/NewWorkflowModal";
@@ -62,7 +61,7 @@ const STATUS_TABS: { value: string; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "shared", label: "Shared" },
   { value: "approved", label: "Approved" },
-  { value: "changes_requested", label: "Changes Requested" },
+  { value: "changes_requested", label: "Changes requested" },
 ];
 
 export default function WorkflowDashboard() {
@@ -183,7 +182,7 @@ export default function WorkflowDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `${workflow.clientName} — ${workflow.workflowName}`,
+          name: `${workflow.clientName}: ${workflow.workflowName}`,
           description: workflow.description,
           industry: "general",
           nodes: full.nodes,
@@ -216,55 +215,55 @@ export default function WorkflowDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[28px] font-bold text-gray-900">Workflow Builder</h1>
-        <div className="flex items-center gap-2">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Workflow builder</h1>
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setTemplateModalOpen(true)}
-            className="gap-1.5"
+            className="min-h-11 md:min-h-9"
           >
-            <LayoutTemplate className="w-4 h-4" />
-            Start from Template
+            <LayoutTemplate className="h-4 w-4" />
+            Start from template
           </Button>
           <Button
-            variant="cta"
-            size="sm"
             onClick={() => setNewModalOpen(true)}
-            className="gap-1.5"
+            className="min-h-11 md:min-h-9"
           >
-            <Plus className="w-4 h-4" />
-            New Workflow
+            <Plus className="h-4 w-4" />
+            New workflow
           </Button>
         </div>
       </div>
 
       {/* Search + Status filter */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="relative w-full md:min-w-[14rem] md:max-w-sm md:flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
+            type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search workflows..."
-            className="pl-9 border border-gray-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            aria-label="Search workflows"
+            className="min-h-11 pl-9 md:min-h-9"
           />
         </div>
-        <div className="flex gap-1">
+        <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-1">
           {STATUS_TABS.map((tab) => (
             <Button
               key={tab.value}
-              variant={statusFilter === tab.value ? "cta" : "ghost"}
+              variant={statusFilter === tab.value ? "default" : "ghost"}
               size="sm"
+              aria-pressed={statusFilter === tab.value}
               onClick={() => setStatusFilter(tab.value)}
-              className={statusFilter === tab.value ? undefined : "text-gray-500"}
+              className={cn("min-h-11 md:min-h-8", statusFilter === tab.value ? undefined : "text-muted-foreground")}
             >
               {tab.label}
             </Button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-xs text-gray-600">
+        <label className="flex min-h-11 items-center gap-2 text-xs text-foreground/70 md:min-h-0">
           <input type="checkbox" checked={groupByClient} onChange={(e) => setGroupByClient(e.target.checked)} />
           Group by client
         </label>
@@ -274,7 +273,7 @@ export default function WorkflowDashboard() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="border border-gray-200 rounded-lg p-5 space-y-3">
+            <div key={i} className="space-y-3 rounded-lg border border-border bg-card p-5">
               <Skeleton className="h-4 w-32 animate-pulse" />
               <Skeleton className="h-5 w-48 animate-pulse" />
               <Skeleton className="h-3 w-24 animate-pulse" />
@@ -283,26 +282,24 @@ export default function WorkflowDashboard() {
         </div>
       ) : visible.length === 0 ? (
         <div className="text-center py-20">
-          <Workflow className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-base font-medium text-gray-800 mb-1">
+          <Workflow className="mx-auto mb-4 h-12 w-12 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-base font-medium text-foreground mb-1">
             {searchInput || statusFilter !== "all"
               ? "No workflows match your filters"
               : "No workflows yet"}
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {searchInput || statusFilter !== "all"
               ? "Try a different search or clear filters"
               : "Create your first workflow to get started"}
           </p>
           {!searchInput && statusFilter === "all" && (
             <Button
-              variant="cta"
-              size="sm"
               onClick={() => setNewModalOpen(true)}
-              className="gap-1.5"
+              className="min-h-11 md:min-h-9"
             >
-              <Plus className="w-4 h-4" />
-              New Workflow
+              <Plus className="h-4 w-4" />
+              New workflow
             </Button>
           )}
         </div>
@@ -310,10 +307,10 @@ export default function WorkflowDashboard() {
         <div className="space-y-6">
         {sections.map(([clientName, list]) => (
         <section key={clientName ?? "all"} aria-label={clientName ?? "Workflows"}>
-        {clientName && <h2 className="mb-2 text-sm font-semibold text-gray-700">{clientName} <span className="font-normal text-gray-400">· {list.length}</span></h2>}
+        {clientName && <h2 className="mb-2 text-sm font-semibold text-foreground/85">{clientName} <span className="font-normal text-muted-foreground">· {list.length}</span></h2>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map((w) => {
-            const statusCfg = WORKFLOW_STATUS_CONFIG[w.status] ?? WORKFLOW_STATUS_CONFIG.draft;
+            const statusCfg = statusStyle(w.status);
             const latestFeedback = w.feedback?.[0];
 
             return (
@@ -328,11 +325,11 @@ export default function WorkflowDashboard() {
                     router.push(`/admin/workflows/${w.id}`);
                   }
                 }}
-                className="group border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset"
+                className="group relative cursor-pointer rounded-lg border border-border bg-card p-5 transition-all hover:border-input hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 {/* Three-dot menu */}
                 <div
-                  className="absolute top-3 right-3"
+                  className="absolute right-2 top-2 md:right-3 md:top-3"
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
@@ -341,9 +338,10 @@ export default function WorkflowDashboard() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label={`More actions for ${w.workflowName}`}
+                        className="h-11 w-11 p-0 transition-opacity data-[state=open]:opacity-100 md:h-7 md:w-7 md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
                       >
-                        <MoreHorizontal className="w-4 h-4" />
+                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -356,12 +354,12 @@ export default function WorkflowDashboard() {
                         disabled={savingTemplateId === w.id}
                       >
                         <LayoutTemplate className="w-4 h-4 mr-2" />
-                        {savingTemplateId === w.id ? "Saving..." : "Save as Template"}
+                        {savingTemplateId === w.id ? "Saving..." : "Save as template"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setDeleteTarget(w)}
-                        className="text-red-600 focus:text-red-600"
+                        className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete
@@ -371,10 +369,10 @@ export default function WorkflowDashboard() {
                 </div>
 
                 <div className="mb-2">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {w.clientName}
                   </p>
-                  <h3 className="text-sm font-semibold text-gray-900 truncate pr-8">
+                  <h3 className="truncate pr-12 text-sm font-semibold text-foreground md:pr-8">
                     {w.workflowName}
                   </h3>
                 </div>
@@ -385,29 +383,29 @@ export default function WorkflowDashboard() {
                   >
                     {statusCfg.label}
                   </span>
-                  <span className="text-xs text-gray-400">{w.nodeCount} nodes</span>
-                  {w.currentVersion && w.currentVersion > 0 && (
-                    <span className="text-xs text-gray-400">· v{w.currentVersion}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{w.nodeCount} {w.nodeCount === 1 ? "node" : "nodes"}</span>
+                  {(w.currentVersion ?? 0) > 0 && (
+                    <span className="text-xs text-muted-foreground tabular-nums">· v{w.currentVersion}</span>
                   )}
                 </div>
 
                 {w.attention && (w.attention.openComments > 0 || w.attention.pendingSuggestions > 0 || w.attention.openRequests > 0) && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
-                    {w.attention.openComments > 0 && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">{w.attention.openComments} open comment{w.attention.openComments === 1 ? "" : "s"}</span>}
-                    {w.attention.pendingSuggestions > 0 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">{w.attention.pendingSuggestions} suggestion{w.attention.pendingSuggestions === 1 ? "" : "s"} waiting</span>}
-                    {w.attention.openRequests > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">{w.attention.openRequests} access request{w.attention.openRequests === 1 ? "" : "s"}</span>}
+                    {w.attention.openComments > 0 && <span className="rounded-full bg-brand-lavender-lighter px-2 py-0.5 text-[11px] font-medium text-foreground">{w.attention.openComments} open comment{w.attention.openComments === 1 ? "" : "s"}</span>}
+                    {w.attention.pendingSuggestions > 0 && <span className="rounded-full bg-brand-sage/25 px-2 py-0.5 text-[11px] font-medium text-foreground">{w.attention.pendingSuggestions} suggestion{w.attention.pendingSuggestions === 1 ? "" : "s"} waiting</span>}
+                    {w.attention.openRequests > 0 && <span className="rounded-full bg-brand-amber/25 px-2 py-0.5 text-[11px] font-medium text-foreground">{w.attention.openRequests} access request{w.attention.openRequests === 1 ? "" : "s"}</span>}
                   </div>
                 )}
 
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Edited{" "}
                   {formatDistanceToNow(new Date(w.updatedAt), { addSuffix: true })}
                 </p>
 
                 {latestFeedback && (
-                  <p className="text-xs text-gray-400 mt-1 truncate">
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
                     {latestFeedback.action === "approved" ? "Approved" : "Changes requested"}{" "}
-                    by {latestFeedback.reviewerName} &mdash;{" "}
+                    by {latestFeedback.reviewerName},{" "}
                     {formatDistanceToNow(new Date(latestFeedback.createdAt), {
                       addSuffix: true,
                     })}

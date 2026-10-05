@@ -3,7 +3,7 @@ import WorkflowEditor from "@/components/workflow/WorkflowEditor";
 import { WorkflowToaster } from "@/components/workflow/ui/toast";
 
 export const metadata = {
-  title: "Workflow Editor | Talkpush CRM",
+  title: "Workflow editor | Talkpush Implementation Hub",
 };
 
 export default async function WorkflowEditorPage({ params }: { params: Promise<{ id: string }> }) {

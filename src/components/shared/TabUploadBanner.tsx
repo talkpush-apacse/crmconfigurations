@@ -204,8 +204,8 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
             disabled={uploading}
             className={
               compact
-                ? "h-7 px-2 text-xs text-brand-lavender-darker hover:bg-brand-lavender-lightest"
-                : "border-brand-lavender-lighter bg-white text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker"
+                ? "h-7 px-2 text-xs text-brand-lavender-darker hover:bg-brand-lavender-lightest max-md:min-h-11"
+                : "border-brand-lavender-lighter bg-white text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker max-md:min-h-11"
             }
           >
             {uploading ? (
@@ -259,7 +259,7 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(file)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                    className="inline-flex size-11 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive md:size-7"
                     title="Remove file"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -276,7 +276,7 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
               className="border-brand-lavender data-[state=checked]:bg-brand-sage-darker data-[state=checked]:border-brand-sage-darker"
             />
             <span>
-              Skip manual entry — our team will use the uploaded file{uploadedFiles.length > 1 ? "s" : ""}
+              Skip manual entry. Our team will use the uploaded file{uploadedFiles.length > 1 ? "s" : ""}
             </span>
           </label>
         </div>

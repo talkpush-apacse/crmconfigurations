@@ -48,11 +48,11 @@ const ARTIFACT_KIND_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "assumption", label: "Assumption" },
-  { value: "open_question", label: "Open Question" },
+  { value: "open_question", label: "Open question" },
   { value: "risk", label: "Risk" },
   { value: "decision", label: "Decision" },
-  { value: "call_note", label: "Call Note" },
-  { value: "customer_summary", label: "Customer Summary" },
+  { value: "call_note", label: "Call note" },
+  { value: "customer_summary", label: "Customer summary" },
 ];
 
 const SEVERITY_OPTIONS: Array<{
@@ -68,31 +68,31 @@ const SEVERITY_OPTIONS: Array<{
 
 const SECTION_LABELS: Record<ScopingArtifactKind, string> = {
   assumption: "Assumptions",
-  open_question: "Open Questions",
+  open_question: "Open questions",
   risk: "Risks",
   decision: "Decisions",
-  call_note: "Call Notes",
-  customer_summary: "Customer Summary",
+  call_note: "Call notes",
+  customer_summary: "Customer summary",
 };
 
 function severityClass(severity: string) {
   return cn(
-    "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-    severity === "critical" && "bg-red-100 text-red-700",
-    severity === "high" && "bg-red-50 text-red-600",
-    severity === "medium" && "bg-amber-100 text-amber-700",
-    severity === "low" && "bg-blue-50 text-blue-700",
-    severity === "info" && "bg-gray-100 text-gray-600"
+    "rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide",
+    severity === "critical" && "bg-destructive/15 text-destructive",
+    severity === "high" && "bg-destructive/10 text-destructive",
+    severity === "medium" && "bg-brand-amber/25 text-foreground",
+    severity === "low" && "bg-brand-lavender-lightest text-foreground",
+    severity === "info" && "bg-muted text-foreground/70"
   );
 }
 
 function statusClass(status: string) {
   return cn(
-    "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-    status === "open" && "bg-amber-50 text-amber-700",
-    status === "confirmed" && "bg-teal-50 text-teal-700",
-    status === "resolved" && "bg-green-50 text-green-700",
-    status === "dismissed" && "bg-gray-100 text-gray-500"
+    "rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide",
+    status === "open" && "bg-brand-amber/15 text-foreground",
+    status === "confirmed" && "bg-brand-lavender-lightest text-foreground",
+    status === "resolved" && "bg-brand-sage/15 text-foreground",
+    status === "dismissed" && "bg-muted text-muted-foreground"
   );
 }
 
@@ -263,16 +263,16 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
   }
 
   return (
-    <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
+    <div className="w-96 h-full bg-card border-l border-border flex flex-col overflow-hidden max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-30 max-md:!w-[min(20rem,90vw)] max-md:shadow-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <ClipboardList className="h-4 w-4 text-teal-600 shrink-0" />
-          <h2 className="text-sm font-semibold text-gray-900">SE Brief</h2>
+          <ClipboardList className="h-4 w-4 text-foreground shrink-0" />
+          <h2 className="text-sm font-semibold text-foreground">SE Brief</h2>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+          className="h-11 w-11 p-0 text-muted-foreground hover:text-foreground/70 md:h-7 md:w-7"
           onClick={onClose}
         >
           <X className="w-4 h-4" />
@@ -282,17 +282,17 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {loading ? (
           <div className="flex h-40 items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-foreground" />
           </div>
         ) : (
           <>
             <section className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Validation
                   </h3>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-muted-foreground">
                     Deterministic implementation checks
                   </p>
                 </div>
@@ -314,7 +314,7 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
               </div>
 
               {findings.length === 0 ? (
-                <div className="rounded-md border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">
+                <div className="rounded-md border border-brand-sage/40 bg-brand-sage/15 px-3 py-2 text-xs text-foreground">
                   <CheckCircle2 className="mr-1.5 inline h-3.5 w-3.5" />
                   No validation findings.
                 </div>
@@ -323,22 +323,22 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                   {findings.map((finding, index) => (
                     <div
                       key={`${finding.code}-${finding.nodeId ?? finding.edgeId ?? index}`}
-                      className="rounded-md border border-gray-200 bg-white p-3"
+                      className="rounded-md border border-border bg-card p-3"
                     >
                       <div className="mb-1 flex items-center gap-2">
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                        <AlertTriangle className="h-3.5 w-3.5 text-brand-amber-darker" />
                         <span className={severityClass(finding.severity)}>
                           {finding.severity}
                         </span>
-                        <span className="text-[10px] uppercase text-gray-400">
+                        <span className="text-[11px] uppercase text-muted-foreground">
                           {finding.code}
                         </span>
                       </div>
-                      <p className="text-xs leading-relaxed text-gray-700">
+                      <p className="text-xs leading-relaxed text-foreground/85">
                         {finding.message}
                       </p>
                       {finding.recommendation && (
-                        <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                           {finding.recommendation}
                         </p>
                       )}
@@ -348,10 +348,10 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
               )}
             </section>
 
-            <section className="rounded-md border border-gray-200 p-3 space-y-3">
+            <section className="rounded-md border border-border p-3 space-y-3">
               <div className="flex items-center gap-2">
-                <Plus className="h-3.5 w-3.5 text-teal-600" />
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <Plus className="h-3.5 w-3.5 text-foreground" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Add Item
                 </h3>
               </div>
@@ -432,15 +432,15 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
               return (
                 <section key={option.value} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {SECTION_LABELS[option.value]}
                     </h3>
-                    <span className="text-[11px] tabular-nums text-gray-400">
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
                       {items.length}
                     </span>
                   </div>
                   {items.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
+                    <p className="rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
                       Nothing captured yet.
                     </p>
                   ) : (
@@ -448,11 +448,11 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                       {items.map((artifact) => (
                         <div
                           key={artifact.id}
-                          className="rounded-md border border-gray-200 bg-white p-3"
+                          className="rounded-md border border-border bg-card p-3"
                         >
                           <div className="mb-1.5 flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold leading-snug text-gray-900">
+                              <p className="text-xs font-semibold leading-snug text-foreground">
                                 {artifact.title}
                               </p>
                               <div className="mt-1 flex flex-wrap gap-1.5">
@@ -468,13 +468,13 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                              className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => void removeArtifact(artifact)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
-                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-600">
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/70">
                             {artifact.detail}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -483,7 +483,7 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-[11px] text-green-700 hover:bg-green-50"
+                                className="h-7 px-2 text-[11px] text-foreground hover:bg-brand-sage/15"
                                 onClick={() => void updateArtifactStatus(artifact, "resolved")}
                               >
                                 Resolve
@@ -494,7 +494,7 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-[11px] text-teal-700 hover:bg-teal-50"
+                                className="h-7 px-2 text-[11px] text-foreground hover:bg-brand-lavender-lightest"
                                 onClick={() => void updateArtifactStatus(artifact, "confirmed")}
                               >
                                 Confirm
@@ -505,7 +505,7 @@ export default function SEBriefPanel({ workflowId, onClose }: SEBriefPanelProps)
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-[11px] text-gray-500 hover:bg-gray-50"
+                                className="h-7 px-2 text-[11px] text-muted-foreground hover:bg-secondary"
                                 onClick={() => void updateArtifactStatus(artifact, "dismissed")}
                               >
                                 Dismiss
