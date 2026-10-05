@@ -1,5 +1,6 @@
 import type { ProjectSnapshot } from "@/lib/tracker/snapshot";
 import { formatMetricValue, metricProgress, type MetricStatus } from "@/lib/tracker/metric-progress";
+import { joinNames, phaseState } from "@/lib/tracker/phase-state";
 import { formatDate, formatShortDate, plural } from "@/lib/tracker/format";
 import { ItemStatusBadge } from "./badges";
 import { BurnupChart, CellBar, Sparkline } from "./charts";
@@ -52,12 +53,18 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
   const d = data;
   const Headline = embedded ? "h2" : "h1";
   const rows = attentionRows(d);
-  const currentPhase = d.phases.find((p) => p.open > 0);
-  const phaseNote = currentPhase
-    ? `Now in ${currentPhase.name}: ${currentPhase.done} of ${currentPhase.total} items done.`
-    : d.phases.length > 0 && d.progress.total > 0
-      ? "Every phase is complete."
-      : "No phase has items yet.";
+  const activePhases = d.phases.filter((p) => phaseState(p) === "in_progress");
+  const nextUp = d.phases.find((p) => phaseState(p) === "upcoming");
+  const phaseNote =
+    activePhases.length === 1
+      ? `Now in ${activePhases[0].name}: ${activePhases[0].done} of ${activePhases[0].total} items done.`
+      : activePhases.length > 1
+        ? `Now in ${joinNames(activePhases.map((p) => `${p.name} (${p.done} of ${p.total} done)`))}.`
+        : nextUp
+          ? `Next up: ${nextUp.name}, ${nextUp.total} ${nextUp.total === 1 ? "item" : "items"} not started.`
+          : d.phases.length > 0 && d.progress.total > 0
+            ? "Every phase is complete."
+            : "No phase has items yet.";
   const metricsMet = d.metrics.filter((m) => metricProgress({ baselineValue: m.baseline, currentValue: m.current, targetValue: m.target }).status === "met").length;
   const daysToTarget = d.progress.daysToTarget;
 

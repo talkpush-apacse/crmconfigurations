@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildHeadline, buildSnapshot, type SnapshotInput, type SnapshotItem } from "../src/lib/tracker/snapshot";
 import { computeHealth } from "../src/lib/tracker/health";
 import { matchByName } from "../src/lib/tracker/match";
+import { joinNames, phaseState } from "../src/lib/tracker/phase-state";
 
 const TODAY = "2026-10-10";
 
@@ -144,9 +145,36 @@ test("phase rollup counts only live, countable items", () => {
     item({ id: "d", title: "D", phaseId: "p2", status: "not_started" }),
   ]);
   assert.deepEqual(s.phases, [
-    { name: "Configuration", total: 2, done: 1, open: 1 },
-    { name: "UAT", total: 1, done: 0, open: 1 },
+    { name: "Configuration", total: 2, done: 1, open: 1, started: 1 },
+    { name: "UAT", total: 1, done: 0, open: 1, started: 0 },
   ]);
+});
+
+test("phase rollup counts started items (in progress, waiting, blocked)", () => {
+  const s = snapshot([
+    item({ id: "a", title: "A", status: "in_progress", phaseId: "p1" }),
+    item({ id: "b", title: "B", status: "waiting_on_client", phaseId: "p1" }),
+    item({ id: "c", title: "C", status: "not_started", phaseId: "p2" }),
+    item({ id: "d", title: "D", status: "blocked", phaseId: "p2" }),
+  ]);
+  assert.deepEqual(
+    s.phases.map((p) => p.started),
+    [2, 1]
+  );
+});
+
+test("phase state: started or partly done means in progress, all done means complete", () => {
+  assert.equal(phaseState({ total: 0, done: 0, open: 0, started: 0 }), "no_items");
+  assert.equal(phaseState({ total: 1, done: 0, open: 1, started: 1 }), "in_progress"); // Account Build in progress
+  assert.equal(phaseState({ total: 3, done: 2, open: 1, started: 0 }), "in_progress"); // partly done
+  assert.equal(phaseState({ total: 2, done: 0, open: 2, started: 0 }), "upcoming");
+  assert.equal(phaseState({ total: 2, done: 2, open: 0, started: 0 }), "complete");
+});
+
+test("joinNames", () => {
+  assert.equal(joinNames(["A"]), "A");
+  assert.equal(joinNames(["A", "B"]), "A and B");
+  assert.equal(joinNames(["A", "B", "C"]), "A, B and C");
 });
 
 test("name matching: exact wins, a unique partial is accepted, ambiguity is reported", () => {

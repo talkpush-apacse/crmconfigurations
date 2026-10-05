@@ -31,6 +31,8 @@ function input(): ClientViewInput {
     waitingOn: null,
     visibility: "client_visible",
     links: [{ label: "TP-11000", url: SECRET_JIRA }],
+    startDate: "2026-09-20",
+    blockedByItemIds: [] as string[],
   };
   return {
     project: {
@@ -53,13 +55,13 @@ function input(): ClientViewInput {
       accountNotes: SECRET_INTERNAL_ITEM,
     },
     items: [
-      { ...base, id: "a", title: "Approve templates", status: "waiting_on_client", waitingOn: "Legal review", dueDate: "2026-10-20" },
+      { ...base, id: "a", title: "Approve templates", status: "waiting_on_client", waitingOn: "Legal review", dueDate: "2026-10-20", blockedByItemIds: ["c", "b", "a"], description: "SECRET_DESCRIPTION" },
       { ...base, id: "b", title: "Whitelist domain", status: "blocked", blockerReason: SECRET_BLOCKER, dueDate: "2026-10-01" },
       { ...base, id: "c", title: SECRET_INTERNAL_ITEM, status: "blocked", visibility: "internal", blockerReason: SECRET_BLOCKER, dueDate: "2026-09-01" },
       { ...base, id: "d", title: "Archived thing", status: "blocked", archived: true },
       { ...base, id: "e", title: "UAT sign-off", status: "not_started", isMilestone: true, dueDate: "2026-11-20" },
     ],
-    phases: [{ id: "p1", name: "Configuration" }],
+    phases: [{ id: "p1", name: "Configuration", startDate: "2026-09-15", endDate: "2026-10-31" }],
     metrics: [
       { id: "m1", name: "Time to hire", unit: "days", direction: "lower_is_better", baselineValue: 21, targetValue: 14, currentValue: 18, currentAsOf: "2026-10-01", visibility: "client_visible", archived: false },
       { id: "m2", name: SECRET_METRIC, unit: "x", direction: "higher_is_better", baselineValue: 1, targetValue: 2, currentValue: 1, currentAsOf: null, visibility: "internal", archived: false },
@@ -75,7 +77,7 @@ function input(): ClientViewInput {
 
 test("the client view never contains anything internal", () => {
   const json = JSON.stringify(buildClientView(input()));
-  for (const secret of [SECRET_EMAIL, SECRET_INTERNAL_ITEM, SECRET_BLOCKER, SECRET_NOTE, SECRET_REMARK, SECRET_METRIC, SECRET_CHECKLIST, SECRET_JIRA, "TP-11000", "atlassian", "shared remark on a hidden item", "Archived thing"]) {
+  for (const secret of [SECRET_EMAIL, SECRET_INTERNAL_ITEM, SECRET_BLOCKER, SECRET_NOTE, SECRET_REMARK, SECRET_METRIC, SECRET_CHECKLIST, SECRET_JIRA, "TP-11000", "atlassian", "shared remark on a hidden item", "Archived thing", "SECRET_DESCRIPTION"]) {
     assert.equal(json.includes(secret), false, `leaked: ${secret}`);
   }
   assert.equal(json.includes("@"), false, "no email address of any kind");
@@ -121,10 +123,32 @@ test("the client view exposes exactly the keys we approved", () => {
   const v = buildClientView(input()) as Record<string, unknown>;
   assert.deepEqual(Object.keys(v).sort(), [
     "asOf", "burnup", "dataNotes", "headline", "health", "linkedChecklist", "metrics", "needsAttention",
-    "nextMilestone", "openItemsByOwnerSide", "phases", "progress", "project", "recentActivity", "sharedRemarks",
+    "nextMilestone", "openItemsByOwnerSide", "phases", "plan", "progress", "project", "recentActivity", "sharedRemarks",
   ]);
   assert.equal(v.linkedChecklist, null);
   assert.deepEqual(v.recentActivity, []);
+});
+
+test("plan (List, Board, Timeline): only visible items, only approved fields, no hidden dependency", () => {
+  const v = buildClientView(input());
+  assert.deepEqual(v.plan.items.map((i) => i.id), ["a", "b", "e"]); // c is internal, d archived
+  for (const row of v.plan.items) {
+    assert.deepEqual(Object.keys(row).sort(), [
+      "blockedByItemIds", "dueDate", "id", "isMilestone", "ownerName", "ownerSide", "phaseId", "phaseName",
+      "sortOrder", "startDate", "status", "title", "waitingOn",
+    ]);
+  }
+  const a = v.plan.items[0];
+  assert.deepEqual(a.blockedByItemIds, ["b"]); // the internal item "c" and the self-reference "a" are dropped
+  assert.equal(a.phaseName, "Configuration");
+  assert.equal(a.startDate, "2026-09-20");
+  assert.deepEqual(v.plan.phases, [{ id: "p1", name: "Configuration", sortOrder: 0, startDate: "2026-09-15", endDate: "2026-10-31" }]);
+});
+
+test("plan leaves out dropped items", () => {
+  const i = input();
+  i.items.push({ ...i.items[0], id: "z", title: "Dropped idea", status: "dropped", blockedByItemIds: [] });
+  assert.equal(buildClientView(i).plan.items.some((r) => r.id === "z"), false);
 });
 
 // ---------- share tokens ----------

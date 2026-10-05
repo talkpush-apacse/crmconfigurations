@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
-import { ExecSummary } from "@/components/tracker/ExecSummary";
+import { ClientProjectViews } from "@/components/tracker/ClientViews";
 import { ErrorBlock } from "@/components/tracker/PageHeader";
 import { SummarySkeleton } from "@/components/tracker/SummarySkeleton";
 import type { ClientView } from "@/lib/tracker/client-view";
@@ -25,9 +25,8 @@ export default function ClientPreviewPage() {
       ) : !data ? (
         <SummarySkeleton context="client" label="Loading client view" />
       ) : (
-        <ExecSummary
+        <ClientProjectViews
           data={data}
-          context="client"
           banner={
             <div className="flex items-start gap-2 rounded-lg border border-[var(--es-line)] bg-[var(--es-card)] px-4 py-3 text-sm">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

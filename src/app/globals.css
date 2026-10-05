@@ -310,6 +310,21 @@ select:not([data-slot]):focus {
   --es-orange-soft: #F4DBB2;
   --es-orange-ink: #7A4F1E;
   --es-red: #D1483D;
+  /* The client face reuses the staff List, Board and Timeline parts, which read the shared tokens.
+     Re-point those tokens at the report palette here so staff colours never reach a client page. */
+  --background: var(--es-bg);
+  --foreground: var(--es-ink);
+  --card: var(--es-card);
+  --card-foreground: var(--es-ink);
+  --secondary: var(--es-stripe);
+  --muted: var(--es-line);
+  --muted-foreground: var(--es-muted);
+  --border: var(--es-line);
+  --destructive: var(--es-red);
+  --status-completed: var(--es-green);
+  --status-in-progress: var(--es-blue);
+  --status-pending: var(--es-orange);
+  --brand-lavender-lighter: var(--es-blue-soft);
   background: var(--es-bg);
   background-image: none; /* client face is flat beige, never a gradient (DESIGN.md) */
 }
