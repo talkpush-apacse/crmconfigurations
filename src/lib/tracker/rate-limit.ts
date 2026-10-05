@@ -12,6 +12,8 @@ export interface Limiter {
   hit(key: string, now?: number): boolean;
   /** How many hits the key has in the current window (without recording one). */
   count(key: string, now?: number): number;
+  /** Forget every hit (used by tests). */
+  reset(): void;
 }
 
 export function createLimiter(limit: number, windowMs: number, maxKeys = 5000): Limiter {
@@ -39,6 +41,9 @@ export function createLimiter(limit: number, windowMs: number, maxKeys = 5000): 
     },
     count(key, now = Date.now()) {
       return recent(key, now).length;
+    },
+    reset() {
+      hits.clear();
     },
   };
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { toDateOnly, todayDateOnly } from "./dates";
 import { notFound } from "./errors";
 import { buildClientView } from "./client-view";
+import { needsStaffReview } from "./review";
 
 /**
  * Loads exactly the columns the client view needs (an explicit `select`, never a
@@ -43,6 +44,8 @@ export async function getClientViewForProject(projectId: string) {
           completedAt: true,
           waitingOn: true,
           archived: true,
+          createdVia: true,
+          staffReviewedAt: true,
           owner: { select: { name: true, side: true } },
         },
       },
@@ -107,6 +110,7 @@ export async function getClientViewForProject(projectId: string) {
       ownerName: i.owner?.name ?? null,
       ownerSide: i.owner?.side ?? null,
       blockerReason: null,
+      needsReview: needsStaffReview(i),
     })),
     phases: project.phases,
     metrics: project.metrics.map((m) => ({ ...m, currentAsOf: toDateOnly(m.currentAsOf) })),

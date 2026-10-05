@@ -6,6 +6,7 @@ import type {
   TrackerRemark,
 } from "@/generated/prisma/client";
 import { toDateOnly } from "./dates";
+import { needsStaffReview } from "./review";
 
 export function serializeAccount(a: TrackerAccount) {
   return {
@@ -79,6 +80,8 @@ export function serializeItem(i: ItemWithRelations) {
     sortOrder: i.sortOrder,
     archived: i.archived,
     createdVia: i.createdVia,
+    staffReviewedAt: i.staffReviewedAt ? i.staffReviewedAt.toISOString() : null,
+    needsReview: needsStaffReview(i),
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
     blockedByItemIds: i.blockedBy.map((d) => d.blockedByItemId),

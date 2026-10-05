@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { ClipboardList, Download, History, MoreHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ClipboardList, Download, History, Link2, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 import type { NavItem } from "./TopNav";
 import { cn } from "@/lib/utils";
 import { SaveButton } from "@/components/shared/SaveButton";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 
 interface HeaderProps {
   clientName: string;
@@ -39,6 +40,11 @@ interface HeaderProps {
   snapshotsHref?: string;
   /** Staff only. Opens the "Apply template" sheet from the actions menu. */
   onApplyTemplate?: () => void;
+  /**
+   * Admin only. The full link to share with the client. When set, the header
+   * shows a "Copy link" button beside Export XLS.
+   */
+  shareLink?: string;
 }
 
 /**
@@ -62,8 +68,26 @@ export function Header({
   variant = "client",
   snapshotsHref,
   onApplyTemplate,
+  shareLink,
 }: HeaderProps) {
   const isStaff = variant === "staff";
+
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copyResetRef.current) clearTimeout(copyResetRef.current);
+  }, []);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!shareLink) return;
+    const ok = await copyToClipboard(shareLink);
+    setCopyState(ok ? "copied" : "failed");
+    if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => setCopyState("idle"), ok ? 2000 : 4000);
+  }, [shareLink]);
+
+  const copyLabel =
+    copyState === "copied" ? "Link copied" : copyState === "failed" ? "Couldn't copy" : "Copy link";
 
   const handleExport = () => {
     const exportUrl = editorToken
@@ -183,6 +207,23 @@ export function Header({
             />
           )}
 
+          {shareLink && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyLink}
+              title="Copy the link to share with the client"
+              className="hidden h-11 gap-1.5 px-3 text-[13px] sm:inline-flex md:h-8"
+            >
+              {copyState === "copied" ? (
+                <Check className="h-4 w-4 text-brand-sage-darker" />
+              ) : (
+                <Link2 className="h-4 w-4" />
+              )}
+              <span aria-live="polite">{copyLabel}</span>
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="outline"
@@ -206,6 +247,19 @@ export function Header({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              {shareLink && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    // Keep the menu open so "Link copied" is visible.
+                    e.preventDefault();
+                    void handleCopyLink();
+                  }}
+                  className="min-h-11 sm:hidden"
+                >
+                  {copyState === "copied" ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                  {copyLabel}
+                </DropdownMenuItem>
+              )}
               {snapshotsHref && (
                 <DropdownMenuItem asChild className="min-h-11 md:min-h-0">
                   <Link href={snapshotsHref}>

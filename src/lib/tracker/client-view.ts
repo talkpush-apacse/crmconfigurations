@@ -61,6 +61,7 @@ export function buildClientView(input: ClientViewInput) {
       blockerReason: null, // internal: never shown to clients
       waitingOn: i.waitingOn,
       visibility: "client_visible",
+      needsReview: i.needsReview === true,
     }));
   const visibleIds = new Set(visibleItems.map((i) => i.id));
   const titleById = new Map(visibleItems.map((i) => [i.id, i.title]));

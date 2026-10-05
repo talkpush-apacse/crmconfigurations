@@ -245,6 +245,8 @@ model TrackerItem {
   sortOrder          Int      @default(0)
   archived           Boolean  @default(false)
   createdVia         String   @default("web")
+  templateItemKey    String?  // which standard-plan item this was created from (null = added by hand)
+  staffReviewedAt    DateTime? // when staff reviewed an item a client added (null on a client-added item = still needs review)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -254,6 +256,7 @@ model TrackerItem {
 
   @@index([projectId, status])
   @@index([projectId, sortOrder])
+  @@index([projectId, templateItemKey])
   @@index([ownerPersonId])
   @@index([dueDate])
 }
@@ -379,6 +382,58 @@ model TrackerShareLink {
   createdAt   DateTime @default(now())
 
   @@index([projectId])
+}
+
+// =============================================================================
+// Standard implementation plan (additive). A catalogue of items that a project
+// plan is built from. Building a plan COPIES the ticked items into the project
+// (TrackerItem), so later template edits never change a live project.
+// audience: internal | shared | client
+//   internal = Talkpush only (item visibility internal)
+//   shared   = Talkpush does it, client can see it (client_visible, owner side talkpush)
+//   client   = client does it, client can see it (client_visible, owner side client)
+// startDay / endDay are 1-based WORKING-day offsets from the project start date
+// (Monday to Friday; day 1 is the start date, rolled forward off a weekend).
+// phaseWeeks example: {"Scoping":[1,2],"Configuration":[3,4]} (weeks of 5 working days)
+// =============================================================================
+
+model TrackerPlanTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  version     Int      @default(1)
+  phaseWeeks  Json     @default("{}")
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items TrackerPlanTemplateItem[]
+}
+
+model TrackerPlanTemplateItem {
+  id              String   @id @default(cuid())
+  templateId      String
+  template        TrackerPlanTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  key             String   // stable id, never renamed once used in a project
+  phaseName       String
+  groupName       String
+  title           String
+  description     String?
+  type            String   @default("config")
+  priority        String   @default("medium")
+  audience        String   @default("shared")
+  isMilestone     Boolean  @default(false)
+  defaultIncluded Boolean  @default(true)
+  startDay        Int?
+  endDay          Int?
+  dependsOnKeys   Json     @default("[]")
+  sortOrder       Int      @default(0)
+  archived        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([templateId, key])
+  @@index([templateId, sortOrder])
 }
 
 // =============================================================================

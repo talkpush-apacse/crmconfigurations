@@ -3,10 +3,11 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ExternalLink, FileText, Plus, Settings, Share2 } from "lucide-react";
+import { ChevronLeft, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
+import { BuildPlanDialog } from "@/components/tracker/BuildPlanDialog";
 import { MetricsView } from "@/components/tracker/MetricsView";
 import { ShareDialog } from "@/components/tracker/ShareDialog";
 import { SummaryView } from "@/components/tracker/SummaryView";
@@ -49,6 +50,7 @@ function ProjectWorkspace() {
   const [editingItem, setEditingItem] = useState<ItemDTO | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   useDocumentTitle(detail?.project.title);
 
   const changeStatus = async (item: ItemDTO, status: ItemStatus, blockerReason?: string): Promise<string | null> => {
@@ -67,6 +69,15 @@ function ProjectWorkspace() {
   const openItem = (item: ItemDTO) => {
     setEditingItem(item);
     setSheetOpen(true);
+  };
+
+  const markAllReviewed = async () => {
+    try {
+      await api(`/api/tracker/projects/${id}/review-all`, { method: "POST" });
+      load();
+    } catch (err) {
+      window.alert(errorMessage(err));
+    }
   };
 
   const reorder = async (itemIds: string[]): Promise<string | null> => {
@@ -135,6 +146,10 @@ function ProjectWorkspace() {
         </div>
         {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
         <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
+          <Button variant="outline" onClick={() => setPlanOpen(true)}>
+            <ListChecks className="h-4 w-4" />
+            Build plan
+          </Button>
           <Button asChild variant="outline" className="max-md:min-h-11">
             <Link href={`/admin/tracker/projects/${project.id}/config-plan`}>
               <FileText className="h-4 w-4" />
@@ -162,6 +177,16 @@ function ProjectWorkspace() {
       </header>
 
       <section aria-label="Project items">
+        {items.some((i) => i.needsReview) && (
+          <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-status-pending/50 bg-status-pending/15 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {plural(items.filter((i) => i.needsReview).length, "item")} added by the client {items.filter((i) => i.needsReview).length === 1 ? "needs" : "need"} your review. The client can see them, but they do not count toward project health until you review them.
+            </p>
+            <Button variant="outline" size="sm" onClick={markAllReviewed}>
+              Mark all reviewed
+            </Button>
+          </div>
+        )}
         <Tabs value={view} onValueChange={setView} className="gap-4">
           {/* On a phone the six views wrap into two rows of three so none is cut off; from md up it is one row. */}
           <TabsList
@@ -223,7 +248,8 @@ function ProjectWorkspace() {
         people={people}
         onSaved={() => void load()}
       />
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} />
+      <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ProjectDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

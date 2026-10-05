@@ -58,6 +58,7 @@ import {
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
 import type { ChecklistProgressSummary } from "@/lib/section-status";
@@ -473,7 +474,11 @@ export default function AdminDashboard() {
 
   const handleCopyEditorLink = async (c: ChecklistSummary) => {
     const url = `${window.location.origin}/editor/${c.editorToken}/welcome`;
-    await navigator.clipboard.writeText(url);
+    if (!(await copyToClipboard(url))) {
+      setOperationError("Couldn't copy the link. Copy it from the address bar of the editor page instead.");
+      setTimeout(() => setOperationError(null), 5000);
+      return;
+    }
     setEditorLinkCopied(c.id);
     setTimeout(() => setEditorLinkCopied(null), 2000);
   };
