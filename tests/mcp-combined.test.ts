@@ -6,7 +6,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 /**
  * The combined connector (/api/mcp/all). No database is needed: these tests only list tools and check auth.
  * The point of the checks: it serves exactly the tools of the three single-area connectors (nothing lost,
- * nothing renamed, no clash), and the single-area connectors are untouched.
+ * nothing renamed, no clash) plus the read-only Configuration Plan tool, and the single-area connectors are untouched.
  */
 
 type ServerLike = { connect: (t: never) => Promise<void> };
@@ -33,17 +33,18 @@ const ORIGIN = "https://example.test";
 
 const namesOf = async (server: ServerLike) => (await (await connect(server)).listTools()).tools.map((t) => t.name).sort();
 
-test("combined connector serves exactly the tools of the checklist, tracker and workflow connectors", async () => {
+test("combined connector serves exactly the tools of the checklist, tracker and workflow connectors, plus the config plan", async () => {
   const m = await load();
   const combined = await namesOf(m.createCombinedMcpServer(ORIGIN, CTX));
   const separate = [
     ...(await namesOf(m.createMcpServer())),
     ...(await namesOf(m.createTrackerMcpServer())),
     ...(await namesOf(m.createWorkflowMcpServer(ORIGIN))),
+    "get_config_plan", // the Configuration Plan area is served on the combined URL only
   ].sort();
   assert.equal(new Set(combined).size, combined.length, "no duplicate tool names");
   assert.deepEqual(combined, separate);
-  for (const probe of ["list_checklists", "list_tracker_projects", "create_workflow_from_spec", "run_gap_check"]) {
+  for (const probe of ["list_checklists", "list_tracker_projects", "create_workflow_from_spec", "run_gap_check", "get_config_plan"]) {
     assert.ok(combined.includes(probe), `${probe} is served`);
   }
 });
@@ -53,6 +54,7 @@ test("combined connector's instructions cover every area and keep the sharing ru
   const text = m.combinedInstructions(m.combinedModules(ORIGIN));
   assert.match(text, /Project Tracker/);
   assert.match(text, /Workflow Builder/);
+  assert.match(text, /Configuration Plan/);
   assert.match(text, /ONLY for when the user explicitly asks/);
 });
 
