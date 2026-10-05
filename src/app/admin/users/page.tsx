@@ -19,8 +19,10 @@ import type { UserDTO } from "@/lib/users-service";
 const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export default function UsersPage() {
-  const { data, error, reload } = useApiResource<{ users: UserDTO[] }>("/api/users");
+  const { data, error, reload } = useApiResource<{ users: UserDTO[]; signInUrl: string }>("/api/users");
   const users = data?.users ?? null;
+  const signInUrl = data?.signInUrl ?? "";
+  const [notice, setNotice] = useState<{ email: string } | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<UserDTO | null>(null);
   const [actionError, setActionError] = useState("");
@@ -67,6 +69,16 @@ export default function UsersPage() {
           </div>
         ))}
       </dl>
+
+      {notice && (
+        <div role="status" className="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
+          <p className="font-medium">{notice.email} can now sign in.</p>
+          <p className="mt-1 text-muted-foreground">
+            Tell them to open <strong className="text-foreground">{signInUrl || "the Hub"}</strong>, click <strong className="text-foreground">Sign in with Google</strong>, and
+            choose the Google account for {notice.email}. It has to be that exact email, and a talkpush.com Google account.
+          </p>
+        </div>
+      )}
 
       {actionError && (
         <p role="alert" className="mb-4 text-sm text-destructive">
@@ -145,7 +157,14 @@ export default function UsersPage() {
         the same email. You cannot change or remove your own login, and there must always be at least one editor.
       </p>
 
-      <AddUserDialog open={adding} onOpenChange={setAdding} onAdded={reload} />
+      <AddUserDialog
+        open={adding}
+        onOpenChange={setAdding}
+        onAdded={(email) => {
+          setNotice({ email });
+          reload();
+        }}
+      />
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
@@ -162,7 +181,7 @@ export default function UsersPage() {
   );
 }
 
-function AddUserDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (open: boolean) => void; onAdded: () => void }) {
+function AddUserDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (open: boolean) => void; onAdded: (email: string) => void }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("viewer");
   const [error, setError] = useState("");
@@ -182,8 +201,8 @@ function AddUserDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenC
     setSaving(true);
     setError("");
     try {
-      await api("/api/users", { method: "POST", body: { email, role } });
-      onAdded();
+      const created = await api<UserDTO>("/api/users", { method: "POST", body: { email, role } });
+      onAdded(created.email);
       close(false);
     } catch (err) {
       setError(errorMessage(err));
