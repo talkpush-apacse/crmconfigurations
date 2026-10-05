@@ -374,11 +374,11 @@ export const STANDARD_ITEMS: SeedItem[] = [
   }),
 
   // ---------------------------------------------------------------- Training (week 7)
-  item("training-champion", TR, "Training", "Champion training: settings, configuration and end-user use", "shared", [31, 33], {
+  item("training-champion", TR, "Training", "Champion training: Company Settings, configuration and end-user use", "shared", [31, 33], {
     type: "training",
     priority: "high",
     deps: ["uat-signoff"],
-    description: "Train your champions on the company settings, how things are configured, and day-to-day use.",
+    description: "Train your champions on Company Settings, how things are configured, and day-to-day use.",
   }),
   item("training-ps", TR, "Training", "PS training: about the client, process flow, what to expect", "internal", [31, 33], {
     type: "training",
