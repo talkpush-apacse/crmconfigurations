@@ -5,44 +5,7 @@ import { normalizeOwnerEmail } from "@/lib/notifications";
 import { getDefaultChecklistData } from "@/lib/template-data";
 import { getChecklistProgress } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
-
-/**
- * Strips fields that must never reach an unauthenticated slug-based viewer.
- *
- * Matches the equivalent helper in by-token/route.ts. Deny-listing on a full
- * row fetch (rather than a hand-typed `select` allow-list) means a new
- * checklist field is public by default and has to be deliberately excluded —
- * the safe default for a JSON blob whose shape keeps growing. The previous
- * allow-list here had drifted: `labels` was missing simply because it did not
- * exist when the list was last written, the same root cause that made the
- * Labels tab briefly unreachable everywhere.
- */
-function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
-  const publicChecklist = { ...checklist };
-  delete publicChecklist.atsIntegrations;
-  delete publicChecklist.integrations;
-  delete publicChecklist.configuratorChecklist;
-  // editorToken must never be returned to slug-based public viewers
-  delete publicChecklist.editorToken;
-  // Internal telephony/SMS operational config — not shown to clients.
-  delete publicChecklist.adminSettings;
-  // Optimistic-concurrency bookkeeping — internal, not part of any tab's UI.
-  delete publicChecklist.fieldVersions;
-  // A real person's email address — must never go out on an unauthenticated,
-  // slug-based public link. Caught by diffing this route's actual response
-  // before/after switching off the `select` allow-list: the allow-list had
-  // never selected `ownerEmail` or `notificationState`, so the full-row fetch
-  // silently started returning them. Both are genuine Checklist columns, not
-  // CHECKLIST_JSON_FIELDS entries, so they were outside the field list this
-  // fix was reasoning about — worth remembering next time a `select` is
-  // dropped in favour of a full fetch: audit every column on the model, not
-  // just the JSON ones.
-  delete publicChecklist.ownerEmail;
-  // Per-tab edit/notify timestamps for the owner-email feature — internal
-  // bookkeeping, not shown in any tab's UI.
-  delete publicChecklist.notificationState;
-  return publicChecklist;
-}
+import { omitInternalConfigForSlug } from "@/lib/checklist-public";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +16,7 @@ export async function GET(request: NextRequest) {
     //
     // No `select` — the hand-typed allow-list this used to have was already
     // three fields behind the checklist's actual JSON columns (see
-    // omitInternalConfig above). Fetching the full row and denying the
+    // omitInternalConfigForSlug in @/lib/checklist-public). Fetching the full row and denying the
     // sensitive fields by name is the same pattern the sibling by-token
     // route already uses, and it can't silently drift out of sync again.
     if (slug) {
@@ -63,7 +26,7 @@ export async function GET(request: NextRequest) {
       if (!checklist) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      return NextResponse.json(omitInternalConfig(checklist as unknown as Record<string, unknown>));
+      return NextResponse.json(omitInternalConfigForSlug(checklist as unknown as Record<string, unknown>));
     }
 
     // Protected: list all checklists (all authenticated users see everything)

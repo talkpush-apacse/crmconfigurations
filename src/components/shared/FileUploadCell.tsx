@@ -97,7 +97,7 @@ export function FileUploadCell({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-primary shrink-0"
+              className="max-md:min-h-11 max-md:min-w-11 h-6 w-6 text-muted-foreground hover:text-primary shrink-0"
               onClick={() => setEditingUrl(true)}
               title="Edit URL"
             >
@@ -106,7 +106,7 @@ export function FileUploadCell({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+              className="max-md:min-h-11 max-md:min-w-11 h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
               onClick={() => setDeleteOpen(true)}
               title="Remove"
             >
@@ -139,7 +139,7 @@ export function FileUploadCell({
       <Button
         variant="outline"
         size="sm"
-        className={cn("w-full h-9 text-xs", uploading && "pointer-events-none")}
+        className={cn("max-md:min-h-11", "w-full h-9 text-xs", uploading && "pointer-events-none")}
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
       >
@@ -159,7 +159,7 @@ export function FileUploadCell({
       {/* OR divider */}
       <div className="relative flex items-center my-1">
         <div className="flex-1 border-t border-gray-200" />
-        <span className="mx-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">or</span>
+        <span className="mx-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">or</span>
         <div className="flex-1 border-t border-gray-200" />
       </div>
 
@@ -169,7 +169,7 @@ export function FileUploadCell({
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => setEditingUrl(false)}
         placeholder={placeholder}
-        className="h-8 text-xs"
+        className="max-md:min-h-11 h-8 text-xs"
       />
 
       {error && (

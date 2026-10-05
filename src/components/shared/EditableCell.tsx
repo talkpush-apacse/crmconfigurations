@@ -242,7 +242,7 @@ export function EditableCell({
     }
     return (
       <div className={cn("px-2 py-1.5 text-sm text-muted-foreground", className)}>
-        {String(value || "—")}
+        {String(value || "Not set")}
       </div>
     );
   }
@@ -263,7 +263,7 @@ export function EditableCell({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs bg-red-50 text-red-700 border-red-200">
+        <TooltipContent side="bottom" className="max-w-xs border-destructive/30 bg-destructive/10 text-destructive">
           <p className="text-xs">{errorMessage}</p>
         </TooltipContent>
       </Tooltip>
@@ -296,9 +296,9 @@ export function EditableCell({
           <DropdownMenuTrigger
             aria-invalid={!!errorMessage}
             className={cn(
-              "flex h-9 w-full items-center justify-between gap-2 rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-left text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
-              !selected.length && "text-[#757575]",
-              errorMessage && "border-red-400 bg-red-50/50",
+              "flex h-11 w-full items-center justify-between gap-2 rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-left text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:h-9",
+              !selected.length && "text-muted-foreground",
+              errorMessage && "border-destructive bg-destructive/5",
               className
             )}
           >
@@ -339,7 +339,7 @@ export function EditableCell({
           <SelectTrigger
             aria-invalid={!!errorMessage}
             className={cn(
-              "h-9 text-sm",
+              "h-11 text-sm data-[size=default]:h-11 md:h-9 md:data-[size=default]:h-9",
               errorMessage && "border-red-400 focus-visible:ring-red-400",
               className
             )}
@@ -373,7 +373,7 @@ export function EditableCell({
           inGrid ? "min-h-[36px] resize-y text-sm" : "min-h-[80px] resize-y text-sm",
           spreadsheetMode &&
             currentValue.trim() === "" &&
-            "bg-slate-50/70 placeholder:text-[#9AA0A6]",
+            "bg-muted/50 placeholder:text-muted-foreground/70",
           errorMessage && "border-red-400 focus-visible:ring-red-400",
           className
         )}
@@ -393,9 +393,9 @@ export function EditableCell({
     return wrapWithValidation(
       <div
         className={cn(
-          "group flex cursor-text items-center justify-between rounded-md border-[1.5px] border-[#BDBDBD] bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-[#9E9E9E]",
-          !currentValue && "text-[#757575]",
-          errorMessage && "border-red-400 bg-red-50/50",
+          "group flex min-h-11 cursor-text items-center justify-between rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:min-h-0",
+          !currentValue && "text-muted-foreground",
+          errorMessage && "border-destructive bg-destructive/5",
           className
         )}
         onClick={() => {
@@ -442,10 +442,10 @@ export function EditableCell({
         placeholder={placeholder}
         aria-invalid={!!errorMessage}
         className={cn(
-          "h-9 text-sm",
+          "h-11 text-sm md:h-9",
           // An unfilled cell reads as unfilled, rather than looking answered by
           // its own placeholder.
-          spreadsheetMode && isEmpty && "bg-slate-50/70 placeholder:text-[#9AA0A6]",
+          spreadsheetMode && isEmpty && "bg-muted/50 placeholder:text-muted-foreground/70",
           errorMessage && "border-red-400 focus-visible:ring-red-400",
           className
         )}
@@ -456,7 +456,7 @@ export function EditableCell({
           target="_blank"
           rel="noopener noreferrer"
           title="Open link"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-brand-lavender-darker"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-brand-lavender-darker md:size-9"
           onMouseDown={(e) => e.preventDefault()}
         >
           <ExternalLink className="h-3.5 w-3.5" />

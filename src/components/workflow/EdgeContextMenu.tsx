@@ -56,32 +56,32 @@ export default function EdgeContextMenu({
       <DropdownMenuContent align="start" side="right" className="w-52 text-sm">
         {showHappyPath && (
           <DropdownMenuItem onClick={onMarkHappyPath} className="gap-2 cursor-pointer">
-            <GitBranch className="w-3.5 h-3.5 text-teal-600" />
+            <GitBranch className="w-3.5 h-3.5 text-foreground" />
             Mark as Happy Path
           </DropdownMenuItem>
         )}
         {showRecoveryPath && (
           <DropdownMenuItem onClick={onMarkRecoveryPath} className="gap-2 cursor-pointer">
-            <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+            <RotateCcw className="w-3.5 h-3.5 text-brand-amber-darker" />
             Mark as Recovery Path
           </DropdownMenuItem>
         )}
         {(showHappyPath || showRecoveryPath) && <DropdownMenuSeparator />}
         <DropdownMenuItem onClick={onAddLabel} className="gap-2 cursor-pointer">
-          <Tags className="w-3.5 h-3.5 text-gray-500" />
+          <Tags className="w-3.5 h-3.5 text-muted-foreground" />
           Add label
         </DropdownMenuItem>
         {showResetRouting && (
           <DropdownMenuItem onClick={onResetRouting} className="gap-2 cursor-pointer">
-            <Route className="w-3.5 h-3.5 text-gray-500" />
+            <Route className="w-3.5 h-3.5 text-muted-foreground" />
             Reset routing
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
           onClick={onDelete}
-          className="gap-2 cursor-pointer text-red-600 focus:text-red-700"
+          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
         >
-          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+          <Trash2 className="w-3.5 h-3.5 text-destructive" />
           Delete edge
         </DropdownMenuItem>
       </DropdownMenuContent>

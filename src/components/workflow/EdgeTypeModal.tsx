@@ -49,7 +49,7 @@ export default function EdgeTypeModal({
           <DialogTitle>Connect back to Step {targetStepNumber}</DialogTitle>
           <DialogDescription>
             Choose how this connector should behave when it points to{" "}
-            <span className="font-medium text-gray-700">{targetLabel}</span>.
+            <span className="font-medium text-foreground/85">{targetLabel}</span>.
           </DialogDescription>
         </DialogHeader>
 
@@ -58,38 +58,38 @@ export default function EdgeTypeModal({
           onValueChange={(next) => setValue(next as EdgeConnectionType)}
           className="gap-2"
         >
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-teal-100 bg-teal-50/60 p-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-brand-lavender bg-brand-lavender-lightest/60 p-3">
             <RadioGroupItem value="recovery" className="mt-0.5" />
             <span>
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <RotateCcw className="w-3.5 h-3.5 text-brand-amber-darker" />
                 Recovery path
               </span>
-              <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                 Use this when a branch returns to an existing main workflow step.
               </span>
             </span>
           </label>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3">
             <RadioGroupItem value="happy" className="mt-0.5" />
             <span>
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                <Check className="w-3.5 h-3.5 text-teal-500" />
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Check className="w-3.5 h-3.5 text-foreground" />
                 Happy path
               </span>
-              <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                 Mark this connector as the main success path from the source step.
               </span>
             </span>
           </label>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3">
             <RadioGroupItem value="branch" className="mt-0.5" />
             <span>
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                <GitBranch className="w-3.5 h-3.5 text-gray-500" />
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
                 Branch path
               </span>
-              <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                 Use this for a normal connector that should remain part of the branch.
               </span>
             </span>

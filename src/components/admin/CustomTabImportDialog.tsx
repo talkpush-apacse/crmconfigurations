@@ -351,12 +351,12 @@ export function CustomTabImportDialog({
               <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
                 Every worksheet becomes its own tab. The first row of each sheet
                 is read as its column headers, and each column&apos;s input type is
-                detected from its values — you can correct anything on the next
+                detected from its values. You can correct anything on the next
                 step before the tabs are created.
               </p>
               <Button
                 variant="outline"
-                className="mt-4 gap-2"
+                className="max-md:min-h-11 mt-4 gap-2"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading}
               >
@@ -407,7 +407,7 @@ export function CustomTabImportDialog({
           <div className="space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-gray-800">{fileName}</span> —{" "}
+                <span className="font-medium text-gray-800">{fileName}</span>:{" "}
                 {sheets.length} worksheet{sheets.length !== 1 ? "s" : ""} found,{" "}
                 {included.length} selected
               </p>
@@ -422,7 +422,7 @@ export function CustomTabImportDialog({
                 <ul className="mt-1 list-disc space-y-0.5 pl-4">
                   {skipped.map((s) => (
                     <li key={s.name} className="text-xs text-muted-foreground">
-                      <span className="font-medium">{s.name}</span> — {s.reason}
+                      <span className="font-medium">{s.name}</span>: {s.reason}
                     </li>
                   ))}
                 </ul>
@@ -478,7 +478,7 @@ export function CustomTabImportDialog({
                             patchSheet(sheetIndex, { tabName: e.target.value })
                           }
                           placeholder="Tab name"
-                          className="h-8 text-sm"
+                          className="max-md:min-h-11 h-8 text-sm"
                           disabled={!sheet.include}
                           aria-invalid={!!problem}
                           aria-label={`Tab name for ${sheet.sheetName}`}
@@ -560,7 +560,7 @@ export function CustomTabImportDialog({
                                           label: e.target.value,
                                         })
                                       }
-                                      className="h-8 text-sm"
+                                      className="max-md:min-h-11 h-8 text-sm"
                                       disabled={!col.include}
                                     />
                                     <div className="mt-1 flex items-center gap-1.5">
@@ -568,13 +568,13 @@ export function CustomTabImportDialog({
                                         variant="outline"
                                         className={
                                           col.confidence === "low"
-                                            ? "border-amber-300 text-[10px] text-amber-700"
-                                            : "text-[10px]"
+                                            ? "border-amber-300 text-[11px] text-amber-700"
+                                            : "text-[11px]"
                                         }
                                       >
                                         {SOURCE_LABEL[col.source]}
                                       </Badge>
-                                      <span className="font-mono text-[10px] text-muted-foreground">
+                                      <span className="font-mono text-[11px] text-muted-foreground">
                                         {col.key}
                                       </span>
                                     </div>
@@ -589,7 +589,7 @@ export function CustomTabImportDialog({
                                       }
                                       disabled={!col.include}
                                     >
-                                      <SelectTrigger className="h-8 w-[150px] text-sm">
+                                      <SelectTrigger className="max-md:min-h-11 h-8 w-[150px] text-sm">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -611,7 +611,7 @@ export function CustomTabImportDialog({
                                           })
                                         }
                                         placeholder="Comma-separated choices"
-                                        className="h-8 min-w-[180px] text-sm"
+                                        className="max-md:min-h-11 h-8 min-w-[180px] text-sm"
                                         disabled={!col.include}
                                         aria-invalid={
                                           col.include && col.optionsText.trim() === ""
@@ -619,7 +619,7 @@ export function CustomTabImportDialog({
                                       />
                                     ) : (
                                       <span className="text-xs text-muted-foreground">
-                                        —
+                                        None
                                       </span>
                                     )}
                                   </td>
@@ -707,15 +707,15 @@ export function CustomTabImportDialog({
             )}
 
             <div className="flex items-center justify-between pt-2">
-              <Button variant="ghost" onClick={reset} className="gap-1.5">
+              <Button variant="ghost" onClick={reset} className="max-md:min-h-11 gap-1.5">
                 <ArrowLeft className="h-4 w-4" />
                 Choose a different file
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleClose(false)}>
+                <Button className="max-md:min-h-11" variant="outline" onClick={() => handleClose(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!canCreate}>
+                <Button className="max-md:min-h-11" onClick={handleCreate} disabled={!canCreate}>
                   {included.length > 1
                     ? `Create ${included.length} Tabs`
                     : "Create Tab"}
@@ -766,7 +766,7 @@ function reshapeValue(value: unknown, column: CustomTabColumn): string | boolean
 
 function formatPreviewValue(value: unknown): string {
   if (value === true) return "Yes";
-  if (value === false) return "—";
+  if (value === false) return "No";
   const text = String(value ?? "").trim();
-  return text || "—";
+  return text || "Empty";
 }

@@ -249,7 +249,7 @@ function SelectField<T extends string>({
       onValueChange={(next) => onChange(next as T)}
       disabled={disabled}
     >
-      <SelectTrigger className={cn("h-9 text-sm", triggerClassName)}>
+      <SelectTrigger className={cn("max-md:min-h-11", "h-9 text-sm", triggerClassName)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -487,7 +487,7 @@ export function IntegrationsSheet() {
           </p>
         )}
         {!isReadOnly && (
-          <Button type="button" onClick={addRow} className="w-full rounded-full sm:w-auto">
+          <Button type="button" onClick={addRow} className="max-md:min-h-11 w-full rounded-full sm:w-auto">
             <Plus className="mr-1 h-4 w-4" />
             Add Integration
           </Button>
@@ -549,7 +549,7 @@ export function IntegrationsSheet() {
                 disabled={isReadOnly}
                 onChange={(event) => onChange(event.target.value)}
                 placeholder="Vendor name"
-                className="h-9 text-sm"
+                className="max-md:min-h-11 h-9 text-sm"
               />
             );
           }
@@ -681,16 +681,16 @@ function IntegrationDetails({
       <SectionDivider title="Vendor Details" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Field label="Vendor Contact Name">
-          <Input value={row.vendorContactName} disabled={disabled} onChange={(event) => setField("vendorContactName", event.target.value)} />
+          <Input className="max-md:min-h-11" value={row.vendorContactName} disabled={disabled} onChange={(event) => setField("vendorContactName", event.target.value)} />
         </Field>
         <Field label="Vendor Contact Email">
-          <Input type="email" value={row.vendorContactEmail} disabled={disabled} onChange={(event) => setField("vendorContactEmail", event.target.value)} />
+          <Input className="max-md:min-h-11" type="email" value={row.vendorContactEmail} disabled={disabled} onChange={(event) => setField("vendorContactEmail", event.target.value)} />
         </Field>
         <Field label="Vendor API Docs URL">
           <div className="flex gap-2">
-            <Input type="url" value={row.vendorDocsUrl} disabled={disabled} onChange={(event) => setField("vendorDocsUrl", event.target.value)} />
+            <Input className="max-md:min-h-11" type="url" value={row.vendorDocsUrl} disabled={disabled} onChange={(event) => setField("vendorDocsUrl", event.target.value)} />
             {row.vendorDocsUrl && (
-              <Button type="button" variant="outline" size="icon-sm" asChild>
+              <Button className="max-md:min-h-11 max-md:min-w-11" type="button" variant="outline" size="icon-sm" asChild>
                 <a href={row.vendorDocsUrl} target="_blank" rel="noreferrer" aria-label="Open vendor docs">
                   <ExternalLink className="h-4 w-4" />
                 </a>
@@ -757,7 +757,7 @@ function IntegrationDetails({
           >
             {(row.inboundAttributeMapping ?? []).map((mapping, index) => (
               <div key={mapping.id} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                <Input
+                <Input className="max-md:min-h-11"
                   value={mapping.vendorCallbackField}
                   disabled={disabled}
                   onChange={(event) =>
@@ -901,7 +901,7 @@ function InboundApiHandoffSection({
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Field label="Talkpush API Base URL">
-          <Input
+          <Input className="max-md:min-h-11"
             value={row.talkpushApiBaseUrl ?? ""}
             disabled={disabled}
             onChange={(event) => setField("talkpushApiBaseUrl", event.target.value)}
@@ -932,7 +932,7 @@ function InboundApiHandoffSection({
           <>
             {showAuthNameField && (
               <Field label="Inbound Auth Param / Header">
-                <Input
+                <Input className="max-md:min-h-11"
                   value={row.inboundAuthParamName ?? ""}
                   disabled={disabled}
                   onChange={(event) => setField("inboundAuthParamName", event.target.value)}
@@ -941,7 +941,7 @@ function InboundApiHandoffSection({
               </Field>
             )}
             <Field label="Inbound Auth Value">
-              <Input
+              <Input className="max-md:min-h-11"
                 type="password"
                 value={row.inboundAuthValue ?? ""}
                 disabled={disabled}
@@ -990,7 +990,7 @@ function InboundApiHandoffSection({
           />
         </Field>
         <Field label="Candidate ID Field Name">
-          <Input
+          <Input className="max-md:min-h-11"
             value={row.candidateIdFieldName ?? ""}
             disabled={disabled}
             onChange={(event) => setField("candidateIdFieldName", event.target.value)}
@@ -1120,10 +1120,10 @@ function OutboundConfiguration({
       <SectionDivider title="Outbound Configuration" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Field label="Endpoint URL">
-          <Input value={row.endpointUrl ?? ""} disabled={disabled} onChange={(event) => setField("endpointUrl", event.target.value)} />
+          <Input className="max-md:min-h-11" value={row.endpointUrl ?? ""} disabled={disabled} onChange={(event) => setField("endpointUrl", event.target.value)} />
         </Field>
         <Field label="HTTP Method">
-          <Input value="POST" readOnly disabled />
+          <Input className="max-md:min-h-11" value="POST" readOnly disabled />
         </Field>
         <Field label="Auth Method">
           <SelectField
@@ -1137,10 +1137,10 @@ function OutboundConfiguration({
         {showAuthFields && (
           <>
             <Field label="Auth Param or Header Name">
-              <Input value={row.authParamName ?? ""} disabled={disabled} onChange={(event) => setField("authParamName", event.target.value)} />
+              <Input className="max-md:min-h-11" value={row.authParamName ?? ""} disabled={disabled} onChange={(event) => setField("authParamName", event.target.value)} />
             </Field>
             <Field label="Auth Value">
-              <Input type="password" value={row.authValue ?? ""} disabled={disabled} onChange={(event) => setField("authValue", event.target.value)} />
+              <Input className="max-md:min-h-11" type="password" value={row.authValue ?? ""} disabled={disabled} onChange={(event) => setField("authValue", event.target.value)} />
             </Field>
           </>
         )}
@@ -1171,7 +1171,7 @@ function OutboundConfiguration({
               options={sourceOptions}
               placeholder="Talkpush source"
             />
-            <Input
+            <Input className="max-md:min-h-11"
               value={mapping.vendorFieldName}
               disabled={disabled}
               onChange={(event) =>
@@ -1214,7 +1214,7 @@ function OutboundConfiguration({
       >
         {(row.responseHandling ?? []).map((mapping, index) => (
           <div key={mapping.id} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-            <Input
+            <Input className="max-md:min-h-11"
               value={mapping.vendorResponseField}
               disabled={disabled}
               onChange={(event) =>
@@ -1262,7 +1262,7 @@ function MappingSection({
     <div className="mt-5 rounded-lg border bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-gray-800">{title}</h4>
-        <Button type="button" variant="outline" size="sm" onClick={onAdd} disabled={disabled}>
+        <Button className="max-md:min-h-11" type="button" variant="outline" size="sm" onClick={onAdd} disabled={disabled}>
           <Plus className="mr-1 h-3.5 w-3.5" />
           Add
         </Button>
@@ -1282,7 +1282,7 @@ function RemoveButton({ disabled, onClick }: { disabled: boolean; onClick: () =>
       size="icon-sm"
       disabled={disabled}
       onClick={onClick}
-      className="text-muted-foreground hover:bg-red-50 hover:text-destructive"
+      className="max-md:min-h-11 max-md:min-w-11 text-muted-foreground hover:bg-red-50 hover:text-destructive"
       aria-label="Remove mapping"
     >
       <Trash2 className="h-4 w-4" />

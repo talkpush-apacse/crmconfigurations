@@ -65,6 +65,8 @@ export function describeActivity(a: ActivityLike): string {
     case "project.updated":
       if ("targetDate" in after) return `moved the target date from ${dateValue(before.targetDate)} to ${dateValue(after.targetDate)}`;
       return `changed the project ${fieldList(after)}`;
+    case "phase.created":
+      return `added the phase "${typeof after.name === "string" ? after.name : "a phase"}"`;
     case "phase.updated":
       return `changed a phase's ${fieldList(after)}`;
     case "item.created":
@@ -76,6 +78,10 @@ export function describeActivity(a: ActivityLike): string {
     case "item.updated":
       if ("archived" in after) return after.archived ? `archived ${quoted}` : `restored ${quoted}`;
       return `changed ${quoted}: ${fieldList(after)}`;
+    case "file.added":
+      return `added the ${typeof after.kind === "string" && after.kind !== "other" ? `${after.kind} ` : ""}file "${typeof after.fileName === "string" ? after.fileName : "a file"}"`;
+    case "file.removed":
+      return `removed the file "${typeof before.fileName === "string" ? before.fileName : "a file"}"`;
     case "remark.added":
       return `added a ${after.visibility === "shared" ? "shared" : "team-only"} remark on ${quoted}`;
     case "metric.created":

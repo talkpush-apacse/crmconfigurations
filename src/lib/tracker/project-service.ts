@@ -17,6 +17,7 @@ import { summarizeProject } from "./summary";
 import {
   projectCreateSchema,
   projectUpdateSchema,
+  phaseCreateSchema,
   phaseUpdateSchema,
 } from "./validations";
 
@@ -240,6 +241,56 @@ export async function updateProject(id: string, input: unknown, actor: Actor) {
     return project;
   });
   return serializeProjectBase(updated);
+}
+
+/**
+ * Adds phases to the end of a project, in the order given. Names must be unique within the project (ignoring case)
+ * so that Claude, which finds phases by name, can never be left guessing. All are checked before any is created.
+ */
+export async function createPhases(projectId: string, input: unknown[], actor: Actor) {
+  const parsed = input.map((p) => phaseCreateSchema.parse(p));
+  const project = await prisma.trackerProject.findUnique({
+    where: { id: projectId },
+    select: { id: true, archived: true, phases: { select: { name: true, sortOrder: true } } },
+  });
+  if (!project) throw notFound("Project");
+  if (project.archived) throw badRequest("This project is archived.");
+
+  const taken = new Set(project.phases.map((p) => p.name.trim().toLowerCase()));
+  for (const p of parsed) {
+    const key = p.name.trim().toLowerCase();
+    if (taken.has(key)) throw badRequest(`This project already has a phase called "${p.name}". Use update_phase to change it.`);
+    taken.add(key);
+    if (p.startDate && p.endDate && p.endDate < p.startDate) throw badRequest(`Phase "${p.name}" cannot end before it starts.`);
+  }
+
+  const firstOrder = project.phases.reduce((max, p) => Math.max(max, p.sortOrder), -1) + 1;
+  const created = await prisma.$transaction(async (tx) => {
+    const rows = [];
+    for (const [index, p] of parsed.entries()) {
+      const phase = await tx.trackerPhase.create({
+        data: {
+          projectId,
+          name: p.name,
+          sortOrder: firstOrder + index,
+          startDate: parseDateOnly(p.startDate ?? null),
+          endDate: parseDateOnly(p.endDate ?? null),
+          exitCriteria: p.exitCriteria ?? null,
+        },
+      });
+      await logActivity(tx, {
+        projectId,
+        entityType: "phase",
+        entityId: phase.id,
+        action: "phase.created",
+        after: { name: phase.name, startDate: p.startDate ?? null, endDate: p.endDate ?? null },
+        actor,
+      });
+      rows.push(phase);
+    }
+    return rows;
+  });
+  return created.map(serializePhase);
 }
 
 export async function updatePhase(phaseId: string, input: unknown, actor: Actor) {

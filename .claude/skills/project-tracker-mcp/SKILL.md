@@ -1,12 +1,12 @@
 ---
 name: project-tracker-mcp
-description: How to read and update Talkpush implementation projects through the Project Tracker MCP (the "tracker" connector). Use this whenever Jolo asks "where are we on <client project>", "what's still open for <client>", "mark <item> as done/blocked", "add these items to <project>", "who owns <item>", "record this metric", or wants a status update drafted from the tracker. Do not use it for the CRM Config Checklist (that is the separate checklist MCP) or for editing the website code.
+description: How to read and update Talkpush implementation projects through the Project Tracker MCP (the "tracker" connector). Use this whenever Jolo asks "where are we on <client project>", "what's still open for <client>", "mark <item> as done/blocked", "add these items to <project>", "who owns <item>", "record this metric", wants a status update drafted from the tracker, wants to link Jira tickets to items, or wants a Gantt chart drawn from, or turned into, a project timeline. Do not use it for the CRM Config Checklist (that is the separate checklist MCP) or for editing the website code.
 ---
 
 # Project Tracker MCP
 
 The tracker holds one **project** per client implementation (an **account** can have many). Each project has phases
-(Scoping, Configuration, Integration, UAT, Training, Go-live, Hypercare), **items** (the open work), **people**
+(Scoping, Configuration, UAT, Training, Go-live, Hypercare), **items** (the open work), **people**
 (Talkpush staff, client contacts, vendors) and **success metrics**.
 
 Endpoint: `/api/mcp/tracker`. People connect by signing in through Claude (changes are logged as "Claude for <email>"); the shared key `TRACKER_MCP_API_KEY` still works. Full tool list: `references/tools.md`.
@@ -23,7 +23,15 @@ Endpoint: `/api/mcp/tracker`. People connect by signing in through Claude (chang
    in the same call.
 5. **Adding work:** `add_open_items` takes a list. Names are checked before anything is created, so one typo
    creates nothing. Use `blocked_by` (item titles) to set dependencies, including items from the same call.
-6. **Metrics:** `add_success_metric` (name, unit, baseline, target) then `record_metric_reading` for each measurement.
+6. **Jira tickets:** `add_open_items` and `update_item` take `jira_links`: full ticket addresses on
+   talkpush.atlassian.net, for example `https://talkpush.atlassian.net/browse/TP-11000`. Other sites are refused.
+   `update_item` REPLACES the list, so read the current links first (`list_open_items` shows `jiraLinks`) and send them all.
+   Staff only: clients never see them.
+7. **Timeline and Gantt charts:** read `references/gantt.md` before drawing a Gantt or building a timeline from one.
+   `get_project_timeline` reads the plan, `add_phases` adds phases. Table first, wait for a yes.
+8. **Files:** `list_project_files` shows the names of contracts and other files kept in a project's Settings. You can
+   see that a file exists; you cannot open it.
+9. **Metrics:** `add_success_metric` (name, unit, baseline, target) then `record_metric_reading` for each measurement.
 
 ## Rules that matter
 

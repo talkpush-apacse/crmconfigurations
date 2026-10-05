@@ -6,7 +6,7 @@ import type { ItemType, PlanAudience, Priority } from "./constants";
  * Source: Jolo's implementation checklist plus the additions approved in the Phase 0 audit. Timing follows the standard 9-week plan:
  *   week 1-2 Scoping and sign-off, week 3-4 Configuration and Talkpush testing, week 5 first UAT,
  *   week 6 UAT revisions, week 7 Training and Go-live, week 8-9 Hypercare.
- * Integration builds sit in the Integration phase and run alongside Configuration (weeks 3-4).
+ * Integration builds sit in the Configuration phase (the Integration phase was folded into Configuration).
  * Day numbers are working days from the project start (week N = days 5(N-1)+1 to 5N).
  *
  * Rules for editing this file:
@@ -39,7 +39,6 @@ export const STANDARD_TEMPLATE = {
   phaseWeeks: {
     Scoping: [1, 2],
     Configuration: [3, 4],
-    Integration: [3, 4],
     UAT: [5, 6],
     Training: [7, 7],
     "Go-live": [7, 7],
@@ -88,7 +87,6 @@ const UA = "UAT";
 const TR = "Training";
 const GL = "Go-live";
 const HC = "Hypercare";
-const IN = "Integration";
 
 export const STANDARD_ITEMS: SeedItem[] = [
   // ---------------------------------------------------------------- Scoping (weeks 1-2)
@@ -295,13 +293,13 @@ export const STANDARD_ITEMS: SeedItem[] = [
     description: "Set up queue management for this client.",
   }),
 
-  item("integration-assessment", IN, "Integrations", "Assessment integration", "shared", [11, 20], {
+  item("integration-assessment", CF, "Integrations", "Assessment integration", "shared", [11, 20], {
     type: "integration",
     optional: true,
     deps: ["scoping-ticket-assessment"],
     description: "Connect the assessment tool so invitations go out and results come back into Talkpush.",
   }),
-  item("integration-ats-hris", IN, "Integrations", "ATS/HRIS integration", "shared", [11, 20], {
+  item("integration-ats-hris", CF, "Integrations", "ATS/HRIS integration", "shared", [11, 20], {
     type: "integration",
     optional: true,
     deps: ["scoping-ticket-ats-hris"],

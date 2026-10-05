@@ -51,10 +51,10 @@ export default function QuickAddBar({ onAdd }: QuickAddBarProps) {
   }
 
   return (
-    <div className="h-16 bg-white border-t border-gray-200 flex items-center gap-2 px-4 shrink-0">
-      <div className="flex items-center gap-1.5 text-teal-600">
-        <Zap className="w-3.5 h-3.5" />
-        <span className="text-xs font-semibold text-gray-500 hidden sm:block">Quick Add</span>
+    <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-2 sm:px-4">
+      <div className="flex items-center gap-1.5 text-foreground">
+        <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+        <span className="text-xs font-semibold text-muted-foreground hidden sm:block">Quick add</span>
       </div>
 
       {/* Node type selector */}
@@ -62,7 +62,7 @@ export default function QuickAddBar({ onAdd }: QuickAddBarProps) {
         value={nodeType}
         onValueChange={(v) => setNodeType(v as NodeType)}
       >
-        <SelectTrigger className="h-8 w-36 text-xs border border-gray-200 bg-gray-50 focus:ring-1 focus:ring-teal-500">
+        <SelectTrigger aria-label="Step type" className="data-[size=default]:h-11 md:data-[size=default]:h-8 w-36 border border-border bg-secondary text-xs focus:ring-1 focus:ring-ring">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -79,7 +79,7 @@ export default function QuickAddBar({ onAdd }: QuickAddBarProps) {
         value={actor}
         onValueChange={(v) => setActor(v as ActorType)}
       >
-        <SelectTrigger className="h-8 w-32 text-xs border border-gray-200 bg-gray-50 focus:ring-1 focus:ring-teal-500">
+        <SelectTrigger aria-label="Who does it" className="data-[size=default]:h-11 md:data-[size=default]:h-8 w-32 border border-border bg-secondary text-xs focus:ring-1 focus:ring-ring">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -99,17 +99,19 @@ export default function QuickAddBar({ onAdd }: QuickAddBarProps) {
         onChange={(e) => setLabel(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Add a step… (press Enter)"
-        className="flex-1 h-8 px-3 text-sm rounded-md border border-gray-200 bg-gray-50 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white transition-colors"
+        aria-label="Add a step"
+        className="h-11 min-w-40 flex-1 px-3 md:h-8 text-sm rounded-md border border-border bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring focus:bg-card transition-colors"
       />
 
       {/* Add button */}
       <button
         onClick={handleSubmit}
         disabled={!label.trim()}
-        className="h-8 px-3 flex items-center gap-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-40 md:h-8"
       >
-        <Plus className="w-3.5 h-3.5" />
+        <Plus className="w-3.5 h-3.5" aria-hidden="true" />
         <span className="hidden sm:block">Add</span>
+        <span className="sr-only sm:hidden">Add step</span>
       </button>
     </div>
   );

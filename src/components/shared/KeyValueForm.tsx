@@ -40,9 +40,9 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
             : "lg:grid-cols-[180px_minmax(200px,1fr)] xl:grid-cols-[200px_minmax(220px,1fr)]"
         )}
       >
-        <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Field</div>
-        <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Client Response</div>
-        {hasSamples && <div className="px-4 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em]">Sample</div>}
+        <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em]">Field</div>
+        <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em]">Client Response</div>
+        {hasSamples && <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em]">Sample</div>}
       </div>
       {fields.map((field, idx) => (
         <div
@@ -58,7 +58,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           {/* Field label with ⓘ description tooltip */}
           <div className="flex flex-col justify-center px-4 py-3 min-h-[52px]">
             <div className="flex items-center gap-1.5">
-            <span className="text-[14px] font-medium text-gray-700 leading-snug">{field.label}</span>
+            <span className="text-[15px] font-medium text-gray-700 leading-snug">{field.label}</span>
             {field.description && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -124,7 +124,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
               {field.example ? (
                 <span className="text-[13px] text-gray-400 italic">{field.example}</span>
               ) : (
-                <span className="text-[13px] text-gray-300">—</span>
+                <span className="text-[13px] text-gray-300">None</span>
               )}
             </div>
           )}

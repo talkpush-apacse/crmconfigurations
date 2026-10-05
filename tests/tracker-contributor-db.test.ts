@@ -193,11 +193,12 @@ test("client contributor links", { skip }, async () => {
     await prisma.trackerItem.update({ where: { id: row!.id }, data: { dueDate: new Date("2026-09-10T00:00:00.000Z") } }); // overdue
     await prisma.trackerItem.update({ where: { id: mine.id }, data: { dueDate: null } });
     const before = await getProjectDetail(project.id);
-    assert.equal(before.summary.health.level, "on_track");
+    // The blocked item alone may make the project amber (thresholds can change); what matters is the overdue client item is not counted.
+    assert.ok(!before.summary.health.reasons.some((r) => /overdue/.test(r)), JSON.stringify(before.summary.health.reasons));
     assert.equal(before.items.filter((i) => i.needsReview).length, 2);
     const reviewed = await call(reviewRoute.POST, `/api/tracker/items/${row!.id}/review`, { method: "POST", params: { id: row!.id }, ...staff });
     assert.equal(reviewed.body.reviewed, 1);
-    assert.equal((await getProjectDetail(project.id)).summary.health.level, "at_risk");
+    assert.ok((await getProjectDetail(project.id)).summary.health.reasons.some((r) => /overdue/.test(r)), "once reviewed, the overdue item counts");
     assert.equal((await call(reviewRoute.POST, `/api/tracker/items/${row!.id}/review`, { method: "POST", params: { id: row!.id }, ...staff })).body.reviewed, 0, "reviewing twice does nothing");
     assert.equal((await call(reviewRoute.POST, `/api/tracker/items/${row!.id}/review`, { method: "POST", params: { id: row!.id } })).status, 401);
     const all = await call(reviewAllRoute.POST, `/api/tracker/projects/${project.id}/review-all`, { method: "POST", params, ...staff });

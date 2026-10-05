@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "@/lib/workflow/dates";
 import { normalizeEdgeMarker, normalizeWorkflowEdgeData } from "@/lib/workflow/normalize";
 import { exportWorkflowToPdf } from "@/lib/workflow/pdf-export";
 import {
@@ -46,20 +45,9 @@ import {
 import { toast } from "@/components/workflow/ui/toast";
 import { nanoid } from "@/lib/workflow/ids";
 import {
-  ArrowLeft,
   AlertTriangle,
-  BoxSelect,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
-  Download,
-  Eye,
-  FileCode2,
-  FileImage,
-  Frame,
-  Hash,
-  History,
   LayoutDashboard,
   LayoutTemplate,
   Link2,
@@ -69,16 +57,9 @@ import {
   Map as MapIcon,
   Maximize2,
   Minus,
-  MousePointer2,
   Plus,
-  Redo2,
-  Share2,
-  StretchHorizontal,
   Trash2,
-  Undo2,
   Unlock,
-  MessageSquare,
-  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/workflow/ui/LoadingButton";
@@ -89,22 +70,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   CommandDialog,
   CommandEmpty,
@@ -140,6 +105,7 @@ import ShareDialog from "./share/ShareDialog";
 import ReviewPanel from "./share/ReviewPanel";
 import VersionHistory from "./panels/VersionHistory";
 import PageTabs, { type PageTabsItem } from "./panels/PageTabs";
+import EditorToolbar, { CanvasTools } from "./EditorToolbar";
 import { toMermaid } from "@/lib/workflow/mermaid";
 import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
@@ -152,7 +118,6 @@ import { buildScene } from "@/lib/workflow/process-map/scene";
 import { ProcessMapContext } from "./process-map/context";
 import { ProcessMapDefs, derivedProcessMapNodes } from "./process-map/nodes";
 import { edgeTypesFor, nodeTypesFor } from "./registry";
-import DownloadMenu from "./process-map/DownloadMenu";
 import { StepNumberContext } from "@/components/workflow/StepNumberContext";
 import { cn } from "@/lib/utils";
 import { useCopyToClipboard } from "@/components/workflow/ui/useCopyToClipboard";
@@ -161,7 +126,6 @@ import {
   DEFAULT_EDGE_DATA,
   DEFAULT_TABLE_DATA,
   NODE_TYPE_CONFIG,
-  WORKFLOW_STATUS_CONFIG,
   type ActorType,
   type AnnotationNodeData,
   type AnnotationShapeType,
@@ -176,7 +140,6 @@ import {
   type WorkflowNodeType,
   type WorkflowPage,
   type WorkflowProject,
-  type WorkflowStatus,
 } from "@/lib/workflow/types";
 
 // ─── Node types registration ─────────────────────────────────────────────────
@@ -457,11 +420,13 @@ function EditorInner({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [clipboard, setClipboard] = useState<{ nodes: FlowNode[]; edges: Edge[] } | null>(null);
   const [renumberVersion, setRenumberVersion] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Open beside the canvas on desktop; on a phone it starts closed so the canvas keeps the screen.
+  const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window === "undefined" ? true : window.innerWidth >= 768));
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(workflow.workflowName);
   const [lassoMode, setLassoMode] = useState(false);
-  const [showMinimap, setShowMinimap] = useState(true);
+  // The minimap would cover most of a phone-width canvas, so it starts hidden there.
+  const [showMinimap, setShowMinimap] = useState(() => typeof window === "undefined" || window.innerWidth >= 768);
   const [commandOpen, setCommandOpen] = useState(false);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
   const [seBriefOpen, setSeBriefOpen] = useState(false);
@@ -2498,7 +2463,7 @@ function EditorInner({
 
   // ── Save as Template ─────────────────────────────────────────────────────────
   function openSaveTemplateDialog() {
-    setTemplateName(`${workflow.clientName} — ${workflow.workflowName}`);
+    setTemplateName(`${workflow.clientName}: ${workflow.workflowName}`);
     setTemplateIndustry("general");
     setSaveTemplateOpen(true);
   }
@@ -2723,437 +2688,61 @@ function EditorInner({
     <StepNumberContext.Provider value={{ visible: showStepNumbers }}>
     <ProcessMapContext.Provider value={scene}>
     {isProcessMap && <ProcessMapDefs />}
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
       {/* ── Top bar ── */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 shrink-0 z-10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/admin/workflows")}
-          className="gap-1.5 text-gray-500 hover:text-gray-800"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline text-xs">Workflows</span>
-        </Button>
+      <EditorToolbar
+        clientName={workflow.clientName}
+        workflowName={workflow.workflowName}
+        onBack={() => router.push("/admin/workflows")}
+        editingName={editingName}
+        nameValue={nameValue}
+        onNameChange={setNameValue}
+        onStartRename={() => setEditingName(true)}
+        onNameBlur={handleNameBlur}
+        onCancelRename={() => {
+          setNameValue(workflow.workflowName);
+          setEditingName(false);
+        }}
+        saveStatus={saveStatus}
+        onRetrySave={retrySave}
+        currentVersionNumber={currentVersionNumber}
+        versions={versions}
+        versionsLoading={versionsLoading}
+        onOpenVersionPanel={openVersionPanel}
+        canUndo={historyIndexRef.current > 0}
+        canRedo={historyIndexRef.current < historyRef.current.length - 1}
+        onUndo={undo}
+        onRedo={redo}
+        onAutoArrange={handleAutoArrange}
+        isProcessMap={isProcessMap}
+        onRenumber={handleRenumber}
+        layoutFindingCount={layoutFindings.length}
+        layoutHasHighFinding={layoutFindings.some((f) => f.severity === "high")}
+        onOpenLayoutCheck={() => setLayoutCheckOpen(true)}
+        reviewOpen={reviewOpen}
+        onToggleReview={() => (reviewOpen ? setReviewOpen(false) : openReviewPanel())}
+        seBriefOpen={seBriefOpen}
+        onToggleSEBrief={openSEBriefPanel}
+        selectedCount={selectedNodeIds.length}
+        exportPages={pages.map((p) => (p.id === activePageId ? { ...p, nodes, edges } : p)) as never}
+        activePageId={activePageId}
+        exportMeta={{
+          clientName: workflow.clientName,
+          workflowName: workflow.workflowName,
+          versionLabel: workflow.currentVersion ? `v${workflow.currentVersion}` : "Draft",
+          fileVersion: workflow.currentVersion ? `v${workflow.currentVersion}` : "draft",
+          date: new Date().toISOString().slice(0, 10),
+          author: "Talkpush",
+        }}
+        onExportPdf={handleExportPdf}
+        onExportSelectedPdf={handleExportSelectedPdf}
+        onCopyMermaid={handleCopyMermaid}
+        onSaveTemplate={openSaveTemplateDialog}
+        onShare={() => setShareDialogOpen(true)}
+      />
 
-        <div className="h-4 w-px bg-gray-200" />
-
-        {/* Breadcrumb: client / workflow name */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-xs text-gray-400 shrink-0 max-w-[120px] truncate">
-            {workflow.clientName}
-          </span>
-          <span className="text-gray-300 text-xs">/</span>
-          {editingName ? (
-            <input
-              autoFocus
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value)}
-              onBlur={handleNameBlur}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleNameBlur();
-                if (e.key === "Escape") {
-                  setNameValue(workflow.workflowName);
-                  setEditingName(false);
-                }
-              }}
-              className="text-sm font-semibold text-gray-900 bg-transparent border-b border-teal-500 outline-none max-w-[200px]"
-            />
-          ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="text-sm font-semibold text-gray-900 hover:text-teal-700 truncate max-w-[200px] text-left"
-              title="Click to rename"
-            >
-              {nameValue}
-            </button>
-          )}
-        </div>
-
-        {/* Save status */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {saveStatus === "saving" && (
-            <>
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs text-gray-400">Saving…</span>
-            </>
-          )}
-          {saveStatus === "saved" && (
-            <>
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs text-gray-400">Saved</span>
-            </>
-          )}
-          {saveStatus === "unsaved" && (
-            <>
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span role="alert" className="text-xs font-medium text-red-600">Not saved</span>
-              <button type="button" onClick={retrySave} className="rounded border border-red-200 px-1.5 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50">
-                Retry
-              </button>
-            </>
-          )}
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs text-gray-500 hover:text-gray-800 shrink-0"
-              title="Version history"
-            >
-              <History className="w-3.5 h-3.5" />
-              v{currentVersionNumber}
-              <ChevronDown className="w-3 h-3 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-72 p-0">
-            <div className="p-3 border-b border-gray-100">
-              <p className="text-xs font-semibold text-gray-900">Recent Versions</p>
-            </div>
-            <div className="max-h-[300px] overflow-y-auto">
-              {versionsLoading ? (
-                <div className="p-4 flex items-center justify-center">
-                  <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
-                </div>
-              ) : versions.length === 0 ? (
-                <p className="text-xs text-gray-400 p-3">No versions yet</p>
-              ) : (
-                versions.slice(0, 5).map((version) => {
-                  const statusConfig =
-                    WORKFLOW_STATUS_CONFIG[version.status as WorkflowStatus];
-
-                  return (
-                    <div
-                      key={version.id}
-                      className="px-3 py-2 border-b border-gray-50 last:border-0"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="bg-teal-50 text-teal-700 font-mono text-[11px] font-medium rounded-full px-2 py-0.5">
-                          v{version.versionNumber}
-                        </span>
-                        <span
-                          className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                            statusConfig?.className ?? "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {statusConfig?.label ?? version.status}
-                        </span>
-                        <span className="text-[11px] text-gray-400 ml-auto">
-                          {formatDistanceToNow(new Date(version.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-                      {version.triggerDetail && (
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          {version.triggerDetail}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            <div className="p-2 border-t border-gray-100">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-xs text-teal-600 hover:text-teal-700"
-                onClick={openVersionPanel}
-              >
-                View full history
-              </Button>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
-
-        {/* Undo / Redo */}
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={undo}
-            disabled={historyIndexRef.current <= 0}
-            className="h-8 w-8 p-0 text-gray-500"
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={redo}
-            disabled={
-              historyIndexRef.current >= historyRef.current.length - 1
-            }
-            className="h-8 w-8 p-0 text-gray-500"
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-
-        {/* Auto-arrange */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleAutoArrange}
-          className="gap-1.5 text-xs shrink-0"
-          title="Auto-arrange nodes"
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">Auto-arrange</span>
-        </Button>
-
-        {!isProcessMap ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRenumber}
-            className="gap-1.5 text-xs shrink-0 text-gray-500 hover:text-gray-800"
-            title="Re-number steps"
-          >
-            <Hash className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Re-number</span>
-          </Button>
-        ) : (
-          <Button
-            variant={layoutFindings.some((f) => f.severity === "high") ? "outline" : "ghost"}
-            size="sm"
-            onClick={() => setLayoutCheckOpen(true)}
-            className={cn("gap-1.5 text-xs shrink-0", layoutFindings.length > 0 ? "text-amber-700" : "text-gray-500 hover:text-gray-800")}
-            title="Check the layout for tangles, overlaps and text that does not fit"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Layout check{layoutFindings.length > 0 ? ` (${layoutFindings.length})` : ""}</span>
-          </Button>
-        )}
-
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
-
-        <Button
-          variant={seBriefOpen ? "outline" : "ghost"}
-          size="sm"
-          onClick={openSEBriefPanel}
-          className={cn(
-            "gap-1.5 text-xs shrink-0",
-            seBriefOpen
-              ? "border-teal-200 text-teal-700"
-              : "text-gray-500 hover:text-gray-800"
-          )}
-          title="Toggle SE Brief panel"
-        >
-          <ClipboardList className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">SE Brief</span>
-        </Button>
-
-        <Button
-          variant={reviewOpen ? "outline" : "ghost"}
-          size="sm"
-          onClick={() => (reviewOpen ? setReviewOpen(false) : openReviewPanel())}
-          className={cn("gap-1.5 text-xs shrink-0", reviewOpen ? "border-teal-200 text-teal-700" : "text-gray-500 hover:text-gray-800")}
-          title="Comments, suggestions and decisions from clients"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">Review</span>
-        </Button>
-
-        {/* Pan / Select segmented control */}
-        <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0" title={lassoMode ? "Select mode active — drag to select nodes" : "Pan mode active — drag to pan the canvas"}>
-          <button
-            type="button"
-            onClick={() => setLassoMode(false)}
-            className={`flex items-center gap-1 px-2 py-1.5 text-xs transition-colors ${
-              !lassoMode
-                ? "bg-teal-600 text-white"
-                : "bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-            }`}
-            title="Pan mode — drag to pan the canvas"
-          >
-            <MousePointer2 className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Pan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLassoMode(true)}
-            className={`flex items-center gap-1 px-2 py-1.5 text-xs transition-colors border-l border-gray-200 ${
-              lassoMode
-                ? "bg-teal-600 text-white"
-                : "bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-            }`}
-            title="Select mode — drag on empty canvas to select multiple nodes"
-          >
-            <BoxSelect className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Select</span>
-          </button>
-        </div>
-
-        {/* View toggles (replaces floating bottom bar) */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "gap-1.5 text-xs shrink-0",
-                (!showWorkflowNodes || !showAnnotations || !showLabels || !showStepNumbers)
-                  ? "text-teal-700 border border-teal-200"
-                  : "text-gray-500 hover:text-gray-800"
-              )}
-              title="Toggle canvas layers"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">View</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs text-gray-500 py-1.5">Canvas Layers</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={showWorkflowNodes}
-              onCheckedChange={setShowWorkflowNodes}
-              className="text-sm"
-            >
-              Workflow nodes
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={showAnnotations}
-              onCheckedChange={setShowAnnotations}
-              className="text-sm"
-            >
-              Annotations
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={showLabels}
-              onCheckedChange={setShowLabels}
-              className="text-sm"
-            >
-              Node labels
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={showStepNumbers}
-              onCheckedChange={setShowStepNumbers}
-              className="text-sm"
-            >
-              Step numbers
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {selectedNodeIds.length > 1 && (
-          <div className="hidden md:flex items-center gap-2 shrink-0 rounded-md border border-teal-100 bg-teal-50 px-2.5 py-1.5">
-            <span className="text-xs text-teal-800 tabular-nums">
-              {selectedNodeIds.length} selected
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteNodes(selectedNodeIds)}
-              className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="ml-1">Delete</span>
-            </Button>
-          </div>
-        )}
-
-        <div className="h-4 w-px bg-gray-200 shrink-0" />
-
-        {/* Add Container dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" title="Add container (swimlane or frame)">
-              <StretchHorizontal className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Container</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-sm">
-            <DropdownMenuItem onClick={() => addContainer("swimlane")} className="gap-2 cursor-pointer">
-              <StretchHorizontal className="w-3.5 h-3.5 text-sky-500" />
-              Add Swimlane
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => addContainer("frame")} className="gap-2 cursor-pointer">
-              <Frame className="w-3.5 h-3.5 text-gray-500" />
-              Add Frame
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Process Map downloads: PDF, SVG, PNG, flow table */}
-        {isProcessMap && (
-          <DownloadMenu
-            pages={pages.map((p) => (p.id === activePageId ? { ...p, nodes, edges } : p)) as never}
-            activePageId={activePageId}
-            meta={{
-              clientName: workflow.clientName,
-              workflowName: workflow.workflowName,
-              versionLabel: workflow.currentVersion ? `v${workflow.currentVersion}` : "Draft",
-              fileVersion: workflow.currentVersion ? `v${workflow.currentVersion}` : "draft",
-              date: new Date().toISOString().slice(0, 10),
-              author: "Talkpush",
-            }}
-          />
-        )}
-
-        {/* Export dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs shrink-0" title="Export workflow">
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Export</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-sm">
-            {!isProcessMap && (
-            <DropdownMenuItem onClick={handleExportPdf} className="gap-2 cursor-pointer">
-              <FileImage className="w-3.5 h-3.5 text-gray-500" />
-              Export as PDF
-            </DropdownMenuItem>
-            )}
-            {!isProcessMap && (
-            <DropdownMenuItem
-              onClick={handleExportSelectedPdf}
-              disabled={selectedNodeIds.length === 0}
-              className="gap-2 cursor-pointer"
-            >
-              <FileImage className="w-3.5 h-3.5 text-teal-600" />
-              {selectedNodeIds.length > 0
-                ? `Export ${selectedNodeIds.length} selected as PDF`
-                : "Export selected as PDF"}
-            </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={handleCopyMermaid} className="gap-2 cursor-pointer">
-              <FileCode2 className="w-3.5 h-3.5 text-gray-500" />
-              Copy Mermaid diagram
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={openSaveTemplateDialog} className="gap-2 cursor-pointer">
-              <LayoutTemplate className="w-3.5 h-3.5 text-gray-500" />
-              Save as Template
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Share */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShareDialogOpen(true)}
-          className="gap-1.5 text-xs shrink-0"
-          title="Share workflow"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">Share</span>
-        </Button>
-
-      </div>
-
-      <div className="lg:hidden border-b border-amber-200 bg-amber-50 px-4 py-3 shrink-0">
-        <div className="flex items-start gap-2 text-amber-900">
+      <div className="lg:hidden border-b border-brand-amber/50 bg-brand-amber/15 px-4 py-3 shrink-0">
+        <div className="flex items-start gap-2 text-foreground">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <p className="text-xs leading-relaxed">
             This workflow canvas is designed for desktop screens. You can still make
@@ -3164,42 +2753,44 @@ function EditorInner({
 
       {/* ── Body ── */}
       <div className="flex flex-1 min-h-0">
-        {/* Left sidebar */}
-        <div
-          className={`bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-200 ${
-            sidebarOpen ? "w-52" : "w-8"
-          }`}
-        >
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="flex items-center justify-center h-8 border-b border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {sidebarOpen ? (
-              <ChevronLeft className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
+        {/* Left panel. Below md it opens over the canvas instead of squeezing it. */}
+        <div className="relative z-20 shrink-0 max-md:w-11">
+          <div
+            className={cn(
+              "flex h-full flex-col border-r border-border bg-card transition-all duration-200",
+              sidebarOpen ? "w-60 max-md:absolute max-md:left-0 max-md:top-0 max-md:w-[min(15rem,85vw)] max-md:shadow-xl" : "w-11 md:w-8"
             )}
-          </button>
+          >
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((v) => !v)}
+              className="flex h-11 shrink-0 items-center justify-center border-b border-border/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:h-8"
+              title={sidebarOpen ? "Collapse panel" : "Expand panel"}
+              aria-label={sidebarOpen ? "Collapse left panel" : "Expand left panel"}
+              aria-expanded={sidebarOpen}
+            >
+              {sidebarOpen ? <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+            </button>
 
-          {sidebarOpen && (
-            <div className="flex-1 overflow-y-auto">
-              <NodePalette
-                onAddNode={handlePaletteAddNode}
-                onAddAnnotation={addAnnotationToCanvas}
-                diagramStyle={diagramStyle}
-                onDiagramStyleChange={handleDiagramStyleChange}
-                lanePanel={isProcessMap ? lanePanel : undefined}
-                outline={outlineItems}
-                selectedStepId={selectedNodeId}
-                onSelectStep={(id) => {
-                  setSelectedNodeId(id);
-                  setSelectedNodeIds([id]);
-                  setTimeout(() => fitView({ nodes: [{ id }], padding: 1.2, maxZoom: 1, duration: 400 }), 60);
-                }}
-              />
-            </div>
-          )}
+            {sidebarOpen && (
+              <div className="flex-1 overflow-y-auto">
+                <NodePalette
+                  onAddNode={handlePaletteAddNode}
+                  onAddAnnotation={addAnnotationToCanvas}
+                  diagramStyle={diagramStyle}
+                  onDiagramStyleChange={handleDiagramStyleChange}
+                  lanePanel={isProcessMap ? lanePanel : undefined}
+                  outline={outlineItems}
+                  selectedStepId={selectedNodeId}
+                  onSelectStep={(id) => {
+                    setSelectedNodeId(id);
+                    setSelectedNodeIds([id]);
+                    setTimeout(() => fitView({ nodes: [{ id }], padding: 1.2, maxZoom: 1, duration: 400 }), 60);
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Canvas + QuickAddBar */}
@@ -3237,21 +2828,38 @@ function EditorInner({
               nodesDraggable={!isCanvasLocked}
               nodesConnectable={!isCanvasLocked}
               elementsSelectable={!isCanvasLocked}
-              className="bg-gray-50"
+              className="bg-secondary"
             >
               <Background
                 variant={BackgroundVariant.Dots}
                 gap={16}
                 size={1}
-                color="#e5e7eb"
+                color="var(--border)"
               />
+              {/* Canvas behaviour: pan or select, which layers show, bulk delete */}
+              <Panel position="top-left" className="m-2">
+                <CanvasTools
+                  lassoMode={lassoMode}
+                  onLassoModeChange={setLassoMode}
+                  showWorkflowNodes={showWorkflowNodes}
+                  onShowWorkflowNodes={setShowWorkflowNodes}
+                  showAnnotations={showAnnotations}
+                  onShowAnnotations={setShowAnnotations}
+                  showLabels={showLabels}
+                  onShowLabels={setShowLabels}
+                  showStepNumbers={showStepNumbers}
+                  onShowStepNumbers={setShowStepNumbers}
+                  selectedCount={selectedNodeIds.length}
+                  onDeleteSelected={() => handleDeleteNodes(selectedNodeIds)}
+                />
+              </Panel>
               {/* Custom zoom controls with accessible tooltips */}
               <Panel position="bottom-left" className="m-2">
-                <div className="flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex flex-col bg-card border border-border rounded-lg shadow-sm overflow-hidden">
                   <button
                     title="Zoom in"
                     aria-label="Zoom in"
-                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-800 border-b border-gray-100 transition-colors"
+                    className="flex h-11 w-11 items-center justify-center border-b border-border/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:h-8 md:w-8"
                     onClick={() => zoomIn({ duration: 200 })}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -3259,7 +2867,7 @@ function EditorInner({
                   <button
                     title="Zoom out"
                     aria-label="Zoom out"
-                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-800 border-b border-gray-100 transition-colors"
+                    className="flex h-11 w-11 items-center justify-center border-b border-border/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:h-8 md:w-8"
                     onClick={() => zoomOut({ duration: 200 })}
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -3267,7 +2875,7 @@ function EditorInner({
                   <button
                     title="Fit workflow to screen"
                     aria-label="Fit workflow to screen"
-                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-gray-800 border-b border-gray-100 transition-colors"
+                    className="flex h-11 w-11 items-center justify-center border-b border-border/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:h-8 md:w-8"
                     onClick={() => fitView({ padding: 0.1, duration: 300 })}
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
@@ -3275,10 +2883,10 @@ function EditorInner({
                   <button
                     title={isCanvasLocked ? "Unlock canvas (re-enable editing)" : "Lock canvas (prevent accidental edits)"}
                     aria-label={isCanvasLocked ? "Unlock canvas" : "Lock canvas"}
-                    className={`w-8 h-8 flex items-center justify-center transition-colors ${
+                    className={`flex h-11 w-11 items-center justify-center transition-colors md:h-8 md:w-8 ${
                       isCanvasLocked
-                        ? "bg-teal-50 text-teal-600 hover:bg-teal-100"
-                        : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                        ? "bg-brand-lavender-lightest text-foreground hover:bg-brand-lavender-lighter"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground/70"
                     }`}
                     onClick={() => setIsCanvasLocked((v) => !v)}
                   >
@@ -3287,10 +2895,10 @@ function EditorInner({
                   <button
                     title={showMinimap ? "Hide minimap" : "Show minimap"}
                     aria-label={showMinimap ? "Hide minimap" : "Show minimap"}
-                    className={`flex h-8 w-8 items-center justify-center transition-colors ${
+                    className={`flex h-11 w-11 items-center justify-center transition-colors md:h-8 md:w-8 ${
                       showMinimap
-                        ? "text-teal-600 bg-teal-50 hover:bg-teal-100"
-                        : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                        ? "text-foreground bg-brand-lavender-lightest hover:bg-brand-lavender-lighter"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground/70"
                     }`}
                     onClick={() => setShowMinimap((v) => !v)}
                   >
@@ -3300,7 +2908,7 @@ function EditorInner({
               </Panel>
               {showMinimap && <MiniMap
                 position="bottom-right"
-                className="!bg-white !border !border-gray-200 !rounded-lg"
+                className="!bg-card !border !border-border !rounded-lg"
                 nodeColor={(n) => {
                   const data = n.data as unknown as WorkflowNodeData;
                   if (data?.customColor?.border) return data.customColor.border;
@@ -3317,14 +2925,14 @@ function EditorInner({
             {nodes.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center max-w-xs">
-                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                    <LayoutDashboard className="w-6 h-6 text-gray-300" />
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-3">
+                    <LayoutDashboard className="w-6 h-6 text-muted-foreground/60" />
                   </div>
-                  <p className="text-sm font-medium text-gray-400 mb-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
                     Canvas is empty
                   </p>
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    Select a node type from the left sidebar to add your first step, or use Quick Add below.
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                    Use Add step in the left panel to add your first step, or type it in Quick Add below.
                   </p>
                 </div>
               </div>
@@ -3407,8 +3015,8 @@ function EditorInner({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LayoutTemplate className="w-4 h-4 text-teal-500" />
-              Save as Template
+              <LayoutTemplate className="w-4 h-4 text-foreground" />
+              Save as template
             </DialogTitle>
             <DialogDescription>
               Save the current workflow canvas as a reusable template.
@@ -3417,25 +3025,25 @@ function EditorInner({
 
           <div className="space-y-4 pt-1">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Template name <span className="text-red-500">*</span>
+              <label className="text-sm font-medium text-foreground/85 mb-1 block">
+                Template name <span className="text-destructive">*</span>
               </label>
               <input
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
                 placeholder="e.g. BPO Voice Screening"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
+                className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
+              <label className="text-sm font-medium text-foreground/85 mb-1 block">
                 Industry
               </label>
               <select
                 value={templateIndustry}
                 onChange={(e) => setTemplateIndustry(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
+                className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:border-ring focus:outline-none"
               >
                 <option value="general">General</option>
                 <option value="bpo">BPO</option>
@@ -3443,7 +3051,7 @@ function EditorInner({
               </select>
             </div>
 
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Saves {nodes.length} nodes and {edges.length} edges as a reusable template.
             </p>
 
@@ -3465,7 +3073,7 @@ function EditorInner({
                 className="gap-1.5"
               >
                 {!savingTemplate && <LayoutTemplate className="w-3.5 h-3.5" />}
-                {savingTemplate ? "Saving…" : "Save Template"}
+                {savingTemplate ? "Saving…" : "Save template"}
               </LoadingButton>
             </div>
           </div>
@@ -3520,8 +3128,8 @@ function EditorInner({
               ["?", "This list"],
             ] as const).map(([k, v]) => (
               <div key={k} className="contents">
-                <dt><kbd className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 text-xs">{k}</kbd></dt>
-                <dd className="text-gray-700">{v}</dd>
+                <dt><kbd className="rounded border border-input bg-secondary px-1.5 py-0.5 text-xs">{k}</kbd></dt>
+                <dd className="text-foreground/85">{v}</dd>
               </div>
             ))}
           </dl>
@@ -3539,14 +3147,14 @@ function EditorInner({
           </DialogHeader>
           <ul className="space-y-2 text-sm">
             {layoutFindings.map((f, i) => (
-              <li key={i} className="rounded-lg border border-gray-200 p-3">
+              <li key={i} className="rounded-lg border border-border p-3">
                 <p className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${f.severity === "high" ? "bg-red-100 text-red-800" : f.severity === "medium" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-700"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${f.severity === "high" ? "bg-destructive/15 text-destructive" : f.severity === "medium" ? "bg-brand-amber/25 text-foreground" : "bg-muted text-foreground/85"}`}>
                     {f.severity === "high" ? "Fix" : f.severity === "medium" ? "Should fix" : "Nice to fix"}
                   </span>
                   <span>{f.message}</span>
                 </p>
-                <p className="mt-1 text-xs text-gray-500">{f.recommendation}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{f.recommendation}</p>
                 {f.nodeId && (
                   <Button
                     size="xs"
@@ -3565,7 +3173,7 @@ function EditorInner({
               </li>
             ))}
           </ul>
-          <div className="flex justify-between border-t border-gray-100 pt-3">
+          <div className="flex justify-between border-t border-border/50 pt-3">
             <Button variant="outline" onClick={() => { setLayoutCheckOpen(false); handleProcessMapArrange(); }}>Re-run layout</Button>
             <Button onClick={() => setLayoutCheckOpen(false)}>Done</Button>
           </div>
@@ -3647,10 +3255,10 @@ function EditorInner({
             transform: "translate(-50%, -50%)",
             zIndex: 1000,
           }}
-          className="bg-white shadow-lg border border-teal-200 rounded-lg p-2"
+          className="bg-card shadow-lg border border-brand-lavender rounded-lg p-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="text-[10px] text-gray-400 mb-1 px-0.5">Connector label</p>
+          <p className="text-[11px] text-muted-foreground mb-1 px-0.5">Connector label</p>
           <div className="flex items-center gap-1.5">
             <input
               autoFocus
@@ -3666,7 +3274,7 @@ function EditorInner({
                 if (e.key === "Escape") setEditingEdge(null);
               }}
               placeholder="e.g. Pass, Fail, Yes, No"
-              className="text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 w-44"
+              className="text-xs border border-border rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-ring focus:border-ring w-44"
             />
             <button
               type="button"
@@ -3675,7 +3283,7 @@ function EditorInner({
                 e.stopPropagation();
                 handleDeleteEdge(editingEdge.id);
               }}
-              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
               title="Delete connector"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -3690,7 +3298,7 @@ function EditorInner({
       <CommandInput placeholder="Add a step, or type a step number or name to go to it…" />
       <CommandList>
         <CommandEmpty>No node types found.</CommandEmpty>
-        <CommandGroup heading="Workflow Nodes">
+        <CommandGroup heading="Workflow nodes">
           {(Object.entries(NODE_TYPE_CONFIG) as [string, { label: string }][])
             .filter(([type]) => type !== "swimlane" && type !== "frame")
             .map(([type, config]) => (
@@ -3748,7 +3356,7 @@ function EditorInner({
                     setTimeout(() => fitView({ nodes: [{ id: n.id }], padding: 1.2, maxZoom: 1, duration: 400 }), 80);
                   }}
                 >
-                  <span className="mr-2 inline-block w-10 text-right text-xs font-semibold tabular-nums text-gray-400">{num ?? "•"}</span>
+                  <span className="mr-2 inline-block w-10 text-right text-xs font-semibold tabular-nums text-muted-foreground">{num ?? "•"}</span>
                   {label}
                 </CommandItem>
               );
@@ -3877,8 +3485,9 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
+      <div className="h-screen w-screen flex items-center justify-center bg-background" role="status">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        <span className="sr-only">Loading workflow</span>
       </div>
     );
   }

@@ -119,22 +119,22 @@ export default function ReviewPanel({
   ];
 
   return (
-    <aside aria-label="Review" className="flex h-full w-96 shrink-0 flex-col border-l border-gray-200 bg-white">
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-gray-900">Review</h2>
+    <aside aria-label="Review" className="flex h-full w-96 shrink-0 flex-col border-l border-border bg-card max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-30 max-md:!w-[min(24rem,90vw)] max-md:shadow-xl">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-foreground">Review</h2>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close review"><X className="h-4 w-4" /></Button>
       </div>
-      <div className="flex shrink-0 overflow-x-auto border-b border-gray-200" role="tablist">
+      <div className="flex shrink-0 overflow-x-auto border-b border-border" role="tablist">
         {tabs.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`min-h-10 shrink-0 whitespace-nowrap border-b-2 px-3 text-xs ${tab === id ? "border-teal-600 font-semibold text-gray-900" : "border-transparent text-gray-500"}`}>
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`min-h-10 shrink-0 whitespace-nowrap border-b-2 px-3 text-xs ${tab === id ? "border-ring font-semibold text-foreground" : "border-transparent text-muted-foreground"}`}>
             {label}
           </button>
         ))}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {error && <p role="alert" className="m-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {!data && !error && <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-gray-400" aria-label="Loading" /></div>}
+        {error && <p role="alert" className="m-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+        {!data && !error && <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" /></div>}
 
         {data && tab === "comments" && (
           <div className="space-y-4 p-3">
@@ -156,7 +156,7 @@ export default function ReviewPanel({
                 }
               }}
             />
-            <p className="text-xs text-gray-500">Anyone can reply here. You can resolve your own comments; to resolve a client&apos;s, ask them or reply.</p>
+            <p className="text-xs text-muted-foreground">Anyone can reply here. You can resolve your own comments; to resolve a client&apos;s, ask them or reply.</p>
           </div>
         )}
 
@@ -175,25 +175,25 @@ export default function ReviewPanel({
 
         {data && tab === "decisions" && (
           <ul className="space-y-3 p-3">
-            {data.feedback.length === 0 && <li className="text-sm text-gray-500">No one has approved or asked for changes yet.</li>}
+            {data.feedback.length === 0 && <li className="text-sm text-muted-foreground">No one has approved or asked for changes yet.</li>}
             {data.feedback.map((f) => (
-              <li key={f.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+              <li key={f.id} className="rounded-lg border border-border p-3 text-sm">
                 <p><strong>{f.reviewerName}</strong> {f.action === "approved" ? "approved" : "asked for changes"}{f.versionNumber ? ` on version ${f.versionNumber}` : ""}</p>
-                <p className="text-xs text-gray-500">{formatDistanceToNow(f.createdAt, { addSuffix: true })}</p>
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(f.createdAt, { addSuffix: true })}</p>
                 {f.comment && <p className="mt-1 whitespace-pre-wrap">{f.comment}</p>}
               </li>
             ))}
-            {data.status === "modified_since_approval" && <li className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">The diagram changed after it was approved. Publish a new version and ask for approval again.</li>}
+            {data.status === "modified_since_approval" && <li className="rounded-lg bg-brand-amber/15 p-3 text-sm text-foreground">The diagram changed after it was approved. Publish a new version and ask for approval again.</li>}
           </ul>
         )}
 
         {data && tab === "requests" && (
           <ul className="space-y-3 p-3">
-            {data.accessRequests.length === 0 && <li className="text-sm text-gray-500">No one has asked for access.</li>}
+            {data.accessRequests.length === 0 && <li className="text-sm text-muted-foreground">No one has asked for access.</li>}
             {data.accessRequests.map((r) => (
-              <li key={r.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+              <li key={r.id} className="rounded-lg border border-border p-3 text-sm">
                 <p><strong>{r.name}</strong>{r.email ? ` · ${r.email}` : ""}</p>
-                <p className="text-xs text-gray-500">{formatDistanceToNow(r.createdAt, { addSuffix: true })}</p>
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(r.createdAt, { addSuffix: true })}</p>
                 {r.message && <p className="mt-1 whitespace-pre-wrap">{r.message}</p>}
                 <div className="mt-2">
                   <Button size="sm" variant={r.status === "open" ? "outline" : "ghost"} onClick={async () => { await send(`/access-requests/${r.id}`, "PATCH", { status: r.status === "open" ? "handled" : "open" }); await load(); }}>
@@ -202,17 +202,17 @@ export default function ReviewPanel({
                 </div>
               </li>
             ))}
-            <li className="text-xs text-gray-500">To give them access, open Share and create a link or an invite, then send it yourself.</li>
+            <li className="text-xs text-muted-foreground">To give them access, open Share and create a link or an invite, then send it yourself.</li>
           </ul>
         )}
 
         {data && tab === "activity" && (
-          <ul className="divide-y divide-gray-100 p-3 text-sm">
-            {data.audit.length === 0 && <li className="py-2 text-gray-500">Nothing yet.</li>}
+          <ul className="divide-y divide-border/60 p-3 text-sm">
+            {data.audit.length === 0 && <li className="py-2 text-muted-foreground">Nothing yet.</li>}
             {data.audit.map((a) => (
               <li key={a.id} className="py-2">
                 <p><strong>{a.actorName ?? (a.actorType === "system" ? "System" : "Someone")}</strong> {ACTION_TEXT[a.action] ?? a.action}</p>
-                <p className="text-xs text-gray-500">{formatDistanceToNow(a.createdAt, { addSuffix: true })}</p>
+                <p className="text-xs text-muted-foreground">{formatDistanceToNow(a.createdAt, { addSuffix: true })}</p>
               </li>
             ))}
           </ul>

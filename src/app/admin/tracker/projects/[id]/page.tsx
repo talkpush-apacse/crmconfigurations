@@ -16,17 +16,19 @@ import { BoardView } from "@/components/tracker/BoardView";
 import { HealthBadge, ProjectStatusBadge } from "@/components/tracker/badges";
 import { ItemSheet } from "@/components/tracker/ItemSheet";
 import { ItemsList } from "@/components/tracker/ItemsList";
-import { ErrorBlock, LoadingBlock } from "@/components/tracker/PageHeader";
+import { ErrorBlock } from "@/components/tracker/PageHeader";
+import { ProjectPageSkeleton } from "@/components/tracker/SummarySkeleton";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import { api, errorMessage } from "@/lib/tracker/client-api";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
+import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import type { ItemDTO, ProjectDetailDTO } from "@/lib/tracker/client-types";
 import type { ItemStatus } from "@/lib/tracker/constants";
 import { formatDate, plural } from "@/lib/tracker/format";
 
 export default function ProjectPage() {
   return (
-    <Suspense fallback={<LoadingBlock label="Loading project" />}>
+    <Suspense fallback={<ProjectPageSkeleton />}>
       <ProjectWorkspace />
     </Suspense>
   );
@@ -49,6 +51,7 @@ function ProjectWorkspace() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  useDocumentTitle(detail?.project.title);
 
   const changeStatus = async (item: ItemDTO, status: ItemStatus, blockerReason?: string): Promise<string | null> => {
     try {
@@ -88,14 +91,14 @@ function ProjectWorkspace() {
   };
 
   if (error && !detail) return <ErrorBlock message={error} onRetry={load} />;
-  if (!detail) return <LoadingBlock label="Loading project" />;
+  if (!detail) return <ProjectPageSkeleton />;
 
   const { project, summary, items, phases, people, today, checklist } = detail;
   const health = summary.health;
 
   return (
     <>
-      <Link href="/admin/tracker" className="mb-3 inline-flex min-h-8 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/admin/tracker" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm md:min-h-8 text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-4 w-4" />
         Portfolio
       </Link>
@@ -103,7 +106,7 @@ function ProjectWorkspace() {
       <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            <Link href={`/admin/tracker/accounts/${project.accountId}`} className="inline-block py-1 hover:underline">
+            <Link href={`/admin/tracker/accounts/${project.accountId}`} className="inline-flex min-h-11 items-center hover:underline md:min-h-0 md:py-1">
               {project.accountName}
             </Link>
           </p>
@@ -141,7 +144,8 @@ function ProjectWorkspace() {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 gap-2">
+        {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
+        <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
           <Button variant="outline" onClick={() => setPlanOpen(true)}>
             <ListChecks className="h-4 w-4" />
             Build plan
@@ -168,24 +172,27 @@ function ProjectWorkspace() {
 
       <section aria-label="Project items">
         {items.some((i) => i.needsReview) && (
-        <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-status-pending/50 bg-status-pending/15 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            {plural(items.filter((i) => i.needsReview).length, "item")} added by the client {items.filter((i) => i.needsReview).length === 1 ? "needs" : "need"} your review. The client can see them, but they do not count toward project health until you review them.
-          </p>
-          <Button variant="outline" size="sm" onClick={markAllReviewed}>
-            Mark all reviewed
-          </Button>
-        </div>
-      )}
-
-      <Tabs value={view} onValueChange={setView} className="gap-4">
-          <TabsList aria-label="Project views" className="scrollbar-thin max-w-full justify-start overflow-x-auto">
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="list">List</TabsTrigger>
-            <TabsTrigger value="board">Board</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="metrics">Metrics</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
+          <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-status-pending/50 bg-status-pending/15 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {plural(items.filter((i) => i.needsReview).length, "item")} added by the client {items.filter((i) => i.needsReview).length === 1 ? "needs" : "need"} your review. The client can see them, but they do not count toward project health until you review them.
+            </p>
+            <Button variant="outline" size="sm" onClick={markAllReviewed}>
+              Mark all reviewed
+            </Button>
+          </div>
+        )}
+        <Tabs value={view} onValueChange={setView} className="gap-4">
+          {/* On a phone the six views wrap into two rows of three so none is cut off; from md up it is one row. */}
+          <TabsList
+            aria-label="Project views"
+            className="scrollbar-thin grid h-auto w-full grid-cols-3 gap-1 group-data-[orientation=horizontal]/tabs:h-auto md:inline-flex md:w-fit md:max-w-full md:justify-start md:overflow-x-auto md:group-data-[orientation=horizontal]/tabs:h-9"
+          >
+            <TabsTrigger value="summary" className="min-h-11 md:min-h-0">Summary</TabsTrigger>
+            <TabsTrigger value="list" className="min-h-11 md:min-h-0">List</TabsTrigger>
+            <TabsTrigger value="board" className="min-h-11 md:min-h-0">Board</TabsTrigger>
+            <TabsTrigger value="timeline" className="min-h-11 md:min-h-0">Timeline</TabsTrigger>
+            <TabsTrigger value="metrics" className="min-h-11 md:min-h-0">Metrics</TabsTrigger>
+            <TabsTrigger value="activity" className="min-h-11 md:min-h-0">Activity</TabsTrigger>
           </TabsList>
         </Tabs>
         {view === "summary" && <SummaryView projectId={project.id} refreshKey={project.updatedAt + items.length + summary.done + summary.open} />}

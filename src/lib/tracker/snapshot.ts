@@ -79,8 +79,9 @@ function brief(i: SnapshotItem, today: string) {
 
 /**
  * One finding-first sentence for the top of a summary. Hard part first, no hype,
- * and never hides a problem the health level does not cover (a single blocked or
- * overdue item still gets named even when the project is "on track").
+ * and never hides a problem the health level does not cover: a single blocked or
+ * overdue item, or a project behind plan, leads the sentence even when the health
+ * pill still says "on track". (The pill is computed in health.ts; this only words it.)
  */
 export function buildHeadline(input: {
   level: HealthLevel;
@@ -91,20 +92,31 @@ export function buildHeadline(input: {
   clientOwnedOpenCount: number;
   blockedCount?: number;
   overdueCount?: number;
+  /** Items the burn-up says the project is behind plan by; 0 or absent when on or ahead of plan. */
+  behindPlanBy?: number;
 }): string {
   if (input.projectStatus === "completed") return "This project is complete.";
   const target = input.targetDate ? `Target ${formatDate(input.targetDate)}` : "No target date set";
   const label = HEALTH_LABELS[input.level];
   const blocked = input.blockedCount ?? 0;
   const overdue = input.overdueCount ?? 0;
+  const behind = Math.max(0, input.behindPlanBy ?? 0);
 
   let base: string;
   if (input.level === "on_track") {
     const problems = [
       blocked > 0 ? `${plural(blocked, "item")} ${blocked === 1 ? "is" : "are"} blocked` : "",
       overdue > 0 ? `${plural(overdue, "item")} ${overdue === 1 ? "is" : "are"} overdue` : "",
+      behind > 0 ? `the project is ${plural(behind, "item")} behind plan` : "",
     ].filter(Boolean);
-    base = problems.length > 0 ? `${label}. ${target}. ${problems.join(" and ")}.` : `${label}. ${target}, and nothing is overdue or blocked.`;
+    if (problems.length === 0) {
+      base = `${label}. ${target}, and nothing is overdue or blocked.`;
+    } else {
+      // Lead with the exception, but keep the honest part: the target date is not at risk by the numbers.
+      const lead = input.targetDate ? `${label} for ${formatDate(input.targetDate)}, but ` : `${label}, but `;
+      const list = problems.length > 1 ? `${problems.slice(0, -1).join(", ")} and ${problems[problems.length - 1]}` : problems[0];
+      base = `${lead}${list}.${input.targetDate ? "" : ` ${target}.`}`;
+    }
   } else {
     base = `${label}. ${input.firstReason ?? "Open items need attention."} ${target}.`;
   }
@@ -149,6 +161,7 @@ export function buildSnapshot(input: SnapshotInput) {
       clientOwnedOpenCount: clientOwnedOpen,
       blockedCount: blocked.length,
       overdueCount: overdue.length,
+      behindPlanBy: burnup?.behindBy ?? 0,
     }),
     project: {
       id: p.id,

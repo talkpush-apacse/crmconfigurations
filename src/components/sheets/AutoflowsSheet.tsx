@@ -112,7 +112,7 @@ function GroupSection({ groupName, rules, allRules, onUpdate }: GroupSectionProp
           </button>
         </CollapsibleTrigger>
         <div className="flex-1" />
-        <Button size="sm" variant="outline" onClick={handleAdd} className="h-7 text-xs gap-1">
+        <Button size="sm" variant="outline" onClick={handleAdd} className="max-md:min-h-11 h-7 text-xs gap-1">
           <Plus className="h-3 w-3" />
           Add Rule
         </Button>
@@ -194,7 +194,7 @@ export function AutoflowsSheet({ isAdmin }: AutoflowsSheetProps) {
       })}
 
       <div className="pt-2">
-        <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="gap-2">
+        <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="max-md:min-h-11 gap-2">
           <Plus className="h-4 w-4" />
           Add Group
         </Button>
@@ -207,7 +207,7 @@ export function AutoflowsSheet({ isAdmin }: AutoflowsSheetProps) {
           </DialogHeader>
           <div className="space-y-2 py-2">
             <Label htmlFor="group-name">Group Name</Label>
-            <Input
+            <Input className="max-md:min-h-11"
               id="group-name"
               placeholder="e.g. Prescreening"
               value={newGroupName}
@@ -217,10 +217,10 @@ export function AutoflowsSheet({ isAdmin }: AutoflowsSheetProps) {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddGroupOpen(false)}>
+            <Button className="max-md:min-h-11" variant="outline" onClick={() => setAddGroupOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddGroup} disabled={!newGroupName.trim()}>
+            <Button className="max-md:min-h-11" onClick={handleAddGroup} disabled={!newGroupName.trim()}>
               Create
             </Button>
           </DialogFooter>

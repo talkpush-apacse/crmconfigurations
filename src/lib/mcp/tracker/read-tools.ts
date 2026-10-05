@@ -6,6 +6,7 @@ import { listAccounts, listPeople } from "@/lib/tracker/directory-service";
 import { getProjectDetail, getProjectSnapshot, listPortfolio } from "@/lib/tracker/project-service";
 import { ITEM_STATUSES, OPEN_ITEM_STATUSES, PROJECT_STATUSES } from "@/lib/tracker/constants";
 import { overdueDays } from "@/lib/tracker/dates";
+import { listProjectFiles } from "@/lib/tracker/file-service";
 import { itemOut, projectRef, resolveAccountId, resolveProjectId } from "./helpers";
 
 export const listTrackerProjects = defineTool({
@@ -97,4 +98,56 @@ export const listPeopleTool = defineTool({
   },
 });
 
-export const trackerReadTools = [listTrackerProjects, getProjectSummary, listOpenItems, listAccountsTool, listPeopleTool];
+export const getProjectTimelineTool = defineTool({
+  name: "get_project_timeline",
+  description:
+    "The project's plan as dates: project start, target and go-live, every phase with its start and end, and every item with phase, owner, start, due, milestone flag, status and what it waits for. Use this to draw a Gantt chart, or to compare a Gantt you have been given with what is already in the tracker.",
+  access: "read",
+  input: { ...projectRef },
+  handler: async (args) => {
+    const detail = await getProjectDetail(await resolveProjectId(args));
+    const title = new Map(detail.items.map((i) => [i.id, i.title]));
+    return {
+      today: detail.today,
+      project: {
+        title: detail.project.title,
+        startDate: detail.project.startDate,
+        targetDate: detail.project.targetDate,
+        goLiveDate: detail.project.goLiveDate,
+      },
+      phases: detail.phases.map((p) => ({ name: p.name, startDate: p.startDate, endDate: p.endDate, exitCriteria: p.exitCriteria })),
+      items: detail.items
+        .filter((i) => !i.archived)
+        .map((i) => ({
+          title: i.title,
+          phase: i.phaseName,
+          owner: i.ownerName,
+          startDate: i.startDate,
+          dueDate: i.dueDate,
+          isMilestone: i.isMilestone,
+          status: i.status,
+          waitsFor: i.blockedByItemIds.map((id) => title.get(id)).filter((t): t is string => !!t),
+        })),
+    };
+  },
+});
+
+export const listProjectFilesTool = defineTool({
+  name: "list_project_files",
+  description:
+    "List the files kept with a project (contracts, Gantt charts, notes): name, kind, size, who uploaded it and when. Names only: Claude cannot open them, and staff download them from the project's Settings.",
+  access: "read",
+  input: { ...projectRef },
+  handler: async (args) =>
+    (await listProjectFiles(await resolveProjectId(args))).map((f) => ({
+      id: f.id,
+      kind: f.kind,
+      fileName: f.fileName,
+      sizeBytes: f.sizeBytes,
+      uploadedBy: f.uploadedBy,
+      uploadedAt: f.createdAt,
+      note: f.note,
+    })),
+});
+
+export const trackerReadTools = [listTrackerProjects, getProjectSummary, listOpenItems, listAccountsTool, listPeopleTool, getProjectTimelineTool, listProjectFilesTool];

@@ -31,7 +31,7 @@ export function ConfiguratorFilterBar({ value, onChange, onExport, exporting }: 
             type="button"
             onClick={() => onChange(filter.value)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+              "min-h-11 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors md:min-h-0",
               value === filter.value
                 ? "border-emerald-800 bg-emerald-800 text-white"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -41,7 +41,7 @@ export function ConfiguratorFilterBar({ value, onChange, onExport, exporting }: 
           </button>
         ))}
       </div>
-      <Button type="button" variant="outline" onClick={onExport} disabled={exporting} className="rounded-md">
+      <Button type="button" variant="outline" onClick={onExport} disabled={exporting} className="min-h-11 rounded-md md:min-h-0">
         <Download className="h-4 w-4" />
         {exporting ? "Preparing..." : "Export to Excel"}
       </Button>

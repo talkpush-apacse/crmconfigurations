@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import {
   Collapsible,
   CollapsibleContent,
@@ -117,6 +118,7 @@ export function ConfiguratorPageClient({ checklistId }: ConfiguratorPageClientPr
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <AdminHeader />
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <ConfiguratorHeader
           clientName={meta.clientName}

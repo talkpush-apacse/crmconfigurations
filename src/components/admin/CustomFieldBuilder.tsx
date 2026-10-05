@@ -155,7 +155,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5"
+                  className="max-md:min-h-11 max-md:min-w-11 h-5 w-5"
                   onClick={() => moveUp(index)}
                   disabled={index === 0}
                 >
@@ -164,7 +164,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5"
+                  className="max-md:min-h-11 max-md:min-w-11 h-5 w-5"
                   onClick={() => moveDown(index)}
                   disabled={index === value.length - 1}
                 >
@@ -194,7 +194,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0"
+                className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 shrink-0"
                 onClick={() => openEdit(index)}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -202,7 +202,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                 onClick={() => handleDelete(index)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -212,7 +212,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
         </div>
       )}
 
-      <Button variant="outline" className="w-full" onClick={openAdd}>
+      <Button variant="outline" className="max-md:min-h-11 w-full" onClick={openAdd}>
         <Plus className="mr-2 h-4 w-4" />
         Add Field
       </Button>
@@ -227,7 +227,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
           <div className="space-y-4">
             <div>
               <Label htmlFor="field-label">Label</Label>
-              <Input
+              <Input className="max-md:min-h-11"
                 id="field-label"
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
@@ -241,7 +241,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 value={form.type}
                 onValueChange={(v) => setForm({ ...form, type: v as CustomFieldType })}
               >
-                <SelectTrigger id="field-type">
+                <SelectTrigger className="max-md:min-h-11" id="field-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,7 +269,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
 
             <div>
               <Label htmlFor="field-placeholder">Placeholder (optional)</Label>
-              <Input
+              <Input className="max-md:min-h-11"
                 id="field-placeholder"
                 value={form.placeholder}
                 onChange={(e) =>
@@ -284,7 +284,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 <Label htmlFor="field-options">
                   Options (comma-separated)
                 </Label>
-                <Input
+                <Input className="max-md:min-h-11"
                   id="field-options"
                   value={form.options}
                   onChange={(e) =>
@@ -300,7 +300,7 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 <Label htmlFor="field-columns">
                   Column Headers (comma-separated)
                 </Label>
-                <Input
+                <Input className="max-md:min-h-11"
                   id="field-columns"
                   value={form.columns}
                   onChange={(e) =>
@@ -310,16 +310,16 @@ export function CustomFieldBuilder({ value, onChange }: CustomFieldBuilderProps)
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   A bare header is plain text. Add <code>:type</code> to make a column something
-                  else — checkbox, textarea, number, date, select, multiselect, email, or url.
+                  else: checkbox, textarea, number, date, select, multiselect, email, or url.
                 </p>
               </div>
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button className="max-md:min-h-11" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!form.label.trim()}>
+              <Button className="max-md:min-h-11" onClick={handleSave} disabled={!form.label.trim()}>
                 {editingIndex !== null ? "Save Changes" : "Add Field"}
               </Button>
             </div>

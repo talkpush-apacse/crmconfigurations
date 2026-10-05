@@ -221,7 +221,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
         variant="outline"
         size="sm"
         onClick={handleDownloadTemplate}
-        className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+        className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
       >
         <Download className="mr-1 h-3.5 w-3.5" />
         Download CSV Template
@@ -231,7 +231,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
           variant="outline"
           size="sm"
           onClick={handleDownloadCurrent}
-          className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+          className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
         >
           <Download className="mr-1 h-3.5 w-3.5" />
           Download CSV
@@ -243,7 +243,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
           size="sm"
           onClick={extraExport.onClick}
           title={extraExport.title}
-          className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+          className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
         >
           <Download className="mr-1 h-3.5 w-3.5" />
           {extraExport.label}
@@ -253,7 +253,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
         variant="outline"
         size="sm"
         onClick={handleUploadClick}
-        className="text-xs border-brand-lavender-darker/40 text-brand-lavender-darker hover:bg-brand-lavender-lightest hover:border-brand-lavender-darker"
+        className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
       >
         <Upload className="mr-1 h-3.5 w-3.5" />
         Upload CSV
@@ -266,7 +266,7 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
         onChange={handleFileChange}
       />
       {importStatus && (
-        <span className={`flex items-center gap-1 text-xs ${importStatus.tone === "success" ? "text-green-600" : "text-red-600"}`}>
+        <span className={`flex items-center gap-1 text-xs ${importStatus.tone === "success" ? "text-foreground" : "text-destructive"}`}>
           {importStatus.tone === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
           {importStatus.message}
         </span>
@@ -353,13 +353,13 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
           )}
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="outline" onClick={() => setPendingImport(null)}>
+            <Button type="button" variant="outline" className="min-h-11 md:min-h-0" onClick={() => setPendingImport(null)}>
               Cancel
             </Button>
-            <Button type="button" variant="outline" onClick={() => applyImport("replace")}>
+            <Button type="button" variant="outline" className="min-h-11 md:min-h-0" onClick={() => applyImport("replace")}>
               {pendingImport?.warnings.length ? "Replace anyway" : "Replace rows"}
             </Button>
-            <Button type="button" onClick={() => applyImport("append")}>
+            <Button type="button" className="min-h-11 md:min-h-0" onClick={() => applyImport("append")}>
               {pendingImport?.warnings.length ? "Append anyway" : "Append rows"}
             </Button>
           </DialogFooter>

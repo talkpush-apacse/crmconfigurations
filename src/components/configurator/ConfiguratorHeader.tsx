@@ -24,16 +24,16 @@ export function ConfiguratorHeader({ clientName, blob, stale, onRefresh }: Confi
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <Card className="sticky top-4 z-20 rounded-lg border-emerald-100 shadow-md">
+    <Card className="sticky top-[4.5rem] z-20 rounded-lg border-emerald-100 shadow-md">
       <CardContent className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-2">
-              <Link href="/admin">
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" aria-label="Back to admin">
+              <Button asChild variant="ghost" size="icon" className="size-11 rounded-md md:size-8">
+                <Link href="/admin" aria-label="Back to checklists">
                   <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
                 Configurator&apos;s Checklist
               </span>

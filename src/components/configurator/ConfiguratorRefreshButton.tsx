@@ -26,7 +26,7 @@ export function ConfiguratorRefreshButton({ onRefresh }: ConfiguratorRefreshButt
   };
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={handleClick} disabled={refreshing}>
+    <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={handleClick} disabled={refreshing}>
       <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
       Refresh from settings
     </Button>

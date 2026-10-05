@@ -48,7 +48,7 @@ export function BulkActionBar({
             size="sm"
             onClick={onDuplicate}
             disabled={isBusy}
-            className="h-8 border-brand-sage-lighter bg-white text-brand-sage-darker hover:bg-brand-sage-lightest"
+            className="max-md:min-h-11 h-8 border-brand-sage-lighter bg-white text-brand-sage-darker hover:bg-brand-sage-lightest"
           >
             <Copy className="mr-1.5 h-3.5 w-3.5" />
             Duplicate
@@ -59,7 +59,7 @@ export function BulkActionBar({
           size="sm"
           onClick={onDelete}
           disabled={isBusy}
-          className="h-8 border-red-300 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+          className="max-md:min-h-11 h-8 border-red-300 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
         >
           <Trash2 className="mr-1.5 h-3.5 w-3.5" />
           Delete
@@ -69,7 +69,7 @@ export function BulkActionBar({
           size="sm"
           onClick={onClear}
           disabled={isBusy}
-          className="h-8 px-2 text-brand-sage-darker hover:bg-brand-sage-lightest"
+          className="max-md:min-h-11 h-8 px-2 text-brand-sage-darker hover:bg-brand-sage-lightest"
           title="Clear selection"
         >
           <X className="h-3.5 w-3.5" />

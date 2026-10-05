@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
 import { NONE } from "./Field";
 import { ItemStatusBadge } from "./badges";
+import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 
 const SEARCH_THRESHOLD = 8;
 const ALL = "__all";
@@ -230,6 +231,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                       <button type="button" className="min-h-6 py-0.5 text-left outline-none focus-visible:underline" onClick={() => onOpen(item)}>
                         {titleCell(item)}
                       </button>
+                      <JiraLinkChips links={jiraLinksOf(item.links)} />
                     </TableCell>
                     <TableCell>
                       <StatusMenu item={item} onPick={(s) => void pick(item, s)} />
@@ -249,6 +251,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                 <button type="button" className="block min-h-11 w-full text-left" onClick={() => onOpen(item)}>
                   {titleCell(item)}
                 </button>
+                <JiraLinkChips links={jiraLinksOf(item.links)} />
                 <div className="mt-2">
                   <StatusMenu item={item} onPick={(s) => void pick(item, s)} />
                 </div>

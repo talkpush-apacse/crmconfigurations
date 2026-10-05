@@ -85,7 +85,7 @@ export default function TeamPage() {
                   <TableCell className="hidden sm:table-cell">{p.email ?? ""}</TableCell>
                   <TableCell className="hidden md:table-cell">{p.title ?? ""}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
+                    <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditing(p)}>
                       Edit
                     </Button>
                   </TableCell>

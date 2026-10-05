@@ -320,7 +320,7 @@ export default function SnapshotsPage() {
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[28px] font-bold text-gray-900">Snapshots</h1>
+          <h1 className="text-[29px] font-bold tracking-[-0.03em] text-gray-900">Snapshots</h1>
           <p className="text-sm text-gray-500">
             Backup and restore the full checklist state. Useful before destructive
             changes like replacing the user list.
@@ -331,14 +331,14 @@ export default function SnapshotsPage() {
             variant="outline"
             size="sm"
             onClick={() => setShowArchived((v) => !v)}
-            className="h-9"
+            className="h-11 md:h-9"
           >
             {showArchived ? "Hide archived" : "Show archived"}
           </Button>
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/85"
+            className="h-11 gap-2 md:h-9"
           >
             <Plus className="h-4 w-4" />
             New snapshot
@@ -385,7 +385,7 @@ export default function SnapshotsPage() {
           <Button
             size="sm"
             onClick={() => setCreateOpen(true)}
-            className="mt-4 gap-2 bg-primary text-primary-foreground hover:bg-primary/85"
+            className="mt-4 h-11 gap-2 md:h-8"
           >
             <Plus className="h-4 w-4" />
             Create first snapshot
@@ -431,7 +431,7 @@ export default function SnapshotsPage() {
                             {isPreRestore && (
                               <Badge
                                 variant="outline"
-                                className="border-amber-200 bg-amber-50 text-[10px] text-amber-700"
+                                className="border-amber-200 bg-amber-50 text-[11px] text-amber-700"
                               >
                                 pre-restore
                               </Badge>
@@ -439,7 +439,7 @@ export default function SnapshotsPage() {
                             {snap.archived && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] text-gray-500"
+                                className="text-[11px] text-gray-500"
                               >
                                 archived
                               </Badge>
@@ -481,7 +481,7 @@ export default function SnapshotsPage() {
                               setRestoreTarget(snap);
                               setRestoreSlugInput("");
                             }}
-                            className="h-8 gap-1.5 text-xs"
+                            className="h-11 gap-1.5 text-xs md:h-8"
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
                             Restore
@@ -492,7 +492,7 @@ export default function SnapshotsPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0"
+                              className="size-11 p-0 md:size-8"
                               aria-label="More actions"
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -550,7 +550,7 @@ export default function SnapshotsPage() {
               New snapshot
             </DialogTitle>
             <DialogDescription>
-              Captures the entire current checklist state — every tab, config flag,
+              Captures the entire current checklist state: every tab, config flag,
               and configurator status. Strongly recommended to add a label.
             </DialogDescription>
           </DialogHeader>
@@ -559,7 +559,7 @@ export default function SnapshotsPage() {
               <Label htmlFor="snap-label" className="text-sm font-medium text-gray-700">
                 Label{" "}
                 <span className="text-xs font-normal text-gray-500">
-                  (recommended — labeled snapshots are never auto-pruned)
+                  (recommended, labeled snapshots are never auto-pruned)
                 </span>
               </Label>
               <Input

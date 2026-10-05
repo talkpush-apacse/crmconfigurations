@@ -22,7 +22,7 @@ const requirementsList = [
 
 const fields: KeyValueField[] = [
   { key: "phoneNumber", label: "Dedicated Phone Number", description: "A phone number dedicated for WhatsApp Business API integration. This number cannot be used with regular WhatsApp.", type: "text", example: "+63 917 000 1234" },
-  { key: "businessManagerAccess", label: "Business Manager Access", description: "Have you granted Talkpush access to your Facebook Business Manager?", type: "text", example: "Yes — access granted to Talkpush" },
+  { key: "businessManagerAccess", label: "Business Manager Access", description: "Have you granted Talkpush access to your Facebook Business Manager?", type: "text", example: "Yes, access granted to Talkpush" },
   { key: "businessVerification", label: "Business Verification", description: "Has your business completed Meta Business Verification?", type: "text", example: "Verified" },
   { key: "chatbotName", label: "Chatbot Name", description: "The name that will appear as the chatbot identity in conversations.", type: "text", example: "Ava" },
   { key: "chatbotPersona", label: "Chatbot Persona", description: "The personality/tone the chatbot should use (e.g., professional, friendly, casual).", type: "text", example: "Professional and helpful" },
@@ -106,8 +106,8 @@ export function FacebookWhatsAppSheet() {
         <p className="mb-1 font-medium">Sample configuration:</p>
         <ul className="list-disc pl-4 space-y-0.5">
           <li><strong>Phone Number:</strong> +63 917 000 1234 (must NOT be registered on WhatsApp already)</li>
-          <li><strong>Chatbot Name:</strong> &quot;Ava&quot; &mdash; short, friendly name candidates will see</li>
-          <li><strong>Chatbot Persona:</strong> Professional and helpful &mdash; guides candidates through application</li>
+          <li><strong>Chatbot Name:</strong> &quot;Ava&quot;. Short, friendly name candidates will see.</li>
+          <li><strong>Chatbot Persona:</strong> Professional and helpful. Guides candidates through application.</li>
         </ul>
       </ExampleHint>
 

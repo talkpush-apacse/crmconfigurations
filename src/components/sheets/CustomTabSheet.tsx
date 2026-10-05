@@ -258,7 +258,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
           </p>
           <p className="max-w-sm text-sm text-muted-foreground">
             No columns have been defined for {customTab.label}. Your Talkpush
-            contact can add them — nothing is needed from you until then.
+            contact can add them. Nothing is needed from you until then.
           </p>
         </div>
       </div>
@@ -300,7 +300,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-800">Reference Spreadsheet</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Attach an Excel or CSV file as a reference for this tab. The file is stored as-is — it
+              Attach an Excel or CSV file as a reference for this tab. The file is stored as-is. It
               does not modify the table above.
             </p>
 
@@ -321,7 +321,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs text-muted-foreground hover:text-foreground px-2 shrink-0"
+                      className="max-md:min-h-11 h-7 text-xs text-muted-foreground hover:text-foreground px-2 shrink-0"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
                     >
@@ -330,7 +330,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                      className="max-md:min-h-11 max-md:min-w-11 h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => setDeleteFileOpen(true)}
                       title="Remove file"
                     >
@@ -345,7 +345,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2"
+                    className="max-md:min-h-11 gap-2"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                   >
