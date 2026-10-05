@@ -1,27 +1,14 @@
-import { redirect, notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 /**
- * Landing page for a client link.
+ * Landing page for a client link. Normally never reached: next.config.ts redirects /client/:slug to
+ * /client/:slug/welcome before any code runs. Kept as a fallback, and deliberately free of database
+ * calls — an unknown slug is reported by the checklist layout ("Checklist not found").
  *
- * This used to redirect to /editor/<editorToken>, so anyone given a client
- * link ended up in the editor view — which shows the tabs Talkpush fills in
- * and can reorder tabs and reassign who fills them. It also meant the
- * client-view filtering never applied to real users, because nobody stayed on
- * this route. Clients now land on their own view; the editor link stays
- * separate for Talkpush staff.
+ * Clients land on their own view, not /editor/<token>, which shows Talkpush-filled tabs and can
+ * reorder tabs.
  */
 export default async function ClientPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-
-  const checklist = await prisma.checklist.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
-
-  if (!checklist) {
-    notFound();
-  }
-
   redirect(`/client/${slug}/welcome`);
 }

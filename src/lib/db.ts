@@ -13,7 +13,9 @@ function createPrismaClient(): PrismaClient {
   const pool = new Pool({
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
-    max: 1,
+    // Supabase's pooler (port 6543) multiplexes these, so a few per instance is safe.
+    // With 1, queries that look parallel (Promise.all) queue behind each other.
+    max: 5,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 20000,
   });

@@ -83,7 +83,10 @@ export async function PUT(
         const newVersion = current.version + 1;
         const updateData: Record<string, unknown> = { version: newVersion };
         const updatedFieldVersions = { ...currentFieldVersions };
-        const currentChecklist = await tx.checklist.findUnique({ where: { id } });
+        // Only what the checks below read: the notification state, the custom-tab values, and the fields being saved.
+        const currentSelect: Record<string, true> = { notificationState: true, customTabs: true, customData: true };
+        for (const field of validFields) currentSelect[field] = true;
+        const currentChecklist = (await tx.checklist.findUnique({ where: { id }, select: currentSelect })) as Record<string, unknown> | null;
         if (!currentChecklist) return { status: 404 as const };
         if (validFields.includes("customData") || validFields.includes("customTabs")) {
           const customValidationErrors = validateCustomTabsData(
@@ -114,6 +117,7 @@ export async function PUT(
         const checklist = await tx.checklist.update({
           where: { id },
           data: updateData,
+          select: { id: true, version: true, updatedAt: true },
         });
 
         return { status: 200 as const, checklist };
