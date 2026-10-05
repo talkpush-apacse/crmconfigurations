@@ -33,6 +33,29 @@ const DAY_MS = 86_400_000;
 /** Creates a contributor link. The raw token is returned ONCE and can never be recovered afterwards. */
 export async function createContributorLink(projectId: string, input: unknown, actor: Actor) {
   const data = contributorLinkCreateSchema.parse(input);
+  return issueContributorLink(
+    projectId,
+    {
+      personId: data.personId,
+      label: data.label ?? null,
+      expiresAt: new Date(Date.now() + data.expiresInDays * DAY_MS),
+      assignUnassigned: data.assignUnassigned,
+    },
+    actor
+  );
+}
+
+export interface ContributorLinkRequest {
+  personId: string;
+  label: string | null;
+  expiresAt: Date;
+  assignUnassigned: boolean;
+  /** Turn off this contact's earlier live link with the SAME label first (used by the Claude connector, which labels its own links). */
+  replaceSameLabel?: boolean;
+}
+
+/** The one place a contributor link is made. Callers validate the expiry; this checks the contact and project. */
+export async function issueContributorLink(projectId: string, data: ContributorLinkRequest, actor: Actor) {
   const project = await prisma.trackerProject.findUnique({ where: { id: projectId }, select: { id: true, accountId: true, archived: true } });
   if (!project) throw notFound("Project");
   if (project.archived) throw badRequest("This project is archived.");
@@ -43,15 +66,32 @@ export async function createContributorLink(projectId: string, input: unknown, a
   }
 
   const { token, hash, hint } = generateShareToken("contributor");
-  const expiresAt = new Date(Date.now() + data.expiresInDays * DAY_MS);
+  const expiresAt = data.expiresAt;
+  const label = data.label ?? person.name;
 
   const result = await prisma.$transaction(async (tx) => {
+    let replaced = 0;
+    if (data.replaceSameLabel) {
+      const old = await tx.trackerShareLink.findMany({ where: { projectId, kind: "contributor", personId: person.id, label, revokedAt: null } });
+      if (old.length > 0) {
+        await tx.trackerShareLink.updateMany({ where: { id: { in: old.map((l) => l.id) } }, data: { revokedAt: new Date() } });
+        await logActivity(tx, {
+          projectId,
+          entityType: "project",
+          entityId: projectId,
+          action: "share.revoked",
+          after: { label, replacedBy: "a new link", count: old.length },
+          actor,
+        });
+        replaced = old.length;
+      }
+    }
     const link = await tx.trackerShareLink.create({
       data: {
         projectId,
         kind: "contributor",
         personId: person.id,
-        label: data.label ?? person.name,
+        label,
         tokenHash: hash,
         tokenHint: hint,
         expiresAt,
@@ -84,7 +124,7 @@ export async function createContributorLink(projectId: string, input: unknown, a
       after: { label: link.label, contact: person.name, expiresAt: expiresAt.toISOString(), itemsAssigned: assigned },
       actor,
     });
-    return { link, assigned };
+    return { link, assigned, replaced };
   });
 
   return {
@@ -94,6 +134,7 @@ export async function createContributorLink(projectId: string, input: unknown, a
     contact: person.name,
     expiresAt: expiresAt.toISOString(),
     itemsAssigned: result.assigned,
+    replaced: result.replaced,
     token,
   };
 }

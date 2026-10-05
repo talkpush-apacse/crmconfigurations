@@ -90,10 +90,11 @@ test("sharing tools: offered to an editor, hidden from a read-only connection (e
   const { createTrackerMcpServer } = await import("../src/lib/mcp/tracker");
   const actor = { label: "Claude for test@example.com", via: "mcp" as const };
   const editor = (await (await connect(createTrackerMcpServer({ actor }))).listTools()).tools.map((t) => t.name);
-  for (const n of ["create_project_link", "list_project_access", "disable_project_link"]) assert.ok(editor.includes(n), n);
+  for (const n of ["create_project_link", "invite_project_person", "list_project_access", "disable_project_link"]) assert.ok(editor.includes(n), n);
   const reader = (await (await connect(createTrackerMcpServer({ actor, readOnly: true }))).listTools()).tools.map((t) => t.name);
   assert.ok(reader.includes("list_project_access"));
   assert.ok(!reader.includes("create_project_link"));
+  assert.ok(!reader.includes("invite_project_person"));
   assert.ok(!reader.includes("disable_project_link"));
 });
 
@@ -241,5 +242,141 @@ test("gatekeeper: the client-only address opens client pages and nothing else; t
   } finally {
     if (saved.c === undefined) delete process.env.CLIENT_LINK_BASE_URL; else process.env.CLIENT_LINK_BASE_URL = saved.c;
     if (saved.a === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = saved.a;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// named client contacts (invite_project_person)
+// ---------------------------------------------------------------------------
+
+test("inviting a named client contact, against a real database", { skip }, async () => {
+  const { prisma } = await import("../src/lib/db");
+  const { createTrackerMcpServer } = await import("../src/lib/mcp/tracker");
+  const { resolveViewerToken } = await import("../src/lib/tracker/share-service");
+  const { resolveContributorToken, getContributorView, updateClientItemStatus, addClientRemark } = await import("../src/lib/tracker/contributor-service");
+  delete process.env.CLIENT_LINK_BASE_URL;
+
+  const suffix = Date.now().toString(36);
+  const SECRET_TITLE = `INTERNAL_ONLY_${suffix}`;
+  const SECRET_JIRA = `https://example.atlassian.net/browse/SECRET-${suffix}`;
+  const account = await prisma.trackerAccount.create({ data: { name: `Invite MCP ${suffix}`, slug: `invite-mcp-${suffix}` } });
+  const otherAccount = await prisma.trackerAccount.create({ data: { name: `Invite other ${suffix}`, slug: `invite-other-${suffix}` } });
+  const brian = await prisma.trackerPerson.create({ data: { accountId: account.id, side: "client", name: "Brian Sunga", email: "brian@example.invalid" } });
+  const robert = await prisma.trackerPerson.create({ data: { accountId: account.id, side: "client", name: "Robert Diaz" } });
+  const stranger = await prisma.trackerPerson.create({ data: { accountId: otherAccount.id, side: "client", name: "Zed Stranger" } });
+  const staff = await prisma.trackerPerson.create({ data: { accountId: null, side: "talkpush", name: `Staff Person ${suffix}` } });
+  const project = await prisma.trackerProject.create({ data: { accountId: account.id, title: `Invite project ${suffix}` } });
+  const mk = (title: string, data: Record<string, unknown> = {}) =>
+    prisma.trackerItem.create({ data: { projectId: project.id, title, visibility: "client_visible", ...data } as never });
+  const brians = await mk("Brian provides DNS records", { ownerPersonId: brian.id, links: [{ url: SECRET_JIRA }] });
+  const roberts = await mk("Robert approves templates", { ownerPersonId: robert.id });
+  const talkpushItem = await mk("Talkpush builds the autoflows", { ownerPersonId: staff.id });
+  await mk(SECRET_TITLE, { visibility: "internal", ownerPersonId: staff.id });
+
+  const actor = { label: "Claude for test@example.com", via: "mcp" as const };
+  const client = await connect(createTrackerMcpServer({ actor, origin: "https://crm.example.test" }));
+  const call = async (name: string, args: Record<string, unknown>) => {
+    const r = await client.callTool({ name, arguments: args });
+    return { error: Boolean(r.isError), text: textOf(r), json: r.isError ? null : JSON.parse(textOf(r)) };
+  };
+  const invite = (name: string, level: string, extra: Record<string, unknown> = {}) =>
+    call("invite_project_person", { project_id: project.id, display_name: name, level, ...extra });
+
+  try {
+    // ---- editor: Brian
+    const b = await invite("Brian Sunga", "editor");
+    assert.equal(b.error, false, b.text);
+    assert.match(b.json.url, /^https:\/\/crm\.example\.test\/contribute\/tpc_/);
+    assert.equal(b.json.personId, brian.id);
+    assert.ok(b.json.warning);
+    assert.equal(b.json.itemsAssigned, 0);
+    const bToken = b.json.url.split("/contribute/")[1];
+    const ctxB = await resolveContributorToken(bToken);
+    assert.equal(ctxB?.person.id, brian.id);
+    assert.equal(ctxB?.projectId, project.id);
+
+    // what Brian sees: client-visible items only, nothing internal, no Jira links
+    const seen = JSON.stringify(await getContributorView(ctxB!));
+    assert.ok(seen.includes("Brian provides DNS records"));
+    for (const secret of [SECRET_TITLE, SECRET_JIRA]) assert.ok(!seen.includes(secret), `leaked: ${secret}`);
+
+    // what Brian may do: his own item yes; Robert's and Talkpush's items no
+    assert.equal((await updateClientItemStatus(ctxB!, brians.id, { status: "in_progress" })).status, "in_progress");
+    await addClientRemark(ctxB!, brians.id, { body: "Records sent" });
+    await assert.rejects(updateClientItemStatus(ctxB!, roberts.id, { status: "done" }), /assigned to you/);
+    await assert.rejects(updateClientItemStatus(ctxB!, talkpushItem.id, { status: "done" }), /assigned to you/);
+    await assert.rejects(addClientRemark(ctxB!, talkpushItem.id, { body: "hello" }), /assigned to you/);
+    await assert.rejects(updateClientItemStatus(ctxB!, brians.id, { status: "blocked" } as never));
+
+    // ---- editor: Robert, independent of Brian
+    const r = await invite("robert diaz", "editor", { expires_at: "2027-01-31" });
+    assert.equal(r.error, false, r.text);
+    assert.equal(r.json.personId, robert.id);
+    assert.equal(r.json.expiresAt.slice(0, 10), "2027-01-31");
+    const rToken = r.json.url.split("/contribute/")[1];
+    assert.equal((await resolveContributorToken(rToken))?.person.id, robert.id);
+    assert.equal((await resolveContributorToken(bToken))?.person.id, brian.id, "Brian's link is untouched by Robert's");
+
+    // ---- inviting Brian again replaces his link only
+    const b2 = await invite("Brian Sunga", "editor");
+    assert.equal(b2.json.replacedEarlierLink, true);
+    assert.equal(await resolveContributorToken(bToken), null, "Brian's old link stopped working");
+    assert.ok(await resolveContributorToken(b2.json.url.split("/contribute/")[1]));
+    assert.ok(await resolveContributorToken(rToken), "Robert's link still works");
+
+    // ---- viewer: a personal read-only link, replaced per person
+    const v = await invite("Brian Sunga", "viewer");
+    assert.equal(v.error, false, v.text);
+    assert.match(v.json.url, /\/share\/tpv_/);
+    assert.equal(await resolveViewerToken(v.json.url.split("/share/")[1]), project.id);
+    const v2 = await invite("Brian Sunga", "viewer");
+    assert.equal(v2.json.replacedEarlierLink, true);
+    assert.equal(await resolveViewerToken(v.json.url.split("/share/")[1]), null);
+
+    // ---- listing names the people and never shows a secret
+    const listed = await call("list_project_access", { project_id: project.id });
+    assert.equal(listed.error, false, listed.text);
+    for (const secret of [bToken, rToken, b2.json.url, v2.json.url]) assert.ok(!listed.text.includes(secret.split("/").pop() as string));
+    const people = listed.json.links.map((l: { person: string | null; level: string }) => `${l.person}:${l.level}`).sort();
+    assert.deepEqual(people, ["Brian Sunga:edit", "Brian Sunga:view", "Robert Diaz:edit"]);
+
+    // ---- who can be invited
+    const wrongAccount = await invite("Zed Stranger", "editor");
+    assert.equal(wrongAccount.error, true);
+    assert.match(wrongAccount.text, /No client contact named/);
+    assert.match(wrongAccount.text, /Brian Sunga/, "lists who is available");
+    assert.equal((await invite("Staff Person", "editor")).error, true, "Talkpush staff cannot be given a client link");
+    assert.equal((await invite("Brian Sunga", "editor", { email: "someone.else@example.invalid" })).error, true, "a different email is not the same person");
+    assert.equal((await invite("Brian Sunga", "editor", { email: "BRIAN@example.invalid" })).error, false, "the matching email is fine");
+    assert.equal((await invite("Brian Sunga", "editor", { expires_at: null })).error, true, "an editor link must expire");
+    assert.equal((await invite("Brian Sunga", "viewer", { assign_unassigned_plan_items: true })).error, true);
+    assert.equal((await invite("Brian Sunga", "owner")).error, true);
+    assert.equal((await invite("Nobody Here", "viewer")).error, true);
+    assert.equal(await prisma.trackerPerson.count({ where: { name: { contains: "Nobody" }, accountId: account.id } }), 0, "nobody is created behind the scenes");
+
+    // ---- the Share dialog's own contributor link is unchanged, and the connector never replaces it
+    const { createContributorLink } = await import("../src/lib/tracker/contributor-service");
+    const byHand = await createContributorLink(project.id, { personId: robert.id, expiresInDays: 7 }, { label: "staff@example.com", via: "web" });
+    assert.equal(byHand.label, "Robert Diaz");
+    assert.ok(Math.abs(new Date(byHand.expiresAt).getTime() - (Date.now() + 7 * 86_400_000)) < 60_000);
+    assert.equal((await resolveContributorToken(byHand.token))?.person.id, robert.id);
+    assert.equal((await invite("Robert Diaz", "editor")).error, false);
+    assert.equal((await resolveContributorToken(byHand.token))?.person.id, robert.id, "a link made by hand is left alone");
+
+    // ---- turning a person's link off
+    const off = await call("disable_project_link", { project_id: project.id, link_id: r.json.linkId });
+    assert.equal(off.error, false, off.text);
+    assert.equal(await resolveContributorToken(rToken), null);
+
+    // ---- logged under the caller's name, with no secret
+    const log = await prisma.trackerActivity.findMany({ where: { projectId: project.id, action: { startsWith: "share." } } });
+    assert.ok(log.some((l) => l.action === "share.contributor_created" && l.via === "mcp" && l.actorLabel === actor.label));
+    assert.ok(log.some((l) => l.action === "share.revoked"));
+    assert.ok(!JSON.stringify(log).includes(bToken) && !JSON.stringify(log).includes(rToken));
+  } finally {
+    await prisma.trackerProject.deleteMany({ where: { id: project.id } }).catch(() => undefined);
+    await prisma.trackerPerson.deleteMany({ where: { id: { in: [brian.id, robert.id, stranger.id, staff.id] } } }).catch(() => undefined);
+    await prisma.trackerAccount.deleteMany({ where: { id: { in: [account.id, otherAccount.id] } } }).catch(() => undefined);
+    await prisma.$disconnect();
   }
 });

@@ -87,14 +87,16 @@ export function resolveConnectorExpiry(value: string | null | undefined, now = n
  * Creates the client view link for the Claude connector, replacing the one the connector made before.
  * Links staff made by hand in the Share dialog are left alone. The raw token is returned ONCE.
  */
-export async function replaceConnectorViewerLink(projectId: string, expiresAt: Date | null, actor: Actor) {
+export async function replaceConnectorViewerLink(projectId: string, expiresAt: Date | null, actor: Actor, person?: { id: string; name: string }) {
   const project = await prisma.trackerProject.findUnique({ where: { id: projectId }, select: { id: true, archived: true } });
   if (!project) throw notFound("Project");
   if (project.archived) throw badRequest("This project is archived.");
 
+  // A personal link is labelled with the person, so replacing one person's link never touches anyone else's.
+  const label = person ? `${person.name} (view, via Claude)` : CONNECTOR_LINK_LABEL;
   const { token, hash, hint } = generateShareToken();
   const result = await prisma.$transaction(async (tx) => {
-    const old = await tx.trackerShareLink.findMany({ where: { projectId, kind: "viewer", label: CONNECTOR_LINK_LABEL, revokedAt: null } });
+    const old = await tx.trackerShareLink.findMany({ where: { projectId, kind: "viewer", label, personId: person?.id ?? null, revokedAt: null } });
     if (old.length > 0) {
       await tx.trackerShareLink.updateMany({ where: { id: { in: old.map((l) => l.id) } }, data: { revokedAt: new Date() } });
       await logActivity(tx, {
@@ -102,12 +104,12 @@ export async function replaceConnectorViewerLink(projectId: string, expiresAt: D
         entityType: "project",
         entityId: projectId,
         action: "share.revoked",
-        after: { label: CONNECTOR_LINK_LABEL, replacedBy: "a new link", count: old.length },
+        after: { label, replacedBy: "a new link", count: old.length },
         actor,
       });
     }
     const created = await tx.trackerShareLink.create({
-      data: { projectId, kind: "viewer", label: CONNECTOR_LINK_LABEL, tokenHash: hash, tokenHint: hint, expiresAt, createdBy: actor.label },
+      data: { projectId, kind: "viewer", label, personId: person?.id ?? null, tokenHash: hash, tokenHint: hint, expiresAt, createdBy: actor.label },
     });
     await logActivity(tx, {
       projectId,
