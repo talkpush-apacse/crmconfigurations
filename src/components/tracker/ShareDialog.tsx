@@ -17,8 +17,8 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError } from "./Field";
 
 type LinkDTO = Awaited<ReturnType<typeof listShareLinks>>[number];
-type CreatedLink = Awaited<ReturnType<typeof createViewerLink>>;
-type CreatedContributor = Awaited<ReturnType<typeof createContributorLink>>;
+type CreatedLink = Awaited<ReturnType<typeof createViewerLink>> & { url?: string };
+type CreatedContributor = Awaited<ReturnType<typeof createContributorLink>> & { url?: string };
 type Contact = { id: string; name: string };
 
 const NEVER = "never";
@@ -63,7 +63,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
         method: "POST",
         body: { personId: contactId, expiresInDays: Number(cExpiry), assignUnassigned: assign },
       });
-      setCFresh({ url: `${window.location.origin}/contribute/${created.token}`, expiresAt: created.expiresAt, contact: created.contact, assigned: created.itemsAssigned });
+      setCFresh({ url: created.url ?? `${window.location.origin}/contribute/${created.token}`, expiresAt: created.expiresAt, contact: created.contact, assigned: created.itemsAssigned });
       setCCopied(false);
       reload();
     } catch (err) {
@@ -91,7 +91,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
         method: "POST",
         body: { label, expiresInDays: expiry === NEVER ? null : Number(expiry) },
       });
-      setFresh({ url: `${window.location.origin}/share/${created.token}`, expiresAt: created.expiresAt });
+      setFresh({ url: created.url ?? `${window.location.origin}/share/${created.token}`, expiresAt: created.expiresAt });
       setCopied(false);
       setLabel("");
       reload();

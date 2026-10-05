@@ -16,6 +16,7 @@ projects apart). Item tools accept `item_id` or `item` (title, exact or unique p
 | `list_people` | List Talkpush staff plus, optionally, one account's client contacts and vendors. Use this to find owner names. | `account` |
 | `get_project_timeline` | The project's plan as dates: project start, target and go-live, every phase with its start and end, and every item with phase, owner, start, due, milestone flag, status and what it waits for. Use this to draw a Gantt chart, or to compare a Gantt you have been given with what is already in the tracker. | `project_id`, `project`, `account` |
 | `list_project_files` | List the files kept with a project (contracts, Gantt charts, notes): name, kind, size, who uploaded it and when. Names only: Claude cannot open them, and staff download them from the project's Settings. | `project_id`, `project`, `account` |
+| `list_project_access` | Who can open a project through a shared link: each link's label, expiry, last time it was opened and whether it still works. Secret addresses are never listed (only a short hint to tell links apart). Links turned off are not shown. | `project_id`, `project`, `account` |
 
 ## Write
 
@@ -35,6 +36,8 @@ projects apart). Item tools accept `item_id` or `item` (title, exact or unique p
 | `archive_item` | Hide an item from the project. Nothing is deleted: the activity history keeps it. | `project_id`, `project`, `account`, `item_id`, `item` |
 | `add_success_metric` | Add a success metric with its baseline and target, for example 'Time to hire', 'days', lower_is_better, baseline 21, target 14. | `project_id`, `project`, `account`, `name`*, `unit`*, `direction`, `baseline_value`, `baseline_date`, `target_value`, `current_value`, `current_as_of`, `source`, `visibility` |
 | `record_metric_reading` | Record a new measurement for a success metric. The metric's current value follows the newest reading. | `project_id`, `project`, `account`, `metric_id`, `metric`, `value`*, `as_of`, `note` |
+| `create_project_link` | Create (or replace) the client view link for a project and return its address for the user to copy and send themselves; nothing is emailed. The link opens a read-only page with client-visible items only (never internal items or Jira links). Replaces the link this tool made before, whose address stops working at once; links made by hand in the Share dialog are left alone. The address is shown once and cannot be fetched again. Only use this when the user explicitly asks for it. | `project_id`, `project`, `account`, `level`*, `expires_at` |
+| `disable_project_link` | Turn a project's shared link off; its address stops working at once. Get the link_id from list_project_access. Only use this when the user explicitly asks for it. | `project_id`, `project`, `account`, `link_id`* |
 
 ## Values
 

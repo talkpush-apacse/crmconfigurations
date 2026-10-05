@@ -8,6 +8,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { NextResponse } from "next/server";
 import { createTrackerMcpServer } from "@/lib/mcp/tracker";
 import { validateTrackerMcpAuth } from "@/lib/mcp/tracker-auth";
+import { originOf } from "@/lib/mcp/oauth/origin";
 import { actorLabelFor, authenticateMcpRequest, isReadOnlyCaller, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return unauthorizedResponse(request, RESOURCE_PATH, auth.error, CORS_HEADERS);
 
   try {
-    const server = createTrackerMcpServer({ actor: { label: actorLabelFor(auth.caller), via: "mcp" }, readOnly: isReadOnlyCaller(auth.caller) });
+    const server = createTrackerMcpServer({ actor: { label: actorLabelFor(auth.caller), via: "mcp" }, readOnly: isReadOnlyCaller(auth.caller), origin: originOf(request) });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

@@ -8,6 +8,7 @@
 import { buildMcpServer, type ToolContext, type ToolModule } from "@/lib/mcp/toolkit";
 import { TrackerError } from "@/lib/tracker/errors";
 import { trackerReadTools } from "./read-tools";
+import { trackerShareReadTools, trackerShareWriteTools } from "./share-tools";
 import { trackerWriteTools } from "./write-tools";
 
 export const trackerModule: ToolModule = {
@@ -16,8 +17,9 @@ export const trackerModule: ToolModule = {
   instructions:
     "Talkpush implementation Project Tracker. Start with list_tracker_projects, then get_project_summary for 'where are we now'. " +
     "Refer to items and people by name; if a name is ambiguous the tool lists the candidates. Moving an item to blocked needs a blocker_reason. " +
-    "There is no delete: use archive_item. Items and remarks you add are visible to the client unless you mark them internal.",
-  tools: [...trackerReadTools, ...trackerWriteTools],
+    "There is no delete: use archive_item. Items and remarks you add are visible to the client unless you mark them internal. " +
+    "Client links (create_project_link, disable_project_link) are ONLY for when the user explicitly asks. Nothing is emailed: hand the user the address to copy and send themselves.",
+  tools: [...trackerReadTools, ...trackerShareReadTools, ...trackerWriteTools, ...trackerShareWriteTools],
   isUserError: (err): err is Error => err instanceof TrackerError,
   logPrefix: "tracker-mcp",
 };

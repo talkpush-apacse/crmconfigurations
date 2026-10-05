@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return unauthorizedResponse(request, RESOURCE_PATH, auth.error, CORS_HEADERS);
 
   try {
-    const server = createCombinedMcpServer(originOf(request), { actor: { label: actorLabelFor(auth.caller), via: "mcp" }, readOnly: isReadOnlyCaller(auth.caller) });
+    const server = createCombinedMcpServer(originOf(request), { actor: { label: actorLabelFor(auth.caller), via: "mcp" }, readOnly: isReadOnlyCaller(auth.caller), origin: originOf(request) });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
