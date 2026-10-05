@@ -22,9 +22,11 @@ import {
 } from "@/lib/tracker/constants";
 import { formatDate } from "@/lib/tracker/format";
 import { conflictMessage, draftConflicts } from "@/lib/tracker/schedule";
+import { parseJiraUrl, type JiraLink } from "@/lib/tracker/jira";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError, NONE } from "./Field";
 import { ItemStatusBadge } from "./badges";
+import { JiraLinksField, jiraLinksOf } from "./JiraLinks";
 
 interface Props {
   open: boolean;
@@ -57,6 +59,8 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
   const [visibility, setVisibility] = useState("client_visible");
   const [externalDependency, setExternalDependency] = useState("");
   const [blockedBy, setBlockedBy] = useState<string[]>([]);
+  const [jiraLinks, setJiraLinks] = useState<JiraLink[]>([]);
+  const [jiraPending, setJiraPending] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -78,6 +82,8 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
     setVisibility(item?.visibility ?? "client_visible");
     setExternalDependency(item?.externalDependency ?? "");
     setBlockedBy(item?.blockedByItemIds ?? []);
+    setJiraLinks(jiraLinksOf(item?.links));
+    setJiraPending("");
     setError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item]);
@@ -98,6 +104,16 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (needsReason) return;
+    // A ticket address that was typed but not yet added is added now, or the save stops with the reason.
+    let links = jiraLinks;
+    if (jiraPending.trim() !== "") {
+      const parsed = parseJiraUrl(jiraPending);
+      if (!parsed.ok) {
+        setError(`Jira ticket: ${parsed.error}`);
+        return;
+      }
+      if (!links.some((l) => l.url === parsed.link.url)) links = [...links, parsed.link];
+    }
     setSaving(true);
     setError("");
     const body = {
@@ -116,6 +132,7 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
       visibility,
       externalDependency,
       blockedByItemIds: blockedBy,
+      links,
     };
     try {
       if (editing) {
@@ -322,6 +339,8 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
               <Field label="Waiting on something outside the project" htmlFor="item-external" hint="For example: client IT whitelisting the sender domain.">
                 <Input id="item-external" value={externalDependency} onChange={(e) => setExternalDependency(e.target.value)} maxLength={300} />
               </Field>
+
+              <JiraLinksField links={jiraLinks} onChange={setJiraLinks} pending={jiraPending} onPendingChange={setJiraPending} />
 
               {editing && <RemarksPanel itemId={item!.id} />}
             </div>

@@ -192,6 +192,7 @@ model TrackerProject {
   metrics    TrackerMetric[]
   shareLinks TrackerShareLink[]
   activity   TrackerActivity[]
+  files      TrackerProjectFile[]
 
   @@index([accountId])
   @@index([status, archived])
@@ -338,6 +339,26 @@ model TrackerActivity {
 
   @@index([projectId, createdAt])
   @@index([entityType, entityId])
+}
+
+// A file kept with a project: a signed contract, a Gantt chart, notes. Staff only; never part of the client view.
+// The bytes live in the PRIVATE storage bucket "project-files" at storagePath; this row is the index.
+// kind: contract | timeline | other. A removed file is only hidden (archived), like items.
+model TrackerProjectFile {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     TrackerProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        String   @default("contract")
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String   @unique
+  note        String?
+  uploadedBy  String
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, archived, createdAt])
 }
 
 // kind: viewer | contributor. Only a hash of the secret link token is stored.

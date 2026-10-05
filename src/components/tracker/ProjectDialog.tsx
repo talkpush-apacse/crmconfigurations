@@ -11,6 +11,7 @@ import type { AccountDTO, PersonDTO, ProjectDTO } from "@/lib/tracker/client-typ
 import { HEALTH_LABELS, PROJECT_STATUS_LABELS, PROJECT_STATUSES, type HealthLevel } from "@/lib/tracker/constants";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError, NONE } from "./Field";
+import { ProjectFiles } from "./ProjectFiles";
 
 const CALCULATED = "__calculated";
 
@@ -142,7 +143,7 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
               <DialogTitle>{editing ? "Project settings" : "New project"}</DialogTitle>
               <DialogDescription>
                 {editing
-                  ? "Dates, people and health for this project."
+                  ? "Dates, people, health and files for this project."
                   : "A project starts with the standard phases. You can add items next."}
               </DialogDescription>
             </DialogHeader>
@@ -275,6 +276,7 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
               </div>
             </DialogFooter>
           </form>
+          {editing && <ProjectFiles projectId={project!.id} />}
         </DialogContent>
       </Dialog>
       <ConfirmDialog

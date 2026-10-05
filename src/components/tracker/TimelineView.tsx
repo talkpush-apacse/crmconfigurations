@@ -102,7 +102,7 @@ export function TimelineView({ items, phases, project, today, onOpen, onPhasesCh
         <EmptyState
           icon={CalendarRange}
           title="Nothing to draw yet"
-          description="Give items a start or due date, or set the project's dates, and the timeline appears here."
+          description="Give items a start or due date, or set the project's dates, and the timeline appears here. You can also ask Claude to build it from a Gantt chart (slide or PDF)."
           action={
             <Button variant="outline" onClick={() => setPhaseDialog(true)}>
               Set phase dates
@@ -290,6 +290,10 @@ export function TimelineView({ items, phases, project, today, onOpen, onPhasesCh
         </section>
       )}
       {timeline.undatedDependencies > 0 && <p className="mt-3 text-xs text-muted-foreground">{plural(timeline.undatedDependencies, "dependency")} cannot be drawn because one of the two items has no dates.</p>}
+
+      <p className="mt-4 text-xs text-muted-foreground">
+        Have a Gantt chart? Give it to Claude (slide or PDF) and ask it to build or update this timeline, or ask Claude to draw one from this timeline. Keep a copy under Settings, Files.
+      </p>
 
       <PhaseDatesDialog open={phaseDialog} onOpenChange={setPhaseDialog} phases={phases} onSaved={onPhasesChanged} />
     </div>

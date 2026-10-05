@@ -95,7 +95,7 @@ async function main() {
   const add = await tool("add_open_items", {
     project_id: projectId,
     items: [
-      { title: "Whitelist sender domain", owner: CLIENT, due_date: "2026-10-20", phase: "Integration" },
+      { title: "Whitelist sender domain", owner: CLIENT, due_date: "2026-10-20", phase: "Configuration" },
       { title: "Go-live", owner: STAFF, is_milestone: true, due_date: "2026-11-30", blocked_by: ["Whitelist sender domain"], visibility: "internal" },
     ],
   });

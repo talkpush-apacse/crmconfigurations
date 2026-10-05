@@ -9,9 +9,10 @@ import { defineTool } from "@/lib/mcp/toolkit";
 import { createAccount, createPerson, listPeople } from "@/lib/tracker/directory-service";
 import { badRequest } from "@/lib/tracker/errors";
 import { addRemark, createItem, updateItem } from "@/lib/tracker/item-service";
+import { MAX_JIRA_LINKS } from "@/lib/tracker/jira";
 import { matchByName } from "@/lib/tracker/match";
 import { createMetric, listMetrics, recordReading } from "@/lib/tracker/metric-service";
-import { createProject, updatePhase, updateProject } from "@/lib/tracker/project-service";
+import { createPhases, createProject, updatePhase, updateProject } from "@/lib/tracker/project-service";
 import {
   HEALTH_LEVELS,
   ITEM_STATUSES,
@@ -26,6 +27,7 @@ import {
   date,
   itemOut,
   itemRef,
+  JIRA_LINKS_NOTE,
   loadContext,
   pick,
   projectRef,
@@ -67,7 +69,7 @@ export const createPersonTool = defineTool({
 export const createProjectTool = defineTool({
   name: "create_project",
   description:
-    "Create a project for an account. It starts with the standard phases (Scoping, Configuration, Integration, UAT, Training, Go-live, Hypercare).",
+    "Create a project for an account. It starts with the standard phases (Scoping, Configuration, UAT, Training, Go-live, Hypercare).",
   access: "write",
   input: {
     account: z.string().describe("Account name or id"),
@@ -160,6 +162,33 @@ export const updatePhaseTool = defineTool({
   },
 });
 
+export const addPhasesTool = defineTool({
+  name: "add_phases",
+  description:
+    "Add phases to a project, after the ones it already has, in the order given. Use this when a timeline has phases the standard set does not (for example from a Gantt chart). Phase names must be unique in the project; use update_phase to change an existing phase.",
+  access: "write",
+  input: {
+    ...projectRef,
+    phases: z
+      .array(
+        z.object({
+          name: z.string().describe("For example Data migration"),
+          start_date: date,
+          end_date: date,
+          exit_criteria: z.string().optional().describe("What must be true to leave this phase"),
+        })
+      )
+      .min(1)
+      .max(20),
+  },
+  handler: async ({ phases, ...ref }, ctx) =>
+    createPhases(
+      await resolveProjectId(ref),
+      phases.map((p) => ({ name: p.name, startDate: p.start_date, endDate: p.end_date, exitCriteria: p.exit_criteria })),
+      ctx.actor
+    ),
+});
+
 // ----- items ---------------------------------------------------------------
 
 const newItem = z.object({
@@ -181,6 +210,7 @@ const newItem = z.object({
     .array(z.string())
     .optional()
     .describe("Titles or ids of items this one waits for. May name items created earlier in the same call."),
+  jira_links: z.array(z.string()).max(MAX_JIRA_LINKS).optional().describe(JIRA_LINKS_NOTE),
 });
 
 export const addOpenItemsTool = defineTool({
@@ -228,6 +258,7 @@ export const addOpenItemsTool = defineTool({
           waitingOn: it.waiting_on,
           externalDependency: it.external_dependency,
           blockedByItemIds,
+          links: it.jira_links?.map((url) => ({ url })),
         },
         ctx.actor
       );
@@ -281,6 +312,11 @@ export const updateItemTool = defineTool({
     due_date: date,
     waiting_on: z.string().nullable().optional(),
     external_dependency: z.string().nullable().optional(),
+    jira_links: z
+      .array(z.string())
+      .max(MAX_JIRA_LINKS)
+      .optional()
+      .describe(`${JIRA_LINKS_NOTE} This REPLACES the item's whole list, so include the tickets already linked (see jiraLinks in list_open_items). Pass [] to clear.`),
   },
   handler: async (args, ctx) => {
     const project = await loadContext(await resolveProjectId(args));
@@ -301,6 +337,7 @@ export const updateItemTool = defineTool({
           dueDate: args.due_date,
           waitingOn: args.waiting_on,
           externalDependency: args.external_dependency,
+          links: args.jira_links?.map((url) => ({ url })),
         },
         ctx.actor
       )
@@ -430,6 +467,7 @@ export const trackerWriteTools = [
   createProjectTool,
   updateProjectTool,
   updatePhaseTool,
+  addPhasesTool,
   addOpenItemsTool,
   updateItemStatusTool,
   updateItemTool,

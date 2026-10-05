@@ -52,7 +52,7 @@ async function main() {
       data: { accountId: account.id, side: "vendor", name: "Cleo Vendor (demo)", organisation: "Example HRIS Co", email: "cleo@example.test" },
     });
 
-    const phaseNames = ["Scoping", "Configuration", "Integration", "UAT", "Training", "Go-live", "Hypercare"];
+    const phaseNames = ["Scoping", "Configuration", "UAT", "Training", "Go-live", "Hypercare"];
     const project = await prisma.trackerProject.create({
       data: {
         accountId: account.id,
@@ -98,9 +98,9 @@ async function main() {
       { title: "Create campaigns and folders", status: "done", phase: "Configuration", owner: "se", due: -20, type: "config" },
       { title: "Set up pre-screening questions", status: "in_progress", phase: "Configuration", owner: "se", due: -2, type: "config" },
       { title: "Provide message template approvals", status: "waiting_on_client", phase: "Configuration", owner: "ana", due: 3, waitingOn: "Legal review of SMS wording" },
-      { title: "Whitelist sender domain", status: "blocked", phase: "Integration", owner: "ben", due: 6, type: "integration", blockerReason: "IT change window is not until next month" },
-      { title: "Build HRIS candidate sync", status: "not_started", phase: "Integration", owner: "vendor", due: 14, type: "integration" },
-      { title: "Integration complete", status: "not_started", phase: "Integration", owner: "se", due: 18, milestone: true },
+      { title: "Whitelist sender domain", status: "blocked", phase: "Configuration", owner: "ben", due: 6, type: "integration", blockerReason: "IT change window is not until next month" },
+      { title: "Build HRIS candidate sync", status: "not_started", phase: "Configuration", owner: "vendor", due: 14, type: "integration" },
+      { title: "Integration complete", status: "not_started", phase: "Configuration", owner: "se", due: 18, milestone: true },
       { title: "Run UAT scripts with recruiters", status: "not_started", phase: "UAT", owner: "ana", due: 24, type: "uat" },
       { title: "UAT sign-off", status: "not_started", phase: "UAT", owner: "ana", due: 28, milestone: true },
       { title: "Train recruiter team", status: "not_started", phase: "Training", owner: "se", due: 32, type: "training" },
