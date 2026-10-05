@@ -87,11 +87,12 @@ export function buildBurnup(
 }
 
 /** The sentence that goes under the chart. States the finding, with the numbers. */
-export function burnupInsight(b: Burnup): string {
+/** `withUnplanned: false` leaves out the "no due date" housekeeping sentence, for the client face. */
+export function burnupInsight(b: Burnup, opts: { withUnplanned?: boolean } = {}): string {
   const parts: string[] = [];
   if (b.behindBy > 0) parts.push(`${b.actualToday} items are done against ${b.plannedToday} planned by today, so the project is ${b.behindBy} ${b.behindBy === 1 ? "item" : "items"} behind plan.`);
   else if (b.behindBy < 0) parts.push(`${b.actualToday} items are done against ${b.plannedToday} planned by today, so the project is ${-b.behindBy} ${-b.behindBy === 1 ? "item" : "items"} ahead of plan.`);
   else parts.push(`${b.actualToday} items are done, exactly as planned by today.`);
-  if (b.unplanned > 0) parts.push(`${b.unplanned} ${b.unplanned === 1 ? "item has" : "items have"} no due date and ${b.unplanned === 1 ? "is" : "are"} not on the plan line.`);
+  if (b.unplanned > 0 && opts.withUnplanned !== false) parts.push(`${b.unplanned} ${b.unplanned === 1 ? "item has" : "items have"} no due date and ${b.unplanned === 1 ? "is" : "are"} not on the plan line.`);
   return parts.join(" ");
 }

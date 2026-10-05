@@ -220,6 +220,7 @@ test("burn-up compares planned and actual completions", () => {
   assert.equal(b.points.every((p, i, a) => i === 0 || p.planned >= a[i - 1].planned), true);
   assert.match(burnupInsight(b), /1 item behind plan/);
   assert.match(burnupInsight(b), /1 item has no due date/);
+  assert.doesNotMatch(burnupInsight(b, { withUnplanned: false }), /no due date/);
   assert.equal(buildBurnup([], { startDate: null, targetDate: null }, TODAY), null);
   assert.equal(buildBurnup([{ status: "not_started", archived: false, dueDate: null, completedAt: null }], { startDate: null, targetDate: null }, TODAY), null);
 });
