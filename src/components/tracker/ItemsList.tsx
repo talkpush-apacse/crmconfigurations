@@ -125,7 +125,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     return sortRows(filtered, sort, phaseOrder);
   }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today, sort, phaseOrder]);
 
-  // Done and dropped items that the "Open items" filter is hiding, counted against the owner, phase and search
+  // Done and dropped items that the "Open items only" filter is hiding, counted against the owner, phase and search
   // filters so the number matches what "Show all" would reveal.
   const hiddenClosed = useMemo(() => {
     const counts = { done: 0, dropped: 0 };
@@ -221,7 +221,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={OPEN}>Open items</SelectItem>
+            <SelectItem value={OPEN}>Open items only</SelectItem>
             <SelectItem value={ALL}>All items</SelectItem>
             {(reviewCount > 0 || statusFilter === REVIEW) && <SelectItem value={REVIEW}>Needs review ({reviewCount})</SelectItem>}
             {ITEM_STATUSES.map((s) => (
@@ -296,7 +296,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
           <span>
             {hiddenClosed.done > 0 && `${hiddenClosed.done} done item${hiddenClosed.done === 1 ? "" : "s"}`}
             {hiddenClosed.done > 0 && hiddenClosed.dropped > 0 && " and "}
-            {hiddenClosed.dropped > 0 && `${hiddenClosed.dropped} dropped item${hiddenClosed.dropped === 1 ? "" : "s"}`} hidden by the Open items filter.
+            {hiddenClosed.dropped > 0 && `${hiddenClosed.dropped} dropped item${hiddenClosed.dropped === 1 ? "" : "s"}`} hidden by the Open items only filter.
           </span>
           <button type="button" className="font-medium text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setStatusFilter(ALL)}>
             Show all

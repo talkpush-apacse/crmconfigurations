@@ -155,7 +155,7 @@ export function ClientItemsList({ items, phases, today }: { items: readonly Plan
       <div className="mb-4 grid grid-cols-2 gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
         <FilterSelect label="Filter by status" value={statusFilter} onChange={setStatusFilter}>
           <option value={ALL}>All items ({items.length})</option>
-          <option value={OPEN}>Open items ({openCount})</option>
+          <option value={OPEN}>Open items only ({openCount})</option>
           {statuses.map((s) => (
             <option key={s} value={s}>
               {ITEM_STATUS_LABELS[s]}
