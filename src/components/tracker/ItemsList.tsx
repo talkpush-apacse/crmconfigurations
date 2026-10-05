@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Flag, Lock, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,8 @@ interface Props {
   onOpen: (item: ItemDTO) => void;
   /** Resolve with an error message to show, or null on success. */
   onStatusChange: (item: ItemDTO, status: ItemStatus, blockerReason?: string) => Promise<string | null>;
+  /** Told what is on screen (after filters, in order) so an export can match it. */
+  onVisibleChange?: (visible: { items: ItemDTO[]; filterLabel: string }) => void;
 }
 
 function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status: ItemStatus) => void; readOnly?: boolean }) {
@@ -93,7 +95,7 @@ function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey
   );
 }
 
-export function ItemsList({ items, phases, people, today, onOpen, onStatusChange }: Props) {
+export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange }: Props) {
   const { canEdit } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState(ALL);
   const reviewCount = items.filter((i) => i.needsReview).length;
@@ -150,6 +152,23 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     setDueFilter("any");
     setQuery("");
   };
+
+  // Plain-language description of the filters, for the header of an exported file.
+  const filterLabel = useMemo(() => {
+    const parts: string[] = [];
+    parts.push(
+      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
+    );
+    if (ownerFilter !== ALL) parts.push(`Owner: ${ownerFilter === UNASSIGNED ? "Unassigned" : (people.find((p) => p.id === ownerFilter)?.name ?? "Unknown")}`);
+    if (phaseFilter !== ALL) parts.push(`Phase: ${phaseFilter === NONE ? "No phase" : (phases.find((p) => p.id === phaseFilter)?.name ?? "Unknown")}`);
+    if (dueFilter !== "any") parts.push(`Due: ${DUE_FILTER_LABELS[dueFilter]}`);
+    if (query.trim()) parts.push(`Search: "${query.trim()}"`);
+    return `${parts.join(". ")}.`;
+  }, [statusFilter, ownerFilter, phaseFilter, dueFilter, query, people, phases]);
+
+  useEffect(() => {
+    onVisibleChange?.({ items: visible, filterLabel });
+  }, [visible, filterLabel, onVisibleChange]);
 
   const pick = async (item: ItemDTO, status: ItemStatus) => {
     setRowError("");
