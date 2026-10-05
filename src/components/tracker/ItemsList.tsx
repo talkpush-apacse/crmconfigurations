@@ -63,7 +63,7 @@ function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status
 
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange }: Props) {
   const { canEdit } = useCurrentUser();
-  const [statusFilter, setStatusFilter] = useState(OPEN);
+  const [statusFilter, setStatusFilter] = useState(ALL);
   const reviewCount = items.filter((i) => i.needsReview).length;
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
@@ -93,6 +93,22 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
         return pa - pb || a.sortOrder - b.sortOrder;
       });
   }, [items, statusFilter, ownerFilter, phaseFilter, query, phaseOrder]);
+
+  // Done and dropped items that the "Open items" filter is hiding, counted against the owner, phase and search
+  // filters so the number matches what "Show all" would reveal.
+  const hiddenClosed = useMemo(() => {
+    const counts = { done: 0, dropped: 0 };
+    if (statusFilter !== OPEN) return counts;
+    const q = query.trim().toLowerCase();
+    for (const i of items) {
+      if (i.status !== "done" && i.status !== "dropped") continue;
+      if (ownerFilter !== ALL && (ownerFilter === UNASSIGNED ? i.ownerPersonId : i.ownerPersonId !== ownerFilter)) continue;
+      if (phaseFilter !== ALL && (phaseFilter === NONE ? i.phaseId : i.phaseId !== phaseFilter)) continue;
+      if (q && !i.title.toLowerCase().includes(q)) continue;
+      counts[i.status] += 1;
+    }
+    return counts;
+  }, [items, statusFilter, ownerFilter, phaseFilter, query]);
 
   const pick = async (item: ItemDTO, status: ItemStatus) => {
     setRowError("");
@@ -207,6 +223,19 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       {rowError && (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {rowError}
+        </p>
+      )}
+
+      {hiddenClosed.done + hiddenClosed.dropped > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground" role="status">
+          <span>
+            {hiddenClosed.done > 0 && `${hiddenClosed.done} done item${hiddenClosed.done === 1 ? "" : "s"}`}
+            {hiddenClosed.done > 0 && hiddenClosed.dropped > 0 && " and "}
+            {hiddenClosed.dropped > 0 && `${hiddenClosed.dropped} dropped item${hiddenClosed.dropped === 1 ? "" : "s"}`} hidden by the Open items filter.
+          </span>
+          <button type="button" className="font-medium text-foreground underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setStatusFilter(ALL)}>
+            Show all
+          </button>
         </p>
       )}
 
