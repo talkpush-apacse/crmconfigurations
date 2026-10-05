@@ -65,7 +65,7 @@ function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status
 
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange }: Props) {
   const { canEdit } = useCurrentUser();
-  const [statusFilter, setStatusFilter] = useState(OPEN);
+  const [statusFilter, setStatusFilter] = useState(ALL);
   const reviewCount = items.filter((i) => i.needsReview).length;
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
@@ -99,9 +99,9 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
   // Done and dropped items that the "Open items" filter is hiding, counted against the owner, phase and search
   // filters so the number matches what "Show all" would reveal.
   const hiddenClosed = useMemo(() => {
-    if (statusFilter !== OPEN) return { done: 0, dropped: 0 };
-    const q = query.trim().toLowerCase();
     const counts = { done: 0, dropped: 0 };
+    if (statusFilter !== OPEN) return counts;
+    const q = query.trim().toLowerCase();
     for (const i of items) {
       if (i.status !== "done" && i.status !== "dropped") continue;
       if (ownerFilter !== ALL && (ownerFilter === UNASSIGNED ? i.ownerPersonId : i.ownerPersonId !== ownerFilter)) continue;
@@ -111,8 +111,6 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     }
     return counts;
   }, [items, statusFilter, ownerFilter, phaseFilter, query]);
-  const hiddenClosedTotal = hiddenClosed.done + hiddenClosed.dropped;
-
   // Plain-language description of the filters, for the header of an exported file.
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
@@ -243,7 +241,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
         </p>
       )}
 
-      {hiddenClosedTotal > 0 && (
+      {hiddenClosed.done + hiddenClosed.dropped > 0 && (
         <p className="mb-3 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground" role="status">
           <span>
             {hiddenClosed.done > 0 && `${hiddenClosed.done} done item${hiddenClosed.done === 1 ? "" : "s"}`}

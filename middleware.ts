@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { isClientOnlyHost, pathAllowedOnClientHost } from "@/lib/tracker/client-link-url";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // The client-only address (CLIENT_LINK_BASE_URL) serves client link pages and nothing else.
+  if (isClientOnlyHost(request.headers.get("host")) && !pathAllowedOnClientHost(pathname)) {
+    return new NextResponse("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  }
 
   // Protect /admin/* but allow /admin/login through unauthenticated
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
@@ -31,5 +37,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Every page and API route (so the client-only address can be enforced), but not Next.js's own build files.
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };

@@ -22,6 +22,8 @@ export interface ToolContext {
    * tools that change data are not even offered to Claude.
    */
   readOnly?: boolean;
+  /** The address the caller reached the Hub on (https://crm.se-talkpush.com). Tools that hand out links use it as a fallback. */
+  origin?: string;
 }
 
 export interface ToolDefinition<S extends ZodRawShape = ZodRawShape> {

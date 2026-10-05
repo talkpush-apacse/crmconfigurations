@@ -3,6 +3,7 @@ import { formatMetricValue, metricProgress, type MetricStatus } from "@/lib/trac
 import { joinNames, phaseState } from "@/lib/tracker/phase-state";
 import { formatDate, formatShortDate, plural } from "@/lib/tracker/format";
 import { ItemStatusBadge } from "./badges";
+import { burnupInsight } from "@/lib/tracker/burnup";
 import { BurnupChart, CellBar, Sparkline } from "./charts";
 import { Eyebrow, InsightNote, KpiCard, PhaseFlow, SectionTitle } from "./summary-parts";
 
@@ -35,13 +36,23 @@ interface Props {
   embedded?: boolean;
 }
 
-function attentionRows(d: ExecSummaryData): { item: Brief; why: string }[] {
+/** One factual line for metrics that have no readings yet. Says what is listed, and what is still missing. */
+function metricsSetupNote(metrics: ExecSummaryData["metrics"]): string {
+  const names = metrics.map((m) => m.name);
+  const listed = names.length > 3 ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more` : joinNames(names);
+  const incomplete = metrics.some((m) => m.baseline === null || m.target === null);
+  return `${plural(metrics.length, "success metric")} ${metrics.length === 1 ? "is" : "are"} listed (${listed}) with no readings yet.${incomplete ? " Baselines or targets are still to be set." : ""}`;
+}
+
+function attentionRows(d: ExecSummaryData): { item: Brief; why: string; due: string | null }[] {
   const seen = new Set<string>();
-  const rows: { item: Brief; why: string }[] = [];
+  const rows: { item: Brief; why: string; due: string | null }[] = [];
   const add = (item: Brief, why: string) => {
     if (seen.has(item.id)) return;
     seen.add(item.id);
-    rows.push({ item, why });
+    // Overdue rows already say how late they are. Every other row says when it is needed by.
+    const late = (item.dueNote ?? "").endsWith("overdue");
+    rows.push({ item, why, due: item.dueDate && !late ? `Needed by ${formatShortDate(item.dueDate, d.asOf)}` : null });
   };
   for (const i of d.needsAttention.overdue) add(i, i.dueNote ?? "Overdue");
   for (const i of d.needsAttention.blocked) add(i, i.blockerReason ? `Reason: ${i.blockerReason}` : "");
@@ -59,7 +70,7 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
     activePhases.length === 1
       ? `Now in ${activePhases[0].name}: ${activePhases[0].done} of ${activePhases[0].total} items done.`
       : activePhases.length > 1
-        ? `Now in ${joinNames(activePhases.map((p) => `${p.name} (${p.done} of ${p.total} done)`))}.`
+        ? `Now in ${joinNames(activePhases.map((p) => p.name))}.`
         : nextUp
           ? `Next up: ${nextUp.name}, ${nextUp.total} ${nextUp.total === 1 ? "item" : "items"} not started.`
           : d.phases.length > 0 && d.progress.total > 0
@@ -67,6 +78,15 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
             : "No phase has items yet.";
   const metricsMet = d.metrics.filter((m) => metricProgress({ baselineValue: m.baseline, currentValue: m.current, targetValue: m.target }).status === "met").length;
   const daysToTarget = d.progress.daysToTarget;
+  const isClient = context === "client";
+  // The client face is exception-first: zero counts and empty phases are left out, and detail lives in List, Board and Timeline.
+  const flowPhases = isClient ? d.phases.filter((p) => p.total > 0) : d.phases;
+  const emptyPhases = isClient ? d.phases.filter((p) => p.total === 0).map((p) => p.name) : [];
+  const milestone = d.nextMilestone?.dueDate ? d.nextMilestone : null;
+  const kpiCount = 3 + (d.progress.overdue > 0 ? 1 : 0) + (d.progress.blocked > 0 ? 1 : 0);
+  const clientGrid = kpiCount >= 5 ? "lg:grid-cols-5" : kpiCount === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3";
+  const noReadings = d.metrics.length > 0 && d.metrics.every((m) => m.current === null);
+  const burnupCaption = d.burnup ? burnupInsight(d.burnup, { withUnplanned: !isClient }) : "";
 
   return (
     <div className={`es-${context} rounded-xl border border-[var(--es-line)] bg-[var(--es-bg)] text-[var(--es-ink)]`}>
@@ -84,17 +104,26 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
           </Eyebrow>
           <Headline className="mt-2 text-[19px] font-bold leading-[1.2] tracking-[-0.03em] md:text-[29px] md:leading-[1.15]">{d.headline}</Headline>
           <p className="mt-2 text-sm text-[var(--es-muted)]">
-            {d.project.title}. {d.project.startDate ? `Started ${formatDate(d.project.startDate)}. ` : ""}
-            {d.project.targetDate ? `Target ${formatDate(d.project.targetDate)}` : "No target date"}
-            {d.project.rescheduleCount > 0 && d.project.originalTargetDate
-              ? ` (first planned for ${formatDate(d.project.originalTargetDate)}, moved ${plural(d.project.rescheduleCount, "time")})`
-              : ""}
-            .
+            {isClient ? (
+              <>
+                {d.project.title}. {d.project.targetDate ? `Target ${formatDate(d.project.targetDate)}` : "No target date"}
+                {d.project.rescheduleCount > 0 && d.project.originalTargetDate ? ` (moved from ${formatDate(d.project.originalTargetDate)})` : ""}.
+              </>
+            ) : (
+              <>
+                {d.project.title}. {d.project.startDate ? `Started ${formatDate(d.project.startDate)}. ` : ""}
+                {d.project.targetDate ? `Target ${formatDate(d.project.targetDate)}` : "No target date"}
+                {d.project.rescheduleCount > 0 && d.project.originalTargetDate
+                  ? ` (first planned for ${formatDate(d.project.originalTargetDate)}, moved ${plural(d.project.rescheduleCount, "time")})`
+                  : ""}
+                .
+              </>
+            )}
           </p>
         </header>
         </div>
 
-        <section aria-label="Key numbers" className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <section aria-label="Key numbers" className={isClient ? `mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 ${clientGrid}` : "mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5"}>
           <KpiCard
             label="Days to target"
             value={daysToTarget === null ? "None" : String(Math.abs(daysToTarget))}
@@ -102,25 +131,27 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
             tone={daysToTarget !== null && daysToTarget < 0 ? "alert" : undefined}
           />
           <KpiCard label="Done" value={`${d.progress.percentDone}%`} note={`${d.progress.done} of ${d.progress.total} items`} />
-          <KpiCard label="Open" value={String(d.progress.open)} note="items still to do" />
-          <KpiCard label="Overdue" value={String(d.progress.overdue)} note={d.progress.overdue === 0 ? "nothing late" : "past their due date"} tone={d.progress.overdue > 0 ? "alert" : undefined} />
-          <KpiCard label="Blocked" value={String(d.progress.blocked)} note={`${d.progress.waitingOnClient} waiting on the client`} tone={d.progress.blocked > 0 ? "alert" : undefined} />
+          {isClient ? (
+            <>
+              {milestone && <KpiCard label="Next milestone" value={formatShortDate(milestone.dueDate, d.asOf)} note={milestone.title} />}
+              {d.progress.overdue > 0 && <KpiCard label="Overdue" value={String(d.progress.overdue)} note="past their due date" tone="alert" />}
+              {d.progress.blocked > 0 && <KpiCard label="Blocked" value={String(d.progress.blocked)} note="blocked right now" tone="alert" />}
+            </>
+          ) : (
+            <>
+              <KpiCard label="Open" value={String(d.progress.open)} note="items still to do" />
+              <KpiCard label="Overdue" value={String(d.progress.overdue)} note={d.progress.overdue === 0 ? "nothing late" : "past their due date"} tone={d.progress.overdue > 0 ? "alert" : undefined} />
+              <KpiCard label="Blocked" value={String(d.progress.blocked)} note={`${d.progress.waitingOnClient} waiting on the client`} tone={d.progress.blocked > 0 ? "alert" : undefined} />
+            </>
+          )}
         </section>
 
-        <section aria-labelledby="es-phases" className="mt-8">
-          <SectionTitle id="es-phases">Where the project is</SectionTitle>
-          <PhaseFlow phases={d.phases} />
-          <InsightNote accent="blue">
-            {phaseNote}
-            {d.nextMilestone && ` Next milestone: ${d.nextMilestone.title}${d.nextMilestone.dueDate ? `, ${formatShortDate(d.nextMilestone.dueDate, d.asOf)}` : ""}.`}
-          </InsightNote>
-        </section>
 
         <section aria-labelledby="es-needed" className="mt-8">
           <SectionTitle id="es-needed">What is still needed</SectionTitle>
           {rows.length > 0 ? (
             <ul className="divide-y divide-[var(--es-line)] overflow-hidden rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)]">
-              {rows.map(({ item, why }, idx) => (
+              {rows.map(({ item, why, due }, idx) => (
                 <li key={item.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" style={idx % 2 ? { background: "var(--es-stripe)" } : undefined}>
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{item.title}</p>
@@ -132,6 +163,7 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     <ItemStatusBadge status={item.status} />
                     {why && <span className="text-xs text-[var(--es-muted)]">{why}</span>}
+                    {due && <span className="text-xs font-medium tabular-nums">{due}</span>}
                   </div>
                 </li>
               ))}
@@ -142,33 +174,49 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
             </p>
           )}
 
-          <h3 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--es-muted)]">Open items by owner</h3>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {(["talkpush", "client", "vendor", "unassigned"] as const).map((side) => {
-              const group = d.openItemsByOwnerSide[side];
-              if (!group) return null;
-              return (
-                <div key={side} className="rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)] p-4">
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-sm font-semibold">{SIDE_LABEL[side]}</p>
-                    <p className="text-2xl font-semibold tabular-nums tracking-[-0.03em]">{group.count}</p>
+          {!isClient && (
+            <>
+            <h3 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--es-muted)]">Open items by owner</h3>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {(["talkpush", "client", "vendor", "unassigned"] as const).map((side) => {
+                const group = d.openItemsByOwnerSide[side];
+                if (!group) return null;
+                return (
+                  <div key={side} className="rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)] p-4">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-semibold">{SIDE_LABEL[side]}</p>
+                      <p className="text-2xl font-semibold tabular-nums tracking-[-0.03em]">{group.count}</p>
+                    </div>
+                    {group.items.length === 0 ? (
+                      <p className="mt-2 text-xs text-[var(--es-muted)]">Nothing open</p>
+                    ) : (
+                      <ul className="mt-2 space-y-1">
+                        {group.items.slice(0, 5).map((i) => (
+                          <li key={i.id} className="truncate text-xs text-[var(--es-muted)]">
+                            {i.title}
+                          </li>
+                        ))}
+                        {group.items.length > 5 && <li className="text-xs font-medium">and {group.items.length - 5} more</li>}
+                      </ul>
+                    )}
                   </div>
-                  {group.items.length === 0 ? (
-                    <p className="mt-2 text-xs text-[var(--es-muted)]">Nothing open</p>
-                  ) : (
-                    <ul className="mt-2 space-y-1">
-                      {group.items.slice(0, 5).map((i) => (
-                        <li key={i.id} className="truncate text-xs text-[var(--es-muted)]">
-                          {i.title}
-                        </li>
-                      ))}
-                      {group.items.length > 5 && <li className="text-xs font-medium">and {group.items.length - 5} more</li>}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            </>
+          )}
+        </section>
+
+        <section aria-labelledby="es-phases" className="mt-8">
+          <SectionTitle id="es-phases">Where the project is</SectionTitle>
+          {flowPhases.length > 0 && <PhaseFlow phases={flowPhases} />}
+          {emptyPhases.length > 0 && <p className="mt-2 text-xs text-[var(--es-muted)]">No items yet in {joinNames(emptyPhases)}.</p>}
+          {!isClient && (
+            <InsightNote accent="blue">
+              {phaseNote}
+              {d.nextMilestone && ` Next milestone: ${d.nextMilestone.title}${d.nextMilestone.dueDate ? `, ${formatShortDate(d.nextMilestone.dueDate, d.asOf)}` : ""}.`}
+            </InsightNote>
+          )}
         </section>
 
         <section aria-labelledby="es-plan" className="mt-8">
@@ -179,13 +227,13 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
                 <BurnupChart
                   data={d.burnup}
                   today={d.asOf}
-                  ariaSummary={`Items done against items planned over time. ${d.burnup.insight}`}
+                  ariaSummary={`Items done against items planned over time. ${burnupCaption}`}
                 />
               </div>
-              <InsightNote accent={d.burnup.behindBy > 0 ? "orange" : "green"}>{d.burnup.insight}</InsightNote>
+              <InsightNote accent={d.burnup.behindBy > 0 ? "orange" : "green"}>{burnupCaption}</InsightNote>
             </>
           ) : (
-            <InsightNote accent="orange">Add due dates to items to see progress against plan. No dated items yet.</InsightNote>
+            !isClient && <InsightNote accent="orange">Add due dates to items to see progress against plan. No dated items yet.</InsightNote>
           )}
         </section>
 
@@ -193,6 +241,11 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
           <SectionTitle id="es-metrics">Success metrics</SectionTitle>
           {d.metrics.length === 0 ? (
             <InsightNote accent="orange">No success metrics have been set for this project yet.</InsightNote>
+          ) : noReadings ? (
+            // A table of "No data" says nothing. One line says what is listed and what is still missing.
+            <InsightNote accent="blue">
+              {metricsSetupNote(d.metrics)}
+            </InsightNote>
           ) : (
             <>
               <div className="overflow-x-auto rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)]">
@@ -260,7 +313,7 @@ export function ExecSummary({ data, context, readings, banner, embedded = false 
           </section>
         )}
 
-        {d.dataNotes.length > 0 && (
+        {!isClient && d.dataNotes.length > 0 && (
           <aside aria-label="Data notes" className="mt-8 rounded-[10px] border border-dashed border-[var(--es-line)] bg-[var(--es-card)] p-4">
             <Eyebrow>Data notes</Eyebrow>
             <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
