@@ -8,7 +8,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { NextResponse } from "next/server";
 import { createWorkflowMcpServer } from "@/lib/mcp/workflows";
 import { validateWorkflowMcpAuth } from "@/lib/mcp/workflow-auth";
-import { actorLabelFor, authenticateMcpRequest, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
+import { actorLabelFor, authenticateMcpRequest, isReadOnlyCaller, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
 import { originOf } from "@/lib/mcp/oauth/origin";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return unauthorizedResponse(request, RESOURCE_PATH, auth.error, CORS_HEADERS);
 
   try {
-    const server = createWorkflowMcpServer(originOf(request), { actor: { label: actorLabelFor(auth.caller), via: "mcp" } });
+    const server = createWorkflowMcpServer(originOf(request), { actor: { label: actorLabelFor(auth.caller), via: "mcp" }, readOnly: isReadOnlyCaller(auth.caller) });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

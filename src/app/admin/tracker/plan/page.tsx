@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useMemo, useState } from "react";
 import { ListChecks, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface CatalogueDTO {
 }
 
 export default function StandardPlanPage() {
+  const { canEdit } = useCurrentUser();
   const [showArchived, setShowArchived] = useState(false);
   const { data, error, reload } = useApiResource<CatalogueDTO>(`/api/tracker/plan-template${showArchived ? "?archived=1" : ""}`);
   const [editing, setEditing] = useState<PlanTemplateItemDTO | null>(null);
@@ -54,12 +56,14 @@ export default function StandardPlanPage() {
           title="The standard plan is not set up yet"
           description={`Load the standard Talkpush implementation plan: ${data.standardItemCount} items from kickoff to the end of hypercare. You can edit it afterwards, and tick only what each client needs.`}
           action={
+            canEdit ? (
             <div className="space-y-2">
               <Button onClick={loadStandard} disabled={loading}>
                 {loading ? "Loading" : `Load the standard plan (${data.standardItemCount} items)`}
               </Button>
               {loadError && <p role="alert" className="text-sm text-destructive">{loadError}</p>}
             </div>
+            ) : undefined
           }
         />
       </>
@@ -78,18 +82,22 @@ export default function StandardPlanPage() {
             <Button variant="outline" onClick={() => setShowArchived((v) => !v)} aria-pressed={showArchived}>
               {showArchived ? "Hide archived" : "Show archived"}
             </Button>
-            <Button onClick={loadStandard} variant="outline" disabled={loading} title="Adds any standard items that are missing. Your edits are kept.">
-              {loading ? "Checking" : "Add missing standard items"}
-            </Button>
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Add item
-            </Button>
+            {canEdit && (
+              <>
+                <Button onClick={loadStandard} variant="outline" disabled={loading} title="Adds any standard items that are missing. Your edits are kept.">
+                  {loading ? "Checking" : "Add missing standard items"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add item
+                </Button>
+              </>
+            )}
           </>
         }
       />
@@ -132,18 +140,20 @@ export default function StandardPlanPage() {
                           {item.isMilestone && <Tag>Milestone</Tag>}
                           {!item.defaultIncluded && <Tag>Optional</Tag>}
                           {item.archived && <Tag>Archived</Tag>}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Edit ${item.title}`}
-                            onClick={() => {
-                              setEditing(item);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Edit ${item.title}`}
+                              onClick={() => {
+                                setEditing(item);
+                                setDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </Button>
+                          )}
                         </div>
                       </li>
                     ))}

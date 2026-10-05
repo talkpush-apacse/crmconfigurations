@@ -29,7 +29,7 @@ export function EditorChecklistShell({
   useEffect(() => {
     fetch("/api/auth/check")
       .then((r) => r.json())
-      .then(({ authenticated }: { authenticated: boolean }) => setIsAdmin(!!authenticated))
+      .then(({ authenticated, role }: { authenticated: boolean; role?: string }) => setIsAdmin(!!authenticated && role === "editor"))
       .catch(() => setIsAdmin(false));
   }, []);
 

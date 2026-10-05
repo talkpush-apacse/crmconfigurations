@@ -5,6 +5,7 @@ import { ExternalLink, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JIRA_EXAMPLE_URL, MAX_JIRA_LINKS, parseJiraUrl, type JiraLink } from "@/lib/tracker/jira";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { Field } from "./Field";
 
 /** The Jira tickets stored on an item, ignoring anything that is not a {label, url} pair. */
@@ -57,6 +58,7 @@ export function JiraLinksField({
   onPendingChange: (value: string) => void;
 }) {
   const [error, setError] = useState("");
+  const { canEdit } = useCurrentUser();
 
   const add = () => {
     const parsed = parseJiraUrl(pending);
@@ -91,13 +93,16 @@ export function JiraLinksField({
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="sr-only">(opens Jira in a new tab)</span>
               </a>
-              <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${l.label}`} onClick={() => onChange(links.filter((x) => x.url !== l.url))}>
-                <X className="h-4 w-4" />
-              </Button>
+              {canEdit && (
+                <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${l.label}`} onClick={() => onChange(links.filter((x) => x.url !== l.url))}>
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>
       )}
+      {canEdit ? (
       <div className="flex gap-2">
         <Input
           id="item-jira"
@@ -124,6 +129,9 @@ export function JiraLinksField({
           Add
         </Button>
       </div>
+      ) : links.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No Jira tickets linked.</p>
+      ) : null}
       {error && (
         <p id="item-jira-error" role="alert" className="text-xs text-destructive">
           {error}

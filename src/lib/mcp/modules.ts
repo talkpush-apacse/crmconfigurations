@@ -5,6 +5,7 @@
  */
 
 import { registerChecklistTools } from "@/lib/mcp-server";
+import { CHECKLIST_READ_TOOLS } from "./checklist-read-tools";
 import type { ToolModule } from "./toolkit";
 import { trackerModule } from "./tracker";
 
@@ -14,6 +15,7 @@ export const checklistModule: ToolModule = {
   name: "CRM Config Checklist",
   tools: [],
   legacy: registerChecklistTools,
+  legacyReadTools: CHECKLIST_READ_TOOLS,
 };
 
 export const MCP_MODULES: ToolModule[] = [checklistModule, trackerModule];

@@ -9,6 +9,7 @@ import { checkFile, FILE_ACCEPT, FILE_KIND_LABELS, FILE_KINDS, FILE_TYPES_HINT, 
 import type { ProjectFileDTO } from "@/lib/tracker/file-service";
 import { formatDate } from "@/lib/tracker/format";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError } from "./Field";
 
@@ -24,6 +25,7 @@ export function ProjectFiles({ projectId, onChanged }: { projectId: string; onCh
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState<ProjectFileDTO | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { canEdit } = useCurrentUser();
 
   const upload = async (file: File) => {
     setError("");
@@ -103,14 +105,17 @@ export function ProjectFiles({ projectId, onChanged }: { projectId: string; onCh
                   <Download className="h-4 w-4" />
                 </a>
               </Button>
-              <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${f.fileName}`} onClick={() => setRemoving(f)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canEdit && (
+                <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${f.fileName}`} onClick={() => setRemoving(f)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>
       )}
 
+      {canEdit && (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="sm:w-52">
           <Field label="What is it?" htmlFor="project-file-kind">
@@ -145,7 +150,8 @@ export function ProjectFiles({ projectId, onChanged }: { projectId: string; onCh
           {busy ? "Uploading..." : "Upload file"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">{FILE_TYPES_HINT}</p>
+      )}
+      {canEdit && <p className="text-xs text-muted-foreground">{FILE_TYPES_HINT}</p>}
       <FormError message={error} />
 
       <ConfirmDialog

@@ -20,6 +20,8 @@ import { ErrorBlock } from "@/components/tracker/PageHeader";
 import { ProjectPageSkeleton } from "@/components/tracker/SummarySkeleton";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import { api, errorMessage } from "@/lib/tracker/client-api";
+import { READ_ONLY_MESSAGE } from "@/lib/roles";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import type { ItemDTO, ProjectDetailDTO } from "@/lib/tracker/client-types";
@@ -50,10 +52,12 @@ function ProjectWorkspace() {
   const [editingItem, setEditingItem] = useState<ItemDTO | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const { canEdit } = useCurrentUser();
   const [planOpen, setPlanOpen] = useState(false);
   useDocumentTitle(detail?.project.title);
 
   const changeStatus = async (item: ItemDTO, status: ItemStatus, blockerReason?: string): Promise<string | null> => {
+    if (!canEdit) return READ_ONLY_MESSAGE;
     try {
       await api(`/api/tracker/items/${item.id}`, {
         method: "PATCH",
@@ -81,6 +85,7 @@ function ProjectWorkspace() {
   };
 
   const reorder = async (itemIds: string[]): Promise<string | null> => {
+    if (!canEdit) return READ_ONLY_MESSAGE;
     try {
       await api(`/api/tracker/projects/${id}/order`, { method: "PUT", body: { itemIds } });
       load();
@@ -146,33 +151,39 @@ function ProjectWorkspace() {
         </div>
         {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
         <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
-          <Button variant="outline" onClick={() => setPlanOpen(true)}>
-            <ListChecks className="h-4 w-4" />
-            Build plan
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => setPlanOpen(true)}>
+              <ListChecks className="h-4 w-4" />
+              Build plan
+            </Button>
+          )}
           <Button asChild variant="outline" className="max-md:min-h-11">
             <Link href={`/admin/tracker/projects/${project.id}/config-plan`}>
               <FileText className="h-4 w-4" />
               Config plan
             </Link>
           </Button>
-          <Button variant="outline" onClick={() => setShareOpen(true)}>
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
-            Settings
+            {canEdit ? "Settings" : "Details"}
           </Button>
-          <Button
-            onClick={() => {
-              setEditingItem(null);
-              setSheetOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Add item
-          </Button>
+          {canEdit && (
+            <Button
+              onClick={() => {
+                setEditingItem(null);
+                setSheetOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Add item
+            </Button>
+          )}
         </div>
       </header>
 
@@ -182,9 +193,11 @@ function ProjectWorkspace() {
             <p>
               {plural(items.filter((i) => i.needsReview).length, "item")} added by the client {items.filter((i) => i.needsReview).length === 1 ? "needs" : "need"} your review. The client can see them, but they do not count toward project health until you review them.
             </p>
-            <Button variant="outline" size="sm" onClick={markAllReviewed}>
-              Mark all reviewed
-            </Button>
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={markAllReviewed}>
+                Mark all reviewed
+              </Button>
+            )}
           </div>
         )}
         <Tabs value={view} onValueChange={setView} className="gap-4">

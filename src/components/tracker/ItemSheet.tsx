@@ -23,6 +23,7 @@ import {
 import { formatDate } from "@/lib/tracker/format";
 import { conflictMessage, draftConflicts } from "@/lib/tracker/schedule";
 import { parseJiraUrl, type JiraLink } from "@/lib/tracker/jira";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError, NONE } from "./Field";
 import { ItemStatusBadge } from "./badges";
@@ -44,6 +45,8 @@ interface Props {
 
 export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, people, defaultPhaseId, onSaved }: Props) {
   const editing = !!item;
+  const { canEdit, loaded } = useCurrentUser();
+  const readOnly = !canEdit;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("not_started");
@@ -179,13 +182,14 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
         <SheetContent className="w-full gap-0 overflow-hidden sm:max-w-lg">
           <form onSubmit={submit} className="flex h-full min-h-0 flex-col">
             <SheetHeader className="border-b border-border">
-              <SheetTitle>{editing ? "Edit item" : "Add item"}</SheetTitle>
+              <SheetTitle>{readOnly && loaded ? "Item" : editing ? "Edit item" : "Add item"}</SheetTitle>
               <SheetDescription>
                 {editing ? <ItemStatusBadge status={item!.status} /> : "Something that has to happen for this project to succeed."}
               </SheetDescription>
             </SheetHeader>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <fieldset disabled={readOnly} className="min-w-0 space-y-4">
               {editing && item!.createdVia === "client" && (
                 <div role="status" className="rounded-md border border-status-pending/50 bg-status-pending/15 p-3 text-sm">
                   <p className="font-medium">{item!.needsReview ? "Added by the client. Needs your review." : "Added by the client. Reviewed."}</p>
@@ -194,9 +198,11 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
                       <p className="mt-1 text-muted-foreground">
                         The client can already see it. It does not count toward project health until you mark it reviewed. Set its type, phase and dates first if it needs them.
                       </p>
-                      <Button type="button" size="sm" className="mt-2" disabled={reviewing} onClick={markReviewed}>
-                        {reviewing ? "Saving" : "Mark reviewed"}
-                      </Button>
+                      {!readOnly && (
+                        <Button type="button" size="sm" className="mt-2" disabled={reviewing} onClick={markReviewed}>
+                          {reviewing ? "Saving" : "Mark reviewed"}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -373,14 +379,16 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
 
               <JiraLinksField links={jiraLinks} onChange={setJiraLinks} pending={jiraPending} onPendingChange={setJiraPending} />
 
-              {editing && <RemarksPanel itemId={item!.id} />}
+              {editing && <RemarksPanel itemId={item!.id} readOnly={readOnly} />}
+              </fieldset>
             </div>
 
             <SheetFooter className="border-t border-border bg-background">
               <FormError message={error} />
+              {readOnly && loaded && <p className="text-xs text-muted-foreground">Your login is read-only, so this item cannot be changed.</p>}
               {needsReason && <p className="text-xs text-muted-foreground">Add a reason to mark this item as blocked.</p>}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-                {editing ? (
+                {editing && !readOnly ? (
                   <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmArchive(true)} disabled={saving}>
                     Archive item
                   </Button>
@@ -389,11 +397,13 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
                 )}
                 <div className="flex gap-2">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-                    Cancel
+                    {readOnly ? "Close" : "Cancel"}
                   </Button>
-                  <Button type="submit" disabled={saving || title.trim() === "" || needsReason}>
-                    {saving ? "Saving..." : editing ? "Save item" : "Add item"}
-                  </Button>
+                  {!readOnly && (
+                    <Button type="submit" disabled={saving || title.trim() === "" || needsReason}>
+                      {saving ? "Saving..." : editing ? "Save item" : "Add item"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </SheetFooter>
@@ -412,7 +422,7 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
   );
 }
 
-function RemarksPanel({ itemId }: { itemId: string }) {
+function RemarksPanel({ itemId, readOnly }: { itemId: string; readOnly: boolean }) {
   const [remarks, setRemarks] = useState<RemarkDTO[] | null>(null);
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState("internal");
@@ -449,6 +459,7 @@ function RemarksPanel({ itemId }: { itemId: string }) {
       <h3 id="remarks-heading" className="text-sm font-semibold">
         Remarks
       </h3>
+      {!readOnly && (
       <div className="space-y-2">
         <Label htmlFor="remark-body" className="sr-only">
           New remark
@@ -470,6 +481,7 @@ function RemarksPanel({ itemId }: { itemId: string }) {
         </div>
         <FormError message={error} />
       </div>
+      )}
       {remarks === null ? (
         <p className="text-xs text-muted-foreground">Loading remarks...</p>
       ) : remarks.length === 0 ? (

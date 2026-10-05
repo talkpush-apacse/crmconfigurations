@@ -12,6 +12,7 @@ import { HEALTH_LABELS, PROJECT_STATUS_LABELS, PROJECT_STATUSES, type HealthLeve
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Field, FormError, NONE } from "./Field";
 import { ProjectFiles } from "./ProjectFiles";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 const CALCULATED = "__calculated";
 
@@ -31,6 +32,9 @@ interface Props {
 
 export function ProjectDialog({ open, onOpenChange, project, accounts = [], defaultAccountId, people, onSaved, onArchived }: Props) {
   const editing = !!project;
+  const { canEdit, loaded } = useCurrentUser();
+  // Looking at an existing project is allowed for everyone; changing it is not.
+  const readOnly = editing && !canEdit;
   const [accountId, setAccountId] = useState("");
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
@@ -140,7 +144,7 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <form onSubmit={submit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{editing ? "Project settings" : "New project"}</DialogTitle>
+              <DialogTitle>{editing ? (readOnly && loaded ? "Project details" : "Project settings") : "New project"}</DialogTitle>
               <DialogDescription>
                 {editing
                   ? "Dates, people, health and files for this project."
@@ -148,6 +152,7 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
               </DialogDescription>
             </DialogHeader>
 
+            <fieldset disabled={readOnly} className="min-w-0 space-y-4">
             {!editing && (
               <Field label="Account" htmlFor="project-account" required>
                 {accounts.length === 0 ? (
@@ -257,9 +262,11 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
               </>
             )}
 
+            </fieldset>
+
             <FormError message={error} />
             <DialogFooter className="gap-2 sm:justify-between">
-              {editing ? (
+              {editing && !readOnly ? (
                 <Button type="button" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmArchive(true)} disabled={saving}>
                   Archive project
                 </Button>
@@ -268,11 +275,13 @@ export function ProjectDialog({ open, onOpenChange, project, accounts = [], defa
               )}
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-                  Cancel
+                  {readOnly ? "Close" : "Cancel"}
                 </Button>
-                <Button type="submit" disabled={saving || title.trim() === "" || (!editing && !accountId)}>
-                  {saving ? "Saving..." : editing ? "Save project" : "Create project"}
-                </Button>
+                {!readOnly && (
+                  <Button type="submit" disabled={saving || title.trim() === "" || (!editing && !accountId)}>
+                    {saving ? "Saving..." : editing ? "Save project" : "Create project"}
+                  </Button>
+                )}
               </div>
             </DialogFooter>
           </form>

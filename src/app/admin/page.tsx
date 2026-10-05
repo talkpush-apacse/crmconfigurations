@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -201,6 +202,7 @@ function ChecklistStatusBadge({ summary }: { summary?: ChecklistProgressSummary 
 }
 
 export default function AdminDashboard() {
+  const { canEdit } = useCurrentUser();
   const router = useRouter();
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -568,12 +570,14 @@ export default function AdminDashboard() {
                   Manage client configuration checklists
                 </p>
               </div>
-              <Button asChild className="min-h-11 shrink-0 md:min-h-0">
-                <Link href="/admin/new">
-                  <Plus className="h-4 w-4" />
-                  New Checklist
-                </Link>
-              </Button>
+              {canEdit && (
+                <Button asChild className="min-h-11 shrink-0 md:min-h-0">
+                  <Link href="/admin/new">
+                    <Plus className="h-4 w-4" />
+                    New Checklist
+                  </Link>
+                </Button>
+              )}
             </div>
 
             {/* P1-01: Proper delete confirmation dialog */}
@@ -725,9 +729,11 @@ export default function AdminDashboard() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Create your first client checklist to get started.
                     </p>
-                    <Button asChild variant="outline" className="mt-4 min-h-11 md:min-h-0">
-                      <Link href="/admin/new">Create first checklist</Link>
-                    </Button>
+                    {canEdit && (
+                      <Button asChild variant="outline" className="mt-4 min-h-11 md:min-h-0">
+                        <Link href="/admin/new">Create first checklist</Link>
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -832,6 +838,8 @@ export default function AdminDashboard() {
                                     Export to XLS
                                   </a>
                                 </DropdownMenuItem>
+                                {canEdit && (
+                                <>
                                 <DropdownMenuItem onClick={() => handleEditSettings(c)}>
                                   <Settings className="h-4 w-4" />
                                   Configure settings
@@ -852,6 +860,8 @@ export default function AdminDashboard() {
                                   <Trash2 className="h-4 w-4" />
                                   Delete checklist
                                 </DropdownMenuItem>
+                                </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1030,6 +1040,8 @@ export default function AdminDashboard() {
                                         Export to XLS
                                       </a>
                                     </DropdownMenuItem>
+                                    {canEdit && (
+                                    <>
                                     <DropdownMenuItem onClick={() => handleEditSettings(c)}>
                                       <Settings className="h-4 w-4" />
                                       Configure settings
@@ -1050,6 +1062,8 @@ export default function AdminDashboard() {
                                       <Trash2 className="h-4 w-4" />
                                       Delete checklist
                                     </DropdownMenuItem>
+                                    </>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

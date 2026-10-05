@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { normaliseRole, type Role } from "@/lib/roles";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   AUTH_CODE_TTL_SECONDS,
@@ -258,6 +259,8 @@ export interface ConnectionAuth {
   adminUserId: string;
   email: string;
   clientName: string;
+  /** The person's role right now (read from the database on every call, so a change takes effect at once). */
+  role: Role;
 }
 
 /** Who is calling the connector with this access token? null if the token is unknown, expired or revoked. */
@@ -265,14 +268,20 @@ export async function authenticateAccessToken(token: string, now: Date = new Dat
   if (!looksLikeAccessToken(token) || token.length > 200) return null;
   const row = await prisma.mcpToken.findUnique({
     where: { accessTokenHash: hashSecret(token) },
-    include: { adminUser: { select: { email: true } }, client: { select: { clientName: true } } },
+    include: { adminUser: { select: { email: true, role: true } }, client: { select: { clientName: true } } },
   });
   if (!row || row.revokedAt || row.accessExpiresAt <= now) return null;
 
   const stale = !row.lastUsedAt || now.getTime() - row.lastUsedAt.getTime() > seconds(LAST_USED_WRITE_INTERVAL_SECONDS);
   if (stale) await prisma.mcpToken.update({ where: { id: row.id }, data: { lastUsedAt: now } });
 
-  return { tokenId: row.id, adminUserId: row.adminUserId, email: row.adminUser.email, clientName: row.client.clientName };
+  return {
+    tokenId: row.id,
+    adminUserId: row.adminUserId,
+    email: row.adminUser.email,
+    clientName: row.client.clientName,
+    role: normaliseRole(row.adminUser.role),
+  };
 }
 
 // ---------------------------------------------------------------------------

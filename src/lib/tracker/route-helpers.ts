@@ -8,7 +8,7 @@ type Handler = (actor: Actor) => Promise<unknown>;
 
 /** Wrap a staff-only tracker route: auth, actor lookup, uniform error responses. */
 export async function authed(request: NextRequest, handler: Handler, successStatus = 200): Promise<NextResponse> {
-  const auth = requireAuth(request);
+  const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

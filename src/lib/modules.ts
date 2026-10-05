@@ -42,7 +42,7 @@ export const PORTAL_MODULES: PortalModule[] = [
 export function getActiveModule(pathname: string | null): ModuleId | null {
   if (!pathname) return null;
   if (pathname === "/admin/home" || pathname.startsWith("/admin/home/")) return null;
-  if (pathname === "/admin/connections") return null;
+  if (pathname === "/admin/connections" || pathname === "/admin/users") return null;
   if (pathname === "/admin/tracker" || pathname.startsWith("/admin/tracker/")) return "tracker";
   if (pathname === "/admin/workflows" || pathname.startsWith("/admin/workflows/")) return "workflows";
   if (pathname.startsWith("/admin")) return "checklist";

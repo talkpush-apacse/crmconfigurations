@@ -8,11 +8,13 @@ import { PersonDialog } from "@/components/tracker/PersonDialog";
 import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from "@/components/tracker/PageHeader";
 import { api, errorMessage } from "@/lib/tracker/client-api";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
+import { useCurrentUser } from "@/lib/use-current-user";
 import type { PersonDTO } from "@/lib/tracker/client-types";
 
 export default function TeamPage() {
   const { data, error, reload: load } = useApiResource<{ people: PersonDTO[] }>("/api/tracker/people");
   const people = data?.people ?? null;
+  const { canEdit } = useCurrentUser();
   const [actionError, setActionError] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PersonDTO | null>(null);
@@ -33,6 +35,7 @@ export default function TeamPage() {
         title="Team"
         description="Talkpush staff who can own items on any project."
         actions={
+          canEdit ? (
           <>
             <Button variant="outline" onClick={addMe}>
               <UserPlus className="h-4 w-4" />
@@ -43,6 +46,7 @@ export default function TeamPage() {
               Add team member
             </Button>
           </>
+          ) : undefined
         }
       />
       {actionError && (
@@ -61,10 +65,12 @@ export default function TeamPage() {
           title="No team members yet"
           description="Add yourself first so you can own items, then add your colleagues."
           action={
-            <Button onClick={addMe}>
-              <UserPlus className="h-4 w-4" />
-              Add me
-            </Button>
+            canEdit ? (
+              <Button onClick={addMe}>
+                <UserPlus className="h-4 w-4" />
+                Add me
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -85,9 +91,11 @@ export default function TeamPage() {
                   <TableCell className="hidden sm:table-cell">{p.email ?? ""}</TableCell>
                   <TableCell className="hidden md:table-cell">{p.title ?? ""}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditing(p)}>
-                      Edit
-                    </Button>
+                    {canEdit && (
+                      <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => setEditing(p)}>
+                        Edit
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

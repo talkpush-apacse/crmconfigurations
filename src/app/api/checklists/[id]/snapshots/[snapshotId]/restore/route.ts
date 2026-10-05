@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; snapshotId: string }> }
 ) {
   try {
-    const auth = requireAuth(request);
+    const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
 
     const { id, snapshotId } = await params;

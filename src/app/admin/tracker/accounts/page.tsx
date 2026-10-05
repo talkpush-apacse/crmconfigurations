@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCurrentUser } from "@/lib/use-current-user";
 import Link from "next/link";
 import { Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { plural } from "@/lib/tracker/format";
 export default function AccountsPage() {
   const { data, error, reload: load } = useApiResource<{ accounts: AccountDTO[] }>("/api/tracker/accounts");
   const accounts = data?.accounts ?? null;
+  const { canEdit } = useCurrentUser();
   const [creating, setCreating] = useState(false);
 
   return (
@@ -22,10 +24,12 @@ export default function AccountsPage() {
         title="Accounts"
         description="Client companies. Each can have many projects and its own contacts."
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" />
-            New account
-          </Button>
+          canEdit ? (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4" />
+              New account
+            </Button>
+          ) : undefined
         }
       />
 
@@ -39,10 +43,12 @@ export default function AccountsPage() {
           title="No accounts yet"
           description="Add the first client company, then create its project."
           action={
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" />
-              New account
-            </Button>
+            canEdit ? (
+              <Button onClick={() => setCreating(true)}>
+                <Plus className="h-4 w-4" />
+                New account
+              </Button>
+            ) : undefined
           }
         />
       ) : (

@@ -107,6 +107,8 @@ model AdminUser {
   email        String   @unique
   passwordHash String?
   googleId     String?  @unique
+  // editor (can change things; the default) | viewer (read-only). Plain string validated in code (src/lib/roles.ts).
+  role         String   @default("editor")
   createdAt    DateTime @default(now())
 
   // Back-relations for Claude connector sign-in (no column on this table).

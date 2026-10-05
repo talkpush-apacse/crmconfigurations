@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/workflow/ui/toast";
@@ -65,6 +66,7 @@ const STATUS_TABS: { value: string; label: string }[] = [
 ];
 
 export default function WorkflowDashboard() {
+  const { canEdit } = useCurrentUser();
   const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,21 +220,25 @@ export default function WorkflowDashboard() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Workflow builder</h1>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setTemplateModalOpen(true)}
-            className="min-h-11 md:min-h-9"
-          >
-            <LayoutTemplate className="h-4 w-4" />
-            Start from template
-          </Button>
-          <Button
-            onClick={() => setNewModalOpen(true)}
-            className="min-h-11 md:min-h-9"
-          >
-            <Plus className="h-4 w-4" />
-            New workflow
-          </Button>
+          {canEdit && (
+            <Button
+              variant="outline"
+              onClick={() => setTemplateModalOpen(true)}
+              className="min-h-11 md:min-h-9"
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Start from template
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              onClick={() => setNewModalOpen(true)}
+              className="min-h-11 md:min-h-9"
+            >
+              <Plus className="h-4 w-4" />
+              New workflow
+            </Button>
+          )}
         </div>
       </div>
 
@@ -293,7 +299,7 @@ export default function WorkflowDashboard() {
               ? "Try a different search or clear filters"
               : "Create your first workflow to get started"}
           </p>
-          {!searchInput && statusFilter === "all" && (
+          {canEdit && !searchInput && statusFilter === "all" && (
             <Button
               onClick={() => setNewModalOpen(true)}
               className="min-h-11 md:min-h-9"
@@ -333,6 +339,7 @@ export default function WorkflowDashboard() {
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
+{canEdit && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -366,6 +373,7 @@ export default function WorkflowDashboard() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+)}
                 </div>
 
                 <div className="mb-2">

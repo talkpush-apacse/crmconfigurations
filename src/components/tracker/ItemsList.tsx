@@ -12,6 +12,7 @@ import { ITEM_STATUSES, ITEM_STATUS_LABELS, OPEN_ITEM_STATUSES, type ItemStatus 
 import { unmetDependencies } from "@/lib/tracker/dependencies";
 import { describeDue, overdueDays } from "@/lib/tracker/dates";
 import { formatShortDate } from "@/lib/tracker/format";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
 import { NONE } from "./Field";
@@ -34,7 +35,8 @@ interface Props {
   onStatusChange: (item: ItemDTO, status: ItemStatus, blockerReason?: string) => Promise<string | null>;
 }
 
-function StatusMenu({ item, onPick }: { item: ItemDTO; onPick: (status: ItemStatus) => void }) {
+function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status: ItemStatus) => void; readOnly?: boolean }) {
+  if (readOnly) return <ItemStatusBadge status={item.status} />;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -60,6 +62,7 @@ function StatusMenu({ item, onPick }: { item: ItemDTO; onPick: (status: ItemStat
 }
 
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange }: Props) {
+  const { canEdit } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState(OPEN);
   const reviewCount = items.filter((i) => i.needsReview).length;
   const [ownerFilter, setOwnerFilter] = useState(ALL);
@@ -234,7 +237,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                       <JiraLinkChips links={jiraLinksOf(item.links)} />
                     </TableCell>
                     <TableCell>
-                      <StatusMenu item={item} onPick={(s) => void pick(item, s)} />
+                      <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
                     </TableCell>
                     <TableCell>{ownerCell(item)}</TableCell>
                     <TableCell>{item.phaseName ?? <span className="text-muted-foreground">No phase</span>}</TableCell>
@@ -253,7 +256,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                 </button>
                 <JiraLinkChips links={jiraLinksOf(item.links)} />
                 <div className="mt-2">
-                  <StatusMenu item={item} onPick={(s) => void pick(item, s)} />
+                  <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <div>

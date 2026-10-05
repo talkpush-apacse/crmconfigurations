@@ -106,7 +106,7 @@ export interface StaffContext {
 }
 
 export async function withStaff(request: NextRequest, handler: (ctx: StaffContext) => Promise<unknown>, successStatus = 200): Promise<NextResponse> {
-  const auth = requireAuth(request);
+  const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
   try {
     let label = "Staff";

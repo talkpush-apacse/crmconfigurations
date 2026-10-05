@@ -11,7 +11,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMcpServer } from "@/lib/mcp-server";
 import { validateMcpAuth } from "@/lib/mcp-auth";
-import { authenticateMcpRequest, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
+import { authenticateMcpRequest, isReadOnlyCaller, unauthorizedResponse } from "@/lib/mcp/oauth/request-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const server = createMcpServer();
+    const server = createMcpServer({ readOnly: isReadOnlyCaller(auth.caller) });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
       enableJsonResponse: true, // return JSON instead of SSE for compatibility

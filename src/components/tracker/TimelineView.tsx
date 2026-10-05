@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/lib/use-current-user";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CalendarRange, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ function barStyle(status: string): { className: string; style?: React.CSSPropert
 }
 
 export function TimelineView({ items, phases, project, today, onOpen, onPhasesChanged }: Props) {
+  const { canEdit } = useCurrentUser();
   const [zoom, setZoom] = useState<Zoom>("weeks");
   const [phaseDialog, setPhaseDialog] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,9 +106,11 @@ export function TimelineView({ items, phases, project, today, onOpen, onPhasesCh
           title="Nothing to draw yet"
           description="Give items a start or due date, or set the project's dates, and the timeline appears here. You can also ask Claude to build it from a Gantt chart (slide or PDF)."
           action={
-            <Button variant="outline" onClick={() => setPhaseDialog(true)}>
-              Set phase dates
-            </Button>
+            canEdit ? (
+              <Button variant="outline" onClick={() => setPhaseDialog(true)}>
+                Set phase dates
+              </Button>
+            ) : undefined
           }
         />
         <PhaseDatesDialog open={phaseDialog} onOpenChange={setPhaseDialog} phases={phases} onSaved={onPhasesChanged} />
@@ -155,9 +159,11 @@ export function TimelineView({ items, phases, project, today, onOpen, onPhasesCh
         </div>
         <div className="flex items-center gap-3">
           <p className="hidden text-xs text-muted-foreground lg:block">Bars are planned days. Diamonds are milestones. Arrows run from a blocker to the item that waits for it.</p>
-          <Button variant="outline" size="sm" onClick={() => setPhaseDialog(true)}>
-            Phase dates
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setPhaseDialog(true)}>
+              Phase dates
+            </Button>
+          )}
         </div>
       </div>
 
@@ -292,7 +298,9 @@ export function TimelineView({ items, phases, project, today, onOpen, onPhasesCh
       {timeline.undatedDependencies > 0 && <p className="mt-3 text-xs text-muted-foreground">{plural(timeline.undatedDependencies, "dependency")} cannot be drawn because one of the two items has no dates.</p>}
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Have a Gantt chart? Give it to Claude (slide or PDF) and ask it to build or update this timeline, or ask Claude to draw one from this timeline. Keep a copy under Settings, Files.
+        {canEdit
+          ? "Have a Gantt chart? Give it to Claude (slide or PDF) and ask it to build or update this timeline, or ask Claude to draw one from this timeline. Keep a copy under Settings, Files."
+          : "You can ask Claude to draw a Gantt chart from this timeline."}
       </p>
 
       <PhaseDatesDialog open={phaseDialog} onOpenChange={setPhaseDialog} phases={phases} onSaved={onPhasesChanged} />
