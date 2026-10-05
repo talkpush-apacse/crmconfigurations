@@ -146,6 +146,7 @@ export function EditorChecklistShell({
           onRetrySave={retrySave}
           isReadOnly={false}
           editorToken={token}
+          shareLink={isAdmin ? `${window.location.origin}/editor/${token}/welcome` : undefined}
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
           onSave={publishChanges}
