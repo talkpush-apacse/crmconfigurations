@@ -332,3 +332,268 @@ select:not([data-slot]):focus {
 /* Gradient strip: Sign order for staff, report order (green, blue, pink, orange) for clients. */
 .es-staff .es-gradient { background: linear-gradient(to right, #F2B457, #F1C1F3, #BBCAF0, #ACCDB5); }
 .es-client .es-gradient { background: linear-gradient(90deg, #ACCDB5 0%, #BBCAF0 33%, #E8C2EF 66%, #E8B766 100%); }
+
+/* ---- PDF exports (Project Tracker) ----
+   A report is rendered into #print-root at the end of <body> and the browser's print dialog is opened.
+   On screen it stays hidden; while printing, body.exporting hides the rest of the app. */
+#print-root {
+  display: none;
+}
+
+@media print {
+  body.exporting > *:not(#print-root) {
+    display: none !important;
+  }
+  body.exporting {
+    background: #fff !important;
+    background-image: none !important;
+  }
+  body.exporting #print-root {
+    display: block;
+  }
+
+  /* Always the light palette on paper, even if the screen is in dark mode. */
+  .print-root {
+    --background: oklch(0.99 0.005 90);
+    --foreground: oklch(0.20 0.01 240);
+    --card: #fff;
+    --secondary: oklch(0.96 0.01 90);
+    --muted: oklch(0.94 0.01 90);
+    --muted-foreground: oklch(0.45 0.01 240);
+    --border: oklch(0.86 0.01 240);
+    --destructive: oklch(0.577 0.245 27.325);
+    color: var(--foreground);
+    background: #fff;
+    font-size: 11px;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-root * {
+    box-shadow: none !important;
+  }
+
+  .print-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--foreground);
+  }
+  .print-eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .print-title {
+    margin-top: 2px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .print-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted-foreground);
+  }
+  .print-internal {
+    margin-left: 10px;
+    padding: 1px 8px;
+    border: 1px solid var(--foreground);
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foreground);
+  }
+  .print-filter,
+  .print-count {
+    margin-top: 4px;
+    font-size: 10.5px;
+    color: var(--muted-foreground);
+  }
+  .print-count {
+    margin: 0 0 6px;
+  }
+  .print-empty {
+    padding: 24px 0;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+  .print-h2 {
+    margin: 14px 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+    break-after: avoid;
+  }
+  .print-list {
+    padding-left: 16px;
+    list-style: disc;
+  }
+  .print-list li {
+    margin: 2px 0;
+    break-inside: avoid;
+  }
+  .print-after {
+    break-inside: avoid;
+  }
+
+  /* Tables: the heading row repeats on every page and a row is never cut in two. */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .print-table thead {
+    display: table-header-group;
+  }
+  .print-table th {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--foreground);
+    background: var(--secondary);
+    text-align: left;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .print-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .print-table tr {
+    break-inside: avoid;
+  }
+  .print-table tbody tr:nth-child(even) td {
+    background: oklch(0.985 0.005 90);
+  }
+  .print-board td {
+    border-right: 1px solid var(--border);
+  }
+  .print-board td:last-child {
+    border-right: 0;
+  }
+  .print-board-empty {
+    background: transparent !important;
+  }
+  .print-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .print-count-inline {
+    margin-left: 4px;
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+
+  .print-strong {
+    display: block;
+    font-weight: 600;
+  }
+  .print-note {
+    display: block;
+    margin-top: 1px;
+    font-size: 9.5px;
+    color: var(--muted-foreground);
+  }
+  .print-cap {
+    text-transform: capitalize;
+  }
+  .print-late {
+    font-weight: 700;
+    color: var(--destructive);
+  }
+  .print-tag {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 0 5px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    vertical-align: 1px;
+    color: var(--muted-foreground);
+  }
+  .print-status {
+    display: inline-block;
+    padding: 1px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .print-status-in_progress { background: color-mix(in oklch, var(--status-in-progress) 25%, #fff); }
+  .print-status-waiting_on_client { background: color-mix(in oklch, var(--status-pending) 28%, #fff); }
+  .print-status-blocked { background: color-mix(in oklch, var(--status-declined) 14%, #fff); border-color: var(--status-declined); }
+  .print-status-done { background: color-mix(in oklch, var(--status-completed) 32%, #fff); }
+  .print-status-dropped { color: var(--muted-foreground); text-decoration: line-through; }
+
+  /* Timeline */
+  .print-timeline {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  .print-page-break {
+    break-after: page;
+  }
+  section[aria-label^="Timeline"] {
+    break-inside: avoid;
+  }
+  .print-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 8px;
+    font-size: 9.5px;
+    color: var(--muted-foreground);
+  }
+  .print-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Summary: the same report as on screen, flowed onto paper. */
+  .print-root .es-staff {
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    --es-bg: #fff;
+  }
+  .print-root .es-staff > div > .p-5,
+  .print-root .es-staff > .relative {
+    padding: 0;
+  }
+  /* Keep each card, row and chart whole, but let a section flow on from the one before it. */
+  .print-root .es-staff div[class*="rounded-[10px]"],
+  .print-root .es-staff aside,
+  .print-root .es-staff li,
+  .print-root .es-staff tr,
+  .print-root .es-staff p[style] {
+    break-inside: avoid;
+  }
+  .print-root .es-staff span[aria-hidden="true"].absolute {
+    display: none;
+  }
+  .print-root .es-staff h2,
+  .print-root .es-staff h3 {
+    break-after: avoid;
+  }
+  .print-root .es-staff ol[aria-label="Project phases"] {
+    flex-wrap: wrap;
+    gap: 6px 0;
+    overflow: visible;
+  }
+  .print-root .es-staff .overflow-x-auto {
+    overflow: visible;
+  }
+}
