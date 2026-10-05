@@ -10,9 +10,30 @@ function cloneChecklistData(data: ChecklistData): ChecklistData {
     : JSON.parse(JSON.stringify(data)) as ChecklistData;
 }
 
-export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" = "slug") {
-  const [data, setData] = useState<ChecklistData | null>(null);
-  const [loading, setLoading] = useState(true);
+/**
+ * What to send on a save. The public client and editor links only need the fields that changed plus the version
+ * (the server merges field by field), so a tab edit no longer re-uploads the whole checklist. Staff admin saves and
+ * saves with nothing marked dirty keep sending the whole document, as before.
+ */
+function buildSaveBody(data: ChecklistData, changedFields: string[], mode: "slug" | "token" | "id") {
+  if (mode === "id" || changedFields.length === 0) {
+    return { ...data, changedFields };
+  }
+  const body: Record<string, unknown> = { version: data.version, changedFields };
+  for (const field of changedFields) {
+    body[field] = data[field as keyof ChecklistData];
+  }
+  return body;
+}
+
+/**
+ * `initialData` is the checklist already loaded on the server (the client and editor pages do this), so the page
+ * shows straight away with no spinner and no second request. When it is missing (not found, or the server could not
+ * load it) the hook fetches in the browser exactly as before, which is also how "not found" gets reported.
+ */
+export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" = "slug", initialData: ChecklistData | null = null) {
+  const [data, setData] = useState<ChecklistData | null>(initialData);
+  const [loading, setLoading] = useState(initialData === null);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -26,6 +47,12 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (initialData) {
+      // Already have it from the server: just set up the save bookkeeping.
+      latestDataRef.current = initialData;
+      lastSavedDataRef.current = cloneChecklistData(initialData);
+      return;
+    }
     async function fetchData() {
       try {
         const url = mode === "token"
@@ -51,6 +78,8 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
       }
     }
     fetchData();
+    // initialData is only the starting value; later changes to it must not re-run the load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slugOrToken, mode]);
 
   const save = useCallback(async (updatedData: ChecklistData) => {
@@ -81,10 +110,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
         const res = await fetch(saveUrl, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...dataToSave,
-            changedFields: currentDirtyFields,
-          }),
+          body: JSON.stringify(buildSaveBody(dataToSave, currentDirtyFields, mode)),
         });
         if (res.status === 409) {
           // Conflict — parse richer response for field-level info

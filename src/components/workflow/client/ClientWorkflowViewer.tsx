@@ -217,7 +217,10 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
   useEffect(() => {
     if (api.readOnly) return;
     let stopped = false;
+    // A tab nobody is looking at has no need to ask the server anything; it catches up the moment it is shown again.
+    const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
     const tick = async () => {
+      if (hidden()) return;
       try {
         const p = await api.poll();
         if (stopped) return;
@@ -233,6 +236,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
       }
     };
     const beat = async () => {
+      if (hidden()) return;
       if (data.you.displayName && data.you.level !== "viewer") {
         try {
           const r = await api.heartbeat(queue.current.length > 0 || draftOps.length > 0);
@@ -246,12 +250,20 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
     const heart = setInterval(beat, 15_000);
     void beat();
     const onFocus = () => void tick();
+    const onVisible = () => {
+      if (!hidden()) {
+        void tick();
+        void beat();
+      }
+    };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       stopped = true;
       clearInterval(poll);
       clearInterval(heart);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [api, draftOps.length, data.suggestions, data.you.displayName, data.you.level, openComments, reload]);
 

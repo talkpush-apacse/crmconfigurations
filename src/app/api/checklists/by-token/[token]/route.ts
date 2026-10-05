@@ -4,6 +4,7 @@ import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { accumulateNotificationState } from "@/lib/notification-state";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 import { validateCustomTabsData } from "@/lib/custom-tab-service";
+import { omitInternalConfigForToken } from "@/lib/checklist-public";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
   (field) => field !== "atsIntegrations" && field !== "integrations"
@@ -17,26 +18,6 @@ function toPrismaJson(value: unknown) {
 
 function hasOwn(body: unknown, key: string): boolean {
   return !!body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, key);
-}
-
-function omitInternalConfig<T extends Record<string, unknown>>(checklist: T) {
-  const publicChecklist = { ...checklist };
-  delete publicChecklist.atsIntegrations;
-  delete publicChecklist.integrations;
-  delete publicChecklist.configuratorChecklist;
-  // editorToken is already known to the caller; don't echo it back
-  delete publicChecklist.editorToken;
-  // A real person's email address — this endpoint needs no auth beyond
-  // knowing the token, so anyone holding an editor link (including, until a
-  // recent fix, every client — /client/<slug> used to redirect straight
-  // here) was handed it in the response. Not rendered anywhere in the editor
-  // UI; found by diffing this route's live response against its own field
-  // list while fixing the equivalent gap in the slug-based GET.
-  delete publicChecklist.ownerEmail;
-  // Per-tab edit/notify timestamps for the owner-email feature — internal
-  // bookkeeping, not shown in any tab's UI.
-  delete publicChecklist.notificationState;
-  return publicChecklist;
 }
 
 /**
@@ -57,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json(omitInternalConfig(checklist as unknown as Record<string, unknown>));
+    return NextResponse.json(omitInternalConfigForToken(checklist as unknown as Record<string, unknown>));
   } catch (err) {
     console.error("GET /api/checklists/by-token/[token] error:", err);
     return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
@@ -127,7 +108,10 @@ export async function PUT(
         const newVersion = current.version + 1;
         const updateData: Record<string, unknown> = { version: newVersion };
         const updatedFieldVersions = { ...currentFieldVersions };
-        const currentChecklist = await tx.checklist.findUnique({ where: { id } });
+        // Only what the checks below read: the notification state, the custom-tab values, and the fields being saved.
+        const currentSelect: Record<string, true> = { notificationState: true, customTabs: true, customData: true };
+        for (const field of validFields) currentSelect[field] = true;
+        const currentChecklist = (await tx.checklist.findUnique({ where: { id }, select: currentSelect })) as Record<string, unknown> | null;
         if (!currentChecklist) return { status: 404 as const };
         if (validFields.includes("customData") || validFields.includes("customTabs")) {
           const customValidationErrors = validateCustomTabsData(
@@ -158,6 +142,7 @@ export async function PUT(
         const checklist = await tx.checklist.update({
           where: { id },
           data: updateData,
+          select: { id: true, version: true, updatedAt: true },
         });
 
         return { status: 200 as const, checklist };
