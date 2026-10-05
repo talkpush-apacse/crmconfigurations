@@ -24,6 +24,8 @@ export interface SnapshotItem {
   blockerReason: string | null;
   waitingOn: string | null;
   visibility: string;
+  /** Added by a client and not yet reviewed by staff. */
+  needsReview?: boolean;
 }
 
 export interface SnapshotInput {

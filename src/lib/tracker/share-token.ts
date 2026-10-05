@@ -6,15 +6,18 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
  * database leak cannot be turned into working links.
  */
 
-const PREFIX = "tpv_"; // "Talkpush viewer"; a recognisable prefix helps secret scanners
+/** A recognisable prefix helps secret scanners. The prefix also keeps the two kinds of link apart. */
+const PREFIXES = { viewer: "tpv_", contributor: "tpc_" } as const;
+export type ShareKind = keyof typeof PREFIXES;
 
 export function hashShareToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export function generateShareToken(): { token: string; hash: string; hint: string } {
-  const token = `${PREFIX}${randomBytes(32).toString("base64url")}`;
-  return { token, hash: hashShareToken(token), hint: `${token.slice(0, PREFIX.length + 4)}...${token.slice(-4)}` };
+export function generateShareToken(kind: ShareKind = "viewer"): { token: string; hash: string; hint: string } {
+  const prefix = PREFIXES[kind];
+  const token = `${prefix}${randomBytes(32).toString("base64url")}`;
+  return { token, hash: hashShareToken(token), hint: `${token.slice(0, prefix.length + 4)}...${token.slice(-4)}` };
 }
 
 /** Constant-time comparison of a presented token against a stored hash. */
@@ -24,8 +27,9 @@ export function tokenMatchesHash(token: string, storedHash: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function looksLikeShareToken(value: string): boolean {
-  return value.startsWith(PREFIX) && value.length >= PREFIX.length + 40 && value.length <= 200 && /^[A-Za-z0-9_-]+$/.test(value);
+export function looksLikeShareToken(value: string, kind: ShareKind = "viewer"): boolean {
+  const prefix = PREFIXES[kind];
+  return value.startsWith(prefix) && value.length >= prefix.length + 40 && value.length <= 200 && /^[A-Za-z0-9_-]+$/.test(value);
 }
 
 export type LinkProblem = "revoked" | "expired" | "wrong_kind";

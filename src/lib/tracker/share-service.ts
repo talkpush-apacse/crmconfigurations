@@ -15,10 +15,14 @@ function serializeLink(l: {
   lastUsedAt: Date | null;
   createdBy: string;
   createdAt: Date;
+  personId?: string | null;
+  person?: { name: string } | null;
 }) {
   return {
     id: l.id,
     kind: l.kind,
+    personId: l.personId ?? null,
+    contact: l.person?.name ?? null,
     label: l.label,
     hint: l.tokenHint,
     expiresAt: l.expiresAt ? l.expiresAt.toISOString() : null,
@@ -33,7 +37,7 @@ function serializeLink(l: {
 export async function listShareLinks(projectId: string) {
   const exists = await prisma.trackerProject.findUnique({ where: { id: projectId }, select: { id: true } });
   if (!exists) throw notFound("Project");
-  const links = await prisma.trackerShareLink.findMany({ where: { projectId }, orderBy: { createdAt: "desc" } });
+  const links = await prisma.trackerShareLink.findMany({ where: { projectId }, orderBy: { createdAt: "desc" }, include: { person: { select: { name: true } } } });
   return links.map(serializeLink);
 }
 
