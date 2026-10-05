@@ -158,6 +158,22 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
     onOpenChange(false);
   };
 
+  const [reviewing, setReviewing] = useState(false);
+  const markReviewed = async () => {
+    if (!item) return;
+    setReviewing(true);
+    setError("");
+    try {
+      await api(`/api/tracker/items/${item.id}/review`, { method: "POST" });
+      onSaved();
+      onOpenChange(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setReviewing(false);
+    }
+  };
+
   const group = (side: PersonSide) => people.filter((p) => p.side === side);
 
   return (
@@ -174,6 +190,23 @@ export function ItemSheet({ open, onOpenChange, projectId, item, items, phases, 
 
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               <fieldset disabled={readOnly} className="min-w-0 space-y-4">
+              {editing && item!.createdVia === "client" && (
+                <div role="status" className="rounded-md border border-status-pending/50 bg-status-pending/15 p-3 text-sm">
+                  <p className="font-medium">{item!.needsReview ? "Added by the client. Needs your review." : "Added by the client. Reviewed."}</p>
+                  {item!.needsReview && (
+                    <>
+                      <p className="mt-1 text-muted-foreground">
+                        The client can already see it. It does not count toward project health until you mark it reviewed. Set its type, phase and dates first if it needs them.
+                      </p>
+                      {!readOnly && (
+                        <Button type="button" size="sm" className="mt-2" disabled={reviewing} onClick={markReviewed}>
+                          {reviewing ? "Saving" : "Mark reviewed"}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
               <Field label="Title" htmlFor="item-title" required>
                 <Input id="item-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} autoFocus={!editing} />
               </Field>

@@ -91,6 +91,22 @@ export const HEALTH_LABELS: Record<HealthLevel, string> = {
   off_track: "Off track",
 };
 
+/**
+ * Who a standard-plan item is for. One field drives two things when a plan is built:
+ * the item's visibility and the side that owns it.
+ *   internal = Talkpush only  -> visibility internal, owned by Talkpush
+ *   shared   = Talkpush does it, the client can see it -> client_visible, owned by Talkpush
+ *   client   = the client does it, and can see it -> client_visible, owned by the client
+ */
+export const PLAN_AUDIENCES = ["internal", "shared", "client"] as const;
+export type PlanAudience = (typeof PLAN_AUDIENCES)[number];
+
+export const PLAN_AUDIENCE_LABELS: Record<PlanAudience, string> = {
+  internal: "Talkpush only",
+  shared: "Shared with client",
+  client: "Client does this",
+};
+
 export const VIA_VALUES = ["web", "mcp", "client"] as const;
 export type Via = (typeof VIA_VALUES)[number];
 

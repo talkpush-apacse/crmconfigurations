@@ -53,4 +53,5 @@ export const TRACKER_NAV = [
   { href: "/admin/tracker", label: "Portfolio", match: "exact" as const },
   { href: "/admin/tracker/accounts", label: "Accounts", match: "prefix" as const },
   { href: "/admin/tracker/team", label: "Team", match: "prefix" as const },
+  { href: "/admin/tracker/plan", label: "Standard plan", match: "prefix" as const },
 ];

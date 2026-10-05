@@ -5,6 +5,7 @@ import { ChevronDown, Flag, Lock, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tag } from "./PlanParts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ItemDTO, PersonDTO, PhaseDTO } from "@/lib/tracker/client-types";
 import { ITEM_STATUSES, ITEM_STATUS_LABELS, OPEN_ITEM_STATUSES, type ItemStatus } from "@/lib/tracker/constants";
@@ -20,6 +21,7 @@ import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 
 const SEARCH_THRESHOLD = 8;
 const ALL = "__all";
+const REVIEW = "__review";
 const OPEN = "__open";
 const UNASSIGNED = "__unassigned";
 
@@ -62,6 +64,7 @@ function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange }: Props) {
   const { canEdit } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState(OPEN);
+  const reviewCount = items.filter((i) => i.needsReview).length;
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
   const [query, setQuery] = useState("");
@@ -76,6 +79,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     const q = query.trim().toLowerCase();
     return items
       .filter((i) => {
+        if (statusFilter === REVIEW) return i.needsReview;
         if (statusFilter === OPEN) return (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status);
         if (statusFilter === ALL) return true;
         return i.status === statusFilter;
@@ -136,6 +140,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
         {item.isMilestone && <Flag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Milestone" />}
         {item.visibility === "internal" && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Team only" />}
         <span>{item.title}</span>
+        {item.needsReview ? <Tag>Needs review</Tag> : item.createdVia === "client" ? <Tag>Added by client</Tag> : null}
       </span>
       {item.status === "blocked" && item.blockerReason && <span className="mt-0.5 block text-xs text-muted-foreground">Blocked: {item.blockerReason}</span>}
       {item.status === "waiting_on_client" && item.waitingOn && <span className="mt-0.5 block text-xs text-muted-foreground">Waiting on {item.waitingOn}</span>}
@@ -161,6 +166,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
           <SelectContent>
             <SelectItem value={OPEN}>Open items</SelectItem>
             <SelectItem value={ALL}>All items</SelectItem>
+            {(reviewCount > 0 || statusFilter === REVIEW) && <SelectItem value={REVIEW}>Needs review ({reviewCount})</SelectItem>}
             {ITEM_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {ITEM_STATUS_LABELS[s]}
