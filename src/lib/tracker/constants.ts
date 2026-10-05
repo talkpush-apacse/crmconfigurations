@@ -97,7 +97,6 @@ export type Via = (typeof VIA_VALUES)[number];
 export const DEFAULT_PHASES = [
   "Scoping",
   "Configuration",
-  "Integration",
   "UAT",
   "Training",
   "Go-live",

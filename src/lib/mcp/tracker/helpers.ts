@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { badRequest, notFound, TrackerError } from "@/lib/tracker/errors";
+import { JIRA_EXAMPLE_URL, jiraUrlsOf } from "@/lib/tracker/jira";
 import type { updateItem } from "@/lib/tracker/item-service";
 import { matchByName, type MatchResult } from "@/lib/tracker/match";
 import { getProjectDetail } from "@/lib/tracker/project-service";
@@ -101,6 +102,7 @@ export function itemOut(i: ItemOut) {
     blockerReason: i.blockerReason,
     waitingOn: i.waitingOn,
     blockedByItemIds: i.blockedByItemIds,
+    jiraLinks: jiraUrlsOf(i.links),
   };
 }
 
@@ -118,6 +120,8 @@ export const itemRef = {
   item: z.string().optional().describe("Item title instead of item_id (exact or unique partial match; also needs the project)"),
 };
 export const date = z.string().nullable().optional().describe("Calendar date as YYYY-MM-DD. null clears it.");
+
+export const JIRA_LINKS_NOTE = `Jira ticket addresses on talkpush.atlassian.net, for example ${JIRA_EXAMPLE_URL}. Other sites are refused. Staff only: clients never see them.`;
 
 export const VISIBILITY_NOTE =
   "Items are visible to the client by default. Use visibility 'internal' for anything the client should not see.";
