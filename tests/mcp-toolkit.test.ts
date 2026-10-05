@@ -153,7 +153,7 @@ test("tracker tools: there is no delete tool, and the read tools are the ones ex
     assert.ok(!/delete|destroy|purge|drop|truncate/.test(t.name), `${t.name}: Claude must not be able to delete (use archive)`);
   }
   const reads = trackerModule.tools.filter((x) => x.access === "read").map((x) => x.name).sort();
-  assert.deepEqual(reads, ["get_project_summary", "get_project_timeline", "list_accounts", "list_open_items", "list_people", "list_project_files", "list_tracker_projects"]);
+  assert.deepEqual(reads, ["get_project_summary", "get_project_timeline", "list_accounts", "list_open_items", "list_people", "list_project_access", "list_project_files", "list_tracker_projects"]);
 });
 
 test("tracker server: serves exactly the tools in its module", async () => {

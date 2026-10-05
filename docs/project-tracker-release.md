@@ -76,6 +76,13 @@ Project settings, **Environment Variables**, for the environments you will use (
 |---|---|---|
 | `TRACKER_MCP_API_KEY` | a long random value (24+ characters) | Yes, for the Claude connection |
 | `TRACKER_TIMEZONE` | for example `Asia/Manila` | Optional |
+| `CLIENT_LINK_BASE_URL` | for example `https://status.talkpush.com` | Optional. See below |
+
+**`CLIENT_LINK_BASE_URL`** is the address client links (the Share dialog and Claude's `create_project_link`) are built on.
+Set it when clients' networks block the Hub's own address. The name must serve this same app (add it as a domain on the
+Vercel project and point a DNS CNAME at it) and must be a different host from `APP_BASE_URL`. That host then opens client
+pages only (`/share`, `/contribute`, `/w`); every other page there answers "not found". Leave it empty and links use the
+address the Hub was reached on, exactly as before. Links already sent keep working on the old address.
 
 No other new variables. Share links need none. Do **not** reuse `MCP_API_KEY` (keeping them separate lets you
 rotate either one without affecting the other).
