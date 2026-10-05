@@ -9,8 +9,10 @@ import { api, errorMessage } from "@/lib/tracker/client-api";
 import type { PhaseDTO } from "@/lib/tracker/client-types";
 import { FormError } from "./Field";
 
+type PhaseDates = Pick<PhaseDTO, "id" | "name" | "startDate" | "endDate">;
+
 /** Set start and end dates for each phase. The timeline draws a band for every phase that has dates. */
-export function PhaseDatesDialog({ open, onOpenChange, phases, onSaved }: { open: boolean; onOpenChange: (open: boolean) => void; phases: PhaseDTO[]; onSaved: () => void }) {
+export function PhaseDatesDialog({ open, onOpenChange, phases, onSaved }: { open: boolean; onOpenChange: (open: boolean) => void; phases: readonly PhaseDates[]; onSaved: () => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">{open && <PhaseForm phases={phases} onOpenChange={onOpenChange} onSaved={onSaved} />}</DialogContent>
@@ -18,7 +20,7 @@ export function PhaseDatesDialog({ open, onOpenChange, phases, onSaved }: { open
   );
 }
 
-function PhaseForm({ phases, onOpenChange, onSaved }: { phases: PhaseDTO[]; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
+function PhaseForm({ phases, onOpenChange, onSaved }: { phases: readonly PhaseDates[]; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
   const [values, setValues] = useState<Record<string, { start: string; end: string }>>(
     Object.fromEntries(phases.map((p) => [p.id, { start: p.startDate ?? "", end: p.endDate ?? "" }]))
   );

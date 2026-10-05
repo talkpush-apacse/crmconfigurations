@@ -23,8 +23,8 @@ export interface ClientViewInput {
     owner: { name: string } | null;
     sponsor: { name: string } | null;
   };
-  items: (SnapshotItem & { description?: string | null })[];
-  phases: readonly { id: string; name: string }[];
+  items: (SnapshotItem & { description?: string | null; startDate?: string | null; blockedByItemIds?: readonly string[] })[];
+  phases: readonly { id: string; name: string; startDate?: string | null; endDate?: string | null }[];
   metrics: readonly {
     id: string;
     name: string;
@@ -42,6 +42,42 @@ export interface ClientViewInput {
 }
 
 const MAX_REMARKS = 20;
+
+/**
+ * The item rows behind the List, Board and Timeline views, built from an
+ * allow-list: no description, blocker reason, Jira links, priority, type or
+ * created-by. A dependency is kept only when BOTH ends are client-visible, so a
+ * hidden item's id never appears here. Dropped items are left out, like the
+ * staff List's default.
+ */
+function buildPlan(input: ClientViewInput, visibleIds: ReadonlySet<string>) {
+  const phaseName = new Map(input.phases.map((p) => [p.id, p.name]));
+  const items = input.items
+    .filter((i) => i.visibility === "client_visible" && !i.archived && i.status !== "dropped")
+    .map((i, index) => ({
+      id: i.id,
+      title: i.title,
+      status: i.status,
+      phaseId: i.phaseId,
+      phaseName: i.phaseId ? (phaseName.get(i.phaseId) ?? null) : null,
+      isMilestone: i.isMilestone,
+      ownerName: i.ownerName,
+      ownerSide: i.ownerSide,
+      startDate: i.startDate ?? null,
+      dueDate: i.dueDate,
+      waitingOn: i.waitingOn,
+      blockedByItemIds: (i.blockedByItemIds ?? []).filter((id) => visibleIds.has(id) && id !== i.id),
+      sortOrder: index,
+    }));
+  const phases = input.phases.map((p, index) => ({
+    id: p.id,
+    name: p.name,
+    sortOrder: index,
+    startDate: p.startDate ?? null,
+    endDate: p.endDate ?? null,
+  }));
+  return { items, phases };
+}
 
 export function buildClientView(input: ClientViewInput) {
   // 1. Only client-visible, live items; strip anything internal before any maths.
@@ -114,7 +150,7 @@ export function buildClientView(input: ClientViewInput) {
     .slice(0, MAX_REMARKS)
     .map((r) => ({ ...r, itemTitle: titleById.get(r.itemId) ?? "" }));
 
-  return { ...snapshot, sharedRemarks: remarks };
+  return { ...snapshot, sharedRemarks: remarks, plan: buildPlan(input, visibleIds) };
 }
 
 export type ClientView = ReturnType<typeof buildClientView>;

@@ -1,4 +1,5 @@
 import { ChevronRight } from "lucide-react";
+import { PHASE_STATE_LABELS, phaseState } from "@/lib/tracker/phase-state";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,21 +45,22 @@ export interface PhaseStep {
   total: number;
   done: number;
   open: number;
+  started: number;
 }
 
 /**
- * Sequential phase cards. Finished = green, the one in progress = blue, the rest outlined.
+ * Sequential phase cards. Finished = green, any phase with work under way = blue, the rest outlined.
  * The row wraps instead of scrolling sideways, so no phase is ever cut off: a grid of cards on phones,
  * and a wrapping row joined by chevrons from md up.
  */
 export function PhaseFlow({ phases }: { phases: PhaseStep[] }) {
-  const currentIndex = phases.findIndex((p) => p.open > 0);
   return (
     <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:flex md:flex-wrap md:gap-x-0 md:gap-y-3" aria-label="Project phases">
       {phases.map((p, i) => {
-        const complete = p.total > 0 && p.open === 0;
-        const current = i === currentIndex;
-        const state = complete ? "Complete" : current ? "In progress" : p.total === 0 ? "No items" : "Upcoming";
+        const kind = phaseState(p);
+        const complete = kind === "complete";
+        const current = kind === "in_progress";
+        const state = PHASE_STATE_LABELS[kind];
         return (
           <li key={p.name} className="flex items-stretch md:shrink-0">
             <div

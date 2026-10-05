@@ -60,6 +60,9 @@ export interface SnapshotInput {
   today: string;
 }
 
+/** Statuses that mean work on an item has begun. */
+const STARTED_STATUSES: readonly string[] = ["in_progress", "waiting_on_client", "blocked"];
+
 const isOpen = (i: SnapshotItem) => !i.archived && (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status);
 
 function brief(i: SnapshotItem, today: string) {
@@ -209,6 +212,7 @@ export function buildSnapshot(input: SnapshotInput) {
         total: inPhase.length,
         done: inPhase.filter((i) => i.status === "done").length,
         open: inPhase.filter(isOpen).length,
+        started: inPhase.filter((i) => STARTED_STATUSES.includes(i.status)).length,
       };
     }),
     burnup: burnup ? { ...burnup, insight: burnupInsight(burnup) } : null,
