@@ -10,6 +10,7 @@ toolkit (`src/lib/mcp/toolkit.ts`).
 |---|---|
 | The toolkit (`defineTool`, error handling, building a server) | `src/lib/mcp/toolkit.ts` |
 | Which modules exist | `src/lib/mcp/modules.ts` |
+| Configuration Plan tool (read-only, combined connector only) | `src/lib/mcp/config-plan/index.ts`, see `docs/config-plan.md` |
 | Project Tracker tools | `src/lib/mcp/tracker/read-tools.ts` (reads), `write-tools.ts` (changes data), `helpers.ts` (name lookups) |
 | CRM Config Checklist tools (46, not yet moved to the toolkit) | `src/lib/mcp-server.ts`, in `registerChecklistTools` |
 | The generated tool list for the tracker | `.claude/skills/project-tracker-mcp/references/tools.md` (do not edit by hand) |

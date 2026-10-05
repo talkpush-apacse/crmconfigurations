@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ExternalLink, Plus, Settings, Share2 } from "lucide-react";
+import { ChevronLeft, ExternalLink, FileText, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
@@ -131,6 +131,12 @@ function ProjectWorkspace() {
           )}
         </div>
         <div className="flex shrink-0 gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/admin/tracker/projects/${project.id}/config-plan`}>
+              <FileText className="h-4 w-4" />
+              Config plan
+            </Link>
+          </Button>
           <Button variant="outline" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" />
             Share
