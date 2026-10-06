@@ -6,13 +6,13 @@ Next.js 16 + Prisma + Supabase app for managing CRM configuration checklists.
 
 ## Getting Started
 
-Install dependencies, configure env vars, then run:
+New here? Follow [docs/getting-started-new-developer.md](docs/getting-started-new-developer.md). It covers forking,
+building a throwaway local database (the app needs Postgres with SSL on), the `.env` file, a local login, and the
+checks to run before a pull request.
 
-```bash
-npm install
-npx prisma migrate dev
-npm run dev
-```
+Do **not** run `npx prisma migrate dev` or `prisma migrate deploy` to set up a database: they fail on a fresh
+database (two old migrations share a timestamp), and pointed at a live URL they would change live data. See
+"Local development" below.
 
 ## Environment Variables
 
