@@ -1,6 +1,6 @@
-import { stripInline } from "@/lib/workflow/process-map/inline-text";
 "use client";
 
+import { stripInline } from "@/lib/workflow/process-map/inline-text";
 import { useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

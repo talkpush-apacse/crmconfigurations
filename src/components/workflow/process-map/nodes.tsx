@@ -1,6 +1,6 @@
-import { stripInline } from "@/lib/workflow/process-map/inline-text";
 "use client";
 
+import { stripInline } from "@/lib/workflow/process-map/inline-text";
 import { Handle, Position, type EdgeProps, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { fillFor, shapeKindOf } from "@/lib/workflow/process-map/model";

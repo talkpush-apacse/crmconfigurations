@@ -82,3 +82,16 @@ test("the flow table shows the Move text without asterisks", () => {
   const row = table.rows.find((r) => r.nodeId === "m");
   assert.equal(row?.action, "Moves to Hired Folder/Stage");
 });
+
+test("a 'use client' line stays the first statement of the files that have one (an import above it breaks the build)", async () => {
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? walk(join(dir, f)) : /\.tsx?$/.test(f) ? [join(dir, f)] : []));
+  const bad = walk("src").filter((file) => {
+    const lines = readFileSync(file, "utf8").split("\n");
+    const at = lines.slice(0, 12).findIndex((l) => /^\s*["']use client["'];?\s*$/.test(l));
+    if (at <= 0) return false;
+    return lines.slice(0, at).some((l) => l.trim() && !/^\s*(\/\/|\/\*|\*)/.test(l));
+  });
+  assert.deepEqual(bad, []);
+});
