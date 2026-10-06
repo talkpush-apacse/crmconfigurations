@@ -104,8 +104,11 @@ local Postgres (SSL on, because `src/lib/db.ts` always uses SSL), and blank the 
 cannot reach the live bucket. Load the schema into the local database with:
 
 ```bash
-npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script | psql <local-url>
+DATABASE_URL_DIRECT=<local-url> npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script | psql <local-url>
 ```
+
+(Keep the `DATABASE_URL_DIRECT=` prefix: without any `DATABASE_URL_DIRECT` set, the command exits with no error but prints an
+empty script. The command only reads `prisma/schema.prisma`; it does not connect to that address.)
 
 (`prisma migrate deploy` cannot build a fresh database: two old migrations share a timestamp.)
 
