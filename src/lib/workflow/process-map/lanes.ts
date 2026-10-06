@@ -19,10 +19,10 @@ import { numbersFor, type EdgeRoute, type Handle, type LayoutResult, type Size }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const LANE = {
-  colPitch: 330,
-  subH: 190,
+  colPitch: 350,
+  subH: 210,
   /** Distance from the top of a sub-row to the centre of the shapes in it (leaves room for the badge above). */
-  centerY: 102,
+  centerY: 112,
   labelW: 56,
   sidePad: 30,
   stageHead: 38,

@@ -108,7 +108,7 @@ const C = PM.colors;
 const PAD = PM.layout.containerPad;
 
 export function labelRect(text: string, at: P): Rect {
-  const w = Math.max(24, Math.ceil(text.length * 7.4) + 14);
+  const w = Math.max(24, Math.ceil(text.length * 8.2) + 16);
   return { x: at.x - w / 2, y: at.y - 11, w, h: 22 };
 }
 
@@ -257,7 +257,7 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   const sceneBox = union(all.length ? all : shapes.map(withBadge)) ?? { x: 0, y: 0, w: 400, h: 300 };
   const metaLine = [meta.versionLabel, meta.date, meta.author].filter(Boolean).join(" · ");
   const titleText = `${meta.clientName}: ${meta.workflowName}`;
-  const titleW = Math.max(300, Math.ceil(titleText.length * 9.5));
+  const titleW = Math.max(300, Math.ceil(titleText.length * 10.5));
   const title = {
     lines: [
       { text: titleText, size: PM.type.titleSize, bold: true },
@@ -317,13 +317,13 @@ export function buildTable(node: any): SceneTable {
   const highlight = new Set<string>(Array.isArray(d.highlight) ? d.highlight : []); // "rowIndex:columnId"
   const widths = columns.map((c) => {
     const longest = Math.max(String(c.label ?? "").length, ...rawRows.map((r) => String(r[c.id] ?? "").length));
-    return { id: c.id, label: String(c.label ?? ""), w: Math.max(120, Math.min(240, Math.ceil(longest * 7) + 24)) };
+    return { id: c.id, label: String(c.label ?? ""), w: Math.max(120, Math.min(240, Math.ceil(longest * 7.5) + 24)) };
   });
-  const headerH = 34;
+  const headerH = 36;
   const rows = rawRows.map((r, ri) => {
-    const cells = widths.map((c) => wrapText(String(r[c.id] ?? ""), Math.max(8, Math.floor((c.w - 16) / 7))));
+    const cells = widths.map((c) => wrapText(String(r[c.id] ?? ""), Math.max(8, Math.floor((c.w - 16) / 7.5))));
     const lines = Math.max(1, ...cells.map((x) => x.length));
-    return { cells, h: 14 + lines * 17, highlight: widths.map((c) => highlight.has(`${ri}:${c.id}`)) };
+    return { cells, h: 16 + lines * 19, highlight: widths.map((c) => highlight.has(`${ri}:${c.id}`)) };
   });
   const w = widths.reduce((n, c) => n + c.w, 0);
   const h = headerH + rows.reduce((n, r) => n + r.h, 0);

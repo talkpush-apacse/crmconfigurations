@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { layoutProcessMap, applyLayout } from "../src/lib/workflow/process-map/layout";
 import { buildScene } from "../src/lib/workflow/process-map/scene";
 import { SceneSvg } from "../src/components/workflow/process-map/shapes";
+import { PM } from "../src/lib/workflow/process-map/tokens";
 import { projectPageForClient } from "../src/lib/workflow/access/client-view";
 import { myPalLike, pilotLike, table, step, edge } from "./fixtures/process-map-fixtures";
 
@@ -85,7 +86,7 @@ test("svg: a client's download never contains staff-only steps or notes", () => 
 test("svg: a rejection-reason step is drawn pink and dashed, in the flow", () => {
   const { nodes, edges } = myPalLike();
   const { svg } = svgFor(nodes, edges);
-  assert.ok(svg.includes("#FFCDD2") && svg.includes('stroke-dasharray="6 4"'));
+  assert.ok(svg.includes(PM.colors.noteRejection) && svg.includes('stroke-dasharray="6 4"'));
   assert.ok(svg.includes("[REJECTION REASON]"));
 });
 

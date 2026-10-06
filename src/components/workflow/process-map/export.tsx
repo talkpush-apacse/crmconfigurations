@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { deriveFlowTable, flowTableCsv, type FlowTable } from "@/lib/workflow/process-map/flow-table";
 import { buildScene, type Scene, type SceneMeta } from "@/lib/workflow/process-map/scene";
 import { SceneSvg } from "./shapes";
+import { DIAGRAM_FONT, EXPORT_FONT_STACK, embedFont, exportFontCss, preloadExportFont } from "./font";
 
 /**
  * Downloads for a Process Map: SVG, PNG, PDF (through the browser's "Save as PDF") and the flow table as CSV.
@@ -59,13 +60,15 @@ function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-export function downloadSvg(scene: Scene, name: string) {
-  download(new Blob([sceneToSvgString(scene)], { type: "image/svg+xml;charset=utf-8" }), `${name}.svg`);
+export async function downloadSvg(scene: Scene, name: string) {
+  await preloadExportFont();
+  download(new Blob([embedFont(sceneToSvgString(scene))], { type: "image/svg+xml;charset=utf-8" }), `${name}.svg`);
 }
 
 /** PNG at 1x, 2x or 3x. The scale is reduced when the picture would be bigger than a browser can draw. */
 export async function downloadPng(scene: Scene, name: string, scale: 1 | 2 | 3 = 2): Promise<{ scale: number }> {
-  const svg = sceneToSvgString(scene);
+  await preloadExportFont();
+  const svg = embedFont(sceneToSvgString(scene));
   const { w, h } = scene.bounds;
   const k = Math.max(0.1, Math.min(scale, MAX_CANVAS / w, MAX_CANVAS / h));
   const img = new Image();
@@ -118,7 +121,7 @@ export function printPdf(pages: ExportPage[], meta: ExportMeta, title: string): 
     .map(({ scene }) => {
       const { w, h } = scene.bounds;
       const k = Math.min(1, MAX_PAGE_PX / w, MAX_PAGE_PX / h);
-      const svg = sceneToSvgString(scene).replace(/^<\?xml[^>]*>\s*/, "").replace(/width="[\d.]+" height="[\d.]+"/, `width="${Math.round(w * k)}" height="${Math.round(h * k)}"`);
+      const svg = sceneToSvgString(scene).split(DIAGRAM_FONT).join(EXPORT_FONT_STACK).replace(/^<\?xml[^>]*>\s*/, "").replace(/width="[\d.]+" height="[\d.]+"/, `width="${Math.round(w * k)}" height="${Math.round(h * k)}"`);
       return { w: Math.round(w * k), h: Math.round(h * k), svg };
     });
   const pageRules = diagrams.map((d, i) => `@page d${i} { size: ${d.w}px ${d.h}px; margin: 0 }`).join("\n");
@@ -133,7 +136,8 @@ export function printPdf(pages: ExportPage[], meta: ExportMeta, title: string): 
   win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(fileBase(meta))}</title><style>
 ${pageRules}
 @page tbl { size: A4 landscape; margin: 14mm }
-html,body{margin:0;padding:0;font-family:"DM Sans",system-ui,sans-serif;color:#1a1a1a}
+${exportFontCss()}
+html,body{margin:0;padding:0;font-family:${EXPORT_FONT_STACK};color:#1a1a1a}
 .diagram{break-after:page;overflow:hidden}
 .diagram svg{display:block}
 .table{page:tbl;break-before:page}

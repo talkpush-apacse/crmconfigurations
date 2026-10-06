@@ -202,7 +202,7 @@ test("checks: the lanes diagram has no serious findings; the single-row rules do
 
 test("checks: a step dragged out of its lane is reported, and so is a stage with too many lanes", () => {
   const m = laidOut(integrationMap());
-  const dragged = m.nodes.map((n: any) => (n.id === "s2" ? { ...n, position: { x: n.position.x, y: n.position.y + 2000 } } : n));
+  const dragged = m.nodes.map((n: any) => (n.id === "s2" ? { ...n, position: { x: n.position.x, y: n.position.y + 20000 } } : n));
   const f = lintLayout(buildScene(dragged, m.edges, meta));
   assert.ok(f.some((x) => x.code === "step_outside_lane" && x.nodeId === "s2"));
   const many = ["A", "B", "C", "D", "E", "F", "G"].map((l, i) => ({ ...integrationMap().nodes[1], id: `x${i}`, data: { ...integrationMap().nodes[1].data, lane: l, stage: undefined } }));

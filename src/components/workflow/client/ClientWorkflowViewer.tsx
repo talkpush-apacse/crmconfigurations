@@ -697,7 +697,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
 
           <div className="flex min-h-0 flex-1">
             {/* left panel */}
-            <div className={cn("w-full min-w-0 flex-col border-r border-border bg-card lg:flex lg:w-80 lg:shrink-0", mobileView === "diagram" ? "hidden" : "flex")}>
+            <div className={cn("w-full min-w-0 flex-col border-r border-border bg-card lg:flex lg:w-[22rem] lg:shrink-0", mobileView === "diagram" ? "hidden" : "flex")}>
               <div className="hidden shrink-0 border-b border-border lg:flex" role="tablist" aria-label="Panel">
                 {([["outline", "Outline"], ["comments", `Comments${openComments ? ` (${openComments})` : ""}`], ...(data.you.level !== "viewer" ? [["suggestions", `Suggestions${pendingSuggestions.length ? ` (${pendingSuggestions.length})` : ""}`]] : [])] as [string, string][]).map(([id, label]) => (
                   <button key={id} type="button" role="tab" aria-selected={panel === id} onClick={() => setLeftTab(id as typeof leftTab)} className={cn("min-h-10 flex-1 border-b-2 px-2 text-xs", panel === id ? "border-primary font-semibold" : "border-transparent text-muted-foreground")}>

@@ -95,3 +95,36 @@ test("a 'use client' line stays the first statement of the files that have one (
   });
   assert.deepEqual(bad, []);
 });
+
+test("readability: body text is 13px, open questions are the one orange call-out, and the main path is the accent colour", async () => {
+  const { PM } = await import("../src/lib/workflow/process-map/tokens");
+  assert.equal(PM.type.body, 13);
+  assert.ok(PM.type.small >= 12 && PM.type.branch >= 11, "small print stays readable");
+  // white text on the lane label and tab colours must reach 4.5:1
+  const lum = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  assert.ok(contrast("#FFFFFF", PM.colors.laneLabel) >= 4.5, "lane label");
+  assert.ok(contrast("#FFFFFF", PM.colors.containerTab) >= 4.5, "tab");
+  assert.ok(contrast("#FFFFFF", PM.colors.accent) >= 4.5, "accent on white");
+  assert.ok(contrast("#FFFFFF", PM.colors.muted) >= 4.5, "muted text");
+});
+
+test("the main path is drawn in the accent colour, thick; other paths are thin grey", async () => {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createElement } = await import("react");
+  const { SceneSvg } = await import("../src/components/workflow/process-map/shapes");
+  const { buildScene } = await import("../src/lib/workflow/process-map/scene");
+  const { layoutProcessMap, applyLayout } = await import("../src/lib/workflow/process-map/layout");
+  const { PM } = await import("../src/lib/workflow/process-map/tokens");
+  const { decision, end } = await import("./fixtures/process-map-fixtures");
+  const nodes = [start("s", "Applies"), decision("d", "Pass?"), system("a", "Sends invite", "message"), end("e", "Rejected", "failure")];
+  const edges = [edge("e1", "s", "d", "", { isPrimary: true, isHappyPath: true }), edge("e2", "d", "a", "Yes", { isPrimary: true, isHappyPath: true }), edge("e3", "d", "e", "No")];
+  const laid = applyLayout(nodes, edges, layoutProcessMap(nodes, edges));
+  const svg = renderToStaticMarkup(createElement(SceneSvg, { scene: buildScene(laid.nodes, laid.edges, { clientName: "X", workflowName: "Y" } as any) }));
+  assert.ok(svg.includes(`stroke="${PM.colors.accent}" stroke-width="3.2"`), "main path accent and thick");
+  assert.ok(svg.includes(`stroke="${PM.colors.branchLine}" stroke-width="1.4"`), "branch thin grey");
+  assert.ok(svg.includes("pm-arrow-main") && svg.includes("pm-arrow-branch"));
+});

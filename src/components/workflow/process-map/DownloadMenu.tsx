@@ -1,16 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import { Download, FileImage, FileSpreadsheet, FileText, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/workflow/ui/toast";
 import { downloadFlowTableCsv, downloadPng, downloadSvg, fileBase, printPdf, sceneFor, type ExportMeta, type ExportPage } from "./export";
+import { preloadExportFont } from "./font";
 
 /**
  * The download items on their own, so the editor can place them inside its Export menu.
  * `pages` must already be limited to what the viewer may see.
  */
 export function DownloadMenuItems({ pages, activePageId, meta }: { pages: ExportPage[]; activePageId: string | null; meta: ExportMeta }) {
+  // Get the copy of the font ready while the menu is open, so the PDF print window can use it straight away.
+  useEffect(() => {
+    void preloadExportFont();
+  }, []);
   const page = pages.find((p) => p.id === activePageId) ?? pages[0];
   if (!page) return null;
   const name = fileBase(meta, page.name, pages.length);

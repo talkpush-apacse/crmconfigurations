@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Space_Grotesk, Geist_Mono } from "next/font/google";
+import { DM_Sans, Inter, Space_Grotesk, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -7,6 +7,13 @@ const dmSans = DM_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+});
+
+// Inter is the reading face of the Workflow Builder (the diagram, the client page and the editor). No weights are listed,
+// so the one variable file covers every weight.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
 });
 
 const spaceGrotesk = Space_Grotesk({
@@ -48,7 +55,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className={`${dmSans.variable} ${spaceGrotesk.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} antialiased`}>
         <TooltipProvider>{children}</TooltipProvider>
         <script
           dangerouslySetInnerHTML={{

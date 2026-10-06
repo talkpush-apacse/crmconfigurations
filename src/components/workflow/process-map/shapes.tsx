@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { createElement } from "react";
 import { BADGE_ICONS } from "./icon-data";
+import { DIAGRAM_FONT } from "./font";
 import { pathFromPoints } from "@/lib/workflow/process-map/route";
 import type { LegendRow, Scene, SceneContainer, SceneEdge, SceneShape, SceneTable } from "@/lib/workflow/process-map/scene";
 import type { Run, TextLine } from "@/lib/workflow/process-map/text-fit";
@@ -11,8 +12,8 @@ import { PM } from "@/lib/workflow/process-map/tokens";
  * all render these components, so what a client sees on screen is what ends up in the file.
  */
 
-const FONT = `"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif`;
-const BODY = 11;
+const FONT = DIAGRAM_FONT;
+const BODY = PM.type.body;
 const LINE = PM.type.lineH;
 
 function Runs({ runs, fill }: { runs: Run[]; fill: string }) {
@@ -113,11 +114,26 @@ export function ArrowDefs() {
       <marker id="pm-arrow-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill={PM.colors.externalLine} />
       </marker>
+      {/* The main path is drawn thicker, and an arrowhead scales with the line, so its marker is smaller. */}
+      <marker id="pm-arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.4" markerHeight="3.4" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill={PM.colors.accent} />
+      </marker>
+      <marker id="pm-arrow-branch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill={PM.colors.branchLine} />
+      </marker>
     </defs>
   );
 }
 
+/** The main (happy) path of the diagram: the connectors the eye should follow first. */
+export function isMainPath(edge: SceneEdge): boolean {
+  const d = edge.edge?.data ?? {};
+  return d.isPrimary === true || d.isHappyPath === true || d.pathSemantic === "happy";
+}
+
 export function EdgeBody({ edge }: { edge: SceneEdge }): ReactElement {
+  const main = !edge.external && isMainPath(edge);
+  const color = edge.external ? PM.colors.externalLine : main ? PM.colors.accent : PM.colors.branchLine;
   return (
     <g>
       {[edge.points, ...(edge.extra ?? [])].map((pts, i) => (
@@ -125,16 +141,16 @@ export function EdgeBody({ edge }: { edge: SceneEdge }): ReactElement {
           key={i}
           d={pathFromPoints(pts, 0)}
           fill="none"
-          stroke={edge.external ? PM.colors.externalLine : PM.colors.line}
-          strokeWidth={edge.external ? 1.4 : 1.25}
+          stroke={color}
+          strokeWidth={edge.external ? 1.6 : main ? 3.2 : 1.4}
           strokeDasharray={edge.external ? "7 5" : undefined}
-          markerEnd={edge.external ? "url(#pm-arrow-ext)" : "url(#pm-arrow)"}
+          markerEnd={edge.external ? "url(#pm-arrow-ext)" : main ? "url(#pm-arrow-main)" : "url(#pm-arrow-branch)"}
         />
       ))}
       {edge.label && edge.labelRect && (
         <g fontFamily={FONT}>
           <rect x={edge.labelRect.x} y={edge.labelRect.y} width={edge.labelRect.w} height={edge.labelRect.h} rx={3} fill="#FFFFFF" fillOpacity={0.92} />
-          <text x={edge.labelRect.x + edge.labelRect.w / 2} y={edge.labelRect.y + 15} fontSize={13} textAnchor="middle" fill={PM.colors.text}>
+          <text x={edge.labelRect.x + edge.labelRect.w / 2} y={edge.labelRect.y + 16} fontSize={PM.type.edgeLabel} fontWeight={main ? 700 : 400} textAnchor="middle" fill={main ? PM.colors.accent : PM.colors.text}>
             {edge.label}
           </text>
         </g>
@@ -143,7 +159,7 @@ export function EdgeBody({ edge }: { edge: SceneEdge }): ReactElement {
   );
 }
 
-const MARKER_FONT = 11;
+const MARKER_FONT = 12;
 
 export function ContainerBody({ container }: { container: SceneContainer }): ReactElement {
   const { w, h } = container.rect;
@@ -151,7 +167,7 @@ export function ContainerBody({ container }: { container: SceneContainer }): Rea
     return (
       <g fontFamily={FONT}>
         <rect width={w} height={38} rx={4} fill={PM.colors.stageHead} />
-        <text x={w / 2} y={24} fontSize={14} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
+        <text x={w / 2} y={24} fontSize={15} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
           {container.title}
         </text>
       </g>
@@ -159,17 +175,17 @@ export function ContainerBody({ container }: { container: SceneContainer }): Rea
   }
   if (container.kind === "lane") {
     const ext = Boolean(container.external);
-    const fit = Math.max(8, Math.floor((h - 24) / 7.2));
+    const fit = Math.max(8, Math.floor((h - 24) / 7.8));
     const name = container.title.length > fit ? `${container.title.slice(0, fit - 1).trimEnd()}…` : container.title;
     return (
       <g fontFamily={FONT}>
         <rect width={w} height={h} fill={ext ? PM.colors.laneExternal : (container.index ?? 0) % 2 === 0 ? PM.colors.laneA : PM.colors.laneB} stroke={PM.colors.containerBorder} strokeWidth={1.2} />
         <rect width={56} height={h} fill={ext ? PM.colors.laneLabelExternal : PM.colors.laneLabel} />
-        <text transform={`translate(${ext ? 22 : 28} ${h / 2}) rotate(-90)`} fontSize={13} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
+        <text transform={`translate(${ext ? 22 : 28} ${h / 2}) rotate(-90)`} fontSize={14} fontWeight={700} fill="#FFFFFF" textAnchor="middle">
           {name}
         </text>
         {ext && (
-          <text transform={`translate(42 ${h / 2}) rotate(-90)`} fontSize={10} fill="#DDE7F3" textAnchor="middle">
+          <text transform={`translate(42 ${h / 2}) rotate(-90)`} fontSize={11} fill="#EAF1F8" textAnchor="middle">
             another system
           </text>
         )}
@@ -189,12 +205,12 @@ export function ContainerBody({ container }: { container: SceneContainer }): Rea
       </g>
     );
   }
-  const tabW = Math.min(w - 20, Math.max(120, container.title.length * 7.6 + 24));
+  const tabW = Math.min(w - 20, Math.max(120, container.title.length * 8.4 + 24));
   return (
     <g fontFamily={FONT}>
       <rect width={w} height={h} rx={18} fill="none" stroke={PM.colors.containerBorder} strokeWidth={1.5} />
       <rect x={0} y={-PM.size.tabH} width={tabW} height={PM.size.tabH} rx={4} fill={PM.colors.containerTab} />
-      <text x={10} y={-PM.size.tabH + 16} fontSize={12} fill="#FFFFFF" fontWeight={600}>
+      <text x={10} y={-PM.size.tabH + 17} fontSize={13} fill="#FFFFFF" fontWeight={600}>
         {container.title}
       </text>
     </g>
@@ -242,12 +258,12 @@ export function LegendBody({ scene }: { scene: Scene }): ReactElement | null {
   return (
     <g fontFamily={FONT}>
       <rect width={rect.w} height={rect.h} rx={14} fill="none" stroke={PM.colors.containerBorder} strokeWidth={1.5} />
-      <rect x={0} y={-PM.size.tabH} width={92} height={PM.size.tabH} rx={4} fill={PM.colors.containerTab} />
-      <text x={10} y={-PM.size.tabH + 16} fontSize={12} fill="#FFFFFF" fontWeight={600}>Diagram key</text>
+      <rect x={0} y={-PM.size.tabH} width={104} height={PM.size.tabH} rx={4} fill={PM.colors.containerTab} />
+      <text x={10} y={-PM.size.tabH + 17} fontSize={13} fill="#FFFFFF" fontWeight={600}>Diagram key</text>
       {rows.map((r, i) => (
         <g key={r.key} transform={`translate(16 ${22 + i * 32})`}>
           <Swatch row={r} />
-          <text x={38} y={17} fontSize={11} fill={PM.colors.text}>{r.label}</text>
+          <text x={38} y={17} fontSize={12} fill={PM.colors.text}>{r.label}</text>
         </g>
       ))}
     </g>
@@ -263,12 +279,12 @@ export function TableBody({ table }: { table: SceneTable }): ReactElement {
   table.rows.reduce((y, r) => (rowY.push(y), y + r.h), captionH + table.headerH);
   return (
     <g fontFamily={FONT}>
-      {table.caption && <text x={0} y={15} fontSize={13} fontWeight={700} fill={PM.colors.text}>{table.caption}</text>}
-      {table.subtitle && <text x={0} y={(table.caption ? 22 : 0) + 13} fontSize={10} fill={PM.colors.muted}>{table.subtitle}</text>}
+      {table.caption && <text x={0} y={15} fontSize={14} fontWeight={700} fill={PM.colors.text}>{table.caption}</text>}
+      {table.subtitle && <text x={0} y={(table.caption ? 22 : 0) + 13} fontSize={11} fill={PM.colors.muted}>{table.subtitle}</text>}
       {table.columns.map((c, ci) => (
         <g key={c.id} transform={`translate(${colX[ci]} ${captionH})`}>
           <rect width={c.w} height={table.headerH} fill={PM.colors.tableHeader} stroke={PM.colors.stroke} strokeWidth={1} />
-          <text x={c.w / 2} y={table.headerH / 2 + 4} fontSize={11} fontWeight={700} textAnchor="middle" fill={PM.colors.text}>{c.label}</text>
+          <text x={c.w / 2} y={table.headerH / 2 + 4} fontSize={12} fontWeight={700} textAnchor="middle" fill={PM.colors.text}>{c.label}</text>
         </g>
       ))}
       {table.rows.map((row, ri) =>
@@ -276,7 +292,7 @@ export function TableBody({ table }: { table: SceneTable }): ReactElement {
           <g key={`${ri}:${c.id}`} transform={`translate(${colX[ci]} ${rowY[ri]})`}>
             <rect width={c.w} height={row.h} fill={row.highlight[ci] ? PM.colors.tableHighlight : "#FFFFFF"} stroke={PM.colors.stroke} strokeWidth={1} />
             {row.cells[ci].map((t, li) => (
-              <text key={li} x={c.w / 2} y={19 + li * 17} fontSize={10.5} textAnchor="middle" fill={PM.colors.text}>{t}</text>
+              <text key={li} x={c.w / 2} y={21 + li * 19} fontSize={12} textAnchor="middle" fill={PM.colors.text}>{t}</text>
             ))}
           </g>
         ))
