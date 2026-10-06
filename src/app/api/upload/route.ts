@@ -8,23 +8,8 @@ import { buildClientTabUrl, getNotificationTabMeta } from "@/lib/notifications";
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
 import { getCustomFieldKey, validateFileValue } from "@/lib/custom-tab-service";
 import type { CustomTab } from "@/lib/types";
+import { MAX_UPLOAD_BYTES, checkUploadType } from "@/lib/upload-rules";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "image/svg+xml",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  // Excel + CSV — used by tab-upload banner ("Skip manual entry")
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
-  "text/csv",
-  "application/csv",
-];
 const ALLOWED_FOLDERS = [
   "logos",
   "banners",
@@ -127,15 +112,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json({ error: "File too large. Maximum size is 10 MB." }, { status: 400 });
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: `File type '${file.type}' is not allowed. Accepted: images, PDF, Word documents, and spreadsheets/CSV for tab uploads.` },
-        { status: 400 }
-      );
+    const typeError = checkUploadType(folder, file.name, file.type);
+    if (typeError) {
+      return NextResponse.json({ error: typeError }, { status: 400 });
     }
 
     if (customTabId && fieldKey) {
@@ -183,7 +166,7 @@ export async function POST(request: NextRequest) {
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, buffer, {
-        contentType: file.type,
+        contentType: file.type || "application/octet-stream",
         upsert: false,
       });
 
