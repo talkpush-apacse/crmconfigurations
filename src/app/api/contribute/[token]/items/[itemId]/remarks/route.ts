@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { contributorRoute } from "@/lib/tracker/contributor-route";
 import { addClientRemark } from "@/lib/tracker/contributor-service";
 
-/** PUBLIC write. A client contact adds a shared note to an item they own. */
+/** PUBLIC write. A client contact adds a shared comment to any item they can see. */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 

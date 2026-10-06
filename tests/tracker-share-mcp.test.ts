@@ -300,12 +300,12 @@ test("inviting a named client contact, against a real database", { skip }, async
     assert.ok(seen.includes("Brian provides DNS records"));
     for (const secret of [SECRET_TITLE, SECRET_JIRA]) assert.ok(!seen.includes(secret), `leaked: ${secret}`);
 
-    // what Brian may do: his own item yes; Robert's and Talkpush's items no
+    // what Brian may do: change and comment on any item he can see, never a team-only one, never blocked or dropped
     assert.equal((await updateClientItemStatus(ctxB!, brians.id, { status: "in_progress" })).status, "in_progress");
     await addClientRemark(ctxB!, brians.id, { body: "Records sent" });
-    await assert.rejects(updateClientItemStatus(ctxB!, roberts.id, { status: "done" }), /assigned to you/);
-    await assert.rejects(updateClientItemStatus(ctxB!, talkpushItem.id, { status: "done" }), /assigned to you/);
-    await assert.rejects(addClientRemark(ctxB!, talkpushItem.id, { body: "hello" }), /assigned to you/);
+    assert.equal((await updateClientItemStatus(ctxB!, roberts.id, { status: "done" })).status, "done", "a colleague's item");
+    assert.equal((await updateClientItemStatus(ctxB!, talkpushItem.id, { status: "in_progress" })).status, "in_progress", "a Talkpush item");
+    await addClientRemark(ctxB!, talkpushItem.id, { body: "hello" });
     await assert.rejects(updateClientItemStatus(ctxB!, brians.id, { status: "blocked" } as never));
 
     // ---- editor: Robert, independent of Brian

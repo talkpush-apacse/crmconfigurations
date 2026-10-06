@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildClientView, type ClientViewInput } from "../src/lib/tracker/client-view";
-import { CLIENT_LIMITS, clientItemCreateSchema, clientItemUpdateSchema, clientRemarkSchema, contributorLinkCreateSchema } from "../src/lib/tracker/contributor-validations";
+import { CLIENT_LIMITS, clientItemCreateSchema, clientItemEditSchema, clientRemarkSchema, contributorLinkCreateSchema } from "../src/lib/tracker/contributor-validations";
 import { computeHealth } from "../src/lib/tracker/health";
 import { needsStaffReview } from "../src/lib/tracker/review";
 import { generateShareToken, linkProblem, looksLikeShareToken } from "../src/lib/tracker/share-token";
@@ -74,17 +74,35 @@ test("a new item needs a title, a real date, and at most five things to wait for
   assert.equal(clientItemCreateSchema.safeParse({ title: "x", waitsOn: many }).success, false);
 });
 
-test("a client may set only in progress, waiting on client or done", () => {
-  for (const status of ["in_progress", "waiting_on_client", "done"]) {
-    assert.equal(clientItemUpdateSchema.safeParse({ status }).success, true);
+test("a client may set only not started, in progress, waiting on client or done", () => {
+  for (const status of ["not_started", "in_progress", "waiting_on_client", "done"]) {
+    assert.equal(clientItemEditSchema.safeParse({ status }).success, true, status);
   }
-  for (const status of ["blocked", "dropped", "not_started", "nonsense"]) {
-    assert.equal(clientItemUpdateSchema.safeParse({ status }).success, false, status);
+  for (const status of ["blocked", "dropped", "nonsense"]) {
+    assert.equal(clientItemEditSchema.safeParse({ status }).success, false, status);
   }
-  // Nothing else can ride along.
-  assert.equal(clientItemUpdateSchema.safeParse({ status: "done", title: "renamed" }).success, false);
-  assert.equal(clientItemUpdateSchema.safeParse({ status: "done", visibility: "internal" }).success, false);
-  assert.equal(clientItemUpdateSchema.safeParse({}).success, false);
+});
+
+test("a client edit takes only the approved fields, and at least one change", () => {
+  const ok = clientItemEditSchema.parse({ expectedUpdatedAt: "2026-10-06T07:00:00.000Z", title: "  New title ", description: "", dueDate: "", ownerPersonId: null, waitsOn: ["a"], priority: "high", startDate: "2026-10-08" });
+  assert.equal(ok.title, "New title");
+  assert.equal(ok.description, null, "empty clears it");
+  assert.equal(ok.dueDate, null, "empty clears the date");
+  assert.equal(ok.ownerPersonId, null);
+  // An absent field stays absent, so it is never written.
+  const only = clientItemEditSchema.parse({ title: "x" });
+  assert.equal("dueDate" in only && only.dueDate !== undefined, false);
+  assert.equal(only.description, undefined);
+  // Nothing outside the list can ride along.
+  for (const extra of [{ visibility: "internal" }, { type: "risk" }, { phaseId: "p" }, { isMilestone: true }, { blockerReason: "x" }, { links: [] }, { archived: true }, { sortOrder: 1 }, { waitingOn: "x" }]) {
+    assert.equal(clientItemEditSchema.safeParse({ title: "x", ...extra }).success, false, JSON.stringify(extra));
+  }
+  assert.equal(clientItemEditSchema.safeParse({}).success, false);
+  assert.equal(clientItemEditSchema.safeParse({ expectedUpdatedAt: "2026-10-06T07:00:00.000Z" }).success, false, "a time alone is not a change");
+  assert.equal(clientItemEditSchema.safeParse({ title: "x", expectedUpdatedAt: "yesterday" }).success, false);
+  assert.equal(clientItemEditSchema.safeParse({ dueDate: "2026-02-31" }).success, false);
+  assert.equal(clientItemEditSchema.safeParse({ title: "" }).success, false);
+  assert.equal(clientItemEditSchema.safeParse({ waitsOn: Array.from({ length: CLIENT_LIMITS.maxWaitsOn + 1 }, (_, n) => `i${n}`) }).success, false);
 });
 
 test("a note is plain text of a sensible length with nothing else attached", () => {

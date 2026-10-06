@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import type { Actor } from "./actor";
 import { logActivity } from "./activity";
 import { getClientViewForProject } from "./client-view-service";
-import { CLIENT_LIMITS, clientItemCreateSchema, clientItemUpdateSchema, clientRemarkSchema, contributorLinkCreateSchema } from "./contributor-validations";
+import { CLIENT_LIMITS, clientItemCreateSchema, clientItemEditSchema, clientRemarkSchema, contributorLinkCreateSchema } from "./contributor-validations";
 import { addDays, todayDateOnly, toDateOnly } from "./dates";
 import { badRequest, notFound, TrackerError } from "./errors";
 import { addRemark, createItem, updateItem } from "./item-service";
@@ -185,6 +185,8 @@ export async function getContributorView(ctx: ContributorContext) {
       dueDate: true,
       isMilestone: true,
       ownerPersonId: true,
+      startDate: true,
+      updatedAt: true,
       createdVia: true,
       staffReviewedAt: true,
       owner: { select: { name: true, side: true } },
@@ -193,6 +195,24 @@ export async function getContributorView(ctx: ContributorContext) {
     },
   });
   const visible = new Set(rows.map((r) => r.id));
+  const [peopleRows, remarkRows] = await Promise.all([
+    prisma.trackerPerson.findMany({ where: { side: "client", archived: false, account: { projects: { some: { id: ctx.projectId } } } }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.trackerRemark.findMany({
+      where: { itemId: { in: Array.from(visible) }, visibility: "shared" },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      select: { id: true, itemId: true, body: true, authorLabel: true, createdVia: true, createdAt: true },
+    }),
+  ]);
+  // Comments: a client contact is shown by name, Talkpush staff only ever as "Talkpush team" (never an email).
+  const comments = remarkRows.map((r) => ({
+    id: r.id,
+    itemId: r.itemId,
+    body: r.body,
+    author: r.createdVia === "client" ? r.authorLabel.replace(/^client:/i, "").trim() || "A client contact" : "Talkpush team",
+    side: r.createdVia === "client" ? ("client" as const) : ("talkpush" as const),
+    createdAt: r.createdAt.toISOString(),
+  }));
   const items = rows.map((r) => {
     const mine = r.ownerPersonId === ctx.person.id;
     return {
@@ -201,21 +221,26 @@ export async function getContributorView(ctx: ContributorContext) {
       description: r.description,
       status: r.status,
       priority: r.priority,
+      startDate: toDateOnly(r.startDate),
       dueDate: toDateOnly(r.dueDate),
       isMilestone: r.isMilestone,
       phaseName: r.phase?.name ?? null,
       ownerName: r.owner?.name ?? null,
       ownerSide: r.owner?.side ?? null,
+      ownerPersonId: r.ownerPersonId,
+      updatedAt: r.updatedAt.toISOString(),
       mine,
-      /** This contact may change the status (own item that is not blocked or dropped). */
-      canUpdate: mine && r.status !== "blocked" && r.status !== "dropped",
+      /** Every visible item can be edited. Status stays with Talkpush while an item is blocked or dropped. */
+      canUpdate: r.status !== "blocked" && r.status !== "dropped",
+      /** The owner can only be changed on items a client or nobody owns. */
+      canChangeOwner: r.owner === null || r.owner.side === "client",
       addedByClient: r.createdVia === "client",
       awaitingReview: needsStaffReview(r),
       // Only links to other client-visible items; anything else is never revealed.
       waitsOn: r.blockedBy.map((b) => b.blockedByItemId).filter((id) => visible.has(id)),
     };
   });
-  return { view, you: { name: ctx.person.name }, items, limits: { maxWaitsOn: CLIENT_LIMITS.maxWaitsOn } };
+  return { view, you: { id: ctx.person.id, name: ctx.person.name }, items, people: peopleRows, comments, limits: { maxWaitsOn: CLIENT_LIMITS.maxWaitsOn } };
 }
 
 // ------------------------------------------------------------------ public: what they can do
@@ -271,30 +296,92 @@ export async function addClientItem(ctx: ContributorContext, input: unknown) {
   return { id: created.id, title: created.title, status: created.status, awaitingReview: true };
 }
 
-async function loadOwnedItem(ctx: ContributorContext, itemId: string) {
+/** An item this client can see right now (live and client-visible) in their own project. Anything else looks like it does not exist. */
+async function loadVisibleItem(ctx: ContributorContext, itemId: string) {
   const item = await prisma.trackerItem.findFirst({
     where: { id: itemId, projectId: ctx.projectId, archived: false, visibility: "client_visible" },
-    select: { id: true, status: true, ownerPersonId: true },
+    select: { id: true, status: true, ownerPersonId: true, updatedAt: true, owner: { select: { side: true } }, blockedBy: { select: { blockedByItemId: true } } },
   });
   if (!item) throw notFound("Item");
-  if (item.ownerPersonId !== ctx.person.id) throw new TrackerError("You can only update items that are assigned to you.", 403);
   return item;
 }
 
-export async function updateClientItemStatus(ctx: ContributorContext, itemId: string, input: unknown) {
-  const data = clientItemUpdateSchema.parse(input);
-  const item = await loadOwnedItem(ctx, itemId);
-  if (item.status === "blocked" || item.status === "dropped") {
-    throw badRequest("This item is on hold with Talkpush. Please ask your Talkpush contact to update it.");
+/**
+ * A client contact edits ANY item they can see: title, details, status, priority, dates, owner (only among client
+ * contacts) and what it waits for. Everything else stays with Talkpush. It goes through the same updateItem every
+ * staff edit uses, so the date, status and dependency-loop rules are identical, and it is written to the activity log
+ * under the contact's name.
+ */
+export async function editClientItem(ctx: ContributorContext, itemId: string, input: unknown) {
+  const data = clientItemEditSchema.parse(input);
+  const item = await loadVisibleItem(ctx, itemId);
+
+  if (data.expectedUpdatedAt && new Date(data.expectedUpdatedAt).getTime() !== item.updatedAt.getTime()) {
+    throw new TrackerError("Someone changed this item while you were looking at it. Your screen has been refreshed. Please check it, then make your change again.", 409);
   }
+
+  // Blocked and dropped are Talkpush's to set and to clear.
+  if (data.status !== undefined && data.status !== item.status && (item.status === "blocked" || item.status === "dropped")) {
+    throw badRequest("This item is on hold with Talkpush. Please ask your Talkpush contact to update its status.");
+  }
+
+  // The owner can move between client contacts, but a Talkpush or vendor item stays where it is.
+  if (data.ownerPersonId !== undefined && data.ownerPersonId !== item.ownerPersonId) {
+    if (item.owner && item.owner.side !== "client") {
+      throw new TrackerError("This item is looked after by Talkpush. Please ask your Talkpush contact to reassign it.", 403);
+    }
+    if (data.ownerPersonId !== null) {
+      const person = await prisma.trackerPerson.findFirst({
+        where: { id: data.ownerPersonId, side: "client", archived: false, account: { projects: { some: { id: ctx.projectId } } } },
+        select: { id: true },
+      });
+      if (!person) throw badRequest("That person is not on your team for this project.");
+    }
+  }
+
+  const today = todayDateOnly();
+  for (const date of [data.startDate, data.dueDate]) {
+    if (date && date > addDays(today, CLIENT_LIMITS.maxDueDaysAhead)) throw badRequest("Please choose a date within the next two years.");
+  }
+
+  // "Waits for": the client sees and replaces only the items it can see. A dependency on a team-only item is kept as it is.
+  let blockedByItemIds: string[] | undefined;
+  if (data.waitsOn !== undefined) {
+    const chosen = Array.from(new Set(data.waitsOn)).filter((id) => id !== itemId);
+    if (chosen.length > 0) {
+      const found = await prisma.trackerItem.count({ where: { id: { in: chosen }, projectId: ctx.projectId, archived: false, visibility: "client_visible" } });
+      if (found !== chosen.length) throw badRequest("Some of the items you chose to wait for are not available.");
+    }
+    const existing = item.blockedBy.map((b) => b.blockedByItemId);
+    const hidden = existing.length
+      ? (await prisma.trackerItem.findMany({ where: { id: { in: existing }, NOT: { visibility: "client_visible", archived: false } }, select: { id: true } })).map((i) => i.id)
+      : [];
+    blockedByItemIds = [...chosen, ...hidden];
+  }
+
   await assertWithinLimits(ctx, "change");
-  const updated = await updateItem(itemId, { status: data.status }, ctx.actor);
-  return { id: updated.id, status: updated.status };
+
+  const patch: Record<string, unknown> = {};
+  if (data.title !== undefined) patch.title = data.title;
+  if (data.description !== undefined) patch.description = data.description;
+  if (data.status !== undefined) patch.status = data.status;
+  if (data.priority !== undefined) patch.priority = data.priority;
+  if (data.startDate !== undefined) patch.startDate = data.startDate;
+  if (data.dueDate !== undefined) patch.dueDate = data.dueDate;
+  if (data.ownerPersonId !== undefined) patch.ownerPersonId = data.ownerPersonId;
+  if (blockedByItemIds !== undefined) patch.blockedByItemIds = blockedByItemIds;
+
+  const updated = await updateItem(itemId, patch, ctx.actor);
+  return { id: updated.id, status: updated.status, updatedAt: updated.updatedAt };
 }
 
+/** The previous name of the status-only edit; it now goes through the full edit rules. */
+export const updateClientItemStatus = editClientItem;
+
+/** A client contact comments on ANY item they can see. The comment is shared (Talkpush sees it, and so does every client link). */
 export async function addClientRemark(ctx: ContributorContext, itemId: string, input: unknown) {
   const data = clientRemarkSchema.parse(input);
-  await loadOwnedItem(ctx, itemId);
+  await loadVisibleItem(ctx, itemId);
   await assertWithinLimits(ctx, "change");
   const remark = await addRemark(itemId, { body: data.body, visibility: "shared" }, ctx.actor);
   return { id: remark.id };

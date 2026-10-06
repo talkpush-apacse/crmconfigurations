@@ -2,6 +2,8 @@ import { getClientViewForProject } from "./client-view-service";
 import type { ClientView } from "./client-view";
 import { clientKey, createLimiter } from "./rate-limit";
 import { resolveViewerLink, resolveViewerToken } from "./share-service";
+import { getClientActivity } from "./client-activity-service";
+import type { ClientActivityEntry } from "./client-activity";
 import { makeWorkbook, recordWorkbookDownload } from "./workbook-service";
 
 /**
@@ -61,6 +63,25 @@ export async function loadSharedWorkbook(token: string, requestHeaders: { get(na
     return { status: "ok", file, name };
   } catch (err) {
     console.error("[share] workbook error:", err instanceof Error ? err.message : err);
+    return { status: "unavailable" };
+  }
+}
+
+export type SharedActivityResult = { status: "ok"; entries: ClientActivityEntry[] } | { status: "busy" } | { status: "unavailable" };
+
+/** The activity trail for a view-only link: the client-safe allow-list only, same door and same limits as the page. */
+export async function loadSharedActivity(token: string, requestHeaders: { get(name: string): string | null }): Promise<SharedActivityResult> {
+  const key = clientKey(requestHeaders as Headers);
+  if (failedHits.count(key) >= 15 || !anyHits.hit(key)) return { status: "busy" };
+  try {
+    const projectId = await resolveViewerToken(token);
+    if (!projectId) {
+      failedHits.hit(key);
+      return { status: "unavailable" };
+    }
+    return { status: "ok", entries: await getClientActivity(projectId) };
+  } catch (err) {
+    console.error("[share] activity error:", err instanceof Error ? err.message : err);
     return { status: "unavailable" };
   }
 }

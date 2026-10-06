@@ -65,8 +65,8 @@ export const inviteProjectPersonTool = defineTool({
   description:
     "Give one named client contact their own link to a project and return the address for the user to copy and send themselves; nothing is emailed. " +
     "The person must already be a client contact on the project's account (use create_person first if they are not). " +
-    "level viewer = read-only client view. level editor = they see the client view and may (a) change the status of items assigned to them to in progress, waiting on client or done, " +
-    "(b) add shared notes on those items, and (c) add new items of their own, which wait for staff review. They can never change items owned by Talkpush, internal items, blocked or dropped items, or anything else. " +
+    "level viewer = Client View Only: the read-only client view and its Activity tab. level editor = Client Contributor: they see the client view and may (a) edit any item they can see (title, details, status to not started, in progress, waiting on client or done, priority, dates, who looks after it among client contacts, and what it waits for), " +
+    "(b) comment on any item they can see, and (c) add new items, which wait for staff review. Every change is recorded under their name in the Activity trail that all client links can read. They can never see internal items, set an item to blocked or dropped, change blocked or dropped items' status, or change anything else. " +
     "Calling it again for the same person and level replaces their earlier connector link, whose address stops working at once. The address is shown once." +
     EXPLICIT,
   access: "write",
@@ -148,10 +148,10 @@ export const inviteProjectPersonTool = defineTool({
       expiresAt: link.expiresAt,
       replacedEarlierLink: link.replaced > 0,
       itemsAssigned: link.itemsAssigned,
-      canDo: "Change the status of items assigned to them, add shared notes on those items, add their own items (staff review them). Nothing on Talkpush-owned or internal items.",
+      canDo: "Edit any item they can see, comment on any item, add their own items (staff review them). Every change shows in the Activity trail under their name. Never internal items, and never blocked or dropped statuses.",
       note:
         "Nothing is emailed. Give this address to the person to copy and send themselves. It is shown once." +
-        (link.itemsAssigned === 0 ? " They can only update items assigned to them, so assign items to them (update_item) or invite again with assign_unassigned_plan_items." : ""),
+        (link.itemsAssigned === 0 ? " Nothing is assigned to them yet. They can still edit any item, but you can assign items to them (update_item) or invite again with assign_unassigned_plan_items." : ""),
     };
   },
 });
