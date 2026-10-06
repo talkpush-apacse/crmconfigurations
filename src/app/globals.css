@@ -122,7 +122,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.87 0.01 240);              /* hsl(240,5%,85%) */
   --input: oklch(0.87 0.01 240);
-  --ring: var(--brand-lavender-darker);        /* lavender focus rings */
+  --ring: oklch(0.50 0.13 258);                /* lavender focus rings, dark enough for 3:1 against the page (5.9:1 at full strength) */
   --chart-1: var(--brand-amber);
   --chart-2: var(--brand-sage);
   --chart-3: var(--brand-lavender);
@@ -175,7 +175,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/70;
   }
   body {
     @apply bg-background text-foreground font-sans;

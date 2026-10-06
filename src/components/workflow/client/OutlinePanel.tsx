@@ -42,7 +42,7 @@ export default function OutlinePanel({
                     aria-current={selectedId === item.nodeId ? "true" : undefined}
                     style={{ paddingLeft: 8 + Math.min(item.depth, 3) * 14 }}
                     className={cn(
-                      "flex min-h-11 w-full items-start gap-2 rounded-md py-2 pr-2 text-left text-sm outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      "flex min-h-11 w-full items-start gap-2 rounded-md py-2 pr-2 text-left text-sm outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/70",
                       selectedId === item.nodeId ? "bg-primary/10 text-foreground" : "hover:bg-muted"
                     )}
                   >

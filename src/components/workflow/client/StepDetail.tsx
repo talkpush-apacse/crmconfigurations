@@ -138,7 +138,7 @@ function Field({ label, value, multiline, maxLength, onCommit }: { label: string
     maxLength,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
     onBlur: commit,
-    className: "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+    className: "mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70",
   };
   return (
     <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">

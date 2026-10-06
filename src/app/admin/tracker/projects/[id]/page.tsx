@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
 import { BuildPlanDialog } from "@/components/tracker/BuildPlanDialog";
 import { MetricsView } from "@/components/tracker/MetricsView";
@@ -167,7 +167,7 @@ function ProjectWorkspace() {
         Portfolio
       </Link>
 
-      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <header className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <Link href={`/admin/tracker/accounts/${project.accountId}`} className="inline-flex min-h-11 items-center hover:underline md:min-h-0 md:py-1">
@@ -281,24 +281,18 @@ function ProjectWorkspace() {
             <TabsTrigger value="metrics" className="min-h-11 md:min-h-0">Metrics</TabsTrigger>
             <TabsTrigger value="activity" className="min-h-11 md:min-h-0">Activity</TabsTrigger>
           </TabsList>
-        </Tabs>
-        {view === "summary" && <SummaryView projectId={project.id} refreshKey={project.updatedAt + items.length + summary.done + summary.open} />}
-        {view === "list" && (
-          <ItemsList
-            items={items}
-            phases={phases}
-            people={people}
-            today={today}
-            onOpen={openItem}
-            onStatusChange={changeStatus}
-            onVisibleChange={rememberVisible}
-          />
-        )}
-        {view === "board" && (
-          <BoardView items={items} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onReorder={reorder} onVisibleChange={rememberVisible} />
-        )}
-        {view === "timeline" && (
-          <>
+
+          {/* Each view is a real tab panel, so a screen reader hears which panel a tab opens. The panel is not a tab stop: every view has its own focusable controls. */}
+          <TabsContent value="summary" tabIndex={-1}>
+            <SummaryView projectId={project.id} refreshKey={project.updatedAt + items.length + summary.done + summary.open} />
+          </TabsContent>
+          <TabsContent value="list" tabIndex={-1}>
+            <ItemsList items={items} phases={phases} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onVisibleChange={rememberVisible} />
+          </TabsContent>
+          <TabsContent value="board" tabIndex={-1}>
+            <BoardView items={items} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onReorder={reorder} onVisibleChange={rememberVisible} />
+          </TabsContent>
+          <TabsContent value="timeline" tabIndex={-1}>
             {/* The timeline needs room. On a phone, show the same items as a list instead. */}
             <div className="md:hidden">
               <p className="mb-3 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">The timeline is best on a larger screen, so here are the same items as a list.</p>
@@ -314,10 +308,14 @@ function ProjectWorkspace() {
                 onPhasesChanged={load}
               />
             </div>
-          </>
-        )}
-        {view === "metrics" && <MetricsView projectId={project.id} today={today} />}
-        {view === "activity" && <ActivityView projectId={project.id} today={today} refreshKey={project.updatedAt + items.length + summary.done} />}
+          </TabsContent>
+          <TabsContent value="metrics" tabIndex={-1}>
+            <MetricsView projectId={project.id} today={today} />
+          </TabsContent>
+          <TabsContent value="activity" tabIndex={-1}>
+            <ActivityView projectId={project.id} today={today} refreshKey={project.updatedAt + items.length + summary.done} />
+          </TabsContent>
+        </Tabs>
       </section>
 
       <ItemSheet

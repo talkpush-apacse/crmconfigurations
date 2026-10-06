@@ -72,7 +72,7 @@ function CardBody({ item, today, unmet, onMove }: { item: ItemDTO; today: string
               <button
                 type="button"
                 aria-label={`Move ${item.title} to another status`}
-                className="-mr-1 -mt-1 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 md:size-8"
+                className="-mr-1 -mt-1 flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/70 md:size-8"
                 onPointerDown={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
@@ -119,7 +119,7 @@ function SortableCard({ item, today, unmet, onOpen, onMove, suppressClick }: Car
       role="listitem"
       aria-label={`${item.title}. ${ITEM_STATUS_LABELS[item.status as ItemStatus] ?? item.status}. Press space to pick up, enter to open.`}
       className={cn(
-        "cursor-grab touch-manipulation list-none rounded-lg border border-border bg-card p-3 shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:cursor-grabbing",
+        "cursor-grab touch-manipulation list-none rounded-lg border border-border bg-card p-3 shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 active:cursor-grabbing",
         isDragging && "opacity-40"
       )}
       onClick={() => {

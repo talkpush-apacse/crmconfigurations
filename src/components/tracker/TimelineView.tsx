@@ -203,7 +203,7 @@ function TimelineBody<T extends TimelineSourceItem>({ items, phases, project, to
               type="button"
               aria-pressed={zoom === z}
               onClick={() => setZoom(z)}
-              className={cn("rounded-md px-3 py-1 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50", zoom === z ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              className={cn("rounded-md px-3 py-1 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70", zoom === z ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}
             >
               {z === "weeks" ? "Weeks" : "Months"}
             </button>
@@ -280,7 +280,7 @@ function TimelineBody<T extends TimelineSourceItem>({ items, phases, project, to
                   <button
                     type="button"
                     onClick={() => openById(r.id)}
-                    className="sticky left-0 z-20 flex flex-col justify-center border-b border-r border-border bg-card px-3 text-left outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/50"
+                    className="sticky left-0 z-20 flex flex-col justify-center border-b border-r border-border bg-card px-3 text-left outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/70"
                     style={{ width: LABEL_W, height: ITEM_H }}
                   >
                   <span className="flex items-center gap-1.5 text-sm font-medium">
@@ -356,7 +356,7 @@ function TimelineBody<T extends TimelineSourceItem>({ items, phases, project, to
                 {readOnly ? (
                   <span className="inline-block rounded-full border border-border bg-card px-3 py-1 text-xs">{i.title}</span>
                 ) : (
-                  <button type="button" onClick={() => openById(i.id)} className="min-h-8 rounded-full border border-border bg-card px-3 py-1 text-xs outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                  <button type="button" onClick={() => openById(i.id)} className="min-h-8 rounded-full border border-border bg-card px-3 py-1 text-xs outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/70">
                     {i.title}
                   </button>
                 )}
@@ -418,7 +418,7 @@ function ItemMark({ row, ppd, onOpen }: { row: ItemRow; ppd: number; onOpen?: ()
       );
     }
     return (
-      <button type="button" onClick={onOpen} aria-label={label} title={label} className="absolute z-[5] flex h-6 w-6 items-center justify-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60" style={{ left: cx - 12, top: ITEM_H / 2 - 12 }}>
+      <button type="button" onClick={onOpen} aria-label={label} title={label} className="absolute z-[5] flex h-6 w-6 items-center justify-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70" style={{ left: cx - 12, top: ITEM_H / 2 - 12 }}>
         {diamond}
       </button>
     );
@@ -441,7 +441,7 @@ function ItemMark({ row, ppd, onOpen }: { row: ItemRow; ppd: number; onOpen?: ()
       onClick={onOpen}
       aria-label={label}
       title={label}
-      className={cn("absolute z-[5] rounded-[4px] border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60", styles.className, row.conflict && "ring-2 ring-destructive")}
+      className={cn("absolute z-[5] rounded-[4px] border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70", styles.className, row.conflict && "ring-2 ring-destructive")}
       style={{ left: row.startDay * ppd, width, top: (ITEM_H - BAR_H) / 2, height: BAR_H, ...styles.style }}
     />
   );

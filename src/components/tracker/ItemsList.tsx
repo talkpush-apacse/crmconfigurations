@@ -60,7 +60,7 @@ function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status
         <button
           type="button"
           aria-label={`Change status of ${item.title}. Currently ${ITEM_STATUS_LABELS[item.status as ItemStatus] ?? item.status}`}
-          className="inline-flex min-h-11 items-center gap-1 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 md:min-h-8"
+          className="inline-flex min-h-11 items-center gap-1 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
           onClick={(e) => e.stopPropagation()}
         >
           <ItemStatusBadge status={item.status} />
@@ -86,7 +86,7 @@ function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className="-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase tracking-wider outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="-mx-1 inline-flex min-h-8 items-center gap-1 rounded px-1 uppercase tracking-wider outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70"
       >
         {label}
         <Icon className={cn("h-3 w-3", active ? "text-foreground" : "text-muted-foreground")} aria-hidden="true" />
