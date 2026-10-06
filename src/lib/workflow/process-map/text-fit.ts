@@ -1,6 +1,7 @@
 import { PM, circled } from "./tokens";
 import { actionTypeOf, personActs, roleBracket, shapeKindOf, tagOf, type ShapeKind } from "./model";
 import { channelWhen } from "./channel";
+import { hasInline, richWords, stripInline } from "./inline-text";
 
 /**
  * Text and box sizes, worked out from a formula instead of measuring the screen. That is what keeps a diagram
@@ -74,6 +75,43 @@ export function wrapText(text: string, max: number): string[] {
   return out;
 }
 
+/**
+ * Like wrapText, but keeps **bold** words bold. Text with no bold in it takes the plain path, so every existing diagram
+ * wraps exactly as before. Words are placed with the same rule: as many per line as fit, long words hard-broken.
+ */
+export function wrapRuns(text: string, max: number, extra: Partial<Run> = {}): TextLine[] {
+  if (!hasInline(text)) return wrapText(stripInline(text), max).map((t) => ({ runs: [{ text: t, ...extra }] }));
+  const lines: { text: string; bold: boolean }[][] = [];
+  let line: { text: string; bold: boolean }[] = [];
+  let len = 0;
+  const flush = () => {
+    if (line.length) lines.push(line);
+    line = [];
+    len = 0;
+  };
+  for (const w of richWords(text)) {
+    let word = w.text;
+    while (word.length > max) {
+      flush();
+      lines.push([{ text: word.slice(0, max), bold: w.bold }]);
+      word = word.slice(max);
+    }
+    if (len && len + 1 + word.length > max) flush();
+    line.push({ text: word, bold: w.bold });
+    len += (len ? 1 : 0) + word.length;
+  }
+  flush();
+  return lines.map((words) => {
+    const runs: Run[] = [];
+    for (const w of words) {
+      const last = runs[runs.length - 1];
+      if (last && !!last.bold === w.bold) last.text += ` ${w.text}`;
+      else runs.push({ text: last ? ` ${w.text}` : w.text, ...extra, ...(w.bold ? { bold: true } : {}) });
+    }
+    return { runs };
+  });
+}
+
 export const charsPerLine = (width: number, pad: number = PM.type.pad) => Math.max(8, Math.floor((width - 2 * pad) / PM.type.charW));
 
 function numberRuns(numbers: NodeNumbers, lead: string | null): Run[] {
@@ -98,19 +136,19 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   const S = PM.size;
 
   if (kind === "decision") {
-    const width = label.length > 70 ? 300 : S.decisionW;
+    const width = stripInline(label).length > 70 ? 300 : S.decisionW;
     const max = Math.max(10, Math.floor((width * 0.56) / PM.type.charW));
-    const text = wrapText(label, max);
+    const text = wrapRuns(label, max);
     const head = numberRuns(numbers, null);
     if (head.length) lines.push({ runs: head });
-    for (const t of text) lines.push(plain(t));
+    for (const t of text) lines.push(t);
     const count = lines.length;
     return { kind, width, height: Math.max(S.decisionH, 50 + count * PM.type.lineH * 1.25), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
   if (kind === "start" || kind === "end") {
     const width = S.terminatorW;
-    const text = wrapText(label, charsPerLine(width));
+    const text = wrapText(stripInline(label), charsPerLine(width));
     for (const t of text) lines.push(plain(t, { bold: kind === "end" }));
     return { kind, width, height: Math.max(S.terminatorH, 24 + text.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
@@ -123,8 +161,8 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   if (kind === "note") {
     const width = S.noteW;
     const max = charsPerLine(width);
-    if (label) for (const t of wrapText(label, max)) lines.push(plain(t, { bold: true }));
-    if (notes) for (const t of wrapText(notes, max)) lines.push(plain(t));
+    if (label) for (const t of wrapText(stripInline(label), max)) lines.push(plain(t, { bold: true }));
+    if (notes) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t));
     return { kind, width, height: Math.max(56, 32 + lines.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
@@ -134,8 +172,8 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   const lead = people ? roleBracket(node) : tagOf(node);
   const head = numberRuns(numbers, lead);
   if (head.length) lines.push({ runs: head });
-  if (label) for (const t of wrapText(label, max)) lines.push(plain(t));
-  if (notes && notes !== label) for (const t of wrapText(notes, max)) lines.push(plain(t, { size: 11 }));
+  if (label) for (const t of wrapRuns(label, max)) lines.push(t);
+  if (notes && notes !== label) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t, { size: 11 }));
   // "Channel · When" for automated messages, calls and alerts; for any other step, just its timing.
   const when = channelWhen(node);
   if (when) for (const t of wrapText(when, max)) lines.push(plain(t, { italic: true }));

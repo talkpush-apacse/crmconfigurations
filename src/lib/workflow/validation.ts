@@ -1,5 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 import { computeStepNumbers } from "./numbering";
+import { moveStepNeedsWording } from "./process-map/inline-text";
 import type {
   WorkflowEdgeData,
   WorkflowNodeData,
@@ -64,6 +65,17 @@ export function validateWorkflow(
     const data = node.data;
     const metadata = data.data ?? {};
     const label = data.label?.trim() || node.id;
+
+    // A Move step names the folder in bold and says Folder/Stage: "Moves to **Expected to Show Up** Folder/Stage".
+    if (processMap && (data as { actionType?: string }).actionType === "move" && moveStepNeedsWording(data.label ?? "")) {
+      findings.push({
+        code: "move_wording",
+        severity: "low",
+        message: `"${label.replace(/\*\*/g, "")}" is a Move step but does not follow the Move wording.`,
+        nodeId: node.id,
+        recommendation: 'Write it as "Moves to **Folder name** Folder/Stage": the folder name in bold, followed by the words Folder/Stage.',
+      });
+    }
 
     if (flowNodes.length > 1 && nodeIncoming.length === 0 && nodeOutgoing.length === 0) {
       findings.push({

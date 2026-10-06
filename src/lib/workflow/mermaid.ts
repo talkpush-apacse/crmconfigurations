@@ -1,3 +1,4 @@
+import { stripInline } from "./process-map/inline-text";
 import { type NodeType, type WorkflowEdgeData } from "./types";
 import { normalizeWorkflowEdgeData } from "./normalize";
 
@@ -62,7 +63,8 @@ export function toMermaid(
 
   for (const node of nodes) {
     const step = stepNumbers?.get(node.id);
-    const label = step ? `${step}. ${node.data.label}` : node.data.label;
+    const plainLabel = stripInline(node.data.label);
+    const label = step ? `${step}. ${plainLabel}` : plainLabel;
     lines.push(`  ${wrapNode(node.id, label, node.data.type)}`);
   }
 

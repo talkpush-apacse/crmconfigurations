@@ -2,6 +2,7 @@ import { computeDecimalNumbers } from "../numbering-decimal";
 import { actionTypeOf, personActs, shapeKindOf } from "./model";
 import { ACTION_TYPES, circled } from "./tokens";
 import { channelWhen } from "./channel";
+import { stripInline } from "./inline-text";
 import { usesLanes } from "./lane-mode";
 import { computeLaneGrid } from "./lanes";
 
@@ -85,7 +86,7 @@ export function deriveFlowTable(nodes: any[], edges: any[]): FlowTable {
       step: num,
       stepDisplay: spine !== undefined ? circled(spine) : num,
       actor,
-      action: [String(n.data?.label ?? "").trim(), String(n.data?.notes ?? "").trim()].filter(Boolean).join(". "),
+      action: [stripInline(String(n.data?.label ?? "")).trim(), String(n.data?.notes ?? "").trim()].filter(Boolean).join(". "),
       actionType: type ? ACTION_TYPES[type].label : "",
       channelWhen: kind === "decision" ? "" : channelWhen(n),
       lane: grid?.laneOf.get(n.id) ?? "",

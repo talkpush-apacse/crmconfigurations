@@ -1,3 +1,4 @@
+import { stripInline } from "./process-map/inline-text";
 /**
  * "What changed between two versions", in plain language first and structure second. Used to show someone what the
  * workflow looks like now compared with what they approved, and before Claude overwrites anything a person edited.
@@ -34,7 +35,7 @@ export function diffPages(before: DiffPage[], after: DiffPage[]): VersionDiff {
   const afterById = new Map(after.map((p) => [p.id, p]));
   out.pagesAdded = after.filter((p) => !beforeById.has(p.id)).map((p) => p.name);
   out.pagesRemoved = before.filter((p) => !afterById.has(p.id)).map((p) => p.name);
-  const labelOf = (n: any) => String(n?.data?.label ?? n?.id ?? "");
+  const labelOf = (n: any) => stripInline(String(n?.data?.label ?? n?.id ?? ""));
 
   for (const page of after) {
     const old = beforeById.get(page.id);
