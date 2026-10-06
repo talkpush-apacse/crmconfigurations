@@ -72,8 +72,9 @@ export function ContributorView({ token }: { token: string }) {
 }
 
 /**
- * The contributor's page: the same Summary, List, Board and Timeline a view-only client sees, plus Activity, and every
- * item opens in a panel where they can change it, comment on it and see its history.
+ * The contributor's page: the same Summary, List, Board and Timeline a view-only client sees, and every item opens in a
+ * panel where they can change it, comment on it and see its history. There is deliberately no project-wide Activity tab
+ * here (view-only links have one); the data route stays because the panel's per-item History uses it.
  */
 function Ready({ token, data, reload }: { token: string; data: ContributorPayload; reload: () => Promise<void> }) {
   const [target, setTarget] = useState<PanelTarget>(null);
@@ -85,7 +86,7 @@ function Ready({ token, data, reload }: { token: string; data: ContributorPayloa
       <div>
         <h1 className="text-2xl font-bold tracking-[-0.03em] text-[var(--es-ink)]">Hello {data.you.name}</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--es-muted)]">
-          Open any item in the List or Board to change it or leave a comment. Everyone with a link, and the Talkpush team, can see what changed in the Activity tab.
+          Open any item in the List or Board to change it or leave a comment. Talkpush can see every change you make.
         </p>
       </div>
 
@@ -98,8 +99,6 @@ function Ready({ token, data, reload }: { token: string; data: ContributorPayloa
       <ClientProjectViews
         data={data.view}
         downloadUrl={`${base}/export`}
-        activityUrl={`${base}/activity`}
-        activityKey={`${data.comments.length}-${data.items.map((i) => i.updatedAt).sort().pop() ?? ""}`}
         onOpenItem={setTarget}
         toolbar={
           <button type="button" className={primary} onClick={() => setTarget("new")}>
@@ -114,7 +113,7 @@ function Ready({ token, data, reload }: { token: string; data: ContributorPayloa
         target={target}
         onClose={() => setTarget(null)}
         reload={reload}
-        onAdded={() => setNotice("Added. Talkpush will review it, and everyone can see it in Activity.")}
+        onAdded={() => setNotice("Added. Talkpush will review it.")}
       />
     </div>
   );
