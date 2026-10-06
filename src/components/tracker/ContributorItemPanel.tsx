@@ -52,7 +52,7 @@ export function ContributorItemPanel({
             <>
               {savedFor === item.id && (
                 <p role="status" className="mb-4 rounded-lg border border-[var(--es-line)] bg-[var(--es-stripe)] px-3 py-2 text-sm">
-                  Saved. Everyone with a link can see this change in the Activity tab.
+                  Saved. Talkpush can see this change.
                 </p>
               )}
               <EditForm key={item.updatedAt} token={token} data={data} item={item} reload={reload} onSaved={() => setSavedFor(item.id)} onEdit={() => setSavedFor(null)} />
