@@ -1,6 +1,7 @@
 /**
  * Where Claude sends a person to connect. This only checks the request and routes the person:
- *   not signed in  -> remember the request, send them to the normal admin login
+ *   not signed in  -> if Google sign-in lives on another address, hand the request to that address first;
+ *                     then remember the request and send them to the normal admin login
  *   signed in      -> the Allow page
  * Requests from an unknown app or to an unregistered address get an error page, never a redirect.
  */
@@ -10,6 +11,7 @@ import { connectErrorPage } from "@/lib/mcp/oauth/error-page";
 import { OAuthError } from "@/lib/mcp/oauth/errors";
 import { adminFromSessionCookie, PENDING_CONNECT_COOKIE } from "@/lib/mcp/oauth/session";
 import { validateAuthorizeRequest } from "@/lib/mcp/oauth/service";
+import { planConnectHandoff } from "@/lib/google-sign-in";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,6 +53,13 @@ export async function GET(request: NextRequest) {
 
   const admin = await adminFromSessionCookie(request.cookies.get("admin_token")?.value);
   if (!admin) {
+    // The saved note is a cookie for THIS address; Google sign-in returns to another one. Start on that one instead.
+    const handoff = planConnectHandoff(request.url, process.env.GOOGLE_REDIRECT_URI?.trim());
+    if (handoff.action === "move") {
+      const moved = NextResponse.redirect(handoff.url, 303);
+      moved.headers.set("Cache-Control", "no-store");
+      return moved;
+    }
     const response = NextResponse.redirect(new URL("/admin/login", request.url), 303);
     response.cookies.set(PENDING_CONNECT_COOKIE, `${url.pathname}${url.search}`, {
       httpOnly: true,
