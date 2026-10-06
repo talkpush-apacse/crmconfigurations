@@ -198,7 +198,10 @@ test("the classic single row stays available (local DB): chosen for 2 actors, fo
     const nodes = await nodesOf(forced.workflowId);
     const edges = await edgesOf(forced.workflowId);
     assert.ok(nodes.every((n) => n.data.lane === undefined && n.data.stage === undefined && n.data.laneKind === undefined), "no lane fields at all");
-    const old = layoutProcessMap(nodes, edges);
+    // A new map is "readable", so "the classic single row" is the single-row layout in that look.
+    const { withLook } = await import("../src/lib/workflow/process-map/tokens");
+    assert.equal((await prisma.workflowProject.findUniqueOrThrow({ where: { id: forced.workflowId } })).look, "readable");
+    const old = withLook("readable", () => layoutProcessMap(nodes, edges));
     for (const n of nodes) {
       const p = old.positions.get(n.id)!;
       assert.equal(Math.round(n.position.x), Math.round(p.x), `${n.data.label}: x is the classic single-row position`);

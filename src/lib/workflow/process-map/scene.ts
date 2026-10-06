@@ -5,7 +5,7 @@ import { laneKey, usesLanes } from "./lane-mode";
 import { actionTypeOf, fillFor, personActs, shapeKindOf, type ShapeKind } from "./model";
 import { handlePoint, pointAlong, routePoints, segmentsOf, type P, type Pos, type Rect } from "./route";
 import { boxFor, wrapText, type BoxSpec } from "./text-fit";
-import { PM } from "./tokens";
+import { PM, withLook, type Look } from "./tokens";
 
 /**
  * The "scene": a workflow turned into exact shapes, connectors, labels, containers, title block and legend, with
@@ -28,6 +28,8 @@ export interface SceneMeta {
   processName?: string;
   /** Draw without step numbers (the page's "Hide numbers" switch). */
   hideNumbers?: boolean;
+  /** The map's look (WorkflowProject.look). Anything but "readable" draws the original look. */
+  look?: Look | string | null;
 }
 
 export interface SceneShape {
@@ -102,13 +104,14 @@ export interface Scene {
   spine: string[];
   /** Lanes layout only: the lane each step sits in (display name). */
   laneOf?: Map<string, string>;
+  /** The look this scene was built with. The drawing components and the layout check read it, so they match the build. */
+  look: Look;
 }
 
 const C = PM.colors;
-const PAD = PM.layout.containerPad;
 
 export function labelRect(text: string, at: P): Rect {
-  const w = Math.max(24, Math.ceil(text.length * 7.4) + 14);
+  const w = Math.max(24, Math.ceil(text.length * PM.edge.labelCharW) + PM.edge.labelPad);
   return { x: at.x - w / 2, y: at.y - 11, w, h: 22 };
 }
 
@@ -121,7 +124,13 @@ function defaultHandles(a: Rect, b: Rect): [Pos, Pos] {
   return dy >= 0 ? ["bottom", "top"] : ["top", "bottom"];
 }
 
+/** Builds the scene in the map's look (see tokens.ts: withLook). */
 export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
+  const look: Look = meta.look === "readable" ? "readable" : "original";
+  return { ...withLook(look, () => buildSceneNow(nodes, edges, meta)), look };
+}
+
+function buildSceneNow(nodes: any[], edges: any[], meta: SceneMeta): Omit<Scene, "look"> {
   const numbering = computeDecimalNumbers(nodes, edges);
   const numbers = meta.hideNumbers ? new Map() : numbersFor(nodes, numbering);
   if (meta.hideNumbers) numbering.edgeLabels.clear();
@@ -243,11 +252,11 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   let entryContainer: Rect | null = null;
   let journeyContainer: Rect | null = null;
   if (journeyBox && !grid) {
-    journeyContainer = grow(journeyBox, PAD);
+    journeyContainer = grow(journeyBox, PM.layout.containerPad);
     containers.push({ id: "container_journey", kind: "journey", title: `${meta.processName ?? meta.workflowName} Journey`, rect: journeyContainer });
   }
   if (entryBox && !grid) {
-    entryContainer = grow(entryBox, PAD * 0.75);
+    entryContainer = grow(entryBox, PM.layout.containerPad * 0.75);
     // The entry container is as tall as the room it needs; it sits to the left of the journey container.
     containers.push({ id: "container_entry", kind: "entry", title: meta.entryTitle ?? "Candidate entry", rect: entryContainer });
   }
@@ -257,7 +266,7 @@ export function buildScene(nodes: any[], edges: any[], meta: SceneMeta): Scene {
   const sceneBox = union(all.length ? all : shapes.map(withBadge)) ?? { x: 0, y: 0, w: 400, h: 300 };
   const metaLine = [meta.versionLabel, meta.date, meta.author].filter(Boolean).join(" · ");
   const titleText = `${meta.clientName}: ${meta.workflowName}`;
-  const titleW = Math.max(300, Math.ceil(titleText.length * 9.5));
+  const titleW = Math.max(300, Math.ceil(titleText.length * PM.ui.titleCharW));
   const title = {
     lines: [
       { text: titleText, size: PM.type.titleSize, bold: true },
@@ -317,13 +326,13 @@ export function buildTable(node: any): SceneTable {
   const highlight = new Set<string>(Array.isArray(d.highlight) ? d.highlight : []); // "rowIndex:columnId"
   const widths = columns.map((c) => {
     const longest = Math.max(String(c.label ?? "").length, ...rawRows.map((r) => String(r[c.id] ?? "").length));
-    return { id: c.id, label: String(c.label ?? ""), w: Math.max(120, Math.min(240, Math.ceil(longest * 7) + 24)) };
+    return { id: c.id, label: String(c.label ?? ""), w: Math.max(120, Math.min(240, Math.ceil(longest * PM.ui.tableCharW) + 24)) };
   });
-  const headerH = 34;
+  const headerH = PM.ui.tableHeaderH;
   const rows = rawRows.map((r, ri) => {
-    const cells = widths.map((c) => wrapText(String(r[c.id] ?? ""), Math.max(8, Math.floor((c.w - 16) / 7))));
+    const cells = widths.map((c) => wrapText(String(r[c.id] ?? ""), Math.max(8, Math.floor((c.w - 16) / PM.ui.tableCharW))));
     const lines = Math.max(1, ...cells.map((x) => x.length));
-    return { cells, h: 14 + lines * 17, highlight: widths.map((c) => highlight.has(`${ri}:${c.id}`)) };
+    return { cells, h: PM.ui.tableRowPad + lines * PM.ui.tableLineH, highlight: widths.map((c) => highlight.has(`${ri}:${c.id}`)) };
   });
   const w = widths.reduce((n, c) => n + c.w, 0);
   const h = headerH + rows.reduce((n, r) => n + r.h, 0);

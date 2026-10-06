@@ -1,6 +1,6 @@
 import { rectsOverlap, segmentHitsRect, segmentsOf, type Rect } from "./route";
 import type { Scene, SceneShape } from "./scene";
-import { PM } from "./tokens";
+import { PM, withLook } from "./tokens";
 
 /**
  * "Layout check": the automated version of the Lucid skill's self-audit. Lucid's own validator never looked at
@@ -47,7 +47,12 @@ function gap(a: Rect, b: Rect): number {
   return Math.max(dx, dy);
 }
 
+/** Checks the scene in the look it was built with. */
 export function lintLayout(scene: Scene): LayoutFinding[] {
+  return withLook(scene.look, () => lintNow(scene));
+}
+
+function lintNow(scene: Scene): LayoutFinding[] {
   const out: LayoutFinding[] = [];
   const byId = new Map(scene.shapes.map((s) => [s.id, s]));
   const lanes = scene.containers.some((c) => c.kind === "lane");

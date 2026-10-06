@@ -119,6 +119,9 @@ interface NodePaletteProps {
   onAddAnnotation: (shape: AnnotationShapeType, label: string) => void;
   diagramStyle: "classic" | "process_map";
   onDiagramStyleChange: (style: "classic" | "process_map") => void;
+  /** The look of a Process Map: "original" or "readable". */
+  look: "original" | "readable";
+  onLookChange: (look: "original" | "readable") => void;
   /** The steps as a numbered, searchable list (the "Outline" tab). */
   outline: OutlineItem[];
   selectedStepId: string | null;
@@ -141,7 +144,7 @@ const TABS: { id: SidebarTab; label: string }[] = [
 const DRAGGABLE_ITEM = "flex min-h-11 items-center gap-1.5 px-1.5 py-1.5 rounded-md border border-transparent hover:border-border hover:bg-secondary cursor-grab active:cursor-grabbing active:opacity-70 group transition-colors md:min-h-0";
 const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-widest text-muted-foreground";
 
-export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, onDiagramStyleChange, outline, selectedStepId, onSelectStep, lanePanel }: NodePaletteProps) {
+export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, onDiagramStyleChange, look, onLookChange, outline, selectedStepId, onSelectStep, lanePanel }: NodePaletteProps) {
   const candidateActorConfig = ACTOR_CONFIG["candidate"];
   const [activeTab, setActiveTab] = useState<SidebarTab>("outline");
   // The step list is closed until it is needed. Quick Add (below the canvas) and Cmd/Ctrl+K add steps too.
@@ -268,6 +271,26 @@ export default function NodePalette({ onAddNode, onAddAnnotation, diagramStyle, 
                 ))}
               </div>
             </div>
+
+            {diagramStyle === "process_map" && (
+              <div className="mb-2">
+                <p className={`${SECTION_LABEL} mb-1`}>Look</p>
+                <div role="group" aria-label="Look" className="flex overflow-hidden rounded-md border border-border text-xs">
+                  {([["readable", "Easier to read"], ["original", "Original"]] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={look === value}
+                      onClick={() => onLookChange(value)}
+                      className={`min-h-11 flex-1 py-1.5 font-medium md:min-h-8 ${look === value ? "bg-primary text-primary-foreground" : "bg-card text-foreground/70 hover:bg-secondary"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 px-1 text-[11px] text-muted-foreground">Bigger text and calmer colour. Switching arranges the steps again.</p>
+              </div>
+            )}
 
             {diagramStyle === "process_map" && lanePanel && (
               <div className="-mx-2 mb-2">

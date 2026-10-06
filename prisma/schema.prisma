@@ -527,6 +527,8 @@ model WorkflowProject {
   // Phase 3 (Process Map style). diagramStyle: classic | process_map. numberingScheme: letters | decimal.
   diagramStyle    String @default("classic")
   numberingScheme String @default("letters")
+  // Readability pass. look: original | readable. Existing maps stay "original" (how they always looked); new maps are "readable".
+  look            String @default("original")
 
   template         WorkflowTemplate?         @relation(fields: [templateId], references: [id])
   feedback         WorkflowFeedback[]

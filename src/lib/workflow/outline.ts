@@ -15,6 +15,8 @@ export interface OutlineItem {
   type: string;
   actorLabel: string;
   notes: string;
+  /** For a note: "needs_input" is an open question for the client; "" for any other step. */
+  noteKind: string;
 }
 
 const ANNOTATION_TYPES = new Set(["annotation", "dangling_endpoint", "swimlane", "frame", "jump"]);
@@ -60,6 +62,7 @@ export function buildOutline(nodes: any[], stepNumbers: Map<string, string>): Ou
         type: String(n.data?.type ?? n.type ?? ""),
         actorLabel: String(n.data?.actorLabel ?? ""),
         notes: String(n.data?.notes ?? ""),
+        noteKind: n.data?.type === "note" || n.type === "note" ? String(n.data?.noteKind ?? "info") : "",
       };
     });
   // The entry channel first, then steps by number, then unnumbered ones (end states, notes) last.

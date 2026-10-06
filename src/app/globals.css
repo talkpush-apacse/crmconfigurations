@@ -597,3 +597,9 @@ select:not([data-slot]):focus {
     overflow: visible;
   }
 }
+
+/* The Workflow Builder reads in Inter (see DESIGN.md). Anything inside this wrapper that uses Tailwind's font-sans follows. */
+.font-workflow {
+  --font-sans: var(--font-inter);
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
