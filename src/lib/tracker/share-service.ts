@@ -156,6 +156,11 @@ export async function revokeShareLink(linkId: string, actor: Actor) {
  * answer null with the same generic 404 so a bad link reveals nothing.
  */
 export async function resolveViewerToken(token: string): Promise<string | null> {
+  return (await resolveViewerLink(token))?.projectId ?? null;
+}
+
+/** Same checks as resolveViewerToken, but also returns the link's label (used to name who downloaded a file). */
+export async function resolveViewerLink(token: string): Promise<{ projectId: string; label: string | null } | null> {
   if (!looksLikeShareToken(token)) return null;
   const link = await prisma.trackerShareLink.findUnique({ where: { tokenHash: hashShareToken(token) } });
   if (!link || !tokenMatchesHash(token, link.tokenHash)) return null;
@@ -166,5 +171,5 @@ export async function resolveViewerToken(token: string): Promise<string | null> 
   if (!link.lastUsedAt || Date.now() - link.lastUsedAt.getTime() > 60_000) {
     void prisma.trackerShareLink.update({ where: { id: link.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   }
-  return link.projectId;
+  return { projectId: link.projectId, label: link.label };
 }

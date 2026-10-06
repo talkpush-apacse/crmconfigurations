@@ -231,7 +231,7 @@ async function assertWithinLimits(ctx: ContributorContext, kind: "item" | "chang
     }
   }
   const changes = await prisma.trackerActivity.count({
-    where: { projectId: ctx.projectId, via: "client", actorLabel: ctx.actor.label, createdAt: { gte: since } },
+    where: { projectId: ctx.projectId, via: "client", actorLabel: ctx.actor.label, action: { not: "export.downloaded" }, createdAt: { gte: since } },
   });
   if (changes >= CLIENT_LIMITS.changesPerDay) {
     throw new TrackerError("You have made a lot of changes today. Please try again tomorrow, or ask your Talkpush contact.", 429);

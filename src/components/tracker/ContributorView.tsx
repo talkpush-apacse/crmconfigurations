@@ -5,6 +5,7 @@ import { ITEM_STATUS_LABELS, PRIORITIES } from "@/lib/tracker/constants";
 import type { ClientView } from "@/lib/tracker/client-view";
 import type { getContributorView } from "@/lib/tracker/contributor-service";
 import { formatDate } from "@/lib/tracker/format";
+import { ClientDownloadButton } from "./ClientDownloadButton";
 import { ExecSummary } from "./ExecSummary";
 import { ItemStatusBadge } from "./badges";
 
@@ -113,9 +114,12 @@ function Ready({ token, data, reload }: { token: string; data: Payload; reload: 
   const others = data.items.filter((i) => !i.mine);
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl font-bold tracking-[-0.03em] text-[var(--es-ink)]">Hello {data.you.name}</h1>
-        <p className="mt-1 text-sm text-[var(--es-muted)]">Here is where the project stands, the items that are yours, and a place to add anything we have missed.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-[-0.03em] text-[var(--es-ink)]">Hello {data.you.name}</h1>
+          <p className="mt-1 text-sm text-[var(--es-muted)]">Here is where the project stands, the items that are yours, and a place to add anything we have missed.</p>
+        </div>
+        <ClientDownloadButton url={`/api/contribute/${encodeURIComponent(token)}/export`} />
       </div>
 
       <ExecSummary data={data.view} context="client" embedded />

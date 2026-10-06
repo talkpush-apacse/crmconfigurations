@@ -72,7 +72,10 @@ export async function contributorRoute(
 
   try {
     const body = opts.write ? await readBody(request) : undefined;
-    return respond(opts.status ?? 200, (await handler(ctx, body)) as Record<string, unknown>);
+    const result = await handler(ctx, body);
+    // A handler may return a finished response (the Excel download); it carries its own headers.
+    if (result instanceof NextResponse) return result;
+    return respond(opts.status ?? 200, result as Record<string, unknown>);
   } catch (err) {
     if (err instanceof ZodError) {
       return respond(400, {

@@ -90,6 +90,8 @@ export function describeActivity(a: ActivityLike): string {
       return `created an editor link for ${typeof after.contact === "string" ? after.contact : "a client contact"}`;
     case "share.revoked":
       return `turned off a client link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
+    case "export.downloaded":
+      return `downloaded the ${after.audience === "client" ? "client" : "staff"} Excel workbook (Summary, List, Board, Timeline)`;
     case "metric.created":
       return `added the metric "${String(after.name ?? "")}"`;
     case "metric.updated":

@@ -154,6 +154,37 @@ function ProjectWorkspace() {
     }
   };
 
+  /** The whole project as one Excel file: Summary, List, Board and Timeline. A plain GET, so read-only logins can use it. */
+  const downloadWorkbook = async () => {
+    if (!detail) return;
+    setExportError("");
+    setExportingXlsx(true);
+    try {
+      const res = await fetch(`/api/tracker/projects/${id}/export/workbook`, { cache: "no-store" });
+      if (res.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "The Excel file could not be made. Please try again.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${exportName({ account: detail.project.accountName, project: detail.project.title, view: "Tracker", date: detail.today })}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "The Excel file could not be made. Please try again.");
+    } finally {
+      setExportingXlsx(false);
+    }
+  };
+
   if (error && !detail) return <ErrorBlock message={error} onRetry={load} />;
   if (!detail) return <ProjectPageSkeleton />;
 
@@ -211,7 +242,7 @@ function ProjectWorkspace() {
         {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
         <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
           {(view === "summary" || view === "list" || view === "board" || view === "timeline") && (
-            <ExportMenu view={view} busy={printing !== null || exportingXlsx} onPdf={startPdf} onXlsx={() => void downloadXlsx()} />
+            <ExportMenu view={view} busy={printing !== null || exportingXlsx} onPdf={startPdf} onXlsx={() => void downloadXlsx()} onWorkbook={() => void downloadWorkbook()} />
           )}
           {canEdit && (
             <Button variant="outline" onClick={() => setPlanOpen(true)}>
