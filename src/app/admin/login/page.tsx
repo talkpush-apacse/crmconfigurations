@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
 
     if (errorCode === "unauthorized") {
       setError(
-        "This Google account has not been given access yet. Ask an editor to add your email under Users, then try again. Make sure you choose your talkpush.com Google account."
+        "This Google account has not been given access yet. Ask a Talkpush Admin to add your email under Users, then try again. Make sure you choose your talkpush.com Google account."
       );
     } else if (errorCode === "google_config") {
       setError("Google sign-in is not configured. Contact an administrator.");

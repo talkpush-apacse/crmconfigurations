@@ -1,8 +1,8 @@
-/** Change one login's role, or remove it. Editors only. */
+/** Change one login's role or super admin status, or remove it. Talkpush Admins only; the rules for super admins are in users-rules.ts. */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireEditor } from "@/lib/api-auth";
-import { changeRole, removeUser } from "@/lib/users-service";
+import { changeRole, changeSuperAdmin, removeUser } from "@/lib/users-service";
 import { usersErrorResponse } from "@/lib/users-http";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
     const body = await request.json().catch(() => null);
-    return NextResponse.json(await changeRole(id, body, auth.userId));
+    const wantsSuperChange = body !== null && typeof body === "object" && "isSuperAdmin" in body;
+    return NextResponse.json(wantsSuperChange ? await changeSuperAdmin(id, body, auth.userId) : await changeRole(id, body, auth.userId));
   } catch (err) {
     return usersErrorResponse(err);
   }

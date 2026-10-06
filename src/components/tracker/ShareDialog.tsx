@@ -117,7 +117,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
       <DialogHeader>
         <DialogTitle>Share with the client</DialogTitle>
         <DialogDescription>
-          A private link to a read-only summary. Anyone with the link can see it, so send it only to the people who should. It never shows team-only items, internal remarks, blocker reasons or email addresses.
+          Client View Only: a private link to a read-only summary. Anyone with the link can see it, so send it only to the people who should. It never shows team-only items, internal remarks, blocker reasons or email addresses.
         </DialogDescription>
       </DialogHeader>
 
@@ -132,7 +132,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
         <div className="space-y-2 rounded-lg border border-border bg-secondary p-4" role="status">
           <p className="text-sm font-medium">Your link is ready. Copy it now: it is shown only once.</p>
           <div className="flex gap-2">
-            <Input readOnly value={fresh.url} aria-label="Client link" onFocus={(e) => e.currentTarget.select()} />
+            <Input readOnly value={fresh.url} aria-label="Client View Only link" onFocus={(e) => e.currentTarget.select()} />
             <Button type="button" onClick={copy} variant="outline">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copied" : "Copy"}
@@ -170,7 +170,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
           <FormError message={formError} />
           <Button type="button" onClick={create} disabled={creating}>
             <Link2 className="h-4 w-4" />
-            {creating ? "Creating..." : "Create link"}
+            {creating ? "Creating..." : "Create View Only link"}
           </Button>
         </div>
       )}
@@ -178,7 +178,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
       <section aria-labelledby="share-contributor" className="space-y-3 rounded-lg border border-border bg-card p-4">
         <div>
           <h3 id="share-contributor" className="text-sm font-semibold">
-            Let a client contact add and update items
+            Client Contributor: let a client contact add and update items
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             A private link for one person. They see the same client-safe summary, can add items (these show a &quot;needs review&quot; flag for you), and can update the items assigned to them. They cannot see team-only items or change anything else.
@@ -188,7 +188,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
           <div className="space-y-2 rounded-lg border border-border bg-secondary p-4" role="status">
             <p className="text-sm font-medium">Link for {cFresh.contact} is ready. Copy it now: it is shown only once.</p>
             <div className="flex gap-2">
-              <Input readOnly value={cFresh.url} aria-label="Contributor link" onFocus={(e) => e.currentTarget.select()} />
+              <Input readOnly value={cFresh.url} aria-label="Client Contributor link" onFocus={(e) => e.currentTarget.select()} />
               <Button type="button" onClick={copyContributor} variant="outline">
                 {cCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {cCopied ? "Copied" : "Copy"}
@@ -242,7 +242,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
             <FormError message={cError} />
             <Button type="button" onClick={createContributor} disabled={cCreating || !contactId}>
               <Link2 className="h-4 w-4" />
-              {cCreating ? "Creating..." : "Create contributor link"}
+              {cCreating ? "Creating..." : "Create Client Contributor link"}
             </Button>
           </>
         )}
@@ -268,7 +268,7 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
                 <li key={l.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
-                      {l.kind === "contributor" ? `${l.contact ?? l.label ?? "Contact"}: can add and update items` : l.label || "Unlabelled link"}
+                      {l.kind === "contributor" ? `Client Contributor: ${l.contact ?? l.label ?? "Contact"}` : `Client View Only: ${l.label || "Unlabelled link"}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       <span className="font-mono">{l.hint}</span>. Created {formatDate(l.createdAt.slice(0, 10))}

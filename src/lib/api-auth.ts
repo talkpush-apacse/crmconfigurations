@@ -65,7 +65,7 @@ export async function requireEditor(request: NextRequest): Promise<AuthedUser | 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
   if (auth.role !== "editor") {
-    return NextResponse.json({ error: "Only editors can do this.", code: "read_only" }, { status: 403 });
+    return NextResponse.json({ error: "Only Talkpush Admins can do this.", code: "read_only" }, { status: 403 });
   }
   return auth;
 }
