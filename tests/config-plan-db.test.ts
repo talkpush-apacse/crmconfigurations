@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
 /**
  * The configuration plan against a real database: which workflow version is read, name lookup, safety around
@@ -29,6 +30,8 @@ test("configuration plan: loading, versions, lookups and safety", { skip }, asyn
   const { getConfigPlanTool } = await import("../src/lib/mcp/config-plan");
   const route = await import("../src/app/api/tracker/projects/[id]/config-plan/route");
 
+  // Staff routes look the login up in the database (requireAuth), so the test cookie needs a real editor login.
+  const staffUser = await prisma.adminUser.create({ data: { email: `staff-${randomUUID()}@example.invalid`, role: "editor" }, select: { id: true } });
   const suffix = Date.now().toString(36);
   const client = `Configplan Test ${suffix}`;
   const checklist = await prisma.checklist.create({
@@ -118,7 +121,7 @@ test("configuration plan: loading, versions, lookups and safety", { skip }, asyn
     assert.ok(full.plan.sections.length > 0);
 
     // The staff route.
-    const cookie = `admin_token=${createToken("test-user-not-real")}`;
+    const cookie = `admin_token=${createToken(staffUser.id)}`;
     const call = async (id: string, qs = "", withCookie = true) => {
       const req = new NextRequest(`http://localhost/api/tracker/projects/${id}/config-plan${qs}`, { headers: withCookie ? { cookie } : {} });
       const res: Response = await route.GET(req, { params: Promise.resolve({ id }) });
@@ -145,6 +148,7 @@ test("configuration plan: loading, versions, lookups and safety", { skip }, asyn
     await prisma.workflowVersion.deleteMany({ where: { workflowId: workflow.id } });
     await prisma.workflowProject.deleteMany({ where: { id: { in: [workflow.id, unpublished.id, otherClient.id] } } });
     await prisma.checklist.deleteMany({ where: { id: checklist.id } });
+    await prisma.adminUser.deleteMany({ where: { id: staffUser.id } });
     await prisma.$disconnect();
   }
 });

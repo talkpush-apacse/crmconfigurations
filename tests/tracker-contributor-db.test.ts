@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
 /**
  * Client contributor links against a real database: what the public routes accept, refuse and return.
@@ -24,7 +25,9 @@ async function setup() {
   const { NextRequest } = await import("next/server");
   const { createToken } = await import("../src/lib/auth");
   const { prisma } = await import("../src/lib/db");
-  const staffCookie = `admin_token=${createToken("test-user-not-real")}`;
+  // Staff routes look the login up in the database (requireAuth), so the test cookie needs a real editor login.
+  const staffUser = await prisma.adminUser.create({ data: { email: `staff-${randomUUID()}@example.invalid`, role: "editor" }, select: { id: true } });
+  const staffCookie = `admin_token=${createToken(staffUser.id)}`;
   let ip = 0;
   const call = async (handler: any, url: string, opts: { method?: string; body?: unknown; params?: Json; staff?: boolean; ip?: string; raw?: string; contentType?: string } = {}) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     const headers: Record<string, string> = { "x-forwarded-for": opts.ip ?? `10.0.0.${++ip}` };
@@ -45,11 +48,11 @@ async function setup() {
     }
     return { status: res.status, text, body, headers: res.headers };
   };
-  return { call, prisma };
+  return { call, prisma, staffUserId: staffUser.id };
 }
 
 test("client contributor links", { skip }, async () => {
-  const { call, prisma } = await setup();
+  const { call, prisma, staffUserId } = await setup();
   // Both test files use the one global plan catalogue, and the test runner runs files at the same time.
   // A database lock makes them take turns (the pool has one connection, so the lock lasts the whole test).
   await prisma.$executeRaw`SELECT pg_advisory_lock(727001)`;
@@ -279,6 +282,7 @@ test("client contributor links", { skip }, async () => {
     await prisma.trackerProject.deleteMany({ where: { id: { in: ids } } });
     await prisma.trackerPerson.deleteMany({ where: { id: { in: [ana.id, ben.id, staffPerson.id, stranger.id] } } });
     await prisma.trackerAccount.deleteMany({ where: { id: { in: [account.id, otherAccount.id] } } });
+    await prisma.adminUser.deleteMany({ where: { id: staffUserId } });
     await prisma.$executeRaw`SELECT pg_advisory_unlock(727001)`;
     await prisma.$disconnect();
   }
