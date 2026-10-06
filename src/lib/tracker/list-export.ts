@@ -39,7 +39,7 @@ function dateCell(value: string | null): Date | null {
   return value ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
-function jiraKeys(links: unknown): string[] {
+export function jiraKeys(links: unknown): string[] {
   if (!Array.isArray(links)) return [];
   return links.flatMap((l) => {
     const url = l && typeof l === "object" ? (l as { url?: unknown }).url : null;

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ClientView } from "@/lib/tracker/client-view";
 import { formatDate } from "@/lib/tracker/format";
 import { ClientBoard, ClientItemsList } from "./ClientItemViews";
+import { ClientDownloadButton } from "./ClientDownloadButton";
 import { ExecSummary } from "./ExecSummary";
 import { ReadOnlyTimeline } from "./TimelineView";
 import { Eyebrow } from "./summary-parts";
@@ -19,15 +20,15 @@ import { Eyebrow } from "./summary-parts";
 const VIEWS = ["summary", "list", "board", "timeline"] as const;
 type View = (typeof VIEWS)[number];
 
-export function ClientProjectViews({ data, banner }: { data: ClientView; banner?: React.ReactNode }) {
+export function ClientProjectViews({ data, banner, downloadUrl }: { data: ClientView; banner?: React.ReactNode; downloadUrl?: string }) {
   return (
     <Suspense fallback={null}>
-      <Views data={data} banner={banner} />
+      <Views data={data} banner={banner} downloadUrl={downloadUrl} />
     </Suspense>
   );
 }
 
-function Views({ data, banner }: { data: ClientView; banner?: React.ReactNode }) {
+function Views({ data, banner, downloadUrl }: { data: ClientView; banner?: React.ReactNode; downloadUrl?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const requested = useSearchParams().get("view");
@@ -38,6 +39,11 @@ function Views({ data, banner }: { data: ClientView; banner?: React.ReactNode })
   return (
     <div className="es-client bg-transparent text-[var(--es-ink)]">
       {banner && <div className="mb-4">{banner}</div>}
+      {downloadUrl && (
+        <div className="mb-3 flex justify-start sm:justify-end">
+          <ClientDownloadButton url={downloadUrl} />
+        </div>
+      )}
       <Tabs value={view} onValueChange={setView} className="gap-4">
         <TabsList aria-label="Project views" className="scrollbar-thin max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="summary" className="min-h-9">Summary</TabsTrigger>

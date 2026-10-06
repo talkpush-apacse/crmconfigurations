@@ -1,7 +1,8 @@
 import { getClientViewForProject } from "./client-view-service";
 import type { ClientView } from "./client-view";
 import { clientKey, createLimiter } from "./rate-limit";
-import { resolveViewerToken } from "./share-service";
+import { resolveViewerLink, resolveViewerToken } from "./share-service";
+import { makeWorkbook, recordWorkbookDownload } from "./workbook-service";
 
 /**
  * The one door to the public client view. Both the JSON route (/api/share/[token])
@@ -37,4 +38,34 @@ export async function loadSharedClientView(token: string, requestHeaders: { get(
     // Same answer as a bad link: never reveal that a token was valid but something else broke.
     return { status: "unavailable" };
   }
+}
+
+// Building a workbook is heavier than a page view, so downloads have their own tighter cap per address.
+const downloadHits = createLimiter(10, 10 * 60_000);
+
+export type SharedWorkbookResult = { status: "ok"; file: Buffer; name: string } | { status: "busy" } | { status: "unavailable" };
+
+/** The Excel copy for a view-only link: client-safe data only, rate limited, and the download is recorded for staff. */
+export async function loadSharedWorkbook(token: string, requestHeaders: { get(name: string): string | null }): Promise<SharedWorkbookResult> {
+  const key = clientKey(requestHeaders as Headers);
+  if (failedHits.count(key) >= 15 || !anyHits.hit(key) || !downloadHits.hit(key)) return { status: "busy" };
+
+  try {
+    const link = await resolveViewerLink(token);
+    if (!link) {
+      failedHits.hit(key);
+      return { status: "unavailable" };
+    }
+    const { file, name } = await makeWorkbook(link.projectId, "client");
+    await recordWorkbookDownload(link.projectId, { label: `Client link${link.label ? ` (${link.label})` : ""}`, via: "client" }, "client");
+    return { status: "ok", file, name };
+  } catch (err) {
+    console.error("[share] workbook error:", err instanceof Error ? err.message : err);
+    return { status: "unavailable" };
+  }
+}
+
+/** Test hook: the limiters are module state. */
+export function resetShareLimiters() {
+  for (const l of [anyHits, failedHits, downloadHits]) l.reset();
 }

@@ -11,10 +11,12 @@ interface Props {
   busy: boolean;
   onPdf: () => void;
   onXlsx: () => void;
+  /** The whole project as one Excel file (Summary, List, Board, Timeline). */
+  onWorkbook: () => void;
 }
 
 /** "Export" in the project header: a PDF of the tab you are on and, on the List tab, an Excel file too. */
-export function ExportMenu({ view, busy, onPdf, onXlsx }: Props) {
+export function ExportMenu({ view, busy, onPdf, onXlsx, onWorkbook }: Props) {
   const label = PRINT_VIEW_LABEL[view];
   return (
     <DropdownMenu>
@@ -33,14 +35,22 @@ export function ExportMenu({ view, busy, onPdf, onXlsx }: Props) {
             <span className="block text-xs text-muted-foreground">Choose &ldquo;Save as PDF&rdquo; in the print window</span>
           </span>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onWorkbook} className="cursor-pointer">
+          <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+          <span>
+            Download all views as Excel
+            <span className="block text-xs text-muted-foreground">One file: Summary, List, Board, Timeline</span>
+          </span>
+        </DropdownMenuItem>
         {view === "list" && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onXlsx} className="cursor-pointer">
               <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
               <span>
-                Download List as Excel
-                <span className="block text-xs text-muted-foreground">An .xlsx file you can sort and filter</span>
+                Download this List as Excel
+                <span className="block text-xs text-muted-foreground">Only the items and filters shown now</span>
               </span>
             </DropdownMenuItem>
           </>
