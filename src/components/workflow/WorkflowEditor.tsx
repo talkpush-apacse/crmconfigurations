@@ -435,6 +435,8 @@ function EditorInner({
 
   // How the diagram is drawn: the original look, or the Lucid-style Process Map (decimal numbering, spine layout).
   const [diagramStyle, setDiagramStyle] = useState<"classic" | "process_map">(workflow.diagramStyle === "process_map" ? "process_map" : "classic");
+  // How a Process Map is drawn: "original" (every map before the readability pass) or "readable" (new maps).
+  const [look, setLook] = useState<"original" | "readable">(workflow.look === "readable" ? "readable" : "original");
   const isProcessMap = diagramStyle === "process_map";
   const isProcessMapRef = useRef(isProcessMap);
   useEffect(() => {
@@ -504,10 +506,11 @@ function EditorInner({
             date: new Date().toISOString().slice(0, 10),
             author: "Talkpush",
             hideNumbers: !showStepNumbers,
+            look,
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isProcessMap, nodes, edges, workflow.clientName, workflow.workflowName, workflow.currentVersion, showStepNumbers]
+    [isProcessMap, nodes, edges, workflow.clientName, workflow.workflowName, workflow.currentVersion, showStepNumbers, look]
   );
   const layoutFindings = useMemo<LayoutFinding[]>(() => (scene ? lintLayout(scene) : []), [scene]);
   // Lanes: the diagram is drawn as lanes when its steps carry lanes. The sidebar and the step panel edit them.
@@ -2287,7 +2290,7 @@ function EditorInner({
 
   function handleProcessMapArrange() {
     if (nodes.length === 0) return;
-    const laid = applyLayout(nodes, edges, layoutDiagram(nodes, edges));
+    const laid = applyLayout(nodes, edges, layoutDiagram(nodes, edges, look));
     const moved = movedCount(laid);
     if (moved === 0) {
       toast.info("Everything is already in place");
@@ -2307,7 +2310,7 @@ function EditorInner({
   function arrangeAfter(transform: (steps: FlowNode[]) => FlowNode[], what: string, done: string) {
     if (nodes.length === 0) return;
     const changed = transform(nodes);
-    const laid = applyLayout(changed, edges, layoutDiagram(changed, edges));
+    const laid = applyLayout(changed, edges, layoutDiagram(changed, edges, look));
     const moved = movedCount(laid);
     const apply = () => commitArranged(laid, done);
     if (moved === 0) {
@@ -2357,6 +2360,25 @@ function EditorInner({
       if (next === "process_map") setTimeout(() => handleProcessMapArrangeSoon(), 100);
     } catch {
       toast.error("Could not change the style");
+    }
+  }
+  /** Switches a map between its two looks. Sizes change with the look, so the steps are arranged again (after a preview of how many move). */
+  async function handleLookChange(next: "original" | "readable") {
+    if (next === look) return;
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ look: next }),
+      });
+      if (!res.ok) throw new Error();
+      const body = await res.json();
+      if (typeof body.revision === "number") onServerRevision(body.revision);
+      setLook(next);
+      toast.success(next === "readable" ? "Easier-to-read look on" : "Original look on");
+      setTimeout(() => handleProcessMapArrangeSoon(), 100);
+    } catch {
+      toast.error("Could not change the look");
     }
   }
   // After switching style the canvas needs one render before a layout can be previewed.
@@ -2688,7 +2710,7 @@ function EditorInner({
     <StepNumberContext.Provider value={{ visible: showStepNumbers }}>
     <ProcessMapContext.Provider value={scene}>
     {isProcessMap && <ProcessMapDefs />}
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+    <div className={`flex flex-col h-screen w-screen overflow-hidden bg-background${look === "readable" ? " font-workflow" : ""}`}>
       {/* ── Top bar ── */}
       <EditorToolbar
         clientName={workflow.clientName}
@@ -2733,6 +2755,7 @@ function EditorInner({
           fileVersion: workflow.currentVersion ? `v${workflow.currentVersion}` : "draft",
           date: new Date().toISOString().slice(0, 10),
           author: "Talkpush",
+          look,
         }}
         onExportPdf={handleExportPdf}
         onExportSelectedPdf={handleExportSelectedPdf}
@@ -2779,6 +2802,8 @@ function EditorInner({
                   onAddAnnotation={addAnnotationToCanvas}
                   diagramStyle={diagramStyle}
                   onDiagramStyleChange={handleDiagramStyleChange}
+                  look={look}
+                  onLookChange={handleLookChange}
                   lanePanel={isProcessMap ? lanePanel : undefined}
                   outline={outlineItems}
                   selectedStepId={selectedNodeId}

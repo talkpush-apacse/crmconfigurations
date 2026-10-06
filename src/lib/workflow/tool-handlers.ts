@@ -66,7 +66,7 @@ const READ_ONLY_TOOLS = new Set([
 ]);
 
 /** Changes that touch many steps at once. A snapshot is taken first, so nothing a person did by hand can be lost. */
-const SNAPSHOT_FIRST_TOOLS = new Set(["auto_layout", "delete_node", "design_campaign_structure", "clear_campaign_structure", "create_workflow_from_flow_table", "set_diagram_style", "set_diagram_layout", "delete_page"]);
+const SNAPSHOT_FIRST_TOOLS = new Set(["auto_layout", "delete_node", "design_campaign_structure", "clear_campaign_structure", "create_workflow_from_flow_table", "set_diagram_style", "set_diagram_look", "set_diagram_layout", "delete_page"]);
 
 export class McpToolInputError extends Error {
   constructor(message: string) {
@@ -385,6 +385,8 @@ function normalizeWorkflowSpecInput(args: ToolArguments): WorkflowSpecInput {
     layoutDirection:
       args.layoutDirection === "LR" ? "LR" : "TB",
     diagramStyle: args.diagramStyle === "classic" ? "classic" : "process_map",
+    // A new workflow is "readable"; only an explicit "original" keeps the old look.
+    look: args.look === "original" ? "original" : "readable",
   };
 }
 
@@ -535,7 +537,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
   let finalEdges = edges;
   if (spec.autoLayout !== false && nodes.length > 0) {
     const layouted = (processMap
-      ? applyLayout(nodes, edges, layoutDiagram(nodes, edges))
+      ? applyLayout(nodes, edges, layoutDiagram(nodes, edges, spec.look))
       : getLayoutedElements(nodes, edges, spec.layoutDirection ?? "TB")) as {
       nodes: FlowNode[];
       edges: FlowEdge[];
@@ -564,6 +566,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
       edges: toJson(finalEdges),
       pages: toJson([initialPage]),
       diagramStyle: processMap ? "process_map" : "classic",
+      look: spec.look === "original" ? "original" : "readable",
       numberingScheme: processMap ? "decimal" : "letters",
     },
     select: {
@@ -725,6 +728,8 @@ async function duplicateWorkflow(args: ToolArguments, context: ToolContext) {
       workflowName,
       description: description ?? null,
       templateId: source.templateId,
+      // A copy looks like the map it was copied from.
+      look: source.look,
       nodes: toJson(cloned.nodes),
       edges: toJson(cloned.edges),
       pages: toJson([initialPage]),
@@ -840,7 +845,7 @@ async function validateWorkflowTool(args: ToolArguments) {
   const { nodes, edges } = getCanvas(workflow);
   const findings = validateWorkflow(nodes, edges, { diagramStyle: workflow.diagramStyle });
   const processMap = workflow.diagramStyle === "process_map";
-  const scene = processMap ? buildScene(nodes, edges, { clientName: workflow.clientName, workflowName: workflow.workflowName }) : null;
+  const scene = processMap ? buildScene(nodes, edges, { clientName: workflow.clientName, workflowName: workflow.workflowName, look: workflow.look }) : null;
   const layout = scene ? lintLayout(scene) : [];
   // Text a client should not see (ticket numbers, internal ids, tenant addresses): flagged for a person to look at, never removed.
   const sanitization = lintPagesForClient(
@@ -1161,7 +1166,7 @@ async function addNode(args: ToolArguments) {
 
   // A note attached to a step goes beside that step now, not at the bottom-left until someone runs auto_layout.
   if (workflow.diagramStyle === "process_map" && type === "note") {
-    const spot = positionForNewNote(nodes, edges, node);
+    const spot = positionForNewNote(nodes, edges, node, workflow.look);
     if (spot) node.position = spot;
   }
 
@@ -1304,7 +1309,7 @@ async function addEdgeTool(args: ToolArguments) {
   // A connector to or from a note is drawn from the side the layout would use, not the default right-to-bottom.
   if (workflow.diagramStyle === "process_map" && [sourceNodeId, targetNodeId].some((id) => nodes.find((n) => n.id === id)?.data?.type === "note")) {
     try {
-      const route = layoutDiagram(nodes, [...nextEdges, edge]).edges.get(edge.id);
+      const route = layoutDiagram(nodes, [...nextEdges, edge], workflow.look).edges.get(edge.id);
       if (route) Object.assign(edge, { sourceHandle: route.sourceHandle, targetHandle: route.targetHandle });
     } catch {
       /* keep the default handles */
@@ -1385,7 +1390,7 @@ async function autoLayout(args: ToolArguments) {
   // Process Map workflows use the spine layout (main path on one row, branches dropping below).
   const layouted =
     workflow.diagramStyle === "process_map"
-      ? (applyLayout(nodes, edges, layoutDiagram(nodes, edges)) as { nodes: FlowNode[]; edges: FlowEdge[] })
+      ? (applyLayout(nodes, edges, layoutDiagram(nodes, edges, workflow.look)) as { nodes: FlowNode[]; edges: FlowEdge[] })
       : (getLayoutedElements(nodes, edges, direction) as { nodes: FlowNode[]; edges: FlowEdge[] });
 
   await prisma.workflowProject.update({

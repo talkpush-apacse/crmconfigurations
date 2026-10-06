@@ -197,6 +197,7 @@ Pattern for pills: soft fill at about 10% of the status color, text in ink or ac
 **Display Font:** Space Grotesk (with system-ui fallback)
 **Body Font:** DM Sans in the staff face (the approved clean geometric fallback for the licensed Polymath Text), Space Grotesk end to end in the client face
 **Label Font:** Space Grotesk, uppercase, wide tracking
+**Workflow Builder:** a map has a look (stored on the map). New maps use the "readable" look: Inter in the diagram, the client page and the editor, because it stays legible at 12 to 13px; body text in the diagram is 13px, small print 11 to 12px. Existing maps keep the "original" look (DM Sans, 11px) until someone switches them in the editor's Layout panel. The rest of the app keeps the faces above.
 
 **Character:** Tight, modern, slightly condensed headings over calm, readable body text. Polymath Display and Polymath Text are the licensed originals and are not available, so Space Grotesk is the approved substitute. If Polymath files arrive, swap the font tokens only.
 

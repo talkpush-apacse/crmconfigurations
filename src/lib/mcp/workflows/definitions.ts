@@ -217,6 +217,11 @@ const workflowSpecProperties = {
     enum: ["process_map", "classic"],
     description: "Defaults to process_map: the Lucid-style diagram with decimal numbering. Use classic only if asked.",
   },
+  look: {
+    type: "string",
+    enum: ["readable", "original"],
+    description: "Defaults to readable (bigger text, calmer colour, accent main path). Use original only to match an older map.",
+  },
   layoutDirection: {
     type: "string",
     enum: ["TB", "LR"],

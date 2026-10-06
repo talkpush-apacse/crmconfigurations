@@ -52,6 +52,7 @@ export async function PUT(
     const body = await request.json();
     const hasCanvasUpdate =
       body.diagramStyle !== undefined ||
+      body.look !== undefined ||
       body.nodes !== undefined ||
       body.edges !== undefined ||
       body.viewport !== undefined ||
@@ -106,6 +107,12 @@ export async function PUT(
       }
       data.diagramStyle = body.diagramStyle;
       data.numberingScheme = body.diagramStyle === "process_map" ? "decimal" : "letters";
+    }
+    if (body.look !== undefined) {
+      if (body.look !== "original" && body.look !== "readable") {
+        return NextResponse.json({ error: "look must be original or readable" }, { status: 400 });
+      }
+      data.look = body.look;
     }
     if (body.nodes !== undefined)
       data.nodes = structuredClone(body.nodes);

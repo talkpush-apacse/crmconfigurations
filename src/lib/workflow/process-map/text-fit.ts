@@ -116,9 +116,9 @@ export const charsPerLine = (width: number, pad: number = PM.type.pad) => Math.m
 
 function numberRuns(numbers: NodeNumbers, lead: string | null): Run[] {
   const runs: Run[] = [];
-  if (numbers.spine !== undefined) runs.push({ text: circled(numbers.spine), bold: true, size: 15 });
+  if (numbers.spine !== undefined) runs.push({ text: circled(numbers.spine), bold: true, size: PM.type.numeral });
   if (lead) runs.push({ text: runs.length ? ` ${lead}` : lead, bold: true });
-  if (numbers.branch) runs.push({ text: runs.length ? ` ${numbers.branch}` : numbers.branch, muted: true, size: 9 });
+  if (numbers.branch) runs.push({ text: runs.length ? ` ${numbers.branch}` : numbers.branch, muted: true, size: PM.type.branch });
   return runs;
 }
 
@@ -155,7 +155,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
 
   if (kind === "jump") {
     const text = d.jumpText ? String(d.jumpText) : numbers.jumpTarget ? `→ Go to step ${numbers.jumpTarget.includes(".") ? numbers.jumpTarget : circled(Number(numbers.jumpTarget))}` : "→ Go to step";
-    return { kind, width: S.jumpD, height: S.jumpD, lines: wrapText(text, 10).map((t) => plain(t, { size: 10 })), align: "center", badgeSpace: 0, badge: null, people: false };
+    return { kind, width: S.jumpD, height: S.jumpD, lines: wrapText(text, 10).map((t) => plain(t, { size: PM.type.small })), align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
   if (kind === "note") {
@@ -173,7 +173,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   const head = numberRuns(numbers, lead);
   if (head.length) lines.push({ runs: head });
   if (label) for (const t of wrapRuns(label, max)) lines.push(t);
-  if (notes && notes !== label) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t, { size: 11 }));
+  if (notes && notes !== label) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t, { size: PM.type.small }));
   // "Channel · When" for automated messages, calls and alerts; for any other step, just its timing.
   const when = channelWhen(node);
   if (when) for (const t of wrapText(when, max)) lines.push(plain(t, { italic: true }));

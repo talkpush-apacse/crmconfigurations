@@ -95,3 +95,69 @@ test("a 'use client' line stays the first statement of the files that have one (
   });
   assert.deepEqual(bad, []);
 });
+
+test("the original look is the default and keeps the old numbers; the readable look is opt-in", async () => {
+  const { PM, PM_ORIGINAL, PM_READABLE, withLook, tokensFor } = await import("../src/lib/workflow/process-map/tokens");
+  assert.equal(PM.type.body, 11, "no look switched on = the original look");
+  assert.equal(PM.size.processW, 240);
+  assert.equal(tokensFor(undefined), PM_ORIGINAL);
+  assert.equal(tokensFor("original"), PM_ORIGINAL);
+  assert.equal(tokensFor("anything else"), PM_ORIGINAL);
+  assert.equal(tokensFor("readable"), PM_READABLE);
+  assert.equal(PM_READABLE.type.body, 13);
+  assert.ok(PM_READABLE.type.small >= 12 && PM_READABLE.type.branch >= 11, "small print stays readable");
+  assert.equal(withLook("readable", () => PM.type.body), 13);
+  assert.equal(PM.type.body, 11, "put back afterwards");
+  assert.throws(() => withLook("readable", () => { throw new Error("boom"); }));
+  assert.equal(PM.type.body, 11, "put back even when the work fails");
+  assert.equal(withLook("readable", () => withLook("original", () => PM.type.body)), 11, "looks nest");
+});
+
+test("the readable look passes the contrast checks", async () => {
+  const { PM_READABLE: R, PM_ORIGINAL: O } = await import("../src/lib/workflow/process-map/tokens");
+  const lum = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  assert.ok(contrast("#FFFFFF", R.colors.laneLabel) >= 4.5, "lane label");
+  assert.ok(contrast("#FFFFFF", R.colors.containerTab) >= 4.5, "tab");
+  assert.ok(contrast("#FFFFFF", R.colors.accent) >= 4.5, "accent on white");
+  assert.ok(contrast("#FFFFFF", R.colors.muted) >= 4.5, "muted text");
+  assert.ok(contrast("#FFFFFF", O.colors.laneLabel) < 4.5, "(the original lane label is the one that failed)");
+});
+
+test("a map with no look, or look 'original', is drawn exactly as before; look 'readable' is drawn bigger with an accent main path", async () => {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createElement } = await import("react");
+  const { SceneSvg } = await import("../src/components/workflow/process-map/shapes");
+  const { buildScene } = await import("../src/lib/workflow/process-map/scene");
+  const { layoutDiagram, applyLayout } = await import("../src/lib/workflow/process-map/diagram-layout");
+  const { lintLayout } = await import("../src/lib/workflow/process-map/lint");
+  const { PM_READABLE, PM_ORIGINAL } = await import("../src/lib/workflow/process-map/tokens");
+  const { decision, end } = await import("./fixtures/process-map-fixtures");
+  const nodes = [start("s", "Applies"), decision("d", "Pass?"), system("a", "Sends invite", "message"), end("e", "Rejected", "failure")];
+  const edges = [edge("e1", "s", "d", "", { isPrimary: true, isHappyPath: true }), edge("e2", "d", "a", "Yes", { isPrimary: true, isHappyPath: true }), edge("e3", "d", "e", "No")];
+  const draw = (look?: string) => {
+    const laid = applyLayout(nodes, edges, layoutDiagram(nodes, edges, look));
+    const scene = buildScene(laid.nodes, laid.edges, { clientName: "X", workflowName: "Y", look } as any);
+    return { scene, svg: renderToStaticMarkup(createElement(SceneSvg, { scene })) };
+  };
+  const none = draw(undefined);
+  const original = draw("original");
+  assert.equal(none.svg, original.svg, "no look is the same as original");
+  assert.equal(none.scene.look, "original");
+  assert.ok(original.svg.includes('font-size="11"') && !original.svg.includes("var(--font-inter)"), "original: 11px, DM Sans");
+  assert.ok(!original.svg.includes(PM_READABLE.colors.accent), "original: no accent colour anywhere");
+  assert.ok(original.svg.includes(PM_ORIGINAL.colors.decision), "original: the blue decision");
+  assert.equal(original.scene.shapes.find((s) => s.kind === "process")!.rect.w, 240);
+
+  const readable = draw("readable");
+  assert.equal(readable.scene.look, "readable");
+  assert.equal(readable.scene.shapes.find((s) => s.kind === "process")!.rect.w, 264);
+  assert.ok(readable.svg.includes('font-size="13"') && readable.svg.includes("var(--font-inter)"), "readable: 13px, Inter");
+  assert.ok(readable.svg.includes(`stroke="${PM_READABLE.colors.accent}" stroke-width="3.2"`), "main path accent and thick");
+  assert.ok(readable.svg.includes(`stroke="${PM_READABLE.colors.branchLine}" stroke-width="1.4"`), "branch thin grey");
+  assert.ok(readable.svg.includes(PM_READABLE.colors.decision) && !readable.svg.includes(PM_ORIGINAL.colors.decision), "readable: the quiet decision");
+  assert.equal(lintLayout(readable.scene).filter((f) => f.severity === "high").length, 0, "no serious layout findings in the readable look");
+});

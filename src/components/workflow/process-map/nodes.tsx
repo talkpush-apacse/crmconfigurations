@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { fillFor, shapeKindOf } from "@/lib/workflow/process-map/model";
 import type { Scene, SceneShape } from "@/lib/workflow/process-map/scene";
 import { boxFor } from "@/lib/workflow/process-map/text-fit";
+import { withLook } from "@/lib/workflow/process-map/tokens";
 import { pathFromPoints } from "@/lib/workflow/process-map/route";
 import { ArrowDefs, ContainerBody, EdgeBody, LegendBody, ShapeBody, TableBody, TitleBody } from "./shapes";
 import { useProcessMapScene } from "./context";
@@ -17,9 +18,11 @@ const DOT = "!h-2.5 !w-2.5 !border-2 !border-white !bg-muted-foreground opacity-
 function shapeFor(scene: Scene | null, id: string, node: any): SceneShape {
   const hit = scene?.shapes.find((s) => s.id === id);
   if (hit) return hit;
+  return withLook(scene?.look, () => {
   const box = boxFor(node);
   const f = fillFor(node);
   return { id, kind: shapeKindOf(node), node, box, rect: { x: 0, y: 0, w: box.width, h: box.height }, fill: f.fill, stroke: f.stroke, dashed: f.dashed, textColor: f.textColor };
+  });
 }
 
 /** One step of a Process Map: drawn by the shared SVG shapes, with a connection dot on each side. */
@@ -31,7 +34,7 @@ export function ProcessMapNode({ id, type, data, selected }: NodeProps) {
     <div className="group relative" style={{ width: w, height: h }}>
       <svg width={w} height={h} style={{ overflow: "visible", display: "block" }} aria-label={stripInline(String((data as any)?.label ?? "Step"))}>
         {selected && <rect x={-5} y={-5} width={w + 10} height={h + 10} rx={shape.kind === "start" || shape.kind === "end" ? (h + 10) / 2 : 6} fill="none" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 3" />}
-        <ShapeBody shape={shape} />
+        <ShapeBody shape={shape} look={scene?.look} />
       </svg>
       <Handle id="top" type="source" position={Position.Top} className={DOT} />
       <Handle id="right" type="source" position={Position.Right} className={DOT} />
@@ -49,7 +52,7 @@ export function ProcessMapEdge({ id, selected }: EdgeProps) {
   return (
     <g className={cn(selected && "pm-edge-selected")}>
       <path d={pathFromPoints(edge.points, 0)} fill="none" stroke="transparent" strokeWidth={16} />
-      <EdgeBody edge={edge} />
+      <EdgeBody edge={edge} look={scene?.look} />
       {selected && <path d={pathFromPoints(edge.points, 0)} fill="none" stroke="#2563eb" strokeWidth={2.5} strokeOpacity={0.5} />}
     </g>
   );
@@ -61,7 +64,7 @@ export function ProcessMapTable({ id, selected }: NodeProps) {
   if (!table) return null;
   return (
     <svg width={table.rect.w} height={table.rect.h} style={{ overflow: "visible", display: "block", outline: selected ? "2px dashed var(--ring)" : undefined, outlineOffset: 4 }}>
-      <TableBody table={table} />
+      <TableBody table={table} look={scene?.look} />
     </svg>
   );
 }
@@ -78,7 +81,7 @@ export function ProcessMapContainer({ id }: NodeProps) {
   const scene = useProcessMapScene();
   const c = scene?.containers.find((x) => x.id === id);
   if (!c) return null;
-  return <Fixed w={c.rect.w} h={c.rect.h}><ContainerBody container={c} /></Fixed>;
+  return <Fixed w={c.rect.w} h={c.rect.h}><ContainerBody container={c} look={scene?.look} /></Fixed>;
 }
 
 export function ProcessMapTitle() {
@@ -95,9 +98,10 @@ export function ProcessMapLegend() {
 
 /** Arrowhead definitions, placed once in the page so every connector can point to them. */
 export function ProcessMapDefs() {
+  const scene = useProcessMapScene();
   return (
     <svg width={0} height={0} style={{ position: "absolute" }} aria-hidden>
-      <ArrowDefs />
+      <ArrowDefs look={scene?.look} />
     </svg>
   );
 }

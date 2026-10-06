@@ -74,6 +74,7 @@ export const v2Definitions: McpToolDefinition[] = [
         workflowName: { type: "string" },
         description: { type: "string" },
         entryLabel: { type: "string", description: "Name of the entry channel shape, for example 'Employee has a concern'. Use entryLabels when there is more than one way in." },
+        look: { type: "string", enum: ["readable", "original"], description: "Defaults to readable (bigger text, calmer colour, accent main path). Use original only to match an older map." },
         layout: { type: "string", enum: ["auto", "lanes", "spine"], description: "auto (default): lanes when the table has 3 or more different actors, any outside system or stages, otherwise the classic single-row layout. 'lanes' or 'spine' (single row) forces one. The reply says which was used and why: tell the person." },
         externalLanes: { type: "array", items: { type: "string" }, description: "Lanes that are other systems, for example ['Assessment platform', 'HRIS']. Drawn as blue lanes; data crossing to or from them is a dashed line." },
         laneOrder: { type: "array", items: { type: "string" }, description: "Lane names in the order they should appear, top to bottom. Default: the order they first act." },
@@ -125,6 +126,11 @@ export const v2Definitions: McpToolDefinition[] = [
     name: "set_diagram_style",
     description: "Switch a workflow between the Classic look and the Process Map style (decimal numbering, spine layout). Switching to Process Map arranges every page. A snapshot is taken first.",
     inputSchema: object({ workflowId, style: { type: "string", enum: ["classic", "process_map"] } }, ["workflowId", "style"]),
+  },
+  {
+    name: "set_diagram_look",
+    description: "Switch a Process Map between its two looks: \"original\" (how every map looked before) and \"readable\" (bigger text, calmer colour, accent main path, Inter). New maps are readable; existing maps stay original until switched. Every page is arranged again for the new look. A snapshot is taken first.",
+    inputSchema: object({ workflowId, look: { type: "string", enum: ["original", "readable"] } }, ["workflowId", "look"]),
   },
   { name: "list_access", description: "Who can open a workflow: shared links (level, expiry, passcode on/off), named people, and general access. Secret addresses are never listed.", inputSchema: object({ workflowId }, ["workflowId"]) },
   {

@@ -33,6 +33,7 @@ import { applyOps, OpError, type OpPage, type WorkflowOp } from "@/lib/workflow/
 import { buildOutline, walkChoices, walkStart } from "@/lib/workflow/outline";
 import { buildScene } from "@/lib/workflow/process-map/scene";
 import { boxFor } from "@/lib/workflow/process-map/text-fit";
+import { withLook } from "@/lib/workflow/process-map/tokens";
 import { buildRenderEdges } from "@/lib/workflow/render-edges";
 import { computeOverlay } from "@/lib/workflow/suggestion-overlay";
 import { WORKFLOW_STATUS_CONFIG, type WorkflowStatus } from "@/lib/workflow/types";
@@ -173,8 +174,9 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
       date: new Date(data.workflow.updatedAt).toISOString().slice(0, 10),
       author: data.view.publishedBy ?? "Talkpush",
       hideNumbers: !showNumbers,
+      look: data.workflow.look,
     });
-  }, [isProcessMap, pageNodes, pageEdges, overlay, data.workflow.clientName, data.workflow.workflowName, data.workflow.updatedAt, data.view.versionNumber, data.view.publishedBy, showNumbers]);
+  }, [isProcessMap, pageNodes, pageEdges, overlay, data.workflow.look, data.workflow.clientName, data.workflow.workflowName, data.workflow.updatedAt, data.view.versionNumber, data.view.publishedBy, showNumbers]);
 
   const draftAddedIds = useMemo(
     () => new Set(draftOps.filter((o): o is Extract<WorkflowOp, { op: "addNode" }> => o.op === "addNode").map((o) => o.node.id)),
@@ -513,7 +515,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
     const sizeOf = (n: any): React.CSSProperties => {
       if (!isProcessMap || n.type === "table") return {};
       const shape = scene?.shapes.find((s) => s.id === n.id);
-      const box = shape ? null : boxFor(n);
+      const box = shape ? null : withLook(scene?.look, () => boxFor(n));
       return { width: shape?.rect.w ?? box!.width, height: shape?.rect.h ?? box!.height };
     };
     const real = pageNodes.map((n) => {
@@ -580,7 +582,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
   return (
     <StepNumberContext.Provider value={{ visible: showNumbers }}>
       <ProcessMapContext.Provider value={scene}>
-        <div className="flex h-dvh flex-col bg-background text-foreground">
+        <div className={cn("flex h-dvh flex-col bg-background text-foreground", data.workflow.look === "readable" && "font-workflow")}>
           {isProcessMap && <ProcessMapDefs />}
           {previewLabel && (
             <div role="status" className="shrink-0 bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
@@ -697,7 +699,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
 
           <div className="flex min-h-0 flex-1">
             {/* left panel */}
-            <div className={cn("w-full min-w-0 flex-col border-r border-border bg-card lg:flex lg:w-80 lg:shrink-0", mobileView === "diagram" ? "hidden" : "flex")}>
+            <div className={cn("w-full min-w-0 flex-col border-r border-border bg-card lg:flex lg:w-[22rem] lg:shrink-0", mobileView === "diagram" ? "hidden" : "flex")}>
               <div className="hidden shrink-0 border-b border-border lg:flex" role="tablist" aria-label="Panel">
                 {([["outline", "Outline"], ["comments", `Comments${openComments ? ` (${openComments})` : ""}`], ...(data.you.level !== "viewer" ? [["suggestions", `Suggestions${pendingSuggestions.length ? ` (${pendingSuggestions.length})` : ""}`]] : [])] as [string, string][]).map(([id, label]) => (
                   <button key={id} type="button" role="tab" aria-selected={panel === id} onClick={() => setLeftTab(id as typeof leftTab)} className={cn("min-h-10 flex-1 border-b-2 px-2 text-xs", panel === id ? "border-primary font-semibold" : "border-transparent text-muted-foreground")}>
