@@ -4,9 +4,17 @@ import { isRole, normaliseRole, roleMayCall } from "../src/lib/roles";
 import { checkRemoval, checkRoleChange, isTalkpushEmail } from "../src/lib/users-rules";
 import { CHECKLIST_READ_TOOLS } from "../src/lib/mcp/checklist-read-tools";
 import { buildMcpServer, defineTool, type ToolModule } from "../src/lib/mcp/toolkit";
-import { trackerModule } from "../src/lib/mcp/tracker";
 import { z } from "zod";
 import { readFileSync } from "node:fs";
+
+// A few of these tests load a whole connector, which opens the database connection when it is imported.
+// They only run against a LOCAL database (TRACKER_TEST_DATABASE_URL pointing at localhost); skipped otherwise.
+const testDb = process.env.TRACKER_TEST_DATABASE_URL ?? "";
+const isLocalDb = /^postgres(ql)?:\/\/[^@]*@?(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(testDb);
+if (isLocalDb) {
+  process.env.DATABASE_URL_DIRECT = testDb;
+}
+const skip = !isLocalDb && "set TRACKER_TEST_DATABASE_URL to a localhost database";
 
 test("an editor may do anything; a read-only login may only read", () => {
   for (const m of ["GET", "POST", "PUT", "PATCH", "DELETE"]) assert.equal(roleMayCall("editor", m, "/api/anything"), true, m);
@@ -79,7 +87,8 @@ test("a read-only connection is only offered tools that look at data", () => {
   assert.deepEqual(names(true), ["t_read"]);
 });
 
-test("the tracker's read-only connection has no tool that changes data", () => {
+test("the tracker's read-only connection has no tool that changes data", { skip }, async () => {
+  const { trackerModule } = await import("../src/lib/mcp/tracker");
   const server = buildMcpServer({ name: "t", version: "1" }, [trackerModule], { actor: { label: "x", via: "mcp" }, readOnly: true }) as unknown as {
     _registeredTools: Record<string, unknown>;
   };
@@ -100,7 +109,7 @@ test("the checklist read-only list is real and contains nothing that sounds like
   }
 });
 
-test("the checklist connector for a read-only login offers exactly the read tools; an editor still gets all of them", async () => {
+test("the checklist connector for a read-only login offers exactly the read tools; an editor still gets all of them", { skip }, async () => {
   const { createMcpServer } = await import("../src/lib/mcp-server");
   const names = (readOnly: boolean) =>
     Object.keys((createMcpServer({ readOnly }) as unknown as { _registeredTools: Record<string, unknown> })._registeredTools).sort();
@@ -111,7 +120,7 @@ test("the checklist connector for a read-only login offers exactly the read tool
   assert.ok(readOnly.length < all.length);
 });
 
-test("the combined connector for a read-only login offers no tool that changes data in any area", async () => {
+test("the combined connector for a read-only login offers no tool that changes data in any area", { skip }, async () => {
   const { createCombinedMcpServer } = await import("../src/lib/mcp/combined");
   const server = createCombinedMcpServer("https://example.test", { actor: { label: "x", via: "mcp" }, readOnly: true }) as unknown as {
     _registeredTools: Record<string, unknown>;
@@ -121,7 +130,7 @@ test("the combined connector for a read-only login offers no tool that changes d
   for (const name of offered) assert.doesNotMatch(name, /^(add|create|update|set|archive|record|delete|apply|clone|edit|restore|refresh|generate|publish|share|invite|revoke|move|duplicate|auto|design|clear|accept|reject|propose)_/, name);
 });
 
-test("a read-only connection can run the gap check but cannot save its findings", async () => {
+test("a read-only connection can run the gap check but cannot save its findings", { skip }, async () => {
   const { createWorkflowModule } = await import("../src/lib/mcp/workflows");
   const mod = createWorkflowModule("https://example.test");
   const tool = mod.tools.find((t) => t.name === "run_gap_check");

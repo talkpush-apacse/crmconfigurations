@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
 /**
  * The standard plan against a real database: loading the catalogue, building a project's plan,
@@ -21,7 +22,9 @@ async function setup() {
   const { NextRequest } = await import("next/server");
   const { createToken } = await import("../src/lib/auth");
   const { prisma } = await import("../src/lib/db");
-  const cookie = `admin_token=${createToken("test-user-not-real")}`;
+  // Staff routes look the login up in the database (requireAuth), so the test cookie needs a real editor login.
+  const staffUser = await prisma.adminUser.create({ data: { email: `staff-${randomUUID()}@example.invalid`, role: "editor" }, select: { id: true } });
+  const cookie = `admin_token=${createToken(staffUser.id)}`;
   const call = async (handler: any, url: string, opts: { method?: string; body?: unknown; params?: Json } = {}) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     const req = new NextRequest(`http://localhost${url}`, {
       method: opts.method ?? "GET",
@@ -32,11 +35,11 @@ async function setup() {
     const text = await res.text();
     return { status: res.status, body: (text ? JSON.parse(text) : {}) as Json };
   };
-  return { call, prisma };
+  return { call, prisma, staffUserId: staffUser.id };
 }
 
 test("the standard plan: load, tailor, tick and untick", { skip }, async () => {
-  const { call, prisma } = await setup();
+  const { call, prisma, staffUserId } = await setup();
   // Both test files use the one global plan catalogue, and the test runner runs files at the same time.
   // A database lock makes them take turns (the pool has one connection, so the lock lasts the whole test).
   await prisma.$executeRaw`SELECT pg_advisory_lock(727001)`;
@@ -204,6 +207,7 @@ test("the standard plan: load, tailor, tick and untick", { skip }, async () => {
     await prisma.trackerProject.deleteMany({ where: { id: { in: [project.id, bare.id] } } });
     await prisma.trackerPerson.deleteMany({ where: { id: owner.id } });
     await prisma.trackerAccount.deleteMany({ where: { id: account.id } });
+    await prisma.adminUser.deleteMany({ where: { id: staffUserId } });
     await prisma.$executeRaw`SELECT pg_advisory_unlock(727001)`;
     await prisma.$disconnect();
   }
