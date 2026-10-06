@@ -360,7 +360,7 @@ function ProjectWorkspace() {
         onSaved={() => void load()}
       />
       {printing && <PrintReport view={printing.view} detail={detail} visible={printing.visible} onDone={printDone} onError={printFailed} />}
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} onContactsChanged={load} />
       <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ProjectDialog
         open={settingsOpen}
