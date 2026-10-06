@@ -261,6 +261,8 @@ export interface WorkflowProject {
   revision?: number;
   /** How the diagram is drawn: the original look, or the Lucid-style Process Map. */
   diagramStyle?: "classic" | "process_map";
+  /** "original" is how every map looked before the readability pass; new maps are "readable". */
+  look?: "original" | "readable";
   numberingScheme?: "letters" | "decimal";
   shareVersionId?: string | null;
   createdAt: string;
@@ -396,6 +398,8 @@ export interface WorkflowSpecInput {
   layoutDirection?: "TB" | "LR";
   /** Defaults to the Process Map style. */
   diagramStyle?: "classic" | "process_map";
+  /** Defaults to "readable" for a new workflow. */
+  look?: "original" | "readable";
 }
 
 // ─── Status Config ──────────────────────────────────────────────────

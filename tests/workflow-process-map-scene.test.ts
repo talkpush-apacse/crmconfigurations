@@ -64,9 +64,8 @@ test("tag, Action Type and icon are strictly one to one, and a folder move is ne
   assert.equal(tagOf(system("s", "x", "alert")), "[ALERT]");
 });
 
-test("text fit: lines break by the character-width formula and boxes grow by one line height per line", () => {
-  assert.equal(charsPerLine(264), Math.floor((264 - 32) / PM.type.charW));
-  assert.equal(charsPerLine(264), 30);
+test("text fit: lines break by the 7px-per-character formula and boxes grow by 18px per line", () => {
+  assert.equal(charsPerLine(240), 29);
   assert.deepEqual(wrapText("one two three", 7), ["one two", "three"]);
   assert.deepEqual(wrapText("supercalifragilistic", 8), ["supercal", "ifragili", "stic"]);
   const short = boxFor(system("a", "Short", "system"));
@@ -74,7 +73,7 @@ test("text fit: lines break by the character-width formula and boxes grow by one
   assert.equal(short.width, PM.size.processW);
   assert.ok(long.height > short.height);
   assert.equal(long.width, short.width, "boxes of one kind share one width");
-  assert.ok(long.height >= 32 + long.lines.length * PM.type.lineH - 1);
+  assert.ok(long.height >= 32 + long.lines.length * 18 - 1);
 });
 
 test("terminators are not numbered and never show a number, even if numbers are given", () => {

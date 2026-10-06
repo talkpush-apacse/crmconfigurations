@@ -18,6 +18,7 @@ export function clientDownloadMenu(ctx: ViewerExportContext) {
         fileVersion: ctx.view.versionNumber ? `v${ctx.view.versionNumber}` : "draft",
         date: new Date(when).toISOString().slice(0, 10),
         author: ctx.view.publishedBy ?? "Talkpush",
+        look: ctx.workflow.look,
       }}
     />
   );

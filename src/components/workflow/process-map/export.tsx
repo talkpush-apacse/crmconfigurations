@@ -117,6 +117,7 @@ export function printPdf(pages: ExportPage[], meta: ExportMeta, title: string): 
   const win = window.open("", "_blank");
   if (!win) return false;
   const scenes = pages.map((p) => ({ page: p, scene: sceneFor(p, meta) }));
+  const readable = scenes.some(({ scene }) => scene.look === "readable");
   const diagrams = scenes
     .map(({ scene }) => {
       const { w, h } = scene.bounds;
@@ -136,8 +137,8 @@ export function printPdf(pages: ExportPage[], meta: ExportMeta, title: string): 
   win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(fileBase(meta))}</title><style>
 ${pageRules}
 @page tbl { size: A4 landscape; margin: 14mm }
-${exportFontCss()}
-html,body{margin:0;padding:0;font-family:${EXPORT_FONT_STACK};color:#1a1a1a}
+${readable ? exportFontCss() : ""}
+html,body{margin:0;padding:0;font-family:${readable ? EXPORT_FONT_STACK : `"DM Sans",system-ui,sans-serif`};color:#1a1a1a}
 .diagram{break-after:page;overflow:hidden}
 .diagram svg{display:block}
 .table{page:tbl;break-before:page}

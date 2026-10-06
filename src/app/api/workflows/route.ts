@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
     const { clientName, workflowName, description, templateId } = body;
     // New workflows use the Process Map style unless the caller asks for the original look.
     const diagramStyle: "classic" | "process_map" = body.diagramStyle === "classic" ? "classic" : "process_map";
+    // New workflows get the readable look; only an explicit "original" keeps the old one.
+    const look: "original" | "readable" = body.look === "original" ? "original" : "readable";
     const sanitizedClientName =
       typeof clientName === "string" ? sanitizeText(clientName) : "";
     const sanitizedWorkflowName =
@@ -142,7 +144,7 @@ export async function POST(request: NextRequest) {
         edges = template.edges;
         // Templates were drawn for the original look; arrange them for the Process Map so they open tidy.
         if (diagramStyle === "process_map" && Array.isArray(nodes) && Array.isArray(edges) && nodes.length > 0) {
-          const laid = applyLayout(nodes as never[], edges as never[], layoutDiagram(nodes as never[], edges as never[]));
+          const laid = applyLayout(nodes as never[], edges as never[], layoutDiagram(nodes as never[], edges as never[], look));
           nodes = laid.nodes;
           edges = laid.edges;
         }
@@ -166,6 +168,7 @@ export async function POST(request: NextRequest) {
         description: sanitizedDescription || null,
         templateId: templateId || null,
         diagramStyle,
+        look,
         numberingScheme: diagramStyle === "process_map" ? "decimal" : "letters",
         nodes: structuredClone(nodes) as unknown as Prisma.InputJsonValue,
         edges: structuredClone(edges) as unknown as Prisma.InputJsonValue,

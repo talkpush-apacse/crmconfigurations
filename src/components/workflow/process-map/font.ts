@@ -4,7 +4,10 @@
  * fonts, so those carry a copy of Inter inside them. Without that they would fall back to whatever font the reader's
  * computer has, and the picture would not look like the screen.
  */
-export const DIAGRAM_FONT = `var(--font-inter), "Inter", system-ui, -apple-system, "Segoe UI", sans-serif`;
+import { PM_READABLE } from "@/lib/workflow/process-map/tokens";
+
+/** The font of the "readable" look. The "original" look keeps its own font and is never touched by anything in this file. */
+export const DIAGRAM_FONT = PM_READABLE.font;
 const EXPORT_FAMILY = "Inter";
 const EXPORT_STACK = `${EXPORT_FAMILY}, system-ui, -apple-system, "Segoe UI", sans-serif`;
 
@@ -71,6 +74,7 @@ export const EXPORT_FONT_STACK = EXPORT_STACK;
 
 /** Makes an SVG string stand on its own: the font name is spelled out and the font itself is embedded when available. */
 export function embedFont(svg: string): string {
+  if (!svg.includes(DIAGRAM_FONT)) return svg; // an original-look map: nothing to do
   const css = exportFontCss();
   const withFamily = svg.split(DIAGRAM_FONT).join(EXPORT_STACK);
   if (!css) return withFamily;

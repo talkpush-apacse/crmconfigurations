@@ -176,6 +176,7 @@ test("diagram style: new workflows are Process Map, a template arrives arranged,
     const row = await prisma.workflowProject.findUniqueOrThrow({ where: { id: created.body.id } });
     assert.equal(row.diagramStyle, "process_map");
     assert.equal(row.numberingScheme, "decimal");
+    assert.equal(row.look, "readable", "a new map gets the readable look");
     if (tpl) {
       const nodes = (row.pages as Json[])[0].nodes as Json[];
       const spineY = new Set(nodes.filter((n) => ["stage", "communication", "wait", "manual_action"].includes(n.type)).map((n) => Math.round(n.position.y)));
@@ -198,6 +199,17 @@ test("diagram style: new workflows are Process Map, a template arrives arranged,
     const { ADMIN } = await import("../src/lib/workflow/access/permissions");
     const payload = await buildClientPagePayload(classic.body.id, { principal: { ...ADMIN, level: "viewer", kind: "link" }, identity: { displayName: null, verified: false } }, { needsName: false });
     assert.equal(payload?.workflow.diagramStyle, "process_map");
+    assert.equal(payload?.workflow.look, "readable", "...and the client page carries the look");
+
+    // The look can be switched either way; anything else is refused; an explicit "original" at creation is honoured.
+    const toOriginal = await call(one.PUT, `/api/workflows/${classic.body.id}`, { method: "PUT", params: { id: classic.body.id }, body: { look: "original" } });
+    assert.equal(toOriginal.status, 200, toOriginal.text);
+    assert.equal((await prisma.workflowProject.findUniqueOrThrow({ where: { id: classic.body.id } })).look, "original");
+    const badLook = await call(one.PUT, `/api/workflows/${classic.body.id}`, { method: "PUT", params: { id: classic.body.id }, body: { look: "fancy" } });
+    assert.equal(badLook.status, 400);
+    const keepOld = await call(list.POST, "/api/workflows", { method: "POST", body: { clientName: "Style test", workflowName: "Old look flow", look: "original" } });
+    ids.push(keepOld.body.id);
+    assert.equal((await prisma.workflowProject.findUniqueOrThrow({ where: { id: keepOld.body.id } })).look, "original");
   } finally {
     for (const id of ids) await prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
     await prisma.$disconnect();

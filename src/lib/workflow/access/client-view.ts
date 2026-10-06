@@ -112,6 +112,8 @@ export interface ClientWorkflowDto {
   viewport: unknown;
   pages: PageLike[];
   diagramStyle: "classic" | "process_map";
+  /** How the diagram is drawn: "original" (every map before the readability pass) or "readable". */
+  look: "original" | "readable";
   /** Latest decision only, without the reviewer's name or comment (other reviewers' details are not for clients). */
   feedback: { action: string; createdAt: string | Date }[];
   pinnedVersion: unknown;
@@ -135,6 +137,7 @@ export function buildClientWorkflowDto(
     pages: unknown;
     showFeasibility?: boolean;
     diagramStyle?: string;
+    look?: string;
   },
   feedback: { action: string; createdAt: string | Date }[],
   pinnedVersion: unknown,
@@ -159,6 +162,7 @@ export function buildClientWorkflowDto(
     viewport: workflow.viewport,
     pages: projectPagesForClient(pages, view),
     diagramStyle: workflow.diagramStyle === "process_map" ? "process_map" : "classic",
+    look: workflow.look === "readable" ? "readable" : "original",
     feedback: latest ? [{ action: latest.action, createdAt: latest.createdAt }] : [],
     pinnedVersion,
   };

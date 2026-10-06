@@ -68,7 +68,7 @@ export async function buildClientPagePayload(workflowId: string, who: ActingAs, 
     {
       id: workflow.id, clientName: workflow.clientName, workflowName: workflow.workflowName, description: workflow.description,
       status: workflow.status, updatedAt: workflow.updatedAt, nodes: source.nodes, edges: source.edges, viewport: source.viewport,
-      pages: source.pages, showFeasibility: workflow.showFeasibility, diagramStyle: workflow.diagramStyle,
+      pages: source.pages, showFeasibility: workflow.showFeasibility, diagramStyle: workflow.diagramStyle, look: workflow.look,
     },
     [],
     null

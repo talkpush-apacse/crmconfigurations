@@ -237,6 +237,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
           artifacts: input.artifacts,
           summary: input.summary,
           diagramStyle: "process_map",
+          look: input.look === "original" ? "original" : "readable",
         },
         context
       );
@@ -293,7 +294,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const { page } = currentPage(wf, input.page);
       const client = name === "render_preview" && input.audience === "client";
       const view = client ? projectPageForClient({ id: page.id, name: page.name, nodes: page.nodes ?? [], edges: page.edges ?? [] }, { showFeasibility: wf.showFeasibility }) : page;
-      const scene = buildScene(view.nodes ?? [], view.edges ?? [], { clientName: wf.clientName, workflowName: wf.workflowName, versionLabel: wf.currentVersion ? `v${wf.currentVersion}` : "Draft", date: new Date().toISOString().slice(0, 10), author: "Talkpush" });
+      const scene = buildScene(view.nodes ?? [], view.edges ?? [], { clientName: wf.clientName, workflowName: wf.workflowName, versionLabel: wf.currentVersion ? `v${wf.currentVersion}` : "Draft", date: new Date().toISOString().slice(0, 10), author: "Talkpush", look: wf.look });
       const findings = lintLayout(scene);
       if (name === "lint_layout") return { findings, counts: { high: findings.filter((f) => f.severity === "high").length, medium: findings.filter((f) => f.severity === "medium").length, low: findings.filter((f) => f.severity === "low").length } };
       if (input.format === "png") throw new Input("PNG previews need a rendering library that has not been approved yet. Use format \"svg\" (it is the exact drawing a client sees) and read the layout findings.");
@@ -330,7 +331,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const switched = want === "lanes" ? assignLanes(page.nodes ?? [], strList(input.externalLanes)) : stripLanes(page.nodes ?? []);
       const nodes = switched.nodes;
       const touched = switched.touched;
-      const laid = applyLayout(nodes, page.edges ?? [], layoutDiagram(nodes, page.edges ?? []));
+      const laid = applyLayout(nodes, page.edges ?? [], layoutDiagram(nodes, page.edges ?? [], wf.look));
       pages[index] = { ...page, nodes: laid.nodes, edges: laid.edges };
       await savePages(wf.id, pages);
       const grid = want === "lanes" ? computeLaneGrid(laid.nodes, laid.edges) : null;
@@ -348,7 +349,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const style = input.style === "classic" ? "classic" : "process_map";
       const pages = pagesOf(wf).map((p) => {
         if (style !== "process_map") return p;
-        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutDiagram(p.nodes ?? [], p.edges ?? []));
+        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutDiagram(p.nodes ?? [], p.edges ?? [], wf.look));
         return { ...p, nodes: laid.nodes, edges: laid.edges };
       });
       const first = pages[0];
@@ -364,6 +365,23 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
         },
       });
       return { style, arranged: style === "process_map", note: "A snapshot was taken just before this change." };
+    }
+
+    case "set_diagram_look": {
+      const wf = await load(input.workflowId, Input);
+      if (input.look !== "original" && input.look !== "readable") throw new Input('look must be "original" or "readable".');
+      if (wf.diagramStyle !== "process_map") throw new Input("The look belongs to the Process Map style. Switch with set_diagram_style first.");
+      // Sizes change with the look, so every page is arranged again in the new look.
+      const pages = pagesOf(wf).map((p) => {
+        const laid = applyLayout(p.nodes ?? [], p.edges ?? [], layoutDiagram(p.nodes ?? [], p.edges ?? [], String(input.look)));
+        return { ...p, nodes: laid.nodes, edges: laid.edges };
+      });
+      const first = pages[0];
+      await prisma.workflowProject.update({
+        where: { id: wf.id },
+        data: { look: input.look, pages: structuredCloneJson(pages), nodes: structuredCloneJson(first?.nodes ?? []), edges: structuredCloneJson(first?.edges ?? []), revision: { increment: 1 } },
+      });
+      return { look: input.look, note: "Every page was arranged again for the new look. A snapshot was taken just before this change; restore_version brings back the earlier arrangement." };
     }
 
     // ---------------------------------------------------------------- sharing and review (explicit instruction only)
@@ -419,5 +437,5 @@ export const V2_TOOL_NAMES = [
   "list_pages", "add_page", "rename_page", "delete_page", "update_edge", "delete_edge", "get_flow_table",
   "create_workflow_from_flow_table", "propose_changes", "run_gap_check", "lint_layout", "render_preview", "diff_versions",
   "publish_version", "set_diagram_style", "list_access", "create_link", "disable_link", "invite_person", "revoke_person",
-  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow", "set_diagram_layout",
+  "list_suggestions", "accept_suggestion", "reject_suggestion", "list_comments", "delete_workflow", "set_diagram_layout", "set_diagram_look",
 ] as const;

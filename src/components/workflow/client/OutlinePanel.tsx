@@ -5,7 +5,7 @@ import { CircleHelp, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { filterOutline, type OutlineItem } from "@/lib/workflow/outline";
-import { PM } from "@/lib/workflow/process-map/tokens";
+import { PM_READABLE as PM } from "@/lib/workflow/process-map/tokens";
 
 // The reading list uses the diagram's one accent colour; open questions use the one warm call-out colour.
 const ACCENT = PM.colors.accent;
