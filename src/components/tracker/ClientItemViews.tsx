@@ -26,8 +26,9 @@ import { cn } from "@/lib/utils";
 import { ItemStatusBadge } from "./badges";
 
 /**
- * Read-only List and Board for the client link. They read only the --es-* colours and
- * only the fields the client-safe `plan` carries. Nothing here can edit, drag or open an item.
+ * List and Board for the client links. They read only the --es-* colours and only the fields the client-safe `plan`
+ * carries. On a contributor link `onOpen` is given and each item title opens the item panel; on a view-only link it is
+ * not, so the titles are plain text. Nothing here can edit or drag an item by itself.
  */
 
 export type PlanItem = ClientView["plan"]["items"][number];
@@ -56,12 +57,23 @@ function ItemNotes({ item, unmet }: { item: PlanItem; unmet: number }) {
   );
 }
 
-function Title({ item }: { item: PlanItem }) {
-  return (
-    <span className="inline-flex items-start gap-1.5 font-medium">
+function Title({ item, onOpen }: { item: PlanItem; onOpen?: (id: string) => void }) {
+  const content = (
+    <>
       {item.isMilestone && <Flag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--es-muted)]" aria-label="Milestone" />}
       <span>{item.title}</span>
-    </span>
+    </>
+  );
+  if (!onOpen) return <span className="inline-flex items-start gap-1.5 font-medium">{content}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(item.id)}
+      aria-label={`Open ${item.title}`}
+      className="inline-flex min-h-8 items-start gap-1.5 rounded text-left font-medium underline decoration-[var(--es-line)] underline-offset-4 outline-none hover:decoration-[var(--es-ink)] focus-visible:ring-[3px] focus-visible:ring-[var(--es-ink)]/40"
+    >
+      {content}
+    </button>
   );
 }
 
@@ -117,7 +129,7 @@ function SortHeader({ label, sortKey, sort, onSort }: { label: string; sortKey: 
   );
 }
 
-export function ClientItemsList({ items, phases, today }: { items: readonly PlanItem[]; phases: readonly PlanPhase[]; today: string }) {
+export function ClientItemsList({ items, phases, today, onOpen }: { items: readonly PlanItem[]; phases: readonly PlanPhase[]; today: string; onOpen?: (id: string) => void }) {
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
@@ -228,7 +240,7 @@ export function ClientItemsList({ items, phases, today }: { items: readonly Plan
                 {visible.map((item, idx) => (
                   <tr key={item.id} className="align-top" style={idx % 2 ? { background: "var(--es-stripe)" } : undefined}>
                     <th scope="row" className="max-w-md px-4 py-3 text-left font-normal">
-                      <Title item={item} />
+                      <Title item={item} onOpen={onOpen} />
                       <ItemNotes item={item} unmet={unmet(item)} />
                     </th>
                     <td className="px-4 py-3">
@@ -250,7 +262,7 @@ export function ClientItemsList({ items, phases, today }: { items: readonly Plan
           <ul className="space-y-3 md:hidden">
             {visible.map((item) => (
               <li key={item.id} className="rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)] p-4 text-sm">
-                <Title item={item} />
+                <Title item={item} onOpen={onOpen} />
                 <ItemNotes item={item} unmet={unmet(item)} />
                 <div className="mt-2">
                   <ItemStatusBadge status={item.status} />
@@ -280,7 +292,7 @@ export function ClientItemsList({ items, phases, today }: { items: readonly Plan
 
 const COLUMNS: ItemStatus[] = ["not_started", "in_progress", "waiting_on_client", "blocked", "done"];
 
-export function ClientBoard({ items, today }: { items: readonly PlanItem[]; today: string }) {
+export function ClientBoard({ items, today, onOpen }: { items: readonly PlanItem[]; today: string; onOpen?: (id: string) => void }) {
   const unmet = useUnmet(items);
   const sorted = useMemo(() => [...items].sort((a, b) => a.sortOrder - b.sortOrder), [items]);
   return (
@@ -300,7 +312,13 @@ export function ClientBoard({ items, today }: { items: readonly PlanItem[]; toda
                   <li key={item.id} className="rounded-lg border border-[var(--es-line)] bg-[var(--es-card)] p-3 text-sm">
                     <p className="font-medium leading-snug">
                       {item.isMilestone && <Flag className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-[var(--es-muted)]" aria-label="Milestone" />}
-                      {item.title}
+                      {onOpen ? (
+                        <button type="button" onClick={() => onOpen(item.id)} aria-label={`Open ${item.title}`} className="rounded text-left underline decoration-[var(--es-line)] underline-offset-4 outline-none hover:decoration-[var(--es-ink)] focus-visible:ring-[3px] focus-visible:ring-[var(--es-ink)]/40">
+                          {item.title}
+                        </button>
+                      ) : (
+                        item.title
+                      )}
                     </p>
                     <ItemNotes item={item} unmet={unmet(item)} />
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[var(--es-muted)]">

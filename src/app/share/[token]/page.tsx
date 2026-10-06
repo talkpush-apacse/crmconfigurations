@@ -28,7 +28,7 @@ export default async function SharedProjectPage({ params }: { params: Promise<{ 
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-10">
-        {result.status === "ok" && <ClientProjectViews data={result.data} downloadUrl={`/api/share/${encodeURIComponent(token)}/export`} />}
+        {result.status === "ok" && <ClientProjectViews data={result.data} downloadUrl={`/api/share/${encodeURIComponent(token)}/export`} activityUrl={`/api/share/${encodeURIComponent(token)}/activity`} />}
 
         {result.status === "unavailable" && (
           <div className="mx-auto max-w-md rounded-[10px] border border-[var(--es-line)] bg-[var(--es-card)] p-8 text-center" role="alert">

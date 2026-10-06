@@ -158,8 +158,9 @@ test("client contributor links", { skip }, async () => {
     assert.equal(view("Provide DNS records").canUpdate, true);
     assert.equal(view("Approve templates").canUpdate, false, "blocked items cannot be changed by the client");
     assert.equal(view("Ben's item").mine, false);
-    assert.equal(view("Ben's item").canUpdate, false);
-    assert.equal(view("Talkpush builds the autoflows").canUpdate, false);
+    assert.equal(view("Ben's item").canUpdate, true, "any visible item can be edited");
+    assert.equal(view("Talkpush builds the autoflows").canUpdate, true);
+    assert.equal(view("Talkpush builds the autoflows").canChangeOwner, false, "a Talkpush-owned item keeps its owner");
 
     // ---- adding an item
     const added = await post({ title: "Send the IT contact", description: "Needed for DNS", priority: "high", dueDate: "2026-11-15", waitsOn: [talkpush.id] });
@@ -215,14 +216,14 @@ test("client contributor links", { skip }, async () => {
     assert.equal((await prisma.trackerItem.findUnique({ where: { id: mine.id } }))!.status, "done");
     assert.ok((await prisma.trackerItem.findUnique({ where: { id: mine.id } }))!.completedAt, "done stamps a completion time");
     assert.equal((await patch(mine.id, { status: "in_progress" })).status, 200, "can reopen their own item");
-    assert.equal((await patch(bens.id, { status: "done" })).status, 403, "cannot change someone else's item");
-    assert.equal((await patch(talkpush.id, { status: "done" })).status, 403);
+    assert.equal((await patch(bens.id, { status: "done" })).status, 200, "can change a colleague's item");
+    assert.equal((await patch(talkpush.id, { status: "in_progress" })).status, 200, "can change a Talkpush item");
     assert.equal((await patch(blockedMine.id, { status: "in_progress" })).status, 400, "blocked items are Talkpush's to change");
     assert.equal((await patch(internal.id, { status: "done" })).status, 404, "internal items look like they do not exist");
     assert.equal((await patch(othersItem.id, { status: "done" })).status, 404);
     assert.equal((await patch(mine.id, { status: "blocked" })).status, 400);
-    assert.equal((await patch(mine.id, { status: "done", title: "renamed" })).status, 400);
-    assert.equal((await prisma.trackerItem.findUnique({ where: { id: mine.id } }))!.title, "Provide DNS records");
+    assert.equal((await patch(mine.id, { status: "done", visibility: "internal" })).status, 400, "nothing outside the approved fields");
+    assert.equal((await prisma.trackerItem.findUnique({ where: { id: mine.id } }))!.visibility, "client_visible");
 
     // ---- notes
     const noted = await note(mine.id, { body: "Sent to our IT team today" });
@@ -230,7 +231,8 @@ test("client contributor links", { skip }, async () => {
     const remark = await prisma.trackerRemark.findFirst({ where: { itemId: mine.id } });
     assert.equal(remark!.visibility, "shared");
     assert.equal(remark!.createdVia, "client");
-    assert.equal((await note(bens.id, { body: "hi" })).status, 403);
+    assert.equal((await note(bens.id, { body: "hi" })).status, 201, "can comment on a colleague's item");
+    assert.equal((await note(internal.id, { body: "hi" })).status, 404, "cannot comment on a team-only item");
     assert.equal((await note(mine.id, { body: "hi", visibility: "internal" })).status, 400);
 
     // ---- limits
