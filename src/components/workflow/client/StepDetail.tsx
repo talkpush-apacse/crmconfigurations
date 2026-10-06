@@ -1,5 +1,6 @@
 "use client";
 
+import { stripInline } from "@/lib/workflow/process-map/inline-text";
 import { useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export default function StepDetail({
       <div className="flex items-start justify-between gap-3 border-b border-border p-4">
         <div className="min-w-0">
           {stepNumber && <p className="text-xs font-semibold tabular-nums text-muted-foreground">Step {stepNumber}</p>}
-          <h2 className="break-words text-base font-semibold text-foreground">{data.label || "Untitled step"}</h2>
+          <h2 className="break-words text-base font-semibold text-foreground">{stripInline(data.label ?? "") || "Untitled step"}</h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">{typeLabel}</span>
             {actorLabel && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">{actorLabel}</span>}

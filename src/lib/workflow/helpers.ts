@@ -1,5 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 import { laneNameFor } from "./process-map/lane-mode";
+import { moveStepLabel } from "./process-map/inline-text";
 import { nanoid } from "@/lib/workflow/ids";
 import type { Prisma } from "@/generated/prisma/client";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -212,6 +213,11 @@ export function processMapFields(raw: Record<string, unknown>): Record<string, u
   return out;
 }
 
+/** A step's label with the Move wording applied when the step is a Move; any other step's label is returned as it is. */
+export function moveWordingFor(label: string, actionType: unknown): string {
+  return actionType === "move" ? moveStepLabel(label) : label;
+}
+
 export function createWorkflowNode(input: {
   type: WorkflowNodeType;
   label: string;
@@ -237,7 +243,8 @@ export function createWorkflowNode(input: {
     position: input.position ?? { x: 0, y: 0 },
     data: {
       ...(tableData ?? {}),
-      label: input.label,
+      // A Move step always reads "Moves to **Folder name** Folder/Stage".
+      label: moveWordingFor(input.label, input.extra?.actionType),
       type: input.type,
       actor: input.type === "table" ? undefined : input.actor,
       actorLabel:

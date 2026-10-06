@@ -1,5 +1,6 @@
 "use client";
 
+import { stripInline } from "@/lib/workflow/process-map/inline-text";
 import { Handle, Position, type EdgeProps, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { fillFor, shapeKindOf } from "@/lib/workflow/process-map/model";
@@ -28,7 +29,7 @@ export function ProcessMapNode({ id, type, data, selected }: NodeProps) {
   const { w, h } = shape.rect;
   return (
     <div className="group relative" style={{ width: w, height: h }}>
-      <svg width={w} height={h} style={{ overflow: "visible", display: "block" }} aria-label={String((data as any)?.label ?? "Step")}>
+      <svg width={w} height={h} style={{ overflow: "visible", display: "block" }} aria-label={stripInline(String((data as any)?.label ?? "Step"))}>
         {selected && <rect x={-5} y={-5} width={w + 10} height={h + 10} rx={shape.kind === "start" || shape.kind === "end" ? (h + 10) / 2 : 6} fill="none" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 3" />}
         <ShapeBody shape={shape} />
       </svg>

@@ -38,6 +38,7 @@ import {
   jsonClone,
   pageContext,
   processMapFields,
+  moveWordingFor,
 } from "@/lib/workflow/helpers";
 import type {
   ScopingArtifactKind,
@@ -1196,10 +1197,10 @@ async function updateNode(args: ToolArguments) {
       data: {
         ...node.data,
         type: nextType,
-        label:
-          typeof args.label === "string" && args.label.trim()
-            ? args.label.trim()
-            : node.data.label,
+        label: moveWordingFor(
+          typeof args.label === "string" && args.label.trim() ? args.label.trim() : node.data.label,
+          processMapFields(args).actionType !== undefined ? processMapFields(args).actionType : node.data.actionType
+        ),
         actor: isActorType(args.actor) ? args.actor : node.data.actor,
         actorLabel:
           cleanString(args.actorLabel) ??

@@ -1,3 +1,4 @@
+import { stripInline } from "./process-map/inline-text";
 import { actionTypeOf, personActs, shapeKindOf } from "./process-map/model";
 import { computeDecimalNumbers } from "./numbering-decimal";
 import { usesLanes } from "./process-map/lane-mode";
@@ -26,6 +27,7 @@ export interface GapFinding {
 }
 
 const TERMINAL_KINDS = new Set(["end", "jump", "note", "table", "container", "none"]);
+const lbl = (n: any) => stripInline(String(n.data?.label ?? ""));
 const text = (n: any) => `${n.data?.label ?? ""} ${n.data?.notes ?? ""}`.toLowerCase();
 const has = (nodes: any[], re: RegExp) => nodes.some((n) => re.test(text(n)));
 const TIME_WORDS = /\b(minutes?|hours?|days?|weeks?|working day|same day|next day|within|before|after|\d+\s*(h|hr|hrs|d)\b)/i;
@@ -47,30 +49,30 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
   for (const n of flow.filter((x) => x.type === "decision")) {
     const list = (outgoing.get(n.id) ?? []).filter((e) => !e.data?.isRecovery);
     if (list.length >= 2 && list.some((e) => !String(e.data?.label ?? e.label ?? "").trim())) {
-      out.push({ tier: "assumption", code: "decision_criteria_missing", group: "structure", nodeId: n.id, confidence: "high", message: `"${n.data?.label}" has paths without a label, so the decision rule is unclear.`, assumption: `Assumed the unlabeled path is the default. If incorrect, the rule for "${n.data?.label}" needs to be written down.` });
+      out.push({ tier: "assumption", code: "decision_criteria_missing", group: "structure", nodeId: n.id, confidence: "high", message: `"${lbl(n)}" has paths without a label, so the decision rule is unclear.`, assumption: `Assumed the unlabeled path is the default. If incorrect, the rule for "${lbl(n)}" needs to be written down.` });
     }
   }
   for (const n of steps) {
     const type = actionTypeOf(n);
     if (n.type === "integration" || type === "send_data" || type === "get_data") {
       if (!n.data?.data?.integrationSystem) {
-        out.push({ tier: "assumption", code: "integration_mechanism_missing", group: "structure", nodeId: n.id, confidence: "medium", message: `"${n.data?.label}" talks to another system but does not say which one or how (API, file, manual).`, assumption: "Assumed an API call. If incorrect, the build effort and the owner of the hand-off change." });
+        out.push({ tier: "assumption", code: "integration_mechanism_missing", group: "structure", nodeId: n.id, confidence: "medium", message: `"${lbl(n)}" talks to another system but does not say which one or how (API, file, manual).`, assumption: "Assumed an API call. If incorrect, the build effort and the owner of the hand-off change." });
       }
     }
     if (shapeKindOf(n) === "process" && personActs(n) && !(n.data?.actorLabel || n.data?.data?.ownerRole)) {
-      out.push({ tier: "assumption", code: "ownership_gap", group: "structure", nodeId: n.id, confidence: "high", message: `Nobody is named as responsible for "${n.data?.label}".`, assumption: "Assumed the recruiter does it. If incorrect, the role in brackets and any assignment rule change." });
+      out.push({ tier: "assumption", code: "ownership_gap", group: "structure", nodeId: n.id, confidence: "high", message: `Nobody is named as responsible for "${lbl(n)}".`, assumption: "Assumed the recruiter does it. If incorrect, the role in brackets and any assignment rule change." });
     }
   }
   for (const n of flow) {
     const kind = shapeKindOf(n);
     if (TERMINAL_KINDS.has(kind) || n.type === "source") continue;
     if ((outgoing.get(n.id) ?? []).length === 0) {
-      out.push({ tier: "blocker", code: "dead_end", group: "structure", nodeId: n.id, confidence: "high", message: `"${n.data?.label}" leads nowhere: it is neither an end state nor connected to a next step.` });
+      out.push({ tier: "blocker", code: "dead_end", group: "structure", nodeId: n.id, confidence: "high", message: `"${lbl(n)}" leads nowhere: it is neither an end state nor connected to a next step.` });
     }
   }
   for (const n of flow.filter((x) => x.type === "parallel")) {
     if ((outgoing.get(n.id) ?? []).length < 2) {
-      out.push({ tier: "nice", code: "parallel_ambiguous", group: "structure", nodeId: n.id, confidence: "medium", message: `"${n.data?.label}" is marked as parallel but has fewer than two paths. Is it parallel or sequential?` });
+      out.push({ tier: "nice", code: "parallel_ambiguous", group: "structure", nodeId: n.id, confidence: "medium", message: `"${lbl(n)}" is marked as parallel but has fewer than two paths. Is it parallel or sequential?` });
     }
   }
 
@@ -89,7 +91,7 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
   // ---- operations --------------------------------------------------------------------------------------
   for (const n of steps) {
     if (shapeKindOf(n) === "process" && personActs(n) && n.data?.actor !== "candidate" && !n.data?.timing && !n.data?.data?.waitDuration && !hasTimingNote(flow, n.id)) {
-      out.push({ tier: "assumption", code: "sla_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `No turnaround time is given for the manual step "${n.data?.label}".`, assumption: "Assumed the person acts within one working day. If incorrect, add the real time and a reminder path." });
+      out.push({ tier: "assumption", code: "sla_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `No turnaround time is given for the manual step "${lbl(n)}".`, assumption: "Assumed the person acts within one working day. If incorrect, add the real time and a reminder path." });
     }
     const commType = actionTypeOf(n);
     if (shapeKindOf(n) === "process" && !personActs(n) && (commType === "message" || commType === "alert" || commType === "call" || commType === "ai" || n.type === "communication")) {
@@ -98,12 +100,12 @@ export function runGapCheck(nodes: any[], edges: any[]): GapFinding[] {
       if (noChannel || noTiming) {
         const missing = noChannel && noTiming ? "which channel it uses or when it goes out" : noChannel ? "which channel it uses" : "when it goes out";
         const guess = [noChannel ? "by email" : "", noTiming ? "straight away" : ""].filter(Boolean).join(" and ");
-        out.push({ tier: "assumption", code: "comm_channel_or_timing_missing", group: "operations", nodeId: n.id, confidence: "high", message: `"${n.data?.label}" goes out automatically but does not say ${missing}.`, assumption: `Assumed it is sent ${guess}. If incorrect, the message template, channel setup and any delay or reminder timing change.` });
+        out.push({ tier: "assumption", code: "comm_channel_or_timing_missing", group: "operations", nodeId: n.id, confidence: "high", message: `"${lbl(n)}" goes out automatically but does not say ${missing}.`, assumption: `Assumed it is sent ${guess}. If incorrect, the message template, channel setup and any delay or reminder timing change.` });
       }
     }
     const type = actionTypeOf(n);
     if ((type === "send_data" || type === "get_data" || type === "call") && (outgoing.get(n.id) ?? []).length <= 1) {
-      out.push({ tier: "assumption", code: "exception_path_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `"${n.data?.label}" has no path for when it fails (outside system down, no answer, partial data).`, assumption: "Assumed it always succeeds. If incorrect, a failure path and an owner are needed." });
+      out.push({ tier: "assumption", code: "exception_path_missing", group: "operations", nodeId: n.id, confidence: "medium", message: `"${lbl(n)}" has no path for when it fails (outside system down, no answer, partial data).`, assumption: "Assumed it always succeeds. If incorrect, a failure path and an owner are needed." });
     }
   }
   const numbering = computeDecimalNumbers(flow, edges);
