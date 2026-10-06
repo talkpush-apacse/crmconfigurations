@@ -53,3 +53,27 @@ export function signInOrigin(configuredRedirectUri: string | undefined, fallback
   }
   return fallbackOrigin;
 }
+
+/**
+ * Connecting Claude: where should a person who is NOT signed in start?
+ *
+ * The saved "finish connecting" note is a cookie, and a cookie only travels to the address that set it. If someone starts
+ * connecting on one address and then signs in with Google, they are moved to the Google address (see above), come back
+ * signed in there, and the note is left behind, so nothing finishes. So the whole connect request is handed to the address
+ * Google returns to BEFORE anything is saved or sign-in begins. The address comes only from the server's setting, and the
+ * path and query are our own authorize request, already checked by the caller.
+ *
+ * Previews and local copies stay where they are (Google sign-in is unavailable there; email and password still work).
+ */
+export type ConnectHandoffPlan = { action: "continue" } | { action: "move"; url: string };
+
+export function planConnectHandoff(requestUrl: string, configuredRedirectUri: string | undefined): ConnectHandoffPlan {
+  if (planGoogleSignIn(requestUrl, configuredRedirectUri).action !== "move") return { action: "continue" };
+  try {
+    const here = new URL(requestUrl);
+    const target = new URL(configuredRedirectUri as string);
+    return { action: "move", url: `${target.origin}${here.pathname}${here.search}` };
+  } catch {
+    return { action: "continue" };
+  }
+}

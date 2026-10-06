@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -43,6 +43,8 @@ interface Props {
   /** Resolve with an error message to show, or null on success. */
   onStatusChange: (item: ItemDTO, status: ItemStatus, blockerReason?: string) => Promise<string | null>;
   onReorder: (itemIds: string[]) => Promise<string | null>;
+  /** Told which cards are on screen (after the owner filter, in board order) so an export can match it. */
+  onVisibleChange?: (visible: { items: ItemDTO[]; filterLabel: string }) => void;
 }
 
 interface CardProps {
@@ -153,7 +155,7 @@ function Column({ status, items, children }: { status: ItemStatus; items: ItemDT
   );
 }
 
-export function BoardView({ items, people, today, onOpen, onStatusChange, onReorder }: Props) {
+export function BoardView({ items, people, today, onOpen, onStatusChange, onReorder, onVisibleChange }: Props) {
   const { canEdit } = useCurrentUser();
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -179,6 +181,10 @@ export function BoardView({ items, people, today, onOpen, onStatusChange, onReor
     for (const i of visible) map.get(i.status)?.push(i);
     return map;
   }, [visible]);
+  const ownerLabel = ownerFilter === ALL ? "" : `Owner: ${ownerFilter === UNASSIGNED ? "Unassigned" : (people.find((p) => p.id === ownerFilter)?.name ?? "Unknown")}.`;
+  useEffect(() => {
+    onVisibleChange?.({ items: visible, filterLabel: ownerLabel });
+  }, [visible, ownerLabel, onVisibleChange]);
   const droppedCount = visible.filter((i) => i.status === "dropped").length;
   const activeItem = activeId ? items.find((i) => i.id === activeId) ?? null : null;
   const unmet = (item: ItemDTO) => unmetDependencies(item.id, edges, statusById).length;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
@@ -19,6 +19,8 @@ import { ItemsList } from "@/components/tracker/ItemsList";
 import { ErrorBlock } from "@/components/tracker/PageHeader";
 import { ProjectPageSkeleton } from "@/components/tracker/SummarySkeleton";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
+import { ExportMenu } from "@/components/tracker/ExportMenu";
+import { PrintReport, type PrintView, type VisibleItems } from "@/components/tracker/print/PrintReport";
 import { api, errorMessage } from "@/lib/tracker/client-api";
 import { READ_ONLY_MESSAGE } from "@/lib/roles";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -27,6 +29,7 @@ import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import type { ItemDTO, ProjectDetailDTO } from "@/lib/tracker/client-types";
 import type { ItemStatus } from "@/lib/tracker/constants";
 import { formatDate, plural } from "@/lib/tracker/format";
+import { exportName } from "@/lib/tracker/print-layout";
 
 export default function ProjectPage() {
   return (
@@ -55,6 +58,19 @@ function ProjectWorkspace() {
   const { canEdit } = useCurrentUser();
   const [planOpen, setPlanOpen] = useState(false);
   useDocumentTitle(detail?.project.title);
+  const [printing, setPrinting] = useState<{ view: PrintView; visible: VisibleItems | null } | null>(null);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
+  const [exportError, setExportError] = useState("");
+  // What the List and Board tabs are showing, so an export matches the screen. A ref: it changes with every filter click and needs no re-render.
+  const visibleRef = useRef<VisibleItems | null>(null);
+  const rememberVisible = useCallback((v: VisibleItems) => {
+    visibleRef.current = v;
+  }, []);
+  const printDone = useCallback(() => setPrinting(null), []);
+  const printFailed = useCallback((message: string) => {
+    setExportError(message);
+    setPrinting(null);
+  }, []);
 
   const changeStatus = async (item: ItemDTO, status: ItemStatus, blockerReason?: string): Promise<string | null> => {
     if (!canEdit) return READ_ONLY_MESSAGE;
@@ -92,6 +108,49 @@ function ProjectWorkspace() {
       return null;
     } catch (err) {
       return errorMessage(err);
+    }
+  };
+
+  const startPdf = () => {
+    setExportError("");
+    if (view !== "summary" && view !== "list" && view !== "board" && view !== "timeline") return;
+    // Freeze what the tab shows at this moment; the report must not change if a filter is touched while it prepares.
+    setPrinting({ view, visible: view === "list" || view === "board" ? visibleRef.current : null });
+  };
+
+  const downloadXlsx = async () => {
+    if (!detail) return;
+    setExportError("");
+    setExportingXlsx(true);
+    try {
+      const shown = visibleRef.current?.items ?? detail.items;
+      const res = await fetch(`/api/tracker/projects/${id}/export/list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: shown.map((i) => i.id), filterLabel: visibleRef.current?.filterLabel ?? "" }),
+        cache: "no-store",
+      });
+      if (res.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "The Excel file could not be made. Please try again.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${exportName({ account: detail.project.accountName, project: detail.project.title, view: "List", date: detail.today })}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "The Excel file could not be made. Please try again.");
+    } finally {
+      setExportingXlsx(false);
     }
   };
 
@@ -151,6 +210,9 @@ function ProjectWorkspace() {
         </div>
         {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
         <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
+          {(view === "summary" || view === "list" || view === "board" || view === "timeline") && (
+            <ExportMenu view={view} busy={printing !== null || exportingXlsx} onPdf={startPdf} onXlsx={() => void downloadXlsx()} />
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => setPlanOpen(true)}>
               <ListChecks className="h-4 w-4" />
@@ -187,6 +249,12 @@ function ProjectWorkspace() {
         </div>
       </header>
 
+      {exportError && (
+        <p role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {exportError}
+        </p>
+      )}
+
       <section aria-label="Project items">
         {items.some((i) => i.needsReview) && (
           <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-status-pending/50 bg-status-pending/15 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -219,10 +287,10 @@ function ProjectWorkspace() {
             <SummaryView projectId={project.id} refreshKey={project.updatedAt + items.length + summary.done + summary.open} />
           </TabsContent>
           <TabsContent value="list" tabIndex={-1}>
-            <ItemsList items={items} phases={phases} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} />
+            <ItemsList items={items} phases={phases} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onVisibleChange={rememberVisible} />
           </TabsContent>
           <TabsContent value="board" tabIndex={-1}>
-            <BoardView items={items} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onReorder={reorder} />
+            <BoardView items={items} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onReorder={reorder} onVisibleChange={rememberVisible} />
           </TabsContent>
           <TabsContent value="timeline" tabIndex={-1}>
             {/* The timeline needs room. On a phone, show the same items as a list instead. */}
@@ -260,6 +328,7 @@ function ProjectWorkspace() {
         people={people}
         onSaved={() => void load()}
       />
+      {printing && <PrintReport view={printing.view} detail={detail} visible={printing.visible} onDone={printDone} onError={printFailed} />}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} />
       <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ProjectDialog
