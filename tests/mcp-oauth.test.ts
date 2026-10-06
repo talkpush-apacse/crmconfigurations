@@ -131,7 +131,7 @@ test("errors: carry a standard code and a message safe to show", () => {
 // ---------------------------------------------------------------------------
 
 import { makeConsentToken, verifyConsentToken, type ConsentFields } from "../src/lib/mcp/oauth/consent-token";
-import { originOf } from "../src/lib/mcp/oauth/origin";
+import { isOwnPageClick, originOf } from "../src/lib/mcp/oauth/origin";
 
 const SECRET = "s".repeat(40);
 const FIELDS: ConsentFields = {
@@ -187,4 +187,22 @@ test("origin: follows the forwarded host the way Vercel sets it, and ignores odd
     "https://crm.se-talkpush.com"
   );
   assert.equal(originOf(req("https://real.example/x", { "x-forwarded-host": "evil.example/<script>" })), "https://real.example");
+});
+
+test("allow click: our own page counts, including the `Origin: null` Chrome sends under no-referrer", () => {
+  const own = "https://crmconfig.talkpush.com";
+  const click = (headers: Record<string, string>) => new Request(`${own}/oauth/decision`, { method: "POST", headers });
+  assert.equal(isOwnPageClick(click({ origin: own }), own), true);
+  assert.equal(isOwnPageClick(click({ origin: "null" }), own), true, "Chrome labels a no-referrer form post this way");
+  assert.equal(isOwnPageClick(click({ origin: "null", "sec-fetch-site": "same-origin" }), own), true);
+  assert.equal(isOwnPageClick(click({}), own), true, "no Origin at all");
+});
+
+test("allow click: another website, or anything the browser marks cross-site, is still refused", () => {
+  const own = "https://crmconfig.talkpush.com";
+  const click = (headers: Record<string, string>) => new Request(`${own}/oauth/decision`, { method: "POST", headers });
+  assert.equal(isOwnPageClick(click({ origin: "https://evil.example" }), own), false);
+  assert.equal(isOwnPageClick(click({ origin: "https://crm.se-talkpush.com" }), own), false, "the other host is a different origin");
+  assert.equal(isOwnPageClick(click({ origin: "null", "sec-fetch-site": "cross-site" }), own), false);
+  assert.equal(isOwnPageClick(click({ origin: own, "sec-fetch-site": "cross-site" }), own), false);
 });

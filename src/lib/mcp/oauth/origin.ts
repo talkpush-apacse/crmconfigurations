@@ -9,3 +9,16 @@ export function originOf(request: Request): string {
   const proto = safe(request.headers.get("x-forwarded-proto"), url.protocol.replace(":", ""));
   return `${proto}://${host}`;
 }
+
+/**
+ * Did an Allow / Cancel click come from our own page? The Allow page sends `Referrer-Policy: no-referrer`, and under that
+ * policy browsers (Chrome, Firefox) label a form post `Origin: null` even though it is our own page. So "null" is accepted:
+ * the signed note on the form is what stops a forged click, and a request the browser itself marks cross-site is still refused.
+ * No Origin header at all (older browsers, tools) is accepted for the same reason.
+ */
+export function isOwnPageClick(request: Request, ownOrigin: string): boolean {
+  const sentFrom = request.headers.get("origin");
+  if (request.headers.get("sec-fetch-site") === "cross-site") return false;
+  if (!sentFrom || sentFrom === "null") return true;
+  return sentFrom === ownOrigin;
+}
