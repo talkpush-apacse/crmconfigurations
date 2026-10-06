@@ -85,9 +85,9 @@ export function describeActivity(a: ActivityLike): string {
     case "remark.added":
       return `added a ${after.visibility === "shared" ? "shared" : "team-only"} remark on ${quoted}`;
     case "share.created":
-      return `created a client ${after.level === "view" ? "view " : ""}link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
+      return `created a ${after.level === "view" ? "Client View Only" : "client"} link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
     case "share.contributor_created":
-      return `created an editor link for ${typeof after.contact === "string" ? after.contact : "a client contact"}`;
+      return `created a Client Contributor link for ${typeof after.contact === "string" ? after.contact : "a client contact"}`;
     case "share.revoked":
       return `turned off a client link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
     case "export.downloaded":

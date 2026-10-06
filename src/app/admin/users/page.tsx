@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDialog } from "@/components/tracker/ConfirmDialog";
 import { Field, FormError } from "@/components/tracker/Field";
 import { EmptyState, ErrorBlock, LoadingBlock, PageHeader } from "@/components/tracker/PageHeader";
-import { ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, type Role } from "@/lib/roles";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS, ROLES, SUPER_ADMIN_DESCRIPTION, SUPER_ADMIN_LABEL, type Role } from "@/lib/roles";
 import { api, errorMessage } from "@/lib/tracker/client-api";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { isTalkpushEmail } from "@/lib/users-rules";
@@ -21,6 +21,8 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sh
 export default function UsersPage() {
   const { data, error, reload } = useApiResource<{ users: UserDTO[]; signInUrl: string }>("/api/users");
   const users = data?.users ?? null;
+  // Only a super admin sees the super admin controls; the server refuses anyone else whatever the screen shows.
+  const iAmSuperAdmin = users?.find((u) => u.isYou)?.isSuperAdmin === true;
   const signInUrl = data?.signInUrl ?? "";
   const [notice, setNotice] = useState<{ email: string } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -31,6 +33,16 @@ export default function UsersPage() {
     setActionError("");
     try {
       await api(`/api/users/${user.id}`, { method: "PATCH", body: { role } });
+    } catch (err) {
+      setActionError(errorMessage(err));
+    }
+    reload();
+  };
+
+  const changeSuperAdmin = async (user: UserDTO, isSuperAdmin: boolean) => {
+    setActionError("");
+    try {
+      await api(`/api/users/${user.id}`, { method: "PATCH", body: { isSuperAdmin } });
     } catch (err) {
       setActionError(errorMessage(err));
     }
@@ -68,6 +80,10 @@ export default function UsersPage() {
             <dd className="text-muted-foreground">{ROLE_DESCRIPTIONS[r]}</dd>
           </div>
         ))}
+        <div className="sm:col-span-2">
+          <dt className="font-semibold">{SUPER_ADMIN_LABEL}</dt>
+          <dd className="text-muted-foreground">{SUPER_ADMIN_DESCRIPTION}</dd>
+        </div>
       </dl>
 
       {notice && (
@@ -112,6 +128,7 @@ export default function UsersPage() {
                   <TableCell className="font-medium">
                     {u.email}
                     {u.isYou && <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">You</span>}
+                    {u.isSuperAdmin && <span className="ml-2 rounded border border-border bg-secondary px-1.5 py-0.5 text-xs font-medium">{SUPER_ADMIN_LABEL}</span>}
                     {!isTalkpushEmail(u.email) && (
                       <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-xs font-normal text-muted-foreground" title="This address is not a talkpush.com address">
                         Outside Talkpush
@@ -119,27 +136,39 @@ export default function UsersPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {u.isYou ? (
-                      ROLE_LABELS[u.role]
-                    ) : (
-                      <Select value={u.role} onValueChange={(v) => void changeRole(u, v as Role)}>
-                        <SelectTrigger aria-label={`Role for ${u.email}`} className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ROLES.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {ROLE_LABELS[r]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <div className="space-y-1">
+                      {u.isYou || (u.isSuperAdmin && !iAmSuperAdmin) ? (
+                        ROLE_LABELS[u.role]
+                      ) : (
+                        <Select value={u.role} onValueChange={(v) => void changeRole(u, v as Role)}>
+                          <SelectTrigger aria-label={`Role for ${u.email}`} className="w-44">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLES.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {ROLE_LABELS[r]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {iAmSuperAdmin && u.role === "editor" && (
+                        <button
+                          type="button"
+                          className="block min-h-6 text-xs font-medium text-primary underline underline-offset-4"
+                          onClick={() => void changeSuperAdmin(u, !u.isSuperAdmin)}
+                          aria-label={`${u.isSuperAdmin ? "Remove super admin from" : "Make super admin"} ${u.email}`}
+                        >
+                          {u.isSuperAdmin ? "Remove super admin" : "Make super admin"}
+                        </button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{u.signIn}</TableCell>
                   <TableCell>{dateFormat.format(new Date(u.createdAt))}</TableCell>
                   <TableCell className="text-right">
-                    {!u.isYou && (
+                    {!u.isYou && (!u.isSuperAdmin || iAmSuperAdmin) && (
                       <Button variant="outline" size="sm" className="min-h-9" onClick={() => setRemoving(u)} aria-label={`Remove ${u.email}`}>
                         Remove
                       </Button>
@@ -154,7 +183,7 @@ export default function UsersPage() {
 
       <p className="mt-6 text-sm text-muted-foreground">
         A role change takes effect within seconds, including for Claude connections the person has made. People you add sign in with Google, using
-        the same email. You cannot change or remove your own login, and there must always be at least one editor.
+        the same email. You cannot change or remove your own login. There must always be at least one Talkpush Admin and one super admin, and only a super admin can change a super admin.
       </p>
 
       <AddUserDialog

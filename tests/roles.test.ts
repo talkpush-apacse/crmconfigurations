@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { isRole, normaliseRole, roleMayCall } from "../src/lib/roles";
-import { checkRemoval, checkRoleChange, isTalkpushEmail } from "../src/lib/users-rules";
+import { checkRemoval, checkRoleChange, checkSuperAdminChange, isTalkpushEmail } from "../src/lib/users-rules";
+import { ROLE_LABELS } from "../src/lib/roles";
 import { CHECKLIST_READ_TOOLS } from "../src/lib/mcp/checklist-read-tools";
 import { buildMcpServer, defineTool, type ToolModule } from "../src/lib/mcp/toolkit";
 import { z } from "zod";
@@ -139,4 +140,47 @@ test("a read-only connection can run the gap check but cannot save its findings"
     () => tool.handler({ workflowId: "w1", saveAsArtifacts: true } as never, { actor: { label: "x", via: "mcp" }, readOnly: true }),
     /read-only/
   );
+});
+
+const S = (id: string, role: "editor" | "viewer", isSuperAdmin = false) => ({ id, role, isSuperAdmin });
+
+test("people see the profile names, while the stored values stay editor and viewer", () => {
+  assert.equal(ROLE_LABELS.editor, "Talkpush Admin");
+  assert.equal(ROLE_LABELS.viewer, "Talkpush read-only");
+});
+
+test("super admins: only a super admin can make or remove one", () => {
+  const users = [S("jolo", "editor", true), S("admin", "editor"), S("view", "viewer")];
+  assert.equal(checkSuperAdminChange(users, "admin", true, "jolo").ok, true);
+  assert.equal(checkSuperAdminChange(users, "admin", true, "admin").ok, false, "a Talkpush Admin cannot promote themselves");
+  assert.equal(checkSuperAdminChange(users, "jolo", false, "admin").ok, false, "a Talkpush Admin cannot demote a super admin");
+  assert.equal(checkSuperAdminChange(users, "zzz", true, "jolo").ok, false, "an unknown login");
+  assert.equal(checkSuperAdminChange(users, "admin", true, "unknown").ok, false, "an unknown actor is not a super admin");
+});
+
+test("super admins: has to be a Talkpush Admin, and there is always at least one", () => {
+  const users = [S("jolo", "editor", true), S("view", "viewer")];
+  assert.equal(checkSuperAdminChange(users, "view", true, "jolo").ok, false, "read-only cannot be a super admin");
+  assert.equal(checkSuperAdminChange(users, "jolo", false, "jolo").ok, false, "the last super admin cannot step down");
+  const two = [S("jolo", "editor", true), S("ana", "editor", true)];
+  assert.equal(checkSuperAdminChange(two, "jolo", false, "jolo").ok, true, "stepping down is fine when another remains");
+  assert.equal(checkSuperAdminChange(two, "ana", true, "jolo").ok, true, "already one: nothing to do");
+});
+
+test("super admins: a Talkpush Admin cannot demote or remove one; a super admin can, but never the last", () => {
+  const users = [S("jolo", "editor", true), S("ana", "editor", true), S("admin", "editor")];
+  assert.equal(checkRoleChange(users, "jolo", "viewer", "admin").ok, false);
+  assert.equal(checkRemoval(users, "jolo", "admin").ok, false);
+  assert.equal(checkRoleChange(users, "ana", "viewer", "jolo").ok, false, "demote a super admin to read-only: remove super admin first");
+  assert.equal(checkRemoval(users, "ana", "jolo").ok, true);
+  assert.equal(checkRemoval([S("jolo", "editor", true), S("admin", "editor")], "jolo", "admin").ok, false);
+  assert.equal(checkRemoval([S("jolo", "editor", true), S("admin", "editor")], "admin", "jolo").ok, true, "a super admin may remove an ordinary Talkpush Admin");
+});
+
+test("Talkpush Admins still add, change and remove other ordinary logins", () => {
+  const users = [S("jolo", "editor", true), S("admin", "editor"), S("view", "viewer"), S("two", "editor")];
+  assert.equal(checkRoleChange(users, "view", "editor", "admin").ok, true);
+  assert.equal(checkRoleChange(users, "two", "viewer", "admin").ok, true);
+  assert.equal(checkRemoval(users, "view", "admin").ok, true);
+  assert.equal(checkRemoval(users, "two", "admin").ok, true);
 });

@@ -74,7 +74,7 @@ export function AdminHeader() {
         {user && !canEdit && (
           <span
             className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs font-medium text-foreground"
-            title="You can look at everything but cannot change anything. Ask an editor if something needs changing."
+            title="You can look at everything but cannot change anything. Ask a Talkpush Admin if something needs changing."
           >
             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             {ROLE_LABELS[user.role]}

@@ -109,6 +109,8 @@ model AdminUser {
   googleId     String?  @unique
   // editor (can change things; the default) | viewer (read-only). Plain string validated in code (src/lib/roles.ts).
   role         String   @default("editor")
+  // Super admin = a Talkpush Admin (role editor) who can also add and remove super admins. Only a super admin can change another super admin.
+  isSuperAdmin Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   // Back-relations for Claude connector sign-in (no column on this table).

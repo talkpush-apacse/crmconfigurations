@@ -10,15 +10,20 @@
 export const ROLES = ["editor", "viewer"] as const;
 export type Role = (typeof ROLES)[number];
 
+/** What people see. The stored values stay "editor" and "viewer" so nothing that already checks them changes. */
 export const ROLE_LABELS: Record<Role, string> = {
-  editor: "Editor",
-  viewer: "Read-only",
+  editor: "Talkpush Admin",
+  viewer: "Talkpush read-only",
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  editor: "Can view and change everything.",
-  viewer: "Can view everything. Cannot change anything.",
+  editor: "Can view and change everything, add and remove other users, and archive projects.",
+  viewer: "Can view everything and download exports. Cannot change anything.",
 };
+
+/** A Talkpush Admin who can also add and remove super admins. Stored as a separate yes/no on the login, not as a role. */
+export const SUPER_ADMIN_LABEL = "Super admin";
+export const SUPER_ADMIN_DESCRIPTION = "A Talkpush Admin who can also add and remove super admins. Only a super admin can change another super admin.";
 
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
@@ -29,7 +34,7 @@ export function normaliseRole(value: unknown): Role {
   return value === "editor" ? "editor" : "viewer";
 }
 
-export const READ_ONLY_MESSAGE = "Your login is read-only, so you cannot change this. Ask an editor to do it.";
+export const READ_ONLY_MESSAGE = "Your login is read-only, so you cannot change this. Ask a Talkpush Admin to do it.";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
