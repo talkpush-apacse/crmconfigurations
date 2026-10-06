@@ -87,7 +87,7 @@ export function describeActivity(a: ActivityLike): string {
     case "share.created":
       return `created a ${after.level === "view" ? "Client View Only" : "client"} link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
     case "share.contributor_created":
-      return `created a Client Contributor link for ${typeof after.contact === "string" ? after.contact : "a client contact"}`;
+      return `created a Client Contributor link for ${typeof after.contact === "string" ? after.contact : "a client contact"}${after.contactCreated === true ? " (added as a new contact)" : ""}`;
     case "share.revoked":
       return `turned off a client link${typeof after.label === "string" ? ` ("${after.label}")` : ""}`;
     case "export.downloaded":

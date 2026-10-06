@@ -4,6 +4,7 @@ import { logActivity } from "./activity";
 import { getClientViewForProject } from "./client-view-service";
 import { CLIENT_LIMITS, clientItemCreateSchema, clientItemEditSchema, clientRemarkSchema, contributorLinkCreateSchema } from "./contributor-validations";
 import { addDays, todayDateOnly, toDateOnly } from "./dates";
+import { createPerson } from "./directory-service";
 import { badRequest, notFound, TrackerError } from "./errors";
 import { addRemark, createItem, updateItem } from "./item-service";
 import { needsStaffReview } from "./review";
@@ -31,12 +32,40 @@ const DAY_MS = 86_400_000;
 // ------------------------------------------------------------------ staff: create a link
 
 /** Creates a contributor link. The raw token is returned ONCE and can never be recovered afterwards. */
+/** Collapses spaces so "  Bruce   Dela Rosa " and "bruce dela rosa" are the same name. */
+const tidyName = (s: string) => s.trim().replace(/\s+/g, " ");
+const sameName = (a: string, b: string) => tidyName(a).toLowerCase() === tidyName(b).toLowerCase();
+
+/**
+ * Who the link is for. An existing contact is used as is. A typed name uses the existing client contact on this
+ * project's account with that email, or with that name, and only when there is none makes a new client contact there.
+ */
+async function resolveContributorPerson(projectId: string, data: { personId?: string; name?: string; email?: string }): Promise<{ personId: string; created: boolean }> {
+  if (data.personId) return { personId: data.personId, created: false };
+  const project = await prisma.trackerProject.findUnique({ where: { id: projectId }, select: { accountId: true, archived: true } });
+  if (!project) throw notFound("Project");
+  if (project.archived) throw badRequest("This project is archived.");
+  const contacts = await prisma.trackerPerson.findMany({ where: { accountId: project.accountId, side: "client", archived: false }, select: { id: true, name: true, email: true } });
+  if (data.email) {
+    const byEmail = contacts.find((c) => c.email?.toLowerCase() === data.email);
+    if (byEmail) return { personId: byEmail.id, created: false };
+  }
+  const name = tidyName(data.name ?? "");
+  const matches = contacts.filter((c) => sameName(c.name, name));
+  if (matches.length === 1) return { personId: matches[0].id, created: false };
+  if (matches.length > 1) throw badRequest("More than one contact on this account has that name. Add their email address so I can pick the right one.");
+  const person = await createPerson({ accountId: project.accountId, side: "client", name, email: data.email ?? null });
+  return { personId: person.id, created: true };
+}
+
 export async function createContributorLink(projectId: string, input: unknown, actor: Actor) {
   const data = contributorLinkCreateSchema.parse(input);
+  const { personId, created } = await resolveContributorPerson(projectId, data);
   return issueContributorLink(
     projectId,
     {
-      personId: data.personId,
+      personId,
+      contactCreated: created,
       label: data.label ?? null,
       expiresAt: new Date(Date.now() + data.expiresInDays * DAY_MS),
       assignUnassigned: data.assignUnassigned,
@@ -50,6 +79,8 @@ export interface ContributorLinkRequest {
   label: string | null;
   expiresAt: Date;
   assignUnassigned: boolean;
+  /** The contact was created just now from a typed name (shown in the log and the result). */
+  contactCreated?: boolean;
   /** Turn off this contact's earlier live link with the SAME label first (used by the Claude connector, which labels its own links). */
   replaceSameLabel?: boolean;
 }
@@ -121,7 +152,7 @@ export async function issueContributorLink(projectId: string, data: ContributorL
       entityType: "project",
       entityId: projectId,
       action: "share.contributor_created",
-      after: { label: link.label, contact: person.name, expiresAt: expiresAt.toISOString(), itemsAssigned: assigned },
+      after: { label: link.label, contact: person.name, expiresAt: expiresAt.toISOString(), itemsAssigned: assigned, ...(data.contactCreated ? { contactCreated: true } : {}) },
       actor,
     });
     return { link, assigned, replaced };
@@ -134,6 +165,7 @@ export async function issueContributorLink(projectId: string, data: ContributorL
     contact: person.name,
     expiresAt: expiresAt.toISOString(),
     itemsAssigned: result.assigned,
+    contactCreated: data.contactCreated === true,
     replaced: result.replaced,
     token,
   };

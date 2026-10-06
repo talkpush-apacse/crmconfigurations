@@ -80,12 +80,31 @@ export const clientItemUpdateSchema = clientItemEditSchema;
 
 export const clientRemarkSchema = z.object({ body: text(1000) }).strict();
 
-/** Staff: create a contributor link for one client contact. */
-export const contributorLinkCreateSchema = z.object({
-  personId: id,
-  label: optionalText(120),
-  /** Omitted = 90 days. */
-  expiresInDays: z.number().int().min(1).max(365).default(90),
-  /** Also give this contact every unassigned "Client does this" item from the standard plan. */
-  assignUnassigned: z.boolean().default(false),
-});
+/** An optional email: trimmed, lower-cased, and a real address when given. */
+const optionalEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(200)
+  .nullish()
+  .transform((v) => (v === undefined || v === null || v === "" ? undefined : v))
+  .refine((v) => v === undefined || z.string().email().safeParse(v).success, "Enter a valid email address.");
+
+/**
+ * Staff: create a contributor link for one client contact. Say who it is for in ONE of two ways:
+ *  - personId: an existing client contact on the project's account; or
+ *  - name (and optionally email): an existing contact with that email or name is used, otherwise a new client contact is made.
+ */
+export const contributorLinkCreateSchema = z
+  .object({
+    personId: id.optional(),
+    name: text(120).optional(),
+    email: optionalEmail,
+    label: optionalText(120),
+    /** Omitted = 90 days. */
+    expiresInDays: z.number().int().min(1).max(365).default(90),
+    /** Also give this contact every unassigned "Client does this" item from the standard plan. */
+    assignUnassigned: z.boolean().default(false),
+  })
+  .refine((v) => (v.personId ? 1 : 0) + (v.name ? 1 : 0) === 1, "Say who the link is for.")
+  .refine((v) => !(v.personId && v.email), "An email can only be given with a name.");

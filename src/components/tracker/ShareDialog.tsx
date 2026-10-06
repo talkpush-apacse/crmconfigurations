@@ -24,10 +24,10 @@ type Contact = { id: string; name: string };
 const NEVER = "never";
 
 /** Staff-only: create, copy and revoke the read-only client links for one project. */
-export function ShareDialog({ open, onOpenChange, projectId, contacts }: { open: boolean; onOpenChange: (open: boolean) => void; projectId: string; contacts: Contact[] }) {
+export function ShareDialog({ open, onOpenChange, projectId, contacts, onContactsChanged }: { open: boolean; onOpenChange: (open: boolean) => void; projectId: string; contacts: Contact[]; onContactsChanged?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">{open && <ShareBody projectId={projectId} contacts={contacts} />}</DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">{open && <ShareBody projectId={projectId} contacts={contacts} onContactsChanged={onContactsChanged} />}</DialogContent>
     </Dialog>
   );
 }
@@ -38,7 +38,9 @@ function statusOf(l: LinkDTO): { text: string; tone: "ok" | "off" } {
   return { text: "Active", tone: "ok" };
 }
 
-function ShareBody({ projectId, contacts }: { projectId: string; contacts: Contact[] }) {
+const normName = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+function ShareBody({ projectId, contacts, onContactsChanged }: { projectId: string; contacts: Contact[]; onContactsChanged?: () => void }) {
   const { data, error, reload } = useApiResource<{ links: LinkDTO[] }>(`/api/tracker/projects/${projectId}/share-links`);
   const [label, setLabel] = useState("");
   const [expiry, setExpiry] = useState("90");
@@ -47,13 +49,18 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
   const [fresh, setFresh] = useState<{ url: string; expiresAt: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
   const [revoking, setRevoking] = useState<LinkDTO | null>(null);
-  const [contactId, setContactId] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [cExpiry, setCExpiry] = useState("90");
   const [assign, setAssign] = useState(false);
   const [cCreating, setCCreating] = useState(false);
   const [cError, setCError] = useState("");
-  const [cFresh, setCFresh] = useState<{ url: string; expiresAt: string; contact: string; assigned: number } | null>(null);
+  const [cFresh, setCFresh] = useState<{ url: string; expiresAt: string; contact: string; assigned: number; isNew: boolean } | null>(null);
   const [cCopied, setCCopied] = useState(false);
+
+  // A name that matches a contact on this account uses that contact; any other name makes a new one.
+  const matchedContact = contacts.find((c) => normName(c.name) === normName(contactName));
+  const isNewContact = contactName.trim() !== "" && !matchedContact;
 
   const createContributor = async () => {
     setCCreating(true);
@@ -61,11 +68,14 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
     try {
       const created = await api<CreatedContributor>(`/api/tracker/projects/${projectId}/contributor-links`, {
         method: "POST",
-        body: { personId: contactId, expiresInDays: Number(cExpiry), assignUnassigned: assign },
+        body: { name: contactName.trim(), ...(isNewContact && contactEmail.trim() ? { email: contactEmail.trim() } : {}), expiresInDays: Number(cExpiry), assignUnassigned: assign },
       });
-      setCFresh({ url: created.url ?? `${window.location.origin}/contribute/${created.token}`, expiresAt: created.expiresAt, contact: created.contact, assigned: created.itemsAssigned });
+      setCFresh({ url: created.url ?? `${window.location.origin}/contribute/${created.token}`, expiresAt: created.expiresAt, contact: created.contact, assigned: created.itemsAssigned, isNew: created.contactCreated });
       setCCopied(false);
+      setContactName("");
+      setContactEmail("");
       reload();
+      if (created.contactCreated) onContactsChanged?.();
     } catch (err) {
       setCError(errorMessage(err));
     } finally {
@@ -181,12 +191,13 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
             Client Contributor: let a client contact add and update items
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            A private link for one person. They see the same client-safe summary, can add items (these show a &quot;needs review&quot; flag for you), and can update the items assigned to them. They cannot see team-only items or change anything else.
+            A private link for one person. They see the same client-safe views, can edit and comment on any item they can see, and can add items (these show a &quot;needs review&quot; flag for you). They cannot see team-only items or set an item to blocked or dropped.
           </p>
         </div>
         {cFresh ? (
           <div className="space-y-2 rounded-lg border border-border bg-secondary p-4" role="status">
             <p className="text-sm font-medium">Link for {cFresh.contact} is ready. Copy it now: it is shown only once.</p>
+            {cFresh.isNew && <p className="text-xs text-muted-foreground">{cFresh.contact} was added to this account&apos;s contacts. You can see them on the Team page.</p>}
             <div className="flex gap-2">
               <Input readOnly value={cFresh.url} aria-label="Client Contributor link" onFocus={(e) => e.currentTarget.select()} />
               <Button type="button" onClick={copyContributor} variant="outline">
@@ -202,24 +213,26 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
               Done
             </Button>
           </div>
-        ) : contacts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">There are no client contacts for this account yet. Add one on the Team page first.</p>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Client contact" htmlFor="contrib-contact">
-                <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger id="contrib-contact" className="w-full">
-                    <SelectValue placeholder="Choose a contact" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Field
+                label="Who is it for?"
+                htmlFor="contrib-contact"
+                hint={
+                  contactName.trim() === ""
+                    ? "Type a name. Pick an existing contact from the list, or type someone new."
+                    : matchedContact
+                      ? `Existing contact: ${matchedContact.name}.`
+                      : `New contact: ${contactName.trim()} will be added to this account's contacts.`
+                }
+              >
+                <Input id="contrib-contact" list="contrib-contact-options" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Bruce Dela Rosa" maxLength={120} autoComplete="off" />
+                <datalist id="contrib-contact-options">
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
               </Field>
               <Field label="Stops working after" htmlFor="contrib-expiry">
                 <Select value={cExpiry} onValueChange={setCExpiry}>
@@ -235,12 +248,17 @@ function ShareBody({ projectId, contacts }: { projectId: string; contacts: Conta
                 </Select>
               </Field>
             </div>
+            {isNewContact && (
+              <Field label="Their email (optional)" htmlFor="contrib-email" hint="Only kept on the contact so you can tell people apart. Nothing is sent to it.">
+                <Input id="contrib-email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} maxLength={200} autoComplete="off" />
+              </Field>
+            )}
             <label className="flex items-start gap-2 text-sm">
               <Checkbox className="mt-0.5" checked={assign} onCheckedChange={(v) => setAssign(v === true)} />
-              <span>Also assign this contact every unassigned &quot;Client does this&quot; item, so they can update them.</span>
+              <span>Also make this person the owner of every unassigned &quot;Client does this&quot; item.</span>
             </label>
             <FormError message={cError} />
-            <Button type="button" onClick={createContributor} disabled={cCreating || !contactId}>
+            <Button type="button" onClick={createContributor} disabled={cCreating || !contactName.trim()}>
               <Link2 className="h-4 w-4" />
               {cCreating ? "Creating..." : "Create Client Contributor link"}
             </Button>

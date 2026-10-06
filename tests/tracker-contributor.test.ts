@@ -105,6 +105,21 @@ test("a client edit takes only the approved fields, and at least one change", ()
   assert.equal(clientItemEditSchema.safeParse({ waitsOn: Array.from({ length: CLIENT_LIMITS.maxWaitsOn + 1 }, (_, n) => `i${n}`) }).success, false);
 });
 
+test("a contributor link is for an existing contact OR a typed name, never both and never neither", () => {
+  assert.equal(contributorLinkCreateSchema.safeParse({ personId: "p1" }).success, true);
+  const named = contributorLinkCreateSchema.parse({ name: "  Bruce Dela Rosa ", email: " Bruce@Example.com " });
+  assert.equal(named.name, "Bruce Dela Rosa");
+  assert.equal(named.email, "bruce@example.com", "emails are lower-cased");
+  assert.equal(contributorLinkCreateSchema.parse({ name: "Bruce", email: "" }).email, undefined, "an empty email is no email");
+  assert.equal(contributorLinkCreateSchema.safeParse({ name: "Bruce" }).success, true);
+  assert.equal(contributorLinkCreateSchema.safeParse({}).success, false);
+  assert.equal(contributorLinkCreateSchema.safeParse({ personId: "p1", name: "Bruce" }).success, false);
+  assert.equal(contributorLinkCreateSchema.safeParse({ personId: "p1", email: "a@b.co" }).success, false, "an email only goes with a name");
+  assert.equal(contributorLinkCreateSchema.safeParse({ name: "Bruce", email: "not-an-email" }).success, false);
+  assert.equal(contributorLinkCreateSchema.safeParse({ name: "   " }).success, false);
+  assert.equal(contributorLinkCreateSchema.safeParse({ name: "x".repeat(121) }).success, false);
+});
+
 test("a note is plain text of a sensible length with nothing else attached", () => {
   assert.equal(clientRemarkSchema.safeParse({ body: "Sent to IT" }).success, true);
   assert.equal(clientRemarkSchema.safeParse({ body: "" }).success, false);
