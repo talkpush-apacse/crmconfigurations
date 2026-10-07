@@ -6,6 +6,8 @@ import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
 import { SectionSelect } from "@/components/layout/SectionSelect";
+import { ChecklistLookProvider, useChecklistLookState } from "@/components/layout/ChecklistLook";
+import { figtree } from "@/lib/client-form-font";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ApplyRequirementsTemplateSheet } from "@/components/admin/ApplyRequirementsTemplateSheet";
 import { ChecklistContext } from "@/lib/checklist-context";
@@ -18,6 +20,8 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
   const params = useParams();
   const id = params.id as string;
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false);
+  // Same modern look as the client's checklist, with a switch back to classic. See ChecklistLook.
+  const { value: lookValue, rootClass } = useChecklistLookState(undefined, figtree.variable);
   const {
     data,
     loading,
@@ -122,6 +126,9 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
       <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
         {/* The shared Implementation Hub header, so staff can switch modules from here. */}
         <AdminHeader />
+        <ChecklistLookProvider value={lookValue}>
+        {/* display: contents keeps this wrapper out of the flex layout while it carries the look classes. */}
+        <div className={`${rootClass} contents`}>
         <Header
           variant="staff"
           company={(data as { account?: { id: string; name: string } | null }).account ?? null}
@@ -158,6 +165,8 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
             </main>
           </div>
         </div>
+        </div>
+        </ChecklistLookProvider>
         {!isCustom && (
           <ApplyRequirementsTemplateSheet
             checklistId={id}

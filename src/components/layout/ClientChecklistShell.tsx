@@ -5,7 +5,8 @@ import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
 import { SectionSelect } from "@/components/layout/SectionSelect";
-import { useClientFormScope } from "@/components/layout/useClientFormScope";
+import { ChecklistLookProvider, useChecklistLookState } from "@/components/layout/ChecklistLook";
+import type { ChecklistLook } from "@/lib/checklist-look";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs, excludeTalkpushTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -20,15 +21,18 @@ export function ClientChecklistShell({
   slug,
   initialData,
   fontClass = "",
+  initialLook,
   children,
 }: {
   slug: string;
   initialData: ChecklistData | null;
-  /** next/font class for the client form type. See useClientFormScope. */
+  /** next/font class for the modern look type. See useChecklistLookState. */
   fontClass?: string;
+  /** The look saved in the visitor's cookie, read on the server so the first paint is right. */
+  initialLook?: ChecklistLook;
   children: React.ReactNode;
 }) {
-  useClientFormScope(fontClass);
+  const { value: lookValue, rootClass } = useChecklistLookState(initialLook, fontClass);
   const {
     data,
     loading,
@@ -148,7 +152,8 @@ export function ClientChecklistShell({
 
   return (
     <ChecklistContext.Provider value={contextValue}>
-      <div className={`client-form ${fontClass} flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
+      <ChecklistLookProvider value={lookValue}>
+      <div className={`${rootClass} flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
         <Header
           clientName={data.clientName}
           slug={slug}
@@ -175,6 +180,7 @@ export function ClientChecklistShell({
           </div>
         </div>
       </div>
+      </ChecklistLookProvider>
     </ChecklistContext.Provider>
   );
 }
