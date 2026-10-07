@@ -11,6 +11,9 @@ import { prisma } from "@/lib/db";
 import { CHECKLIST_READ_TOOLS } from "@/lib/mcp/checklist-read-tools";
 import { onlyTools } from "@/lib/mcp/toolkit";
 import type { Prisma } from "@/generated/prisma/client";
+import { findChecklistByEditorToken } from "@/lib/edit-history/resolve";
+import { scheduleSaveRecord } from "@/lib/edit-history/record";
+import { MCP_ACTOR } from "@/lib/edit-history/types";
 import {
   getCustomTabSectionState,
   getSectionState,
@@ -437,10 +440,14 @@ async function appendToSectionByEditorToken<T extends { id: string }>(
   sectionField: string,
   newRows: T[]
 ): Promise<{ added: T[]; totalCount: number; version: number }> {
+  // The token may be a named link or the original shared link; a turned-off link is refused.
+  const found = await findChecklistByEditorToken(editorToken, { id: true });
+  if (!found.ok) throw new Error("Checklist not found for the provided editor token");
+  const checklistId = found.checklist.id;
   return prisma.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<
       Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
-    >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE "editorToken" = ${editorToken} FOR UPDATE`;
+    >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE "id" = ${checklistId} FOR UPDATE`;
 
     const current = locked[0];
     if (!current) {
@@ -1690,6 +1697,16 @@ export function registerChecklistTools(server: McpServer): void {
 
       const existingCustomData = (checklist?.customData ?? {}) as Record<string, unknown>;
 
+      // A copy of what is saved now, taken BEFORE the mutator runs (it may change its inputs in place), for the edit history.
+      const savedBefore = JSON.parse(
+        JSON.stringify({
+          customTabs: checklist?.customTabs ?? [],
+          tabOrder: checklist?.tabOrder ?? null,
+          tabFilledBy: checklist?.tabFilledBy ?? null,
+          customData: existingCustomData,
+        })
+      ) as Record<string, unknown>;
+
       const outcome = mutator({
         tabs: (checklist?.customTabs ?? []) as unknown as CustomTab[],
         tabOrder: (checklist?.tabOrder ?? null) as string[] | null,
@@ -1726,7 +1743,42 @@ export function registerChecklistTools(server: McpServer): void {
 
       await tx.checklist.update({ where: { id: current.id }, data });
 
-      return { result: outcome.result, version: newVersion };
+      // What the edit history needs, captured under the lock: the values before, and the values after.
+      const historyFields = ["customTabs"];
+      const historyBefore: Record<string, unknown> = { customTabs: savedBefore.customTabs };
+      const historyAfter: Record<string, unknown> = { customTabs: outcome.tabs };
+      if (outcome.tabOrder !== undefined) {
+        historyFields.push("tabOrder");
+        historyBefore.tabOrder = savedBefore.tabOrder;
+        historyAfter.tabOrder = outcome.tabOrder ?? [];
+      }
+      if (outcome.tabFilledBy !== undefined) {
+        historyFields.push("tabFilledBy");
+        historyBefore.tabFilledBy = savedBefore.tabFilledBy;
+        historyAfter.tabFilledBy = outcome.tabFilledBy ?? {};
+      }
+      if (outcome.customDataPatch && Object.keys(outcome.customDataPatch).length > 0) {
+        historyFields.push("customData");
+        historyBefore.customData = savedBefore.customData;
+        historyAfter.customData = { ...existingCustomData, ...outcome.customDataPatch };
+      }
+
+      return {
+        result: outcome.result,
+        version: newVersion,
+        history: { checklistId: current.id, fields: historyFields, before: historyBefore, after: historyAfter },
+      };
+    }).then(({ history, ...rest }) => {
+      // Claude's change to a custom tab, recorded after it has committed (never part of the change itself).
+      scheduleSaveRecord({
+        checklistId: history.checklistId,
+        actor: MCP_ACTOR,
+        version: rest.version,
+        before: history.before,
+        after: history.after,
+        fields: history.fields,
+      });
+      return rest;
     });
   }
 

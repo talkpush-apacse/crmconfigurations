@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { systemEvent } from "@/lib/edit-history/diff";
+import { scheduleSaveRecord } from "@/lib/edit-history/record";
+import { MCP_ACTOR } from "@/lib/edit-history/types";
 import {
   CHECKLIST_JSON_FIELDS,
   SNAPSHOT_SCHEMA_VERSION,
@@ -341,10 +344,34 @@ export async function restoreSnapshot(
       preRestoreSnapshotId: preRestore.id,
       newVersion,
       checklistId: current.id,
+      history: {
+        before: current as unknown as Record<string, unknown>,
+        after: snapshotPayload,
+        fields: CHECKLIST_JSON_FIELDS.filter((field) => Object.prototype.hasOwnProperty.call(snapshotPayload, field)),
+        snapshotLabel: snapshotRow.label,
+      },
     };
   });
 
-  return result;
+  // Record the restore in the edit history after it has committed: one line saying what happened, then what changed.
+  scheduleSaveRecord({
+    checklistId: result.checklistId,
+    actor:
+      opts.createdBy === "mcp"
+        ? MCP_ACTOR
+        : { type: "admin", name: opts.createdByLabel || "Talkpush staff" },
+    version: result.newVersion,
+    before: result.history.before,
+    after: result.history.after,
+    fields: result.history.fields,
+    leadEvents: [systemEvent(`Restored the snapshot${result.history.snapshotLabel ? ` "${result.history.snapshotLabel}"` : ""}`)],
+  });
+
+  return {
+    preRestoreSnapshotId: result.preRestoreSnapshotId,
+    newVersion: result.newVersion,
+    checklistId: result.checklistId,
+  };
 }
 
 export async function getChecklistIdBySlug(slug: string): Promise<string> {

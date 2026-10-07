@@ -144,6 +144,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           onSave={publishChanges}
           onDiscard={discardChanges}
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
+          historyHref={`/admin/checklists/${id}/history`}
           onApplyTemplate={isCustom ? undefined : () => setApplyTemplateOpen(true)}
         />
         <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findChecklistByEditorToken } from "@/lib/edit-history/resolve";
 import { sendOwnerNotification } from "@/lib/email";
 import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { buildClientTabUrl, getNotificationTabMeta } from "@/lib/notifications";
@@ -84,11 +85,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate the token/slug resolves to an existing checklist.
-      const checklist = editorToken
-        ? await prisma.checklist.findUnique({
-            where: { editorToken },
-            select: { id: true, slug: true, clientName: true, ownerEmail: true },
-          })
+      const byToken = editorToken
+        ? await findChecklistByEditorToken(editorToken, { id: true, slug: true, clientName: true, ownerEmail: true })
+        : null;
+      const checklist = byToken
+        ? byToken.ok
+          ? byToken.checklist
+          : null
         : await prisma.checklist.findUnique({
             where: { slug },
             select: { id: true, slug: true, clientName: true, ownerEmail: true },
@@ -124,11 +127,11 @@ export async function POST(request: NextRequest) {
     if (customTabId && fieldKey) {
       const slug = (formData.get("slug") as string) || "";
       const editorToken = (formData.get("editorToken") as string) || "";
-      const checklist = editorToken
-        ? await prisma.checklist.findUnique({
-            where: { editorToken },
-            select: { customTabs: true },
-          })
+      const tokenLookup = editorToken ? await findChecklistByEditorToken(editorToken, { customTabs: true }) : null;
+      const checklist = tokenLookup
+        ? tokenLookup.ok
+          ? tokenLookup.checklist
+          : null
         : slug
           ? await prisma.checklist.findUnique({
               where: { slug },

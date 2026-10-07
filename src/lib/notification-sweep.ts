@@ -161,8 +161,12 @@ export function scheduleNotificationSweep(baseUrlOverride?: string) {
   };
 
   if (typeof after === "function") {
-    after(runSweep);
-    return;
+    try {
+      after(runSweep);
+      return;
+    } catch {
+      // Called outside a web request (a script or a test): there is no response to wait for, so run it directly below.
+    }
   }
 
   void runSweep();

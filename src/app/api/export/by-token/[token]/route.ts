@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { findFullChecklistByEditorToken } from "@/lib/edit-history/resolve";
+import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { generateExcel } from "@/lib/excel-export";
 import type { ChecklistData } from "@/lib/types";
 
@@ -14,16 +15,17 @@ export async function GET(
   try {
     const { token } = await params;
 
-    const checklist = await prisma.checklist.findUnique({
-      where: { editorToken: token },
-    // No `select`: the export reads eighteen different fields, and hand-listing
+    // No column list: the export reads eighteen different fields, and hand-listing
     // them meant anything added to the workbook was silently dropped here.
     // Custom tab sheets, Attributes, Autoflows, Integrations and Tab Uploads
     // were all missing from every export for exactly this reason.
-    });
-    if (!checklist) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const found = await findFullChecklistByEditorToken(token);
+    if (!found.ok) {
+      return found.reason === "unknown"
+        ? NextResponse.json({ error: "Not found" }, { status: 404 })
+        : NextResponse.json({ error: LINK_OFF_MESSAGE, code: "link_off" }, { status: 410 });
     }
+    const checklist = found.checklist;
 
     const buffer = await generateExcel(checklist as unknown as ChecklistData);
 

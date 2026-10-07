@@ -5,6 +5,9 @@ import { accumulateNotificationState } from "@/lib/notification-state";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 import { validateCustomTabsData } from "@/lib/custom-tab-service";
 import { omitInternalConfigForToken } from "@/lib/checklist-public";
+import { findChecklistByEditorToken, findFullChecklistByEditorToken, type TokenFailure } from "@/lib/edit-history/resolve";
+import { scheduleSaveRecord, scheduleWholeDocumentRecord } from "@/lib/edit-history/record";
+import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
   (field) => field !== "atsIntegrations" && field !== "integrations"
@@ -20,9 +23,16 @@ function hasOwn(body: unknown, key: string): boolean {
   return !!body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, key);
 }
 
+/** An unknown link is a plain 404; a link staff turned off (or that ran out) says so, without naming the checklist. */
+function linkFailure(reason: TokenFailure) {
+  if (reason === "unknown") return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ error: LINK_OFF_MESSAGE, code: "link_off" }, { status: 410 });
+}
+
 /**
  * Public GET endpoint — fetch a checklist by its unguessable editor token.
- * No auth required — the token itself is the access control.
+ * No auth required — the token itself is the access control. The token is either a named link (cel_...) or the
+ * original shared link; see src/lib/edit-history/resolve.ts.
  */
 export async function GET(
   _request: NextRequest,
@@ -31,14 +41,11 @@ export async function GET(
   try {
     const { token } = await params;
 
-    const checklist = await prisma.checklist.findUnique({
-      where: { editorToken: token },
-    });
-    if (!checklist) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const found = await findFullChecklistByEditorToken(token);
+    if (!found.ok) return linkFailure(found.reason);
 
-    return NextResponse.json(omitInternalConfigForToken(checklist as unknown as Record<string, unknown>));
+    const body = omitInternalConfigForToken(found.checklist as unknown as Record<string, unknown>);
+    return NextResponse.json({ ...body, editingAs: found.actor.type === "link" ? found.actor.name : null });
   } catch (err) {
     console.error("GET /api/checklists/by-token/[token] error:", err);
     return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
@@ -57,16 +64,12 @@ export async function PUT(
     const { token } = await params;
     const requestOrigin = new URL(request.url).origin;
 
-    // Look up checklist by editorToken
-    const existing = await prisma.checklist.findUnique({
-      where: { editorToken: token },
-      select: { id: true },
-    });
-    if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    // Look up the checklist (and who this link belongs to) from the token
+    const existing = await findChecklistByEditorToken(token, { id: true });
+    if (!existing.ok) return linkFailure(existing.reason);
 
-    const id = existing.id;
+    const id = existing.checklist.id;
+    const actor = existing.actor;
     const body = await request.json();
 
     const { version, changedFields } = body as {
@@ -145,7 +148,7 @@ export async function PUT(
           select: { id: true, version: true, updatedAt: true },
         });
 
-        return { status: 200 as const, checklist };
+        return { status: 200 as const, checklist, before: currentChecklist };
       });
 
       if (result.status === 404) {
@@ -174,6 +177,15 @@ export async function PUT(
         updatedAt: result.checklist.updatedAt,
       });
       scheduleNotificationSweep(requestOrigin);
+      // Record who changed what, after the save and after the response, so it can never fail or slow the save.
+      scheduleSaveRecord({
+        checklistId: id,
+        actor,
+        version: result.checklist.version,
+        before: result.before,
+        after: body as Record<string, unknown>,
+        fields: validFields,
+      });
       return response;
     }
 
@@ -306,6 +318,8 @@ export async function PUT(
 
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
     scheduleNotificationSweep(requestOrigin);
+    // This older method sends the whole document, so the old values for every field are not at hand: one coarse line.
+    scheduleWholeDocumentRecord({ checklistId: id, actor, version: checklist.version, fieldCount: changedFieldsForNotification.length });
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-token/[token] error:", err);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChecklistData } from "@/lib/types";
+import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { FIELD_LABELS, type ChecklistJsonField } from "@/lib/types";
 
 function cloneChecklistData(data: ChecklistData): ChecklistData {
@@ -61,6 +62,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
             ? `/api/checklists/${slugOrToken}`
             : `/api/checklists?slug=${slugOrToken}`;
         const res = await fetch(url);
+        if (res.status === 410) throw new Error(LINK_OFF_MESSAGE); // a named link staff turned off
         if (!res.ok) throw new Error("Checklist not found");
         const json = await res.json();
         setData(json);
@@ -129,6 +131,14 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
 
           setSaveStatus("error");
           setSaveError(message);
+          hasPendingChangesRef.current = true;
+          setHasPendingChanges(true);
+          return;
+        }
+        if (res.status === 410) {
+          // Staff turned this link off while the page was open. Retrying cannot help; say so and keep the edits on screen.
+          setSaveStatus("error");
+          setSaveError(LINK_OFF_MESSAGE);
           hasPendingChangesRef.current = true;
           setHasPendingChanges(true);
           return;
