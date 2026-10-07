@@ -6,6 +6,7 @@ import { getDefaultChecklistData } from "@/lib/template-data";
 import { getChecklistProgress } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
 import { omitInternalConfigForSlug } from "@/lib/checklist-public";
+import { findLinkableAccount } from "@/lib/accounts/company-link";
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
           editorToken: true,
           clientName: true,
           ownerEmail: true,
+          accountId: true,
           createdAt: true,
           updatedAt: true,
           enabledTabs: true,
@@ -93,6 +95,7 @@ export async function GET(request: NextRequest) {
       editorToken: item.editorToken,
       clientName: item.clientName,
       ownerEmail: item.ownerEmail,
+      accountId: item.accountId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       enabledTabs: item.enabledTabs,
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
-    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs, ownerEmail } = body;
+    const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs, ownerEmail, accountId } = body;
 
     if (!clientName) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -131,6 +134,17 @@ export async function POST(request: NextRequest) {
     const normalizedOwnerEmail = normalizeOwnerEmail(ownerEmail);
     if (normalizedOwnerEmail.error) {
       return NextResponse.json({ error: normalizedOwnerEmail.error }, { status: 400 });
+    }
+
+    // Optional: file the new checklist under a company straight away.
+    let linkedAccountId: string | null = null;
+    if (accountId !== undefined && accountId !== null) {
+      if (typeof accountId !== "string" || !accountId.trim()) {
+        return NextResponse.json({ error: "accountId must be a company id." }, { status: 400 });
+      }
+      const target = await findLinkableAccount(accountId.trim());
+      if (!target.ok) return NextResponse.json({ error: target.error }, { status: target.status });
+      linkedAccountId = target.account.id;
     }
 
     const slug = clientName
@@ -151,6 +165,7 @@ export async function POST(request: NextRequest) {
       clientName,
       isCustom: !!isCustom,
       ownerEmail: normalizedOwnerEmail.value,
+      accountId: linkedAccountId,
     };
 
     if (isCustom) {
