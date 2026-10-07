@@ -1394,6 +1394,7 @@ export function EditableTable<TRow extends EditableRow>({
 
   const tableContent = (
     <div data-cf-view={cfView} className="cf-table">
+      <div className="cf-toolbar">
       {spreadsheetMode && (
         <div className="cf-viewtoggle mb-3 items-center gap-3">
           <span className="text-sm font-bold">View as</span>
@@ -1417,6 +1418,7 @@ export function EditableTable<TRow extends EditableRow>({
           extraExport={csvConfig.extraExport}
         />
       )}
+      </div>
       {showCompleteState && (
         <div className="mb-2 flex items-start gap-2 rounded-md border border-brand-sage-darker/30 bg-brand-sage-lightest px-3 py-2 text-sm text-foreground">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1427,13 +1429,13 @@ export function EditableTable<TRow extends EditableRow>({
         </div>
       )}
       {attentionIssues.length > 0 && (
-        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <div className="cf-attn mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="min-w-0">
                 <p className="font-medium">Needs attention: {attentionIssues.length} required field{attentionIssues.length === 1 ? "" : "s"} blank</p>
-                <ul className="mt-1 space-y-0.5 text-xs text-amber-900">
+                <ul className="cf-attn-list mt-1 space-y-0.5 text-xs text-amber-900">
                   {attentionPreview.map((issue) => (
                     <li key={issue.id}>
                       Row {issue.rowIdx + 1}: {issue.column.label} is blank
@@ -1441,7 +1443,7 @@ export function EditableTable<TRow extends EditableRow>({
                   ))}
                 </ul>
                 {attentionIssues.length > attentionPreview.length && (
-                  <p className="mt-1 text-xs text-amber-900">
+                  <p className="cf-attn-list mt-1 text-xs text-amber-900">
                     +{attentionIssues.length - attentionPreview.length} more required field{attentionIssues.length - attentionPreview.length === 1 ? "" : "s"}
                   </p>
                 )}

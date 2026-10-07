@@ -881,3 +881,18 @@ select:not([data-slot]):focus {
 .client-form .cf-sample-fields > * { margin-top: 0; }
 .client-form .cf-sample p.uppercase { font-size: 0.875rem; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--cf-muted); }
 .client-form .cf-sample p.italic { font-style: normal; font-size: 1rem; color: var(--cf-ink); }
+
+/* One quiet toolbar row above the records: view switch on the left, file actions on the right.
+   The CSV buttons become text actions so they stop competing with the first card. */
+.client-form .cf-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.5rem; margin-bottom: 1rem; }
+.client-form .cf-toolbar > * { margin-bottom: 0; }
+.client-form .cf-toolbar > :last-child:not(:first-child) { margin-left: auto; }
+.client-form .cf-toolbar [data-slot="button"][data-variant="outline"] {
+  border: 0; background: transparent; color: var(--cf-accent); min-height: 40px; padding: 0 0.25rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.client-form .cf-toolbar [data-slot="button"][data-variant="outline"]:hover { background: var(--cf-wash); text-decoration-thickness: 2px; }
+/* The banner says how many are blank and offers the jump. The list is on each card as "N required fields left". */
+.client-form .cf-attn-list { display: none; }
+.client-form .cf-attn { padding: 0.5rem 0.75rem; }
+.client-form .cf-attn .font-medium { font-size: 0.9375rem; font-weight: 700; }
+.client-form .cf-toolbar > .flex { gap: 0.25rem 0.75rem; }
