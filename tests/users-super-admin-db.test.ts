@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 
 /**
  * Super admins against a real database, through the real routes. Runs only against a LOCAL database
@@ -14,6 +15,14 @@ if (isLocalDb) {
   process.env.ADMIN_SECRET = "test-only-secret-for-super-admin-tests-0123456789";
 }
 const skip = !isLocalDb && "set TRACKER_TEST_DATABASE_URL to a localhost database";
+
+// The users routes reach src/lib/user-invitation.ts, which imports "server-only". That package throws
+// unless Next's react-server condition is active, so outside Next it must be stubbed or the import fails.
+if (isLocalDb) {
+  const require = createRequire(import.meta.url);
+  const id = require.resolve("server-only");
+  require.cache[id] = { id, filename: id, loaded: true, exports: {} } as NodeJS.Module;
+}
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
