@@ -5,6 +5,7 @@ import { requireEditor } from "@/lib/api-auth";
 import { signInOrigin } from "@/lib/google-sign-in";
 import { createUser, listUsers } from "@/lib/users-service";
 import { usersErrorResponse } from "@/lib/users-http";
+import { inviteByEmail } from "@/lib/user-invitation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,7 +29,15 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json().catch(() => null);
-    return NextResponse.json(await createUser(body, auth.userId), { status: 201 });
+    const created = await createUser(body, auth.userId);
+    // The login is already saved. A failed email must never undo that, so it is reported alongside the new user.
+    const invitation = await inviteByEmail({
+      to: created.email,
+      role: created.role,
+      inviterEmail: auth.email,
+      signInUrl: signInOrigin(process.env.GOOGLE_REDIRECT_URI?.trim(), request.nextUrl.origin),
+    });
+    return NextResponse.json({ ...created, invitation }, { status: 201 });
   } catch (err) {
     return usersErrorResponse(err);
   }
