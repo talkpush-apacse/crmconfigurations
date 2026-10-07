@@ -12,11 +12,14 @@ export function CommentThread({
   canComment,
   onReply,
   onSetStatus,
+  canResolveAny = false,
 }: {
   comments: CommentView[];
   canComment: boolean;
   onReply: (parentId: string, body: string) => Promise<void>;
   onSetStatus: (id: string, status: "open" | "resolved") => Promise<void>;
+  /** Staff can resolve or reopen anyone's comment; everyone else only their own. */
+  canResolveAny?: boolean;
 }) {
   const roots = comments.filter((c) => !c.parentId);
   const replies = useMemo(() => {
@@ -39,7 +42,7 @@ export function CommentThread({
           ))}
           <div className="mt-2 flex items-center gap-2">
             {canComment && <ReplyBox onSend={(body) => onReply(c.id, body)} />}
-            {c.mine && (
+            {(c.mine || canResolveAny) && (
               <Button variant="ghost" size="sm" onClick={() => onSetStatus(c.id, c.status === "resolved" ? "open" : "resolved")}>
                 {c.status === "resolved" ? <RotateCcw className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
                 {c.status === "resolved" ? "Reopen" : "Resolve"}

@@ -411,6 +411,8 @@ export interface CanvasToolsProps {
   onShowLabels: (v: boolean) => void;
   showStepNumbers: boolean;
   onShowStepNumbers: (v: boolean) => void;
+  showComments: boolean;
+  onShowComments: (v: boolean) => void;
   selectedCount: number;
   onDeleteSelected: () => void;
 }
@@ -420,7 +422,7 @@ export interface CanvasToolsProps {
  * Shown as a React Flow panel by the editor.
  */
 export function CanvasTools(p: CanvasToolsProps) {
-  const layersFiltered = !p.showWorkflowNodes || !p.showAnnotations || !p.showLabels || !p.showStepNumbers;
+  const layersFiltered = !p.showWorkflowNodes || !p.showAnnotations || !p.showLabels || !p.showStepNumbers || !p.showComments;
   return (
     <div className="flex items-center gap-2">
       <div
@@ -485,6 +487,9 @@ export function CanvasTools(p: CanvasToolsProps) {
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem checked={p.showStepNumbers} onCheckedChange={p.onShowStepNumbers} className="text-sm">
             Step numbers
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem checked={p.showComments} onCheckedChange={p.onShowComments} className="text-sm">
+            Comment pins
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>

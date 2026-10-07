@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CommentThread } from "@/components/workflow/client/CommentsPanel";
+import StaffCommentsTab, { type StaffCommentsApi } from "@/components/workflow/comments/StaffCommentsTab";
+import type { CommentTarget } from "@/components/workflow/comments/types";
+import { countThreads, type PageInfo } from "@/lib/workflow/comment-view";
 import SuggestionsPanel from "@/components/workflow/client/SuggestionsPanel";
 import { toast } from "@/components/workflow/ui/toast";
 import { formatDistanceToNow } from "@/lib/workflow/dates";
-import type { CommentView } from "@/lib/workflow/access/comments-service";
 import type { SuggestionView } from "@/lib/workflow/access/suggestions-service";
 
 interface ReviewData {
   status: string | null;
   revision: number;
-  comments: CommentView[];
   suggestions: SuggestionView[];
   feedback: { id: string; action: string; reviewerName: string; comment: string | null; createdAt: string; versionNumber: number | null }[];
   accessRequests: { id: string; name: string; email: string | null; message: string | null; status: string; createdAt: string }[];
@@ -56,14 +56,30 @@ export default function ReviewPanel({
   workflowId,
   onClose,
   onCanvasChanged,
+  comments,
+  pages,
+  target,
+  onTarget,
+  onJump,
 }: {
   workflowId: string;
   onClose: () => void;
   /** Called after a suggestion was accepted, so the editor can reload the canvas it is showing. */
   onCanvasChanged: () => Promise<void>;
+  /** The comments, kept fresh by the editor so the pins on the diagram and this list always agree. */
+  comments: StaffCommentsApi;
+  pages: PageInfo[];
+  target: CommentTarget | null;
+  onTarget: (t: CommentTarget | null) => void;
+  onJump: (at: { pageId: string; nodeId: string | null; edgeId: string | null }) => void;
 }) {
   const [data, setData] = useState<ReviewData | null>(null);
   const [tab, setTab] = useState<Tab>("comments");
+
+  // A pin on the diagram was clicked: bring the comments forward, whichever tab was showing.
+  useEffect(() => {
+    if (target) setTab("comments");
+  }, [target?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -106,7 +122,7 @@ export default function ReviewPanel({
     }
   }
 
-  const openComments = data?.comments.filter((c) => !c.parentId && c.status === "open").length ?? 0;
+  const openComments = countThreads(comments.comments).open;
   const pending = data?.suggestions.filter((s) => s.status === "pending").length ?? 0;
   const openRequests = data?.accessRequests.filter((r) => r.status === "open").length ?? 0;
 
@@ -134,31 +150,9 @@ export default function ReviewPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {error && <p role="alert" className="m-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-        {!data && !error && <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" /></div>}
+        {!data && !error && tab !== "comments" && <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" /></div>}
 
-        {data && tab === "comments" && (
-          <div className="space-y-4 p-3">
-            <CommentThread
-              comments={data.comments}
-              canComment
-              onReply={async (parentId, body) => {
-                const parent = data.comments.find((c) => c.id === parentId);
-                if (!parent) return;
-                await send("/comments", "POST", { pageId: parent.pageId, nodeId: parent.nodeId ?? undefined, parentId, body });
-                await load();
-              }}
-              onSetStatus={async (id, status) => {
-                try {
-                  await send(`/comments/${id}`, "PATCH", { status });
-                  await load();
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Could not update.");
-                }
-              }}
-            />
-            <p className="text-xs text-muted-foreground">Anyone can reply here. You can resolve your own comments; to resolve a client&apos;s, ask them or reply.</p>
-          </div>
-        )}
+        {tab === "comments" && <StaffCommentsTab api={comments} pages={pages} target={target} onTarget={onTarget} onJump={onJump} />}
 
         {data && tab === "suggestions" && (
           <div>

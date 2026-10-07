@@ -103,6 +103,10 @@ import QuickAddBar from "./panels/QuickAddBar";
 import SEBriefPanel from "./panels/SEBriefPanel";
 import ShareDialog from "./share/ShareDialog";
 import ReviewPanel from "./share/ReviewPanel";
+import CommentPins from "./comments/CommentPins";
+import { useStaffComments } from "./comments/use-staff-comments";
+import type { CommentTarget } from "./comments/types";
+import { buildPageInfos, openCountsByNode } from "@/lib/workflow/comment-view";
 import VersionHistory from "./panels/VersionHistory";
 import PageTabs, { type PageTabsItem } from "./panels/PageTabs";
 import EditorToolbar, { CanvasTools } from "./EditorToolbar";
@@ -525,6 +529,16 @@ function EditorInner({
   const [shareToken, setShareToken] = useState<string | null>(workflow.shareToken ?? null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Comments: kept fresh while the editor is open so the pins on the diagram and the Review panel agree.
+  const staffComments = useStaffComments(workflow.id);
+  const [showComments, setShowComments] = useState(true);
+  const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const pinCounts = useMemo(() => openCountsByNode(staffComments.comments, activePageId), [staffComments.comments, activePageId]);
+  // Step numbers and names for every page, so each comment can say which step it is about. Only built while the panel is open.
+  const commentPages = useMemo(
+    () => (reviewOpen ? buildPageInfos(pages as never, { id: activePageId, nodes, edges, stepNumbers }, isProcessMap) : []),
+    [reviewOpen, pages, activePageId, nodes, edges, stepNumbers, isProcessMap]
+  );
   const [shareLoading, setShareLoading] = useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -1863,6 +1877,7 @@ function EditorInner({
   }
 
   function openReviewPanel() {
+    setCommentTarget(null);
     setSelectedNodeId(null);
     setSelectedNodeIds([]);
     setSelectedEdgeId(null);
@@ -1870,6 +1885,31 @@ function EditorInner({
     setVersionPanelOpen(false);
     setSeBriefOpen(false);
     setReviewOpen(true);
+  }
+
+  /** A pin on the diagram was clicked: show that step's conversation. */
+  function openCommentsAt(nodeId: string) {
+    openReviewPanel();
+    setCommentTarget({ pageId: activePageIdRef.current, nodeId, edgeId: null, mode: "focus", nonce: Date.now() });
+  }
+
+  function closeReviewPanel() {
+    setReviewOpen(false);
+    setCommentTarget(null);
+  }
+
+  /** Bring the step (or the two steps a connector joins) a comment is about into view, changing page if needed. */
+  function jumpToComment(at: { pageId: string; nodeId: string | null; edgeId: string | null }) {
+    const show = () => {
+      const ids = at.nodeId ? [at.nodeId] : at.edgeId ? getEdges().filter((e) => e.id === at.edgeId).flatMap((e) => [e.source, e.target]) : [];
+      if (ids.length) fitView({ nodes: ids.map((id) => ({ id })), padding: 1.2, maxZoom: 1, duration: 400 });
+    };
+    if (at.pageId !== activePageIdRef.current) {
+      switchPage(at.pageId);
+      setTimeout(show, 300);
+    } else {
+      show();
+    }
   }
 
   function handleNodeDataChange(
@@ -2761,7 +2801,7 @@ function EditorInner({
         layoutHasHighFinding={layoutFindings.some((f) => f.severity === "high")}
         onOpenLayoutCheck={() => setLayoutCheckOpen(true)}
         reviewOpen={reviewOpen}
-        onToggleReview={() => (reviewOpen ? setReviewOpen(false) : openReviewPanel())}
+        onToggleReview={() => (reviewOpen ? closeReviewPanel() : openReviewPanel())}
         seBriefOpen={seBriefOpen}
         onToggleSEBrief={openSEBriefPanel}
         selectedCount={selectedNodeIds.length}
@@ -2882,6 +2922,9 @@ function EditorInner({
                 size={1}
                 color="var(--border)"
               />
+              {showComments && showWorkflowNodes && (
+                <CommentPins nodes={nodes} counts={pinCounts} activeNodeId={reviewOpen ? commentTarget?.nodeId ?? null : null} onOpen={openCommentsAt} />
+              )}
               {/* Canvas behaviour: pan or select, which layers show, bulk delete */}
               <Panel position="top-left" className="m-2">
                 <CanvasTools
@@ -2895,6 +2938,8 @@ function EditorInner({
                   onShowLabels={setShowLabels}
                   showStepNumbers={showStepNumbers}
                   onShowStepNumbers={setShowStepNumbers}
+                  showComments={showComments}
+                  onShowComments={setShowComments}
                   selectedCount={selectedNodeIds.length}
                   onDeleteSelected={() => handleDeleteNodes(selectedNodeIds)}
                 />
@@ -3008,7 +3053,16 @@ function EditorInner({
 
         {/* Right sidebar — node/edge properties, SE brief, or version history */}
         {reviewOpen && !versionPanelOpen && !seBriefOpen && !selectedNode && !selectedEdge && (
-          <ReviewPanel workflowId={workflow.id} onClose={() => setReviewOpen(false)} onCanvasChanged={syncFromServer} />
+          <ReviewPanel
+            workflowId={workflow.id}
+            onClose={closeReviewPanel}
+            onCanvasChanged={syncFromServer}
+            comments={staffComments}
+            pages={commentPages}
+            target={commentTarget}
+            onTarget={setCommentTarget}
+            onJump={jumpToComment}
+          />
         )}
         {seBriefOpen && !versionPanelOpen && !reviewOpen && !selectedNode && !selectedEdge && (
           <SEBriefPanel
