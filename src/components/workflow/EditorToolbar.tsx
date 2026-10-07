@@ -447,7 +447,7 @@ export function CanvasTools(p: CanvasToolsProps) {
           onClick={() => p.onLassoModeChange(true)}
           aria-pressed={p.lassoMode}
           aria-label="Select"
-          title="Select: drag on empty canvas to select several steps"
+          title="Select: drag on empty canvas to select several steps. Hold Space and drag to move the map."
           className={cn(
             "flex min-h-11 min-w-11 items-center justify-center gap-1.5 border-l border-border px-2.5 text-xs transition-colors md:min-h-8 md:min-w-0",
             p.lassoMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"

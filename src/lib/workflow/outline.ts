@@ -1,4 +1,5 @@
 import { stripInline } from "./process-map/inline-text";
+import { stripRich } from "./rich-text";
 /**
  * The "outline": the diagram as a numbered list. It is the phone-friendly and screen-reader-friendly way to read a
  * workflow, and the base of the client's "walk me through this flow" mode. Pure functions, no screen code.
@@ -61,7 +62,7 @@ export function buildOutline(nodes: any[], stepNumbers: Map<string, string>): Ou
         depth: depthOf(number),
         type: String(n.data?.type ?? n.type ?? ""),
         actorLabel: String(n.data?.actorLabel ?? ""),
-        notes: String(n.data?.notes ?? ""),
+        notes: stripRich(String(n.data?.notes ?? "")),
         noteKind: n.data?.type === "note" || n.type === "note" ? String(n.data?.noteKind ?? "info") : "",
       };
     });

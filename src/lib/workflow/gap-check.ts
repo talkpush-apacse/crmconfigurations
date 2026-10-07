@@ -1,4 +1,5 @@
 import { stripInline } from "./process-map/inline-text";
+import { stripRich } from "./rich-text";
 import { actionTypeOf, personActs, shapeKindOf } from "./process-map/model";
 import { computeDecimalNumbers } from "./numbering-decimal";
 import { usesLanes } from "./process-map/lane-mode";
@@ -28,7 +29,7 @@ export interface GapFinding {
 
 const TERMINAL_KINDS = new Set(["end", "jump", "note", "table", "container", "none"]);
 const lbl = (n: any) => stripInline(String(n.data?.label ?? ""));
-const text = (n: any) => `${n.data?.label ?? ""} ${n.data?.notes ?? ""}`.toLowerCase();
+const text = (n: any) => `${n.data?.label ?? ""} ${stripRich(n.data?.notes)}`.toLowerCase();
 const has = (nodes: any[], re: RegExp) => nodes.some((n) => re.test(text(n)));
 const TIME_WORDS = /\b(minutes?|hours?|days?|weeks?|working day|same day|next day|within|before|after|\d+\s*(h|hr|hrs|d)\b)/i;
 /** True when an information note attached to this step states a time. An orange "To confirm" note does not count: it says the time is not known yet. */

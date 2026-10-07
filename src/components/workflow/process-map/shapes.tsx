@@ -15,7 +15,7 @@ function Runs({ runs, fill, T }: { runs: Run[]; fill: string; T: Tokens }) {
   return (
     <>
       {runs.map((r, i) => (
-        <tspan key={i} fontWeight={r.bold ? 700 : 400} fontStyle={r.italic ? "italic" : "normal"} fontSize={r.size ?? T.type.body} fill={r.muted ? T.colors.muted : fill}>
+        <tspan key={i} fontWeight={r.bold ? 700 : 400} fontStyle={r.italic ? "italic" : "normal"} textDecoration={r.underline ? "underline" : undefined} fontSize={r.size ?? T.type.body} fill={r.muted ? T.colors.muted : fill}>
           {r.text}
         </tspan>
       ))}

@@ -1,7 +1,9 @@
 "use client";
 
 import { stripInline } from "@/lib/workflow/process-map/inline-text";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { RichText } from "../RichText";
+import { RichNotesField } from "../RichNotesField";
 import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ACTOR_CONFIG, NODE_TYPE_CONFIG } from "@/lib/workflow/types";
@@ -81,7 +83,7 @@ export default function StepDetail({
             <p className="text-xs font-medium text-muted-foreground">{editMode === "suggest" ? "Suggesting: your changes are sent to the owner to accept." : "Editing: your changes are saved as you go."}</p>
             <Field label="Step name" value={data.label ?? ""} maxLength={80} onCommit={(v) => onEditField("label", v)} />
             <Field label="Who does it" value={data.actorLabel ?? ""} maxLength={80} onCommit={(v) => onEditField("actorLabel", v)} />
-            <Field label="Notes" value={data.notes ?? ""} multiline maxLength={2000} onCommit={(v) => onEditField("notes", v)} />
+            <RichNotesDraft value={data.notes ?? ""} onCommit={(v) => onEditField("notes", v)} />
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={onAddAfter}><Plus className="h-3.5 w-3.5" />Add a step after this</Button>
               {!confirmDelete ? (
@@ -94,7 +96,7 @@ export default function StepDetail({
         ) : (
           <>
             <Info label="Who does it" value={data.actorLabel || "Not specified"} />
-            <Info label="Notes" value={data.notes || "No notes provided."} />
+            <Info label="Notes" value={data.notes ? <RichText text={data.notes} /> : "No notes provided."} />
             {data.feasibility && (
               <Info
                 label="Feasibility"
@@ -115,7 +117,7 @@ export default function StepDetail({
   );
 }
 
-function Info({ label, value, extra }: { label: string; value: string; extra?: string }) {
+function Info({ label, value, extra }: { label: string; value: ReactNode; extra?: string }) {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -146,5 +148,23 @@ function Field({ label, value, multiline, maxLength, onCommit }: { label: string
       {label}
       {multiline ? <textarea rows={4} {...common} /> : <input {...common} />}
     </label>
+  );
+}
+
+/** Notes for the client editor: formatting buttons, saved when the box loses focus (like the other fields). */
+function RichNotesDraft({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setDraft(value);
+  }
+  return (
+    <div className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      Notes
+      <div className="mt-1 normal-case tracking-normal">
+        <RichNotesField value={draft} onChange={setDraft} maxLength={2000} onBlur={() => draft !== value && onCommit(draft)} />
+      </div>
+    </div>
   );
 }

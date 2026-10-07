@@ -47,6 +47,7 @@ import OutlinePanel from "./OutlinePanel";
 import SignOffBar from "./SignOffBar";
 import StepDetail, { type EditMode } from "./StepDetail";
 import SuggestionsPanel from "./SuggestionsPanel";
+import { RichText } from "../RichText";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -478,6 +479,23 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
     );
   }
 
+  // Open at a readable size, starting where the process starts, instead of fitting the whole map
+  // (which makes big diagrams too small to read). Small diagrams that fit at that size still just fit.
+  const viewerReadyRef = useRef(false);
+  async function showStart() {
+    const nodes = rf.getNodes();
+    if (nodes.length === 0) return;
+    await rf.fitView({ padding: 0.1, duration: 0 });
+    const readZoom = isDesktop ? 0.8 : 0.6;
+    if (rf.getZoom() >= readZoom) return;
+    const b = rf.getNodesBounds(nodes);
+    await rf.setViewport({ x: 40 - b.x * readZoom, y: 40 - b.y * readZoom, zoom: readZoom }, { duration: 0 });
+  }
+  useEffect(() => {
+    if (viewerReadyRef.current) void showStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePageId]);
+
   // ---- walk-through -------------------------------------------------------------------------------------
 
   function focusNode(id: string) {
@@ -687,7 +705,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                 aria-selected={mobileView === id}
                 onClick={() => {
                   setMobileView(id);
-                  if (id === "diagram") setTimeout(() => rf.fitView({ padding: 0.15 }), 50);
+                  if (id === "diagram") setTimeout(() => void showStart(), 50);
                 }}
                 className={cn("flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 text-sm", mobileView === id ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground")}
               >
@@ -753,8 +771,10 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                   nodesConnectable={canDrag}
                   elementsSelectable
                   connectionMode={ConnectionMode.Loose}
-                  fitView
-                  fitViewOptions={{ padding: 0.1 }}
+                  onInit={() => {
+                    viewerReadyRef.current = true;
+                    void showStart();
+                  }}
                   minZoom={0.05}
                   className="bg-muted/30"
                 >
@@ -774,7 +794,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-muted-foreground">Step {numbering.stepNumbers.get(walkNode.id) ?? "•"} · walk-through</p>
                         <p className="font-semibold">{walkNode.data?.label}</p>
-                        {walkNode.data?.notes && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{walkNode.data.notes}</p>}
+                        {walkNode.data?.notes && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground"><RichText text={String(walkNode.data.notes)} /></p>}
                       </div>
                       <Button variant="ghost" size="icon-sm" onClick={() => setWalk(null)} aria-label="Stop walk-through"><X className="h-4 w-4" /></Button>
                     </div>

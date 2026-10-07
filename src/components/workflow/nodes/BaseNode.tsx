@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Handle, NodeResizer, Position } from "@xyflow/react";
+import { RichText } from "../RichText";
 import {
   Bot,
   CircleDot,
@@ -331,7 +332,7 @@ export default function BaseNode({
 
       {/* Notes preview — line-clamp-1 (not truncate) avoids white-space:nowrap expanding node width */}
       {data.notes && (
-        <p className="text-[11px] text-muted-foreground line-clamp-1">{data.notes}</p>
+        <p className="text-[11px] text-muted-foreground line-clamp-1"><RichText text={data.notes} /></p>
       )}
     </div>
   );
