@@ -8,17 +8,26 @@
  */
 
 /** Plain text, or text to show in bold. The only inline formatting emails need. */
-export type Segment = string | { strong: string };
+export type Segment = string | { strong: string } | { link: { text: string; url: string } };
 export type RichText = string | Segment[];
 
 export function strong(text: string): Segment {
   return { strong: text };
 }
 
+/** A link inside a sentence. Only web addresses are linked; anything else shows as plain text. */
+export function link(text: string, url: string): Segment {
+  return { link: { text, url } };
+}
+
 export type EmailBlock =
   | { type: "paragraph"; text: RichText }
   | { type: "steps"; items: RichText[] }
   | { type: "details"; rows: { label: string; value: string }[] }
+  /** A small uppercase section label, for emails with several sections. */
+  | { type: "heading"; text: string }
+  /** Groups of bullet points, each group with a bold title (optionally a link) and an optional "and N more" line. */
+  | { type: "bullets"; groups: { title: string; titleUrl?: string; subtitle?: string; items: RichText[]; more?: number }[] }
   /** "note" (amber) is for something that will trip people up. "info" (lavender) is for background. */
   | { type: "callout"; tone: "note" | "info"; text: RichText };
 
@@ -68,21 +77,26 @@ function segments(text: RichText): Segment[] {
   return typeof text === "string" ? [text] : text;
 }
 
+/** Only web addresses become links. Anything else is shown as plain text so a bad value can never run as a link. */
+function safeUrl(url: string): string {
+  return /^https?:\/\//i.test(url.trim()) ? url.trim() : "";
+}
+
 function richHtml(text: RichText): string {
   return segments(text)
-    .map((s) => (typeof s === "string" ? escapeHtml(s) : `<strong>${escapeHtml(s.strong)}</strong>`))
+    .map((s) => {
+      if (typeof s === "string") return escapeHtml(s);
+      if ("strong" in s) return `<strong>${escapeHtml(s.strong)}</strong>`;
+      const url = safeUrl(s.link.url);
+      return url ? `<a href="${escapeHtml(url)}" style="color:inherit;text-decoration:underline;">${escapeHtml(s.link.text)}</a>` : escapeHtml(s.link.text);
+    })
     .join("");
 }
 
 function richText(text: RichText): string {
   return segments(text)
-    .map((s) => (typeof s === "string" ? s : s.strong))
+    .map((s) => (typeof s === "string" ? s : "strong" in s ? s.strong : s.link.text))
     .join("");
-}
-
-/** Only web addresses become links. Anything else is shown as plain text so a bad value can never run as a link. */
-function safeUrl(url: string): string {
-  return /^https?:\/\//i.test(url.trim()) ? url.trim() : "";
 }
 
 /** The logo files live next to the Hub itself, so the address is derived from the button's own address. */
@@ -121,6 +135,25 @@ function renderBlock(block: EmailBlock): string {
       return `<tr><td style="padding:0 0 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}<tr><td class="dm-line" colspan="2" style="border-top:1px solid ${c.line};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`;
     }
 
+    case "heading":
+      return `<tr><td class="dm-muted" style="padding:12px 0 8px;font:700 12px/1.4 ${FONT};letter-spacing:0.12em;text-transform:uppercase;color:${c.muted};">${escapeHtml(block.text)}</td></tr>`;
+
+    case "bullets": {
+      const groups = block.groups
+        .map((g) => {
+          const titleUrl = g.titleUrl ? safeUrl(g.titleUrl) : "";
+          const title = titleUrl
+            ? `<a class="dm-ink" href="${escapeHtml(titleUrl)}" style="color:${c.ink};text-decoration:underline;">${escapeHtml(g.title)}</a>`
+            : escapeHtml(g.title);
+          const sub = g.subtitle ? `<span class="dm-muted" style="font-weight:400;color:${c.muted};"> &middot; ${escapeHtml(g.subtitle)}</span>` : "";
+          const items = g.items.map((item) => `<li style="margin:0 0 4px;">${richHtml(item)}</li>`).join("");
+          const more = g.more && g.more > 0 ? `<li class="dm-muted" style="margin:0 0 4px;list-style:none;color:${c.muted};">and ${g.more} more</li>` : "";
+          return `<div class="dm-ink" style="padding:0 0 14px;font:400 15px/1.5 ${FONT};color:${c.ink};"><div style="padding:0 0 4px;font-weight:700;">${title}${sub}</div><ul style="margin:0;padding:0 0 0 20px;">${items}${more}</ul></div>`;
+        })
+        .join("");
+      return `<tr><td style="padding:0;">${groups}</td></tr>`;
+    }
+
     case "callout": {
       const note = block.tone === "note";
       const bg = note ? c.noteBg : c.infoBg;
@@ -138,7 +171,15 @@ function renderText(content: EmailContent): string {
   for (const block of content.blocks) {
     if (block.type === "paragraph" || block.type === "callout") out.push(richText(block.text), "");
     else if (block.type === "steps") out.push(...block.items.map((item, i) => `${i + 1}. ${richText(item)}`), "");
-    else out.push(...block.rows.map((r) => `${r.label}: ${r.value}`), "");
+    else if (block.type === "heading") out.push(block.text.toUpperCase(), "");
+    else if (block.type === "bullets") {
+      for (const g of block.groups) {
+        out.push(`${g.title}${g.subtitle ? ` \u00b7 ${g.subtitle}` : ""}${g.titleUrl && safeUrl(g.titleUrl) ? `: ${safeUrl(g.titleUrl)}` : ""}`);
+        out.push(...g.items.map((item) => `- ${richText(item)}`));
+        if (g.more && g.more > 0) out.push(`- and ${g.more} more`);
+        out.push("");
+      }
+    } else out.push(...block.rows.map((r) => `${r.label}: ${r.value}`), "");
   }
   out.push(`${content.button.label}: ${content.button.url}`, "", richText(content.footer));
   return out.join("\n");
