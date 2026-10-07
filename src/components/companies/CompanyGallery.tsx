@@ -13,6 +13,7 @@ import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { formatDistanceToNow } from "@/lib/workflow/dates";
 import {
+  arrangeGallery,
   attentionTotal,
   describeAttention,
   filterCompanies,
@@ -28,7 +29,7 @@ interface GalleryResponse {
   unassigned: { checklists: number; workflows: number };
 }
 
-/** The home page: every company as a card. Open one to see its checklists, workflows and project trackers. */
+/** The home page: every account as a card, with the accounts of one company together. Open one to see its checklists, workflows and project trackers. */
 export function CompanyGallery() {
   const router = useRouter();
   const { canEdit } = useCurrentUser();
@@ -38,13 +39,14 @@ export function CompanyGallery() {
   const [creating, setCreating] = useState(false);
 
   const shown = useMemo(() => sortCompanies(filterCompanies(data?.companies ?? [], query), sort), [data, query, sort]);
+  const units = useMemo(() => arrangeGallery(shown), [shown]);
   const loose = (data?.unassigned.checklists ?? 0) + (data?.unassigned.workflows ?? 0);
 
   return (
     <>
       <PageHeader
-        title="Companies"
-        description="Every client in one place. Open a company to see its checklists, workflows and project trackers."
+        title="Accounts"
+        description="Every client account in one place, such as Concentrix PH. Open one to see its checklists, workflows and project trackers. Accounts of the same company sit together."
         actions={
           canEdit ? (
             <Button onClick={() => setCreating(true)}>
@@ -58,7 +60,7 @@ export function CompanyGallery() {
       {error ? (
         <ErrorBlock message={error} onRetry={reload} />
       ) : data === null ? (
-        <LoadingBlock label="Loading companies" />
+        <LoadingBlock label="Loading accounts" />
       ) : (
         <>
           {data.companies.length > 0 && (
@@ -68,13 +70,13 @@ export function CompanyGallery() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search companies"
-                  aria-label="Search companies"
+                  placeholder="Search accounts, companies or geos"
+                  aria-label="Search accounts, companies or geos"
                   className="h-11 pl-9 md:h-9"
                 />
               </div>
               <Select value={sort} onValueChange={(v) => setSort(v as GallerySort)}>
-                <SelectTrigger aria-label="Sort companies" className="h-11 w-full sm:w-52 md:h-9">
+                <SelectTrigger aria-label="Sort accounts" className="h-11 w-full sm:w-52 md:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -86,7 +88,7 @@ export function CompanyGallery() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground sm:ml-auto" aria-live="polite">
-                {query ? `${shown.length} of ${plural(data.companies.length, "company", "companies")}` : plural(data.companies.length, "company", "companies")}
+                {query ? `${shown.length} of ${plural(data.companies.length, "account", "accounts")}` : plural(data.companies.length, "account", "accounts")}
               </p>
             </div>
           )}
@@ -98,7 +100,7 @@ export function CompanyGallery() {
             >
               <AlertCircle className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-foreground">Needs a company ({loose})</span>
+                <span className="block text-sm font-semibold text-foreground">Needs an account ({loose})</span>
                 <span className="block text-sm text-muted-foreground">
                   {[
                     data.unassigned.checklists ? plural(data.unassigned.checklists, "checklist") : "",
@@ -106,7 +108,7 @@ export function CompanyGallery() {
                   ]
                     .filter(Boolean)
                     .join(" and ")}{" "}
-                  {loose === 1 ? "is" : "are"} not filed under a company yet.
+                  {loose === 1 ? "is" : "are"} not filed under an account yet.
                 </span>
               </span>
               <span className="shrink-0 text-sm font-medium text-foreground underline underline-offset-4">Sort them out</span>
@@ -116,8 +118,8 @@ export function CompanyGallery() {
           {data.companies.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="No companies yet"
-              description={loose > 0 ? "Create the first company, then file the checklists and workflows above under it." : "Add the first client company, then create its checklist, workflow or project tracker."}
+              title="No accounts yet"
+              description={loose > 0 ? "Create the first account, then file the checklists and workflows above under it." : "Add the first client account (a company and a geo), then create its checklist, workflow or project tracker."}
               action={
                 canEdit ? (
                   <Button onClick={() => setCreating(true)}>
@@ -129,15 +131,33 @@ export function CompanyGallery() {
             />
           ) : shown.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-              No company matches “{query}”.
+              No account matches “{query}”.
             </p>
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {shown.map((c) => (
-                <li key={c.id}>
-                  <CompanyCard company={c} />
-                </li>
-              ))}
+              {units.map((u) =>
+                u.kind === "account" ? (
+                  <li key={u.card.id}>
+                    <CompanyCard company={u.card} />
+                  </li>
+                ) : (
+                  <li key={u.companyId} className="col-span-full">
+                    <section aria-label={u.name}>
+                      <h2 className="mb-2 flex items-baseline gap-2 text-sm font-semibold text-foreground">
+                        {u.name}
+                        <span className="text-xs font-normal text-muted-foreground">{plural(u.cards.length, "account")}</span>
+                      </h2>
+                      <ul className="grid gap-4 rounded-xl border border-border bg-secondary/50 p-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {u.cards.map((c) => (
+                          <li key={c.id}>
+                            <CompanyCard company={c} />
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </li>
+                )
+              )}
             </ul>
           )}
         </>
@@ -157,7 +177,10 @@ function CompanyCard({ company: c }: { company: CompanyCardData }) {
       className="group flex h-full flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <h2 className="min-w-0 break-words text-base font-semibold tracking-tight text-foreground">{c.name}</h2>
+        <div className="min-w-0">
+          <h3 className="break-words text-base font-semibold tracking-tight text-foreground">{c.name}</h3>
+          {c.companyName && c.geo && <p className="text-xs text-muted-foreground">{c.companyName} · {c.geo}</p>}
+        </div>
         {waiting > 0 && (
           <span
             title={describeAttention(c.attention)}
@@ -170,7 +193,7 @@ function CompanyCard({ company: c }: { company: CompanyCardData }) {
       {empty ? (
         <p className="text-sm text-muted-foreground">Nothing set up yet. Open it to add a checklist, workflow or tracker.</p>
       ) : (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="What this company has">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="What this account has">
           <Count icon={ClipboardList} n={c.checklistCount} one="checklist" many="checklists" />
           <Count icon={GitBranch} n={c.workflowCount} one="workflow" many="workflows" />
           <Count icon={FolderKanban} n={c.projectCount} one="tracker" many="trackers" />

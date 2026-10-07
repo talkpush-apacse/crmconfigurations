@@ -30,14 +30,30 @@ const dateField = z
 
 const id = z.string().trim().min(1).max(64);
 
-export const accountCreateSchema = z.object({
-  name: text(120),
-  notes: optionalText(2000),
-});
+// An account is a company in one geo. Give a company and a geo and the name is built for you ("Concentrix" + PH =
+// "Concentrix PH"); give only a name for an account with no company (how accounts were made before companies).
+const companyGeoFields = {
+  /** The company's name. An existing company (matched ignoring capitals, punctuation and endings like Inc) is reused. */
+  company: text(120).optional(),
+  companyId: id.optional(),
+  /** "Philippines", "PH", "UK", "APAC"; or any other name together with geoCode. */
+  geo: text(60).optional(),
+  /** The short code for a geo that is not in the list. */
+  geoCode: text(12).optional(),
+};
+export const accountCreateSchema = z
+  .object({ name: text(120).optional(), notes: optionalText(2000), ...companyGeoFields })
+  .superRefine((v, ctx) => {
+    const hasCompany = Boolean(v.company || v.companyId);
+    if (!hasCompany && !v.name) ctx.addIssue({ code: "custom", path: ["company"], message: "Give a company and a geo, or a name." });
+    if (hasCompany && !v.geo) ctx.addIssue({ code: "custom", path: ["geo"], message: "Choose a geo." });
+    if (!hasCompany && v.geo) ctx.addIssue({ code: "custom", path: ["company"], message: "Give the company this geo belongs to." });
+  });
 export const accountUpdateSchema = z.object({
   name: text(120).optional(),
   notes: optionalText(2000),
   archived: z.boolean().optional(),
+  ...companyGeoFields,
 });
 
 export const personCreateSchema = z.object({

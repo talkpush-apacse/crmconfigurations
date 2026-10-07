@@ -18,7 +18,7 @@ interface Row {
   matches: boolean;
 }
 
-/** Add checklists or workflows that are not under any company yet to this one. */
+/** Add checklists or workflows that are not under any account yet to this one. */
 export function LinkExistingDialog({
   open,
   onOpenChange,
@@ -97,7 +97,7 @@ export function LinkExistingDialog({
           <DialogHeader>
             <DialogTitle>Add an existing {noun}</DialogTitle>
             <DialogDescription>
-              These {noun}s are not under a company yet. Pick the ones that belong to {company.name}. To take one from another company, use Move on that company&apos;s page.
+              These {noun}s are not under an account yet. Pick the ones that belong to {company.name}. To take one from another account, use Move on that account&apos;s page.
             </DialogDescription>
           </DialogHeader>
 
@@ -105,7 +105,7 @@ export function LinkExistingDialog({
             <p className="py-6 text-center text-sm text-muted-foreground" role="status">Loading...</p>
           ) : rows.length === 0 ? (
             <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-              No {noun}s are waiting for a company.
+              No {noun}s are waiting for an account.
             </p>
           ) : (
             <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">

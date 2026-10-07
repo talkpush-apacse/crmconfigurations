@@ -64,15 +64,15 @@ export function MoveToCompanyDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Move to another company</DialogTitle>
+            <DialogTitle>Move to another account</DialogTitle>
             <DialogDescription>
-              “{itemName}” will show under the company you pick. Nothing about it changes for the client.
+              “{itemName}” will show under the account you pick. Nothing about it changes for the client.
             </DialogDescription>
           </DialogHeader>
-          <Field label="Company" htmlFor="move-company" required>
+          <Field label="Account" htmlFor="move-company" required>
             <Select value={target} onValueChange={setTarget}>
               <SelectTrigger id="move-company" className="w-full">
-                <SelectValue placeholder={accounts === null ? "Loading companies..." : "Choose a company"} />
+                <SelectValue placeholder={accounts === null ? "Loading accounts..." : "Choose an account"} />
               </SelectTrigger>
               <SelectContent>
                 {(accounts ?? []).map((a) => (

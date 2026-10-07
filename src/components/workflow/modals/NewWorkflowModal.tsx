@@ -130,14 +130,14 @@ export default function NewWorkflowModal({
           {!account && companies.length > 0 && (
             <div>
               <label htmlFor="new-workflow-company" className="text-sm font-medium text-foreground/85 mb-1 block">
-                Company
+                Account
               </label>
               <Select value={companyId} onValueChange={pickCompany}>
                 <SelectTrigger id="new-workflow-company" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_COMPANY}>No company yet (add one later)</SelectItem>
+                  <SelectItem value={NO_COMPANY}>No account yet (add one later)</SelectItem>
                   {companies.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}

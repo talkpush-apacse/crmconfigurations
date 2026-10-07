@@ -68,6 +68,7 @@ export default function AccountsPage() {
                     <Link href={`/admin/tracker/accounts/${a.id}`} className="font-medium text-foreground underline-offset-4 hover:underline">
                       {a.name}
                     </Link>
+                    {a.companyName && a.geo && <span className="block text-xs text-muted-foreground">{a.companyName} · {a.geo}</span>}
                   </TableCell>
                   <TableCell className="tabular-nums">{plural(a.projectCount ?? 0, "project")}</TableCell>
                   <TableCell className="hidden tabular-nums sm:table-cell">{plural(a.peopleCount ?? 0, "contact")}</TableCell>

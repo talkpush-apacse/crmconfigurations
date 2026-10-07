@@ -131,6 +131,19 @@ model AdminUser {
 // Dates that mean "a calendar day" use @db.Date so time zones cannot shift them.
 // =============================================================================
 
+// A client company, once ("Concentrix"). It owns one account per geo ("Concentrix PH", "Concentrix US"); checklists,
+// workflows and trackers link to the account. nameKey is the name with capitals, punctuation and endings like Inc or
+// Corp removed, and is unique: it is what keeps "Concentrix" and "Concentrix Inc." from becoming two companies.
+model TrackerCompany {
+  id        String   @id @default(cuid())
+  name      String
+  nameKey   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts  TrackerAccount[]
+}
+
 model TrackerAccount {
   id        String   @id @default(cuid())
   name      String
@@ -140,12 +153,21 @@ model TrackerAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Which company and geo this account is for. Empty on accounts made before companies existed. The name is normally
+  // built from the two ("Concentrix" + PH = "Concentrix PH"); one account per company per geo.
+  companyId String?
+  company   TrackerCompany? @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  geo       String?
+  geoCode   String?
+
   people    TrackerPerson[]
   projects  TrackerProject[]
   // A company can have several checklists and several workflows (each belongs to at most one company).
   checklists Checklist[]
   workflows  WorkflowProject[]
 
+  @@unique([companyId, geoCode])
+  @@index([companyId])
   @@index([name])
 }
 

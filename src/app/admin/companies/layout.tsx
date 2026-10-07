@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
 export const metadata: Metadata = {
-  title: { default: "Companies | Talkpush Implementation Hub", template: "%s | Talkpush Implementation Hub" },
+  title: { default: "Accounts | Talkpush Implementation Hub", template: "%s | Talkpush Implementation Hub" },
 };
 
 export default function CompaniesLayout({ children }: { children: React.ReactNode }) {
