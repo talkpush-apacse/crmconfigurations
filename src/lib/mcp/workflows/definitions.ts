@@ -1,3 +1,5 @@
+import { accountProperty } from "./account-property";
+
 export type McpToolDefinition = {
   name: string;
   description: string;
@@ -208,6 +210,7 @@ const workflowSpecProperties = {
     description:
       "Optional customer summary text. If omitted, the server creates a deterministic summary.",
   },
+  account: accountProperty,
   autoLayout: {
     type: "boolean",
     description: "Defaults to true. Arranges the diagram before saving (the Process Map spine layout, or Dagre for the Classic style).",
@@ -260,7 +263,7 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "list_workflows",
     description:
-      "Find existing workflow maps by client, workflow name, or status and return edit URLs plus node/edge counts.",
+      "Find existing workflow maps by client, workflow name, or status and return edit URLs plus node/edge counts. Each result says which account it is filed under (account: null means it waits under \"Needs an account\").",
     inputSchema: {
       type: "object",
       properties: {
@@ -319,6 +322,7 @@ const originalDefinitions: McpToolDefinition[] = [
       properties: {
         templateId: templateIdProperty,
         clientName: { type: "string" },
+        account: accountProperty,
         workflowName: { type: "string" },
         description: { type: "string" },
       },
@@ -491,6 +495,7 @@ const originalDefinitions: McpToolDefinition[] = [
       type: "object",
       properties: {
         clientName: { type: "string" },
+        account: accountProperty,
         workflowName: { type: "string" },
         description: { type: "string" },
       },

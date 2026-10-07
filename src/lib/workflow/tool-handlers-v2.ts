@@ -230,6 +230,7 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
       const built = await h.createFromSpec(
         {
           clientName: input.clientName,
+          account: input.account,
           workflowName: input.workflowName,
           description: input.description,
           nodes: [...entries.map((label, i) => ({ tempId: entryIds[i], type: "source", label, actor: "source" })), ...graph.nodes],
