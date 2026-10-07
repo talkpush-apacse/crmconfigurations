@@ -16,6 +16,7 @@ import { PORTAL_MODULES, getActiveModule, isCompaniesPath } from "@/lib/modules"
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/roles";
 import { resetCurrentUser, useCurrentUser } from "@/lib/use-current-user";
+import { useChecklistLook } from "@/components/layout/ChecklistLook";
 
 export function AdminHeader() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export function AdminHeader() {
   const activeModule = PORTAL_MODULES.find((m) => m.id === getActiveModule(pathname));
   const onCompanies = isCompaniesPath(pathname);
   const { user, canEdit } = useCurrentUser();
+  // Only on pages that carry the Modern / Classic look (Companies and the checklists).
+  const lookControl = useChecklistLook();
 
   const handleLogout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
@@ -107,7 +110,7 @@ export function AdminHeader() {
               <span className="hidden text-sm font-medium sm:block">{user?.email ?? "Admin"}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             {canEdit && (
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/admin/users" className="flex min-h-11 items-center gap-2 md:min-h-0">
@@ -122,6 +125,15 @@ export function AdminHeader() {
                 Connected apps
               </Link>
             </DropdownMenuItem>
+            {lookControl && (
+              <DropdownMenuItem
+                className="min-h-11 cursor-pointer md:min-h-0"
+                onClick={() => lookControl.setLook(lookControl.look === "modern" ? "classic" : "modern")}
+              >
+                <Eye className="h-4 w-4" />
+                {lookControl.look === "modern" ? "Switch to classic look" : "Switch to modern look"}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="min-h-11 cursor-pointer text-destructive focus:text-destructive md:min-h-0"
