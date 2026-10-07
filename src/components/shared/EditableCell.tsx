@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
-import { ChevronDown, Pencil, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,13 @@ import { useChecklistContext } from "@/lib/checklist-context";
 import { parseClipboardGrid, useGridNav } from "./grid-nav";
 
 type ValidationType = "email" | "url" | "phone";
+
+/**
+ * Tallest a textarea gets in a spreadsheet grid before it is cut off (about six lines).
+ * Without a cap a long cell (an AI call script, a message template) makes its whole row
+ * hundreds of pixels tall and pushes the row's short cells off screen. "Show all" lifts it.
+ */
+const GRID_TEXTAREA_MAX_PX = 144;
 
 const VALIDATION_RULES: Record<ValidationType, { regex: RegExp; message: string }> = {
   email: { regex: /.+@.+\..+/, message: "Please enter a valid email address" },
@@ -128,6 +135,9 @@ export function EditableCell({
   const inGrid =
     spreadsheetMode && grid !== null && gridRow !== undefined && gridCol !== undefined;
   const [editing, setEditing] = useState(false);
+  // Grid textareas stop growing at GRID_TEXTAREA_MAX_PX; `expanded` lifts the cap for this cell.
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
 
   useEffect(() => {
     if (editing && inputRef.current) inputRef.current.focus();
@@ -140,6 +150,19 @@ export function EditableCell({
     grid!.registerCell(gridRow!, gridCol!, el);
     return () => grid!.registerCell(gridRow!, gridCol!, null);
   }, [inGrid, grid, gridRow, gridCol]);
+
+  // Does the text need more than the cap? scrollHeight is the full content height whether or not
+  // the cap is applied, so one check covers both the cut-off and the expanded state.
+  useEffect(() => {
+    if (!inGrid || type !== "textarea") return;
+    const el = inputRef.current;
+    if (!el) return;
+    const measure = () => setOverflowing(el.scrollHeight > GRID_TEXTAREA_MAX_PX + 2);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inGrid, type, currentValue]);
 
   const requiredError = useMemo(() => {
     if (!required || !showRequiredError || currentValue.trim() !== "") return null;
@@ -359,7 +382,8 @@ export function EditableCell({
   }
 
   if (type === "textarea") {
-    return wrapWithValidation(
+    const clamped = inGrid && !expanded;
+    const textarea = wrapWithValidation(
       <Textarea
         value={currentValue}
         onChange={(e) => setDraftValue(e.target.value)}
@@ -371,14 +395,33 @@ export function EditableCell({
         className={cn(
           // Compact in the grid, roomy in a detail panel.
           inGrid ? "min-h-[36px] resize-y text-sm" : "min-h-[80px] resize-y text-sm",
+          clamped && "overflow-y-auto",
           spreadsheetMode &&
             currentValue.trim() === "" &&
             "bg-muted/50 placeholder:text-muted-foreground/70",
           errorMessage && "border-red-400 focus-visible:ring-red-400",
           className
         )}
+        style={clamped ? { maxHeight: GRID_TEXTAREA_MAX_PX } : undefined}
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
       />
+    );
+    if (!inGrid) return textarea;
+    return (
+      <div>
+        {textarea}
+        {(overflowing || expanded) && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="mt-1 inline-flex min-h-7 items-center gap-1 rounded px-1 text-xs font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? "Show less" : "Show all"}
+          </button>
+        )}
+      </div>
     );
   }
 

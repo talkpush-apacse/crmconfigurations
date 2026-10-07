@@ -309,7 +309,8 @@ The look lives in one block at the bottom of `src/app/globals.css`, scoped to `.
 - **Buttons:** solid navy primary and a 2px navy outline for everything else, 44px minimum. One primary per area.
 - **Panels:** one tinted panel with a 2px navy border for a single task (such as "already have this in a file?"). No stacked banners.
 - **Section state:** three shapes with a word: check circle (Complete), half circle (In progress), empty circle (Not started). Selected is a solid navy row, so it never reads as done.
-- **Wide tables:** one record per card by default (`RecordCard` in `EditableTable.tsx`), two columns of labelled fields, long text full width, rules and notes folded into a disclosure (`cardSection` on a column). The grid is one click away as "Spreadsheet" and remembered per table in the browser; staff signed in to the editor start on it.
+- **Wide tables:** the Spreadsheet grid is the default for everyone; one record per card (`RecordCard` in `EditableTable.tsx`) is one click away as "Cards", remembered per table in the browser, and is what phones always get. Cards have two columns of labelled fields, long text full width, rules and notes folded into a disclosure (`cardSection` on a column).
+- **Tall cells in the grid:** cells are top-aligned so a row's short cells stay beside the first line of a tall one, and a textarea stops growing at about six lines with a "Show all / Show less" link (`GRID_TEXTAREA_MAX_PX` in `EditableCell.tsx`). This applies to every spreadsheet-mode table, staff pages included.
 - **Flat:** no gradient strip, no shadows, no pastel chrome.
 
 ## Do's and Don'ts

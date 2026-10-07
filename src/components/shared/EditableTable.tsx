@@ -354,7 +354,8 @@ function SortableRow<TRow extends EditableRow>({
           <TableCell
             className={cn(
               "w-10 text-center",
-              stickyColumns && "sticky left-0 z-10 bg-inherit"
+              // Spreadsheet rows can be very tall; keep the checkbox beside the row's first line.
+              stickyColumns && "sticky left-0 z-10 bg-inherit align-top pt-4"
             )}
           >
             <Checkbox
@@ -368,7 +369,7 @@ function SortableRow<TRow extends EditableRow>({
         <TableCell
           className={cn(
             "text-center text-xs text-muted-foreground",
-            stickyColumns && "sticky z-10 bg-inherit"
+            stickyColumns && "sticky z-10 bg-inherit align-top pt-4"
           )}
           style={stickyColumns ? { left: numColLeft } : undefined}
         >
@@ -435,6 +436,9 @@ function SortableRow<TRow extends EditableRow>({
                   : col.type === "text"
                     ? "min-w-[120px]"
                     : ""),
+              // Top-align in the grid: when one cell (a call script) is tall, the short cells
+              // beside it must stay at the top of the row, not float out of view in the middle.
+              stickyColumns && "align-top",
               stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
             )}
             style={
@@ -473,7 +477,7 @@ function SortableRow<TRow extends EditableRow>({
           </TableCell>
         ))}
         {!isReadOnly && (
-          <TableCell className="p-1.5">
+          <TableCell className={cn("p-1.5", stickyColumns && "align-top pt-2")}>
             <div className="flex items-center gap-0.5">
               {onDuplicate && (
                 <Button
@@ -869,11 +873,11 @@ export function EditableTable<TRow extends EditableRow>({
   csvConfig,
   bulkActions,
 }: EditableTableProps<TRow>) {
-  const { isReadOnly, userRole } = useChecklistContext();
-  // Client form only (see globals.css): rows show as cards by default, with the spreadsheet
-  // grid one click away. Staff signed in to the editor start on the grid. The choice is
-  // remembered per table in this browser. Elsewhere the grid and the phone cards behave as before.
-  const [cfView, setCfView] = useState<"cards" | "grid">("cards");
+  const { isReadOnly } = useChecklistContext();
+  // Client form only (see globals.css): everyone starts on the spreadsheet grid, with the card
+  // view one click away. The choice is remembered per table in this browser. Elsewhere the grid
+  // and the phone cards behave as before.
+  const [cfView, setCfView] = useState<"cards" | "grid">("grid");
   const cfViewKey = `cf-view:${tableId ?? "table"}`;
   useEffect(() => {
     let stored: string | null = null;
@@ -882,8 +886,8 @@ export function EditableTable<TRow extends EditableRow>({
     } catch {
       /* storage can be blocked; fall back to the default */
     }
-    setCfView(stored === "grid" || stored === "cards" ? stored : userRole === "admin" ? "grid" : "cards");
-  }, [cfViewKey, userRole]);
+    setCfView(stored === "grid" || stored === "cards" ? stored : "grid");
+  }, [cfViewKey]);
   const chooseCfView = (view: "cards" | "grid") => {
     setCfView(view);
     try {
@@ -1791,7 +1795,7 @@ export function EditableTable<TRow extends EditableRow>({
                 <TableCell
                   className={cn(
                     "py-2 text-center",
-                    stickyColumns && "sticky z-10 bg-inherit"
+                    stickyColumns && "sticky z-10 bg-inherit align-top"
                   )}
                   style={stickyColumns ? { left: numColLeft } : undefined}
                 >
@@ -1804,6 +1808,7 @@ export function EditableTable<TRow extends EditableRow>({
                     key={col.key}
                     className={cn(
                       "p-2",
+                      stickyColumns && "align-top",
                       stickyColumns && colIdx === 0 && "sticky z-10 bg-inherit"
                     )}
                     style={
