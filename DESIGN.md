@@ -138,7 +138,7 @@ components:
 
 The app is a shared board that tells the truth about a client project, plainly and warmly. Surfaces are warm beige paper, text is near-black, and four pastel accents carry meaning rather than decoration. The brand character is warm, approachable and playful-professional, so the tool should feel like a well-kept project room, not an enterprise console.
 
-The app has two faces and they must never share a page. The **staff face** is Talkpush Sign product UI: the checklist editor, the tracker portfolio, the board, the timeline, the item sheet. The **client face** is the executive report system: the client-safe Exec Summary, the viewer link page, anything printed or exported. The staff face uses the Sign accents. The client face uses the canonical report accents. Same warmth, slightly different hexes, and the difference is a brand rule, not drift.
+The app has two faces and they must never share a page. The **staff face** is Talkpush Sign product UI: the checklist editor, the tracker portfolio, the board, the timeline, the item sheet. The **client face** is the executive report system: the client-safe Exec Summary, the viewer link page, anything printed or exported. The staff face uses the Sign accents. The client face uses the canonical report accents. Same warmth, slightly different hexes, and the difference is a brand rule, not drift. A third face, the **client form face**, covers the checklist a client fills in (see its section below). It never shares a page with the other two.
 
 Density follows the task. Data entry and boards are compact and quiet. The Exec Summary is spacious, finding-first and readable on a phone.
 
@@ -286,6 +286,31 @@ Staff face: 6px cards, 4px buttons and inputs, full-round pills and avatars. Cli
 
 ### Signature decoration
 - **Accent squares:** small rotated squares, 10 to 18px, two to four per page, near titles. Used on the module picker, the login page and the Exec Summary header only. Never on boards, lists, tables or the timeline.
+
+## Client form face
+
+Decided with Jolo on 2026-10-07. The checklist editor (`/editor/[token]`) and the read-only client view (`/client/[slug]`) take the look of the Example Harbor reporter pages from the MYPAL product: plain, high contrast, large type, one narrow reading column. Reason: clients who are not technical fill these in, and the readability audit scored the old screens 5/10 (wide 8 to 10 column grids, help hidden in tooltips, grey text at about 2.5:1, 11 to 12px labels). Staff screens (admin, tracker, workflow) are not touched.
+
+The look lives in one block at the bottom of `src/app/globals.css`, scoped to `.client-form`, which both shells put on their root and on `<body>` (so menus in portals match). The shared token names are re-pointed there; components keep reading `--primary`, `--border` and so on.
+
+| Token | Value | Use |
+|---|---|---|
+| accent | #1B365D | primary button, selected section, outline buttons, links. An estimate from the reference screenshot; swap this one value if Jolo supplies the exact navy. |
+| ink | #12182B | body text and headings |
+| muted | #4A5468 | help text, examples (7.4:1 on white) |
+| field | #3B4558 | 2px field borders |
+| line | #D5DAE3 | hairline dividers only |
+| wash | #EEF1F6, #E1E7F0 | tinted panels, hover |
+| focus | #2F5BA8 | 3px focus ring |
+| ok, wait, danger | #0D6638, #8A5A00, #A1122B | done, in progress, error. Always with an icon and a word. |
+
+- **Type:** Figtree (variable), loaded in the editor and client layouts only, never in the root layout. 16px body, 14px floor for support text, page title 28px/800, group title 22px/800, field labels 16px/700 in sentence case. No kicker above a heading.
+- **Fields:** 2px border, 4px radius, 44px high, 16px text. The label sits above; what to enter is plain text under the label, never a tooltip; an example sits under the field.
+- **Buttons:** solid navy primary and a 2px navy outline for everything else, 44px minimum. One primary per area.
+- **Panels:** one tinted panel with a 2px navy border for a single task (such as "already have this in a file?"). No stacked banners.
+- **Section state:** three shapes with a word: check circle (Complete), half circle (In progress), empty circle (Not started). Selected is a solid navy row, so it never reads as done.
+- **Wide tables:** one record per card by default (`RecordCard` in `EditableTable.tsx`), two columns of labelled fields, long text full width, rules and notes folded into a disclosure (`cardSection` on a column). The grid is one click away as "Spreadsheet" and remembered per table in the browser; staff signed in to the editor start on it.
+- **Flat:** no gradient strip, no shadows, no pastel chrome.
 
 ## Do's and Don'ts
 

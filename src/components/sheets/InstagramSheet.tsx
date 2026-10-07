@@ -131,7 +131,7 @@ export function InstagramSheet() {
       />
 
       <div className="mt-8">
-        <SectionHeader
+        <SectionHeader level="section"
           title="Chatbot FAQs"
           description="Define frequently asked questions and responses for the Instagram chatbot."
         />

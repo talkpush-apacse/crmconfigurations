@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info, ArrowDownCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info, ArrowDownCircle, ArrowUp, ArrowDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -583,13 +583,25 @@ function SortableRow<TRow extends EditableRow>({
   );
 }
 
-function MobileSpreadsheetRow<TRow extends EditableRow>({
+/**
+ * One record as a card: a labelled field for every column, in a two-column grid, with the
+ * help text visible. It is the phone layout of a spreadsheet table, and in the client form
+ * (see globals.css) it is the layout at every width, with the grid one click away.
+ *
+ * Columns that carry a `cardSection` are tucked into a disclosure under the main fields,
+ * open by default when the record already has something in them.
+ */
+function RecordCard<TRow extends EditableRow>({
   row,
   rowIdx,
+  rowCount,
+  rowLabel,
   columns,
+  requiredKeys,
   onUpdate,
   onDuplicate,
   onDelete,
+  onMove,
   isReadOnly,
   rowIsActive,
   renderCellPrefix,
@@ -600,10 +612,14 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
 }: {
   row: TRow;
   rowIdx: number;
+  rowCount: number;
+  rowLabel: string;
   columns: ColumnDef[];
+  requiredKeys: string[];
   onUpdate: (index: number, field: string, value: string | boolean) => void;
   onDuplicate?: (index: number) => void;
   onDelete: (index: number) => void;
+  onMove?: (index: number, direction: -1 | 1) => void;
   isReadOnly: boolean;
   rowIsActive: boolean;
   renderCellPrefix?: (args: { row: EditableRow; column: ColumnDef; value: string | boolean | null | undefined }) => React.ReactNode;
@@ -619,22 +635,123 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
   isIssueHighlighted?: boolean;
 }) {
   const rowValues = row as Record<string, string | boolean | null | undefined>;
+  const mainColumns = columns.filter((col) => !col.cardSection);
+  const sectionNames = Array.from(
+    new Set(columns.filter((col) => col.cardSection).map((col) => col.cardSection as string))
+  );
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () =>
+      new Set(
+        sectionNames.filter((name) =>
+          columns.some((col) => col.cardSection === name && hasCellValue(rowValues[col.key]))
+        )
+      )
+  );
+
+  // The first typed value is the card's name, so a long list can be scanned.
+  const previewColumn = mainColumns.find(
+    (col) => (col.type === "text" || col.type === "textarea") && hasCellValue(rowValues[col.key])
+  );
+  const preview = previewColumn ? String(rowValues[previewColumn.key]).trim() : "";
+  const filledAny = columns.some((col) => hasCellValue(rowValues[col.key]));
+  const missing = requiredKeys.filter((key) => !hasCellValue(rowValues[key])).length;
+
+  let chip: { status: "complete" | "in-progress" | "not-started"; text: string } | null = null;
+  if (requiredKeys.length > 0) {
+    chip = !filledAny
+      ? { status: "not-started", text: "Not started" }
+      : missing > 0
+        ? { status: "in-progress", text: `${missing} required ${missing === 1 ? "field" : "fields"} left` }
+        : { status: "complete", text: "Complete" };
+  }
+
+  const renderField = (col: ColumnDef) => (
+    <div key={col.key} className="cf-card-field space-y-1.5" data-cf-type={col.type}>
+      <label className="cf-card-label flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {renderColumnLabel(col, "text-red-500")}
+        {col.description && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="cf-hide inline-flex shrink-0 cursor-help items-center rounded-full text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
+                aria-label={`About ${col.label}`}
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-sm">
+              <div className="space-y-1 text-xs leading-relaxed">
+                {col.description}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </label>
+      {col.description &&
+        (typeof col.description === "string" ? (
+          <div className="cf-only cf-help">{col.description}</div>
+        ) : (
+          // Reference material (such as every question type) is too long to repeat on each card.
+          <details className="cf-only cf-help-more">
+            <summary>What do the choices mean?</summary>
+            <div className="cf-help space-y-1">{col.description}</div>
+          </details>
+        ))}
+      <div className="flex items-center gap-2">
+        {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
+        <div className="min-w-0 flex-1">
+          {renderCell ? (
+            renderCell({
+              row,
+              rowIdx,
+              column: col,
+              value: rowValues[col.key],
+              onChange: (val) => onUpdate(rowIdx, col.key, val),
+            })
+          ) : (
+            <EditableCell
+              value={rowValues[col.key] as string | boolean}
+              type={col.type}
+              options={col.options}
+              onChange={(val) => onUpdate(rowIdx, col.key, val)}
+              placeholder={col.label}
+              validation={col.validation}
+              required={col.required}
+              showRequiredError={rowIsActive}
+            />
+          )}
+        </div>
+      </div>
+      {col.example && <p className="cf-only cf-example-line">{col.example}</p>}
+    </div>
+  );
 
   return (
     <article
       ref={rowRef}
       tabIndex={-1}
       className={cn(
-        "rounded-lg border border-border bg-card p-4 shadow-sm transition-colors",
+        "cf-card rounded-lg border border-border bg-card p-4 shadow-sm transition-colors",
         isIssueHighlighted && "border-amber-400 bg-amber-50 ring-2 ring-amber-300 ring-offset-1",
         bulkRow?.isSelected && "border-brand-sage-darker bg-brand-sage-lightest"
       )}
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="cf-card-head mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="cf-card-title-hide text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Row {rowIdx + 1}
           </p>
+          <h3 className="cf-only cf-card-title">
+            <span className="tabular-nums">{rowIdx + 1}.</span>{" "}
+            {preview || `Untitled ${rowLabel.toLowerCase()}`}
+          </h3>
+          {chip && (
+            <p className="cf-chip" data-status={chip.status}>
+              <span className="cf-status" data-status={chip.status} aria-hidden="true" />
+              {chip.text}
+            </p>
+          )}
           {bulkRow?.enabled && (
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <Checkbox
@@ -649,6 +766,32 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
         </div>
         {!isReadOnly && (
           <div className="flex shrink-0 items-center gap-1">
+            {onMove && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                  onClick={() => onMove(rowIdx, -1)}
+                  disabled={rowIdx === 0}
+                  title="Move up"
+                  aria-label={`Move ${rowLabel.toLowerCase()} ${rowIdx + 1} up`}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 text-muted-foreground hover:text-primary hover:bg-gray-100"
+                  onClick={() => onMove(rowIdx, 1)}
+                  disabled={rowIdx === rowCount - 1}
+                  title="Move down"
+                  aria-label={`Move ${rowLabel.toLowerCase()} ${rowIdx + 1} down`}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             {onDuplicate && (
               <Button
                 variant="ghost"
@@ -675,60 +818,30 @@ function MobileSpreadsheetRow<TRow extends EditableRow>({
         )}
       </div>
 
-      <div className="space-y-4">
-        {columns.map((col, colIdx) => (
-          <div key={col.key} className="space-y-1.5">
-            <label className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {renderColumnLabel(col, "text-red-500")}
-              {col.description && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex shrink-0 cursor-help items-center rounded-full text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
-                      aria-label={`About ${col.label}`}
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-sm">
-                    <div className="space-y-1 text-xs leading-relaxed">
-                      {col.description}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </label>
-            <div className="flex items-center gap-2">
-              {renderCellPrefix?.({ row, column: col, value: rowValues[col.key] })}
-              <div className="min-w-0 flex-1">
-                {renderCell ? (
-                  renderCell({
-                    row,
-                    rowIdx,
-                    column: col,
-                    value: rowValues[col.key],
-                    onChange: (val) => onUpdate(rowIdx, col.key, val),
-                  })
-                ) : (
-                  <EditableCell
-                    value={rowValues[col.key] as string | boolean}
-                    type={col.type}
-                    options={col.options}
-                    onChange={(val) => onUpdate(rowIdx, col.key, val)}
-                    placeholder={col.label}
-                    validation={col.validation}
-                    required={col.required}
-                    showRequiredError={rowIsActive}
-                    gridRow={rowIdx}
-                    gridCol={colIdx}
-                  />
-                )}
-              </div>
-            </div>
+      <div className="cf-card-fields space-y-4">{mainColumns.map(renderField)}</div>
+
+      {sectionNames.map((name) => (
+        <details
+          key={name}
+          className="cf-card-section mt-4"
+          open={openSections.has(name)}
+          onToggle={(event) => {
+            const isOpen = event.currentTarget.open;
+            setOpenSections((prev) => {
+              if (prev.has(name) === isOpen) return prev;
+              const next = new Set(prev);
+              if (isOpen) next.add(name);
+              else next.delete(name);
+              return next;
+            });
+          }}
+        >
+          <summary className="cf-card-section-summary">{name}</summary>
+          <div className="cf-card-fields space-y-4 pt-4">
+            {columns.filter((col) => col.cardSection === name).map(renderField)}
           </div>
-        ))}
-      </div>
+        </details>
+      ))}
     </article>
   );
 }
@@ -756,7 +869,29 @@ export function EditableTable<TRow extends EditableRow>({
   csvConfig,
   bulkActions,
 }: EditableTableProps<TRow>) {
-  const { isReadOnly } = useChecklistContext();
+  const { isReadOnly, userRole } = useChecklistContext();
+  // Client form only (see globals.css): rows show as cards by default, with the spreadsheet
+  // grid one click away. Staff signed in to the editor start on the grid. The choice is
+  // remembered per table in this browser. Elsewhere the grid and the phone cards behave as before.
+  const [cfView, setCfView] = useState<"cards" | "grid">("cards");
+  const cfViewKey = `cf-view:${tableId ?? "table"}`;
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(cfViewKey);
+    } catch {
+      /* storage can be blocked; fall back to the default */
+    }
+    setCfView(stored === "grid" || stored === "cards" ? stored : userRole === "admin" ? "grid" : "cards");
+  }, [cfViewKey, userRole]);
+  const chooseCfView = (view: "cards" | "grid") => {
+    setCfView(view);
+    try {
+      window.localStorage.setItem(cfViewKey, view);
+    } catch {
+      /* ignore */
+    }
+  };
   // Track confirm by stable row ID (not index) so drag-reorder doesn't target the wrong row
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1243,8 +1378,31 @@ export function EditableTable<TRow extends EditableRow>({
   // keeps a floor height so it reads as a work surface, not a strip.
   const useStickyViewport = spreadsheetMode;
 
+  const cardRowLabel = bulkActions?.itemLabel
+    ? bulkActions.itemLabel.charAt(0).toUpperCase() + bulkActions.itemLabel.slice(1)
+    : "Row";
+  const requiredKeys = requiredColumns.map((col) => col.key);
+  const moveRow = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (!onReorder || target < 0 || target >= data.length) return;
+    onReorder(arrayMove(data, index, target));
+  };
+
   const tableContent = (
-    <div>
+    <div data-cf-view={cfView} className="cf-table">
+      {spreadsheetMode && (
+        <div className="cf-viewtoggle mb-3 items-center gap-3">
+          <span className="text-sm font-bold">View as</span>
+          <div role="group" aria-label="How to show the rows" className="cf-seg">
+            <button type="button" aria-pressed={cfView === "cards"} onClick={() => chooseCfView("cards")}>
+              Cards
+            </button>
+            <button type="button" aria-pressed={cfView === "grid"} onClick={() => chooseCfView("grid")}>
+              Spreadsheet
+            </button>
+          </div>
+        </div>
+      )}
       {csvConfig && !isReadOnly && (
         <CsvToolbar
           columns={allColumns}
@@ -1329,13 +1487,13 @@ export function EditableTable<TRow extends EditableRow>({
         />
       )}
       {spreadsheetMode && (
-        <div className="space-y-3 md:hidden">
+        <div className="cf-cards space-y-3 md:hidden">
           {sampleRow && (
-            <div className="rounded-lg border border-brand-lavender/30 bg-brand-lavender-lightest p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+            <details className="cf-sample rounded-lg border border-brand-lavender/30 bg-brand-lavender-lightest p-4">
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-foreground">
                 Sample row
-              </p>
-              <div className="mt-3 space-y-2">
+              </summary>
+              <div className="cf-sample-fields mt-3 space-y-2">
                 {gridColumns.map((col) => (
                   <div key={col.key}>
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1347,7 +1505,7 @@ export function EditableTable<TRow extends EditableRow>({
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           )}
 
           {data.length === 0 ? (
@@ -1390,10 +1548,14 @@ export function EditableTable<TRow extends EditableRow>({
                     : undefined;
 
               return (
-                <MobileSpreadsheetRow
+                <RecordCard
                   key={row.id || rowIdx}
                   row={row}
                   rowIdx={rowIdx}
+                  rowCount={data.length}
+                  rowLabel={cardRowLabel}
+                  requiredKeys={requiredKeys}
+                  onMove={canReorder ? moveRow : undefined}
                   rowRef={(node: HTMLElement | null) => {
                     mobileRowRefs.current[sortableIds[rowIdx]] = node;
                   }}
@@ -1427,7 +1589,7 @@ export function EditableTable<TRow extends EditableRow>({
         </div>
       )}
 
-    <div className={cn("rounded-lg border", spreadsheetMode && "hidden md:block overflow-hidden bg-white")}>
+    <div className={cn("cf-grid cf-gridview rounded-lg border", spreadsheetMode && "hidden md:block overflow-hidden bg-white")}>
       <div className="relative">
         {spreadsheetMode && moreColumnsRight && (
           <>
@@ -1650,7 +1812,7 @@ export function EditableTable<TRow extends EditableRow>({
                         : undefined
                     }
                   >
-                    <span className="block px-1 text-sm italic text-foreground/75">
+                    <span className="block whitespace-normal break-words px-1 text-sm italic text-foreground/75">
                       {sampleRow[col.key] || "Empty"}
                     </span>
                   </TableCell>

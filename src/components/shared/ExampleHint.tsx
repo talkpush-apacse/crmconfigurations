@@ -18,7 +18,7 @@ export function ExampleHint({ children }: ExampleHintProps) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="mb-4 rounded-lg border border-brand-lavender bg-brand-lavender-lightest">
+      <div className="cf-example mb-4 rounded-lg border border-brand-lavender bg-brand-lavender-lightest">
         <CollapsibleTrigger
           role="button"
           aria-expanded={open}

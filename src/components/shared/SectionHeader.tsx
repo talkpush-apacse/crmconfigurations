@@ -3,12 +3,14 @@
 interface SectionHeaderProps {
   title: string;
   description?: string;
+  /** "section" is a heading inside a page that already has one; the client form sets it smaller. */
+  level?: "page" | "section";
 }
 
-export function SectionHeader({ title, description }: SectionHeaderProps) {
+export function SectionHeader({ title, description, level = "page" }: SectionHeaderProps) {
   return (
-    <div className="mb-8 rounded-xl border border-border bg-card px-6 py-5">
-      <h2 className="text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-[29px]">
+    <div className="cf-sectionheader mb-8 rounded-xl border border-border bg-card px-6 py-5">
+      <h2 className={`cf-title ${level === "section" ? "cf-title-sub" : ""} text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-[29px]`}>
         {title}
       </h2>
       {description && (

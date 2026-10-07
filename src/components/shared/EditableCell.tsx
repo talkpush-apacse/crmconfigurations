@@ -296,7 +296,7 @@ export function EditableCell({
           <DropdownMenuTrigger
             aria-invalid={!!errorMessage}
             className={cn(
-              "flex h-11 w-full items-center justify-between gap-2 rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-left text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:h-9",
+              "cf-box flex h-11 w-full items-center justify-between gap-2 rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-left text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:h-9",
               !selected.length && "text-muted-foreground",
               errorMessage && "border-destructive bg-destructive/5",
               className
@@ -393,7 +393,7 @@ export function EditableCell({
     return wrapWithValidation(
       <div
         className={cn(
-          "group flex min-h-11 cursor-text items-center justify-between rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:min-h-0",
+          "cf-box group flex min-h-11 cursor-text items-center justify-between rounded-md border border-muted-foreground/40 bg-white px-3 py-2 text-sm transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-muted-foreground/60 md:min-h-0",
           !currentValue && "text-muted-foreground",
           errorMessage && "border-destructive bg-destructive/5",
           className

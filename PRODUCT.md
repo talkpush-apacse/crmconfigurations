@@ -47,7 +47,7 @@ Built for Talkpush implementation work specifically. It knows the phases of a Ta
 - Not decided: project templates, notifications, auto-pulling metrics from Talkpush analytics, PDF export of maps.
 
 ## Brand Commitments
-- The Talkpush Design System in `Talkpush Design System/` is binding. Staff screens follow Talkpush Sign (context C). Client-facing views follow the executive report system (context A).
+- The Talkpush Design System in `Talkpush Design System/` is binding. Staff screens follow Talkpush Sign (context C). Client-facing views follow the executive report system (context A). The checklist a client fills in (editor and client view) follows the client form face described in `DESIGN.md`.
 - Voice: finding-first headlines with a verb, sentence case, honest about bad news, no em dashes, no hype, no jargon.
 - The real Talkpush logo only. The official horizontal lockup has not been supplied yet.
 

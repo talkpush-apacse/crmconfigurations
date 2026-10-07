@@ -107,18 +107,18 @@ function getStatusLabel(status: NavItem["status"]) {
 
 function StatusIndicator({ status }: { status: NavItem["status"] }) {
   if (status === "complete") {
-    return <span className="h-2.5 w-2.5 rounded-full bg-brand-sage-darker" />;
+    return <span data-status="complete" className="cf-status h-2.5 w-2.5 rounded-full bg-brand-sage-darker" />;
   }
 
   if (status === "in-progress") {
-    return <span className="h-2.5 w-2.5 rounded-full bg-brand-amber" />;
+    return <span data-status="in-progress" className="cf-status h-2.5 w-2.5 rounded-full bg-brand-amber" />;
   }
 
   if (status === "not-started") {
-    return <span className="h-2.5 w-2.5 rounded-full border border-muted-foreground/40 bg-transparent" />;
+    return <span data-status="not-started" className="cf-status h-2.5 w-2.5 rounded-full border border-muted-foreground/40 bg-transparent" />;
   }
 
-  return <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />;
+  return <span data-status="none" className="cf-status h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />;
 }
 
 /** Thin rule between groups on the icon-only rail, where there is no room for a label. */
@@ -130,7 +130,7 @@ function RailDivider() {
 function OwnerHeader({ label }: { label: string }) {
   return (
     <div className="mb-2 hidden items-center gap-3 px-4 xl:flex">
-      <span className="min-w-0 truncate text-[13px] font-semibold text-foreground">{label}</span>
+      <span className="cf-nav-owner min-w-0 truncate text-[13px] font-semibold text-foreground">{label}</span>
       <div className="h-px flex-1 bg-border" />
     </div>
   );
@@ -139,7 +139,7 @@ function OwnerHeader({ label }: { label: string }) {
 /** Names a chunk of related sections. Wide screens only. */
 function ChunkHeader({ label }: { label: string }) {
   return (
-    <div className="mb-1 hidden px-4 text-[11px] font-medium text-muted-foreground xl:block">
+    <div className="cf-nav-chunk mb-1 hidden px-4 text-[11px] font-medium text-muted-foreground xl:block">
       {label}
     </div>
   );
@@ -215,11 +215,13 @@ function SortableNavItem({
                   ? "bg-brand-sage-lightest text-foreground ring-1 ring-inset ring-brand-sage-darker/25"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
-              aria-label={item.label}
+              aria-label={`${item.label}, ${getStatusLabel(item.status)}`}
+              aria-current={isActive ? "page" : undefined}
+              data-active={isActive ? "true" : undefined}
             >
               <div
                 className={cn(
-                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary",
+                  "cf-nav-icon relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary",
                   isActive && "bg-brand-sage-lightest border-brand-sage-darker/40"
                 )}
               >
@@ -231,7 +233,7 @@ function SortableNavItem({
 
               <div className="hidden min-w-0 flex-1 xl:block">
                 <div className="flex items-center gap-1.5">
-                  <span className="min-w-0 max-w-[10.5rem] whitespace-normal font-medium leading-5">
+                  <span className="cf-nav-label min-w-0 max-w-[10.5rem] whitespace-normal font-medium leading-5">
                     {item.label}
                   </span>
                   {item.hasAttachments && (
@@ -241,7 +243,7 @@ function SortableNavItem({
                     />
                   )}
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <div className="cf-nav-status mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                   <StatusIndicator status={item.status} />
                   <span>{getStatusLabel(item.status)}</span>
                 </div>
@@ -454,10 +456,10 @@ export function TopNav({
     <aside
       ref={navRef}
       aria-label="Sections"
-      className="hidden w-16 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-foreground sm:flex xl:w-72"
+      className="cf-nav hidden w-16 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-foreground sm:flex xl:w-72"
     >
       <div className="hidden border-b border-border px-4 py-3 xl:block">
-        <p className="text-[13px] font-semibold text-foreground">Sections</p>
+        <p className="cf-nav-owner text-[13px] font-semibold text-foreground">Sections</p>
       </div>
 
       <div className="relative flex-1 overflow-hidden">

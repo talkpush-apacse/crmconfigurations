@@ -27,26 +27,30 @@ interface SheetIntroProps {
  */
 export function SheetIntro({ title, description }: SheetIntroProps) {
   return (
-    <div className="mb-4 flex items-center gap-2">
-      <h2 className="text-[19px] font-semibold leading-tight tracking-tight text-slate-950">
-        {title}
-      </h2>
-      {description && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex shrink-0 cursor-help items-center rounded-full text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
-              aria-label={`About ${title}`}
-            >
-              <Info className="h-4 w-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start" className="max-w-sm">
-            <div className="space-y-1 text-xs leading-relaxed">{description}</div>
-          </TooltipContent>
-        </Tooltip>
-      )}
+    <div className="mb-4">
+      <div className="flex items-center gap-2">
+        <h2 className="cf-title text-[19px] font-semibold leading-tight tracking-tight text-slate-950">
+          {title}
+        </h2>
+        {description && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="cf-hide inline-flex shrink-0 cursor-help items-center rounded-full text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400"
+                aria-label={`About ${title}`}
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" className="max-w-sm">
+              <div className="space-y-1 text-xs leading-relaxed">{description}</div>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      {/* The client form shows what the page is for as plain text. Elsewhere it stays in the tooltip. */}
+      {description && <div className="cf-only cf-lede space-y-1">{description}</div>}
     </div>
   );
 }

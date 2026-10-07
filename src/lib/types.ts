@@ -898,6 +898,11 @@ export interface ColumnDef {
   validation?: "email" | "url" | "phone";
   required?: boolean;
   example?: string;
+  /**
+   * Card layout only. Columns that share a `cardSection` name are folded into a labelled
+   * disclosure under the main fields. The grid ignores it.
+   */
+  cardSection?: string;
 }
 
 // ===== Field-level merge constants =====

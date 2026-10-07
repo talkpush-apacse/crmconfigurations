@@ -79,6 +79,7 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "applicableCampaigns",
+    cardSection: "Screening rules",
     label: "Applicable Jobs/Roles",
     type: "text",
     description: "Which role/job/account will this question apply for?",
@@ -86,6 +87,7 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "autoReject",
+    cardSection: "Screening rules",
     label: "Auto-Reject",
     type: "dropdown",
     options: [...DROPDOWN_OPTIONS.yesNo],
@@ -93,6 +95,7 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "rejectCondition",
+    cardSection: "Screening rules",
     label: "Reject Condition",
     type: "text",
     description: "The answer or threshold that triggers automatic rejection",
@@ -100,6 +103,7 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "rejectReason",
+    cardSection: "Screening rules",
     label: "Reject Reason",
     type: "text",
     description: "Reason shown to candidate or logged internally when auto-rejected",
@@ -107,12 +111,14 @@ const detailColumns: ColumnDef[] = [
   },
   {
     key: "comments",
+    cardSection: "Notes",
     label: "Comments",
     type: "textarea",
     description: "Internal notes for reviewers or implementation guidance",
   },
   {
     key: "clientComments",
+    cardSection: "Notes",
     label: "Client Comments",
     type: "textarea",
     description: "Client-facing comments on this question. Distinct from the internal Comments field above",
