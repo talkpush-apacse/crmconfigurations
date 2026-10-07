@@ -1,4 +1,6 @@
 import "server-only";
+import { buildInvitationEmail } from "./invitation-email";
+import type { Role } from "./roles";
 
 function escapeHtml(value: string): string {
   return value
@@ -29,14 +31,10 @@ function parseSender(value: string): { name?: string; email: string } | null {
   return { email: trimmed };
 }
 
-export async function sendOwnerNotification(params: {
-  to: string;
-  clientName: string;
-  tabDisplayName: string;
-  tabUrl: string;
-  updateType: "Edited" | "File uploaded";
-  summary: string;
-}): Promise<{ ok: boolean; error?: string }> {
+type EmailResult = { ok: boolean; error?: string };
+
+/** One place that talks to Brevo, so every email handles missing settings and failures the same way. */
+async function sendViaBrevo(message: { to: string; subject: string; html: string; text?: string; replyTo?: string }): Promise<EmailResult> {
   const apiKey = process.env.BREVO_API_KEY?.trim();
   const sender = parseSender(process.env.NOTIFICATION_FROM_EMAIL ?? "");
 
@@ -47,6 +45,56 @@ export async function sendOwnerNotification(params: {
     return { ok: false, error: "NOTIFICATION_FROM_EMAIL is not configured" };
   }
 
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: message.to }],
+        subject: message.subject,
+        htmlContent: message.html,
+        ...(message.text ? { textContent: message.text } : {}),
+        ...(message.replyTo ? { replyTo: { email: message.replyTo } } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const errorMessage =
+        body && typeof body === "object" && "message" in body && typeof body.message === "string"
+          ? body.message
+          : `Brevo request failed with status ${response.status}`;
+      return { ok: false, error: errorMessage };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown email send failure",
+    };
+  }
+}
+
+/** Emails a new Hub login how to sign in. Replies go to the editor who added them. */
+export async function sendUserInvitation(params: { to: string; inviterEmail: string; role: Role; signInUrl: string }): Promise<EmailResult> {
+  const email = buildInvitationEmail(params);
+  return sendViaBrevo({ to: params.to, subject: email.subject, html: email.html, text: email.text, replyTo: params.inviterEmail });
+}
+
+export async function sendOwnerNotification(params: {
+  to: string;
+  clientName: string;
+  tabDisplayName: string;
+  tabUrl: string;
+  updateType: "Edited" | "File uploaded";
+  summary: string;
+}): Promise<EmailResult> {
   const subject = `[CRM Checklist] ${params.clientName} — ${params.tabDisplayName} ${params.updateType.toLowerCase()}`;
   const timestamp = formatUtcTimestamp();
   const clientName = escapeHtml(params.clientName);
@@ -93,36 +141,5 @@ export async function sendOwnerNotification(params: {
     </div>
   `;
 
-  try {
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "api-key": apiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        sender,
-        to: [{ email: params.to }],
-        subject,
-        htmlContent: html,
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      const errorMessage =
-        body && typeof body === "object" && "message" in body && typeof body.message === "string"
-          ? body.message
-          : `Brevo request failed with status ${response.status}`;
-      return { ok: false, error: errorMessage };
-    }
-
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unknown email send failure",
-    };
-  }
+  return sendViaBrevo({ to: params.to, subject, html });
 }

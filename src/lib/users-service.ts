@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { forgetUserAccess } from "@/lib/api-auth";
-import { normaliseRole, ROLES } from "@/lib/roles";
+import { normaliseRole, ROLES, type Role } from "@/lib/roles";
 import { checkRemoval, checkRoleChange, checkSuperAdminChange } from "@/lib/users-rules";
 
 /** Managing staff logins. Talkpush Admins only (the routes enforce it); super admins have a few extra powers (see users-rules.ts). */
@@ -55,6 +55,14 @@ export async function createUser(input: unknown, currentUserId: string): Promise
   const created = await prisma.adminUser.create({ data: { email: data.email, role: data.role }, select: SELECT });
   console.info(`[users] login added: ${created.email} as ${created.role}`);
   return serialize(created, currentUserId);
+}
+
+/** A login that has not signed in yet, for sending (or re-sending) its invitation email. */
+export async function findPendingInvitee(targetId: string): Promise<{ email: string; role: Role }> {
+  const u = await prisma.adminUser.findUnique({ where: { id: targetId }, select: { email: true, role: true, googleId: true, passwordHash: true } });
+  if (!u) throw new UserError("That login was not found.", 404);
+  if (u.googleId || u.passwordHash) throw new UserError("That person has already signed in, so there is nothing to resend.");
+  return { email: u.email, role: normaliseRole(u.role) };
 }
 
 export async function changeRole(targetId: string, input: unknown, actorId: string): Promise<UserDTO> {
