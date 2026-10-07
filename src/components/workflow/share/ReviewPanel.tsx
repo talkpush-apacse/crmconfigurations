@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import StaffCommentsTab, { type StaffCommentsApi } from "@/components/workflow/comments/StaffCommentsTab";
 import type { CommentTarget } from "@/components/workflow/comments/types";
 import { countThreads, type PageInfo } from "@/lib/workflow/comment-view";
+import { describeAuditAction } from "@/lib/workflow/audit-text";
 import SuggestionsPanel from "@/components/workflow/client/SuggestionsPanel";
 import { toast } from "@/components/workflow/ui/toast";
 import { formatDistanceToNow } from "@/lib/workflow/dates";
@@ -22,34 +23,6 @@ interface ReviewData {
 
 type Tab = "comments" | "suggestions" | "decisions" | "requests" | "activity";
 
-const ACTION_TEXT: Record<string, string> = {
-  "link.created": "created a share link",
-  "link.rotated": "replaced a share link",
-  "link.disabled": "turned off a share link",
-  "link.updated": "changed a share link",
-  "link.opened": "opened the workflow",
-  "member.invited": "invited someone",
-  "member.updated": "changed someone's access",
-  "member.revoked": "removed someone's access",
-  "member.link_replaced": "replaced someone's link",
-  "guest.identified": "gave a name",
-  "access.settings_changed": "changed general access",
-  "access.requested": "asked for access",
-  "version.published": "published a version",
-  "version.unpublished": "switched clients to the live version",
-  "comment.created": "commented",
-  "comment.replied": "replied to a comment",
-  "comment.resolved": "resolved a comment",
-  "comment.reopened": "reopened a comment",
-  "suggestion.created": "suggested changes",
-  "suggestion.accepted": "accepted a suggestion",
-  "suggestion.rejected": "rejected a suggestion",
-  "suggestion.withdrawn": "withdrew a suggestion",
-  "suggestion.stale": "had a suggestion that no longer fits",
-  "review.approved": "approved",
-  "review.changes_requested": "asked for changes",
-  "canvas.edited": "edited the diagram",
-};
 
 /** Everything that needs staff attention on one workflow, in one place. */
 export default function ReviewPanel({
@@ -205,7 +178,7 @@ export default function ReviewPanel({
             {data.audit.length === 0 && <li className="py-2 text-muted-foreground">Nothing yet.</li>}
             {data.audit.map((a) => (
               <li key={a.id} className="py-2">
-                <p><strong>{a.actorName ?? (a.actorType === "system" ? "System" : "Someone")}</strong> {ACTION_TEXT[a.action] ?? a.action}</p>
+                <p><strong>{a.actorName ?? (a.actorType === "system" ? "System" : "Someone")}</strong> {describeAuditAction(a.action, a.detail)}</p>
                 <p className="text-xs text-muted-foreground">{formatDistanceToNow(a.createdAt, { addSuffix: true })}</p>
               </li>
             ))}
