@@ -2774,7 +2774,8 @@ function EditorInner({
       <EditorToolbar
         clientName={workflow.clientName}
         workflowName={workflow.workflowName}
-        onBack={() => router.push("/admin/workflows")}
+        backLabel={workflow.account?.name}
+        onBack={() => router.push(workflow.account ? `/admin/companies/${workflow.account.id}` : "/admin/workflows")}
         editingName={editingName}
         nameValue={nameValue}
         onNameChange={setNameValue}

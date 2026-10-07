@@ -29,7 +29,7 @@ Success: an executive can answer "where are we now and what open items are neede
 Built for Talkpush implementation work specifically. It knows the phases of a Talkpush rollout, separates "waiting on client" from "blocked", links a project to the client's own CRM config progress, and draws recruitment process maps that follow Talkpush's own conventions. Everything can be updated by talking to Claude through MCP.
 
 ## Operating Context
-- Staff work in the admin area behind a login (email and password or Google, restricted to existing admin users). Login lands on a module picker.
+- Staff work in the admin area behind a login (email and password or Google, restricted to existing admin users). Login lands on the Companies gallery: each company shows its checklists, workflows and project trackers (several of each), and the three modules are also reachable across all companies from the header.
 - Clients reach the product through secret links, not passwords (decision locked in planning).
 - Process maps are either internal or client-facing. A client-facing map must never show staff-only content.
 - The Workflow Builder sends no emails. Sharing is copy-link only.

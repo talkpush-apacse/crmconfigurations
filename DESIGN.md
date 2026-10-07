@@ -285,7 +285,7 @@ Staff face: 6px cards, 4px buttons and inputs, full-round pills and avatars. Cli
 - **Item sheet:** right-hand sheet, white, hairline left border, sticky footer for the primary action.
 
 ### Signature decoration
-- **Accent squares:** small rotated squares, 10 to 18px, two to four per page, near titles. Used on the module picker, the login page and the Exec Summary header only. Never on boards, lists, tables or the timeline.
+- **Accent squares:** small rotated squares, 10 to 18px, two to four per page, near titles. Used on the login page and the Exec Summary header only (the Companies gallery has none). Never on boards, lists, tables or the timeline.
 
 ## Client form face
 

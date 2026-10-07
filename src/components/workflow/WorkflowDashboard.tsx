@@ -35,6 +35,8 @@ import TemplatePickerModal from "./modals/TemplatePickerModal";
 interface WorkflowItem {
   id: string;
   clientName: string;
+  /** The company this workflow is filed under, if any. */
+  accountId?: string | null;
   workflowName: string;
   description: string | null;
   status: WorkflowStatus;
@@ -141,6 +143,8 @@ export default function WorkflowDashboard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             clientName: workflow.clientName,
+            // A copy stays under the same company.
+            accountId: workflow.accountId ?? undefined,
             workflowName: `${workflow.workflowName} (Copy)`,
             description: workflow.description,
           }),

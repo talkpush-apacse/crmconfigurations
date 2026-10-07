@@ -124,6 +124,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
         <AdminHeader />
         <Header
           variant="staff"
+          company={(data as { account?: { id: string; name: string } | null }).account ?? null}
           clientName={data.clientName}
           slug={data.slug}
           items={navItems}

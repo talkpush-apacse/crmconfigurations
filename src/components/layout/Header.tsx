@@ -37,6 +37,8 @@ interface HeaderProps {
    * "client" is the client and editor-link page, which has no hub header.
    */
   variant?: "staff" | "client";
+  /** Staff only. The company this checklist is filed under: the way back leads to it instead of the checklist list. */
+  company?: { id: string; name: string } | null;
   snapshotsHref?: string;
   /** Staff only. Opens the "Apply template" sheet from the actions menu. */
   onApplyTemplate?: () => void;
@@ -66,6 +68,7 @@ export function Header({
   onSave,
   onDiscard,
   variant = "client",
+  company = null,
   snapshotsHref,
   onApplyTemplate,
   shareLink,
@@ -122,10 +125,10 @@ export function Header({
           {isStaff && (
             <>
               <Link
-                href="/admin"
-                className="flex min-h-11 shrink-0 items-center rounded-md text-[13px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
+                href={company ? `/admin/companies/${company.id}` : "/admin"}
+                className="flex min-h-11 max-w-40 shrink-0 items-center truncate rounded-md text-[13px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
               >
-                Checklists
+                {company ? company.name : "Checklists"}
               </Link>
               <span className="text-muted-foreground/60" aria-hidden="true">
                 /

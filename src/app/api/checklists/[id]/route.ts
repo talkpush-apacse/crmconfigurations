@@ -27,7 +27,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const checklist = await prisma.checklist.findUnique({ where: { id } });
+    const checklist = await prisma.checklist.findUnique({ where: { id }, include: { account: { select: { id: true, name: true } } } });
     if (!checklist) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
