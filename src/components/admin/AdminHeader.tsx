@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronDown, Eye, LayoutGrid, LogOut, PlugZap, User, Users } from "lucide-react";
+import { Building2, Check, ChevronDown, Eye, LogOut, PlugZap, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PORTAL_MODULES, getActiveModule } from "@/lib/modules";
+import { PORTAL_MODULES, getActiveModule, isCompaniesPath } from "@/lib/modules";
+import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/roles";
 import { resetCurrentUser, useCurrentUser } from "@/lib/use-current-user";
 
@@ -19,6 +21,7 @@ export function AdminHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const activeModule = PORTAL_MODULES.find((m) => m.id === getActiveModule(pathname));
+  const onCompanies = isCompaniesPath(pathname);
   const { user, canEdit } = useCurrentUser();
 
   const handleLogout = async () => {
@@ -37,37 +40,52 @@ export function AdminHeader() {
           <span className="hidden sm:inline">Talkpush Implementation Hub</span>
           <span className="sm:hidden">Implementation Hub</span>
         </Link>
-        {activeModule && (
+        {/* Companies is the front door; the three modules are the same tools seen across every company. */}
+        <nav aria-label="Main" className="flex items-center gap-1">
+          <Link
+            href="/admin/home"
+            aria-current={onCompanies ? "page" : undefined}
+            className={cn(
+              "hidden min-h-11 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 sm:flex md:min-h-8",
+              onCompanies ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Building2 className="h-4 w-4" aria-hidden="true" />
+            Companies
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex min-h-11 items-center gap-1 rounded-md bg-primary/10 px-3 py-1 text-xs font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-6 md:px-2"
-                aria-label={`Switch module (current: ${activeModule.label})`}
+                className={cn(
+                  "flex min-h-11 items-center gap-1 rounded-md px-2.5 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8",
+                  activeModule ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                aria-label={activeModule ? `All companies' tools (current: ${activeModule.label})` : "All companies' tools"}
               >
-                {activeModule.shortLabel}
-                <ChevronDown className="h-3 w-3" />
+                {activeModule ? activeModule.shortLabel : "All tools"}
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuItem asChild className="cursor-pointer sm:hidden">
+                <Link href="/admin/home" className="flex min-h-11 items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Companies
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Across all companies</DropdownMenuLabel>
               {PORTAL_MODULES.map((m) => (
                 <DropdownMenuItem key={m.id} asChild className="cursor-pointer">
                   <Link href={m.href} className="flex min-h-11 items-center justify-between gap-2 md:min-h-0">
                     {m.label}
-                    {m.id === activeModule.id && <Check className="h-4 w-4" />}
+                    {activeModule?.id === m.id && <Check className="h-4 w-4" />}
                   </Link>
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/admin/home" className="flex min-h-11 items-center gap-2 md:min-h-0">
-                  <LayoutGrid className="h-4 w-4" />
-                  All modules
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
+        </nav>
       </div>
 
       <div className="ml-auto flex items-center gap-2">

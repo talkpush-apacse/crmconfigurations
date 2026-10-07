@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/workflow/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import LoadingButton from "@/components/workflow/ui/LoadingButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +16,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+const NO_COMPANY = "__none";
+
 interface NewWorkflowModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   templateId?: string | null;
   templateName?: string | null;
+  /** Opened from a company's page: the workflow is filed under it and the client name is that company's. */
+  account?: { id: string; name: string } | null;
 }
 
 export default function NewWorkflowModal({
@@ -27,14 +32,38 @@ export default function NewWorkflowModal({
   onOpenChange,
   templateId,
   templateName,
+  account,
 }: NewWorkflowModalProps) {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
   const [workflowName, setWorkflowName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  // From the all-workflows list, staff may pick a company (or leave it for later: it then waits under "Needs a company").
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companyId, setCompanyId] = useState(NO_COMPANY);
+
+  useEffect(() => {
+    if (!open || account) return;
+    let cancelled = false;
+    fetch("/api/tracker/accounts", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { accounts: [] }))
+      .then((r) => !cancelled && setCompanies(r.accounts ?? []))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, account]);
+
+  function pickCompany(id: string) {
+    setCompanyId(id);
+    const picked = companies.find((c) => c.id === id);
+    // Fill the client name from the company unless staff already typed one.
+    if (picked && !clientName.trim()) setClientName(picked.name);
+  }
 
   function resetForm() {
+    setCompanyId(NO_COMPANY);
     setClientName("");
     setWorkflowName("");
     setDescription("");
@@ -43,7 +72,7 @@ export default function NewWorkflowModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!clientName.trim() || !workflowName.trim()) {
+    if (!(account ? account.name : clientName).trim() || !workflowName.trim()) {
       toast.error("Client name and workflow name are required");
       return;
     }
@@ -54,7 +83,8 @@ export default function NewWorkflowModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientName: clientName.trim(),
+          clientName: (account ? account.name : clientName).trim(),
+          accountId: account ? account.id : companyId === NO_COMPANY ? undefined : companyId,
           workflowName: workflowName.trim(),
           description: description.trim() || null,
           templateId: templateId || null,
@@ -92,22 +122,45 @@ export default function NewWorkflowModal({
             {templateId ? `New workflow from "${templateName}"` : "New workflow"}
           </DialogTitle>
           <DialogDescription>
-            Set the client name and workflow title before opening the editor.
+            {account ? `This workflow will be filed under ${account.name}.` : "Set the client name and workflow title before opening the editor."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground/85 mb-1 block">
-              Client Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="e.g. TaskUs, Inspiro"
-              className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
-            />
-          </div>
+          {!account && companies.length > 0 && (
+            <div>
+              <label htmlFor="new-workflow-company" className="text-sm font-medium text-foreground/85 mb-1 block">
+                Company
+              </label>
+              <Select value={companyId} onValueChange={pickCompany}>
+                <SelectTrigger id="new-workflow-company" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COMPANY}>No company yet (add one later)</SelectItem>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {!account && (
+            <div>
+              <label className="text-sm font-medium text-foreground/85 mb-1 block">
+                Client Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="e.g. TaskUs, Inspiro"
+                className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-sm font-medium text-foreground/85 mb-1 block">
@@ -147,7 +200,7 @@ export default function NewWorkflowModal({
               type="submit"
               variant="cta"
               isLoading={saving}
-              disabled={!clientName.trim() || !workflowName.trim()}
+              disabled={!(account ? account.name : clientName).trim() || !workflowName.trim()}
             >
               Create Workflow
             </LoadingButton>
