@@ -20,6 +20,8 @@ export async function GET(
         feedback: {
           orderBy: { createdAt: "desc" },
         },
+        // Which company it is filed under, so the editor can lead back to it.
+        account: { select: { id: true, name: true } },
       },
     });
 

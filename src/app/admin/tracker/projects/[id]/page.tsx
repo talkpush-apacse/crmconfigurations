@@ -201,7 +201,7 @@ function ProjectWorkspace() {
       <header className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            <Link href={`/admin/tracker/accounts/${project.accountId}`} className="inline-flex min-h-11 items-center hover:underline md:min-h-0 md:py-1">
+            <Link href={`/admin/companies/${project.accountId}`} className="inline-flex min-h-11 items-center hover:underline md:min-h-0 md:py-1">
               {project.accountName}
             </Link>
           </p>

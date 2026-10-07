@@ -38,10 +38,16 @@ export const PORTAL_MODULES: PortalModule[] = [
   },
 ];
 
-/** Which module a path belongs to. The module picker and the Connected apps page belong to neither. */
+/** The company screens: the gallery on the home page, one company's page, and the "needs a company" list. */
+export function isCompaniesPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  return pathname === "/admin/home" || pathname.startsWith("/admin/home/") || pathname === "/admin/companies" || pathname.startsWith("/admin/companies/");
+}
+
+/** Which module a path belongs to. The company screens and the Connected apps page belong to none. */
 export function getActiveModule(pathname: string | null): ModuleId | null {
   if (!pathname) return null;
-  if (pathname === "/admin/home" || pathname.startsWith("/admin/home/")) return null;
+  if (isCompaniesPath(pathname)) return null;
   if (pathname === "/admin/connections" || pathname === "/admin/users") return null;
   if (pathname === "/admin/tracker" || pathname.startsWith("/admin/tracker/")) return "tracker";
   if (pathname === "/admin/workflows" || pathname.startsWith("/admin/workflows/")) return "workflows";

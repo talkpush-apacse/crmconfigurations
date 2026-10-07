@@ -247,6 +247,8 @@ export interface WorkflowPage {
 export interface WorkflowProject {
   id: string;
   clientName: string;
+  /** The company it is filed under (staff screens only). */
+  account?: { id: string; name: string } | null;
   workflowName: string;
   description?: string | null;
   status: WorkflowStatus;

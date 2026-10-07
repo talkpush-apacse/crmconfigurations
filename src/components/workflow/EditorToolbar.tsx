@@ -52,6 +52,8 @@ export interface EditorToolbarProps {
   clientName: string;
   workflowName: string;
   onBack: () => void;
+  /** What the back button leads to: the company the workflow is filed under, or "Workflows". */
+  backLabel?: string;
 
   // Title (rename in place)
   editingName: boolean;
@@ -157,11 +159,11 @@ export default function EditorToolbar(p: EditorToolbarProps) {
           variant="ghost"
           size="sm"
           onClick={p.onBack}
-          aria-label="Back to workflows"
+          aria-label={`Back to ${p.backLabel ?? "workflows"}`}
           className={cn("shrink-0 gap-1.5 px-2 text-muted-foreground hover:text-foreground", TOUCH)}
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden text-xs sm:inline">Workflows</span>
+          <span className="hidden max-w-40 truncate text-xs sm:inline">{p.backLabel ?? "Workflows"}</span>
         </Button>
 
         <div className="h-4 w-px shrink-0 bg-border" aria-hidden="true" />
