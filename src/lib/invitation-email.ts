@@ -1,3 +1,4 @@
+import { renderEmail, strong, type RenderedEmail } from "./email-template";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from "./roles";
 import { isTalkpushEmail } from "./users-rules";
 
@@ -12,10 +13,6 @@ export function canEmailInvitation(email: string): boolean {
   return isTalkpushEmail(email);
 }
 
-function escapeHtml(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-
 /**
  * What happened when we tried to email an invitation. Plain words only: the raw email-service error stays in the server
  * log, never on the screen.
@@ -25,50 +22,26 @@ function escapeHtml(value: string): string {
  */
 export type InvitationOutcome = { status: "sent" } | { status: "skipped" } | { status: "failed"; message: string };
 
-export interface InvitationEmail {
+export interface InvitationEmail extends RenderedEmail {
   subject: string;
-  html: string;
-  text: string;
 }
 
 export function buildInvitationEmail(params: { to: string; inviterEmail: string; role: Role; signInUrl: string }): InvitationEmail {
-  const roleLabel = ROLE_LABELS[params.role];
-  const roleDescription = ROLE_DESCRIPTIONS[params.role];
-  const to = escapeHtml(params.to);
-  const inviter = escapeHtml(params.inviterEmail);
-  const url = escapeHtml(params.signInUrl);
-
-  const html = `
-    <div style="background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a;">
-      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;">
-        <h1 style="margin:0 0 12px;font-size:20px;line-height:1.3;">You have been added to the Talkpush Implementation Hub</h1>
-        <p style="margin:0 0 16px;line-height:1.5;">${inviter} gave you access as <strong>${escapeHtml(roleLabel)}</strong>. ${escapeHtml(roleDescription)}</p>
-        <ol style="margin:0 0 24px;padding-left:20px;line-height:1.6;">
-          <li>Open the Hub using the button below.</li>
-          <li>Click <strong>Sign in with Google</strong>.</li>
-          <li>Choose the Google account for <strong>${to}</strong>. It has to be that exact email, and a talkpush.com Google account.</li>
-        </ol>
-        <a href="${url}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:600;">
-          Open the Hub
-        </a>
-        <p style="margin:24px 0 0;color:#64748b;font-size:12px;line-height:1.5;">
-          If you were not expecting this, reply to this email or ignore it. Nothing happens until you sign in.
-        </p>
-      </div>
-    </div>
-  `;
-
-  const text = [
-    "You have been added to the Talkpush Implementation Hub",
-    "",
-    `${params.inviterEmail} gave you access as ${roleLabel}. ${roleDescription}`,
-    "",
-    `1. Open ${params.signInUrl}`,
-    "2. Click Sign in with Google.",
-    `3. Choose the Google account for ${params.to}. It has to be that exact email, and a talkpush.com Google account.`,
-    "",
-    "If you were not expecting this, reply to this email or ignore it. Nothing happens until you sign in.",
-  ].join("\n");
-
-  return { subject: "You have been added to the Talkpush Implementation Hub", html, text };
+  const subject = "You now have access to the Talkpush Implementation Hub";
+  const email = renderEmail(
+    {
+      preheader: "Sign in with your talkpush.com Google account. No password needed.",
+      eyebrow: "Implementation Hub",
+      headline: subject,
+      blocks: [
+        { type: "paragraph", text: [strong(params.inviterEmail), " added you as a ", strong(ROLE_LABELS[params.role]), ". ", ROLE_DESCRIPTIONS[params.role]] },
+        { type: "steps", items: ["Open the Hub.", ["Choose ", strong("Sign in with Google"), "."], ["Pick the Google account for ", strong(params.to), "."]] },
+        { type: "callout", tone: "note", text: "Use that exact email. A different Google account, or a personal one, will not get in." },
+      ],
+      button: { label: "Open the Hub", url: params.signInUrl },
+      footer: `You are getting this because ${params.inviterEmail} added you to the Talkpush Implementation Hub. Not expecting it? Reply to this email. Nothing happens until you sign in.`,
+    },
+    subject
+  );
+  return { subject, ...email };
 }
