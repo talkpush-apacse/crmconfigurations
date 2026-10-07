@@ -1,4 +1,5 @@
 import type { McpToolDefinition } from "./definitions";
+import { accountProperty } from "./account-property";
 
 const workflowId = { type: "string", description: "Workflow project ID." };
 const page = { type: "string", description: "Which page: its id, its name, or its number (1 = first). Default: the first page." };
@@ -71,6 +72,7 @@ export const v2Definitions: McpToolDefinition[] = [
     inputSchema: object(
       {
         clientName: { type: "string" },
+        account: accountProperty,
         workflowName: { type: "string" },
         description: { type: "string" },
         entryLabel: { type: "string", description: "Name of the entry channel shape, for example 'Employee has a concern'. Use entryLabels when there is more than one way in." },

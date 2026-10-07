@@ -390,6 +390,8 @@ export interface WorkflowSpecArtifactInput {
 
 export interface WorkflowSpecInput {
   clientName: string;
+  /** An account's name or id to file the workflow under (resolved when it is saved). Left out = "Needs an account". */
+  account?: string;
   workflowName: string;
   description?: string;
   nodes: WorkflowSpecNodeInput[];

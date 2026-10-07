@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { describeAccountProblem, matchAccountRef } from "@/lib/accounts/account-ref";
 import { callV2Tool } from "@/lib/workflow/tool-handlers-v2";
 import { recordAudit } from "@/lib/workflow/access/audit";
 import { nanoid } from "@/lib/workflow/ids";
@@ -284,6 +285,19 @@ function schemeFor(diagramStyle: string | null | undefined): NumberingScheme {
   return diagramStyle === "process_map" ? "decimal" : "letters";
 }
 
+/**
+ * The account a create tool was told to file under (a company in one geo, "Concentrix PH"): a name or id, or nothing.
+ * Nothing means the workflow waits under "Needs an account" (it is never guessed). A name that is wrong, ambiguous or
+ * archived stops the tool before anything is created, with a message Claude can use to ask the person.
+ */
+async function resolveAccount(ref: string | undefined): Promise<{ id: string; name: string } | null> {
+  if (!ref) return null;
+  const accounts = await prisma.trackerAccount.findMany({ select: { id: true, name: true, archived: true } });
+  const found = matchAccountRef(accounts, ref);
+  if (found.kind !== "one") throw new McpToolInputError(describeAccountProblem(ref, found));
+  return { id: found.account.id, name: found.account.name };
+}
+
 function serializeNumbering(nodes: FlowNode[], edges: FlowEdge[], scheme: NumberingScheme = "letters") {
   const { stepNumbers, warnings, recoveryEdges } = computeNumbers(nodes, edges, scheme);
   return {
@@ -301,6 +315,7 @@ async function createWorkflow(args: ToolArguments, context: ToolContext) {
   const clientName = requiredString(args, "clientName");
   const workflowName = requiredString(args, "workflowName");
   const description = optionalString(args, "description")?.trim() || null;
+  const account = await resolveAccount(cleanString(args.account));
   const initialPage = {
     id: "page_mcp_start",
     name: "Page 1",
@@ -312,6 +327,7 @@ async function createWorkflow(args: ToolArguments, context: ToolContext) {
   const workflow = await prisma.workflowProject.create({
     data: {
       clientName,
+      accountId: account?.id ?? null,
       workflowName,
       description,
       nodes: [],
@@ -324,6 +340,7 @@ async function createWorkflow(args: ToolArguments, context: ToolContext) {
   return {
     workflowId: workflow.id,
     editUrl: `${context.origin}/admin/workflows/${workflow.id}`,
+    account,
   };
 }
 
@@ -375,6 +392,7 @@ function normalizeWorkflowSpecInput(args: ToolArguments): WorkflowSpecInput {
 
   return {
     clientName,
+    account: cleanString(args.account),
     workflowName,
     description: cleanString(args.description),
     nodes: rawNodes.map(normalizeSpecNode),
@@ -446,6 +464,8 @@ function normalizeSpecEdge(input: unknown): WorkflowSpecEdgeInput {
 }
 
 async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext) {
+  // Settle the account first, so a wrong name stops the tool before anything is built or saved.
+  const account = await resolveAccount(spec.account);
   const tempIds = new Set<string>();
   const nodeIdMap: Record<string, string> = {};
   const edgeIdMap: Record<string, string> = {};
@@ -560,6 +580,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
   const workflow = await prisma.workflowProject.create({
     data: {
       clientName: spec.clientName,
+      accountId: account?.id ?? null,
       workflowName: spec.workflowName,
       description: spec.description ?? null,
       nodes: toJson(finalNodes),
@@ -611,6 +632,7 @@ async function persistWorkflowSpec(spec: WorkflowSpecInput, context: ToolContext
   return {
     workflowId: workflow.id,
     editUrl,
+    account,
     nodeIdMap,
     edgeIdMap,
     validation: {
@@ -669,6 +691,7 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
     select: {
       id: true,
       clientName: true,
+      account: { select: { id: true, name: true } },
       workflowName: true,
       description: true,
       status: true,
@@ -687,6 +710,8 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
       return {
         id: workflow.id,
         clientName: workflow.clientName,
+        // The account it is filed under, or null while it waits under "Needs an account".
+        account: workflow.account,
         workflowName: workflow.workflowName,
         description: workflow.description,
         status: workflow.status,
@@ -788,6 +813,7 @@ async function createFromTemplate(args: ToolArguments, context: ToolContext) {
   const templateId = requiredString(args, "templateId");
   const clientName = requiredString(args, "clientName");
   const workflowName = requiredString(args, "workflowName");
+  const account = await resolveAccount(cleanString(args.account));
   const template = await prisma.workflowTemplate.findUnique({
     where: { id: templateId },
   });
@@ -811,6 +837,7 @@ async function createFromTemplate(args: ToolArguments, context: ToolContext) {
   const workflow = await prisma.workflowProject.create({
     data: {
       clientName,
+      accountId: account?.id ?? null,
       workflowName,
       description:
         cleanString(args.description) ?? template.description ?? null,
@@ -826,6 +853,7 @@ async function createFromTemplate(args: ToolArguments, context: ToolContext) {
   return {
     workflowId: workflow.id,
     editUrl: workflowEditUrl(context, workflow.id),
+    account,
     nodeIdMap: cloned.nodeIdMap,
     edgeIdMap: cloned.edgeIdMap,
     validation: {
