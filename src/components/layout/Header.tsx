@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ClipboardList, Download, History, Link2, MoreHorizontal, X } from "lucide-react";
+import { Check, ClipboardList, Download, Eye, History, Link2, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import type { NavItem } from "./TopNav";
 import { cn } from "@/lib/utils";
 import { SaveButton } from "@/components/shared/SaveButton";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
+import { useChecklistLook } from "@/components/layout/ChecklistLook";
 
 interface HeaderProps {
   clientName: string;
@@ -74,6 +75,7 @@ export function Header({
   shareLink,
 }: HeaderProps) {
   const isStaff = variant === "staff";
+  const lookControl = useChecklistLook();
 
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,6 +212,32 @@ export function Header({
             />
           )}
 
+          {lookControl && (
+            <div
+              role="group"
+              aria-label="Page look"
+              title="Modern: larger text, high contrast. Classic: the previous look."
+              className="hidden items-center overflow-hidden rounded-md border-2 border-input sm:inline-flex"
+            >
+              {(["modern", "classic"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={lookControl.look === option}
+                  onClick={() => lookControl.setLook(option)}
+                  className={cn(
+                    "h-11 px-3 text-[13px] font-semibold capitalize outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/70 md:h-8",
+                    lookControl.look === option
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-foreground hover:bg-secondary"
+                  )}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
+
           {shareLink && (
             <Button
               type="button"
@@ -275,6 +303,15 @@ export function Header({
                 <DropdownMenuItem onClick={onApplyTemplate} className="min-h-11 md:min-h-0">
                   <ClipboardList className="h-4 w-4" />
                   Apply template
+                </DropdownMenuItem>
+              )}
+              {lookControl && (
+                <DropdownMenuItem
+                  onClick={() => lookControl.setLook(lookControl.look === "modern" ? "classic" : "modern")}
+                  className="min-h-11 sm:hidden"
+                >
+                  <Eye className="h-4 w-4" />
+                  {lookControl.look === "modern" ? "Switch to classic look" : "Switch to modern look"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={handleExport} className="min-h-11 sm:hidden">
