@@ -27,6 +27,8 @@ export function omitInternalConfigForSlug<T extends Record<string, unknown>>(che
   delete publicChecklist.ownerEmail;
   // Per-tab edit/notify timestamps for the owner-email feature: internal bookkeeping.
   delete publicChecklist.notificationState;
+  // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
+  delete publicChecklist.accountId;
   return publicChecklist;
 }
 
@@ -42,5 +44,7 @@ export function omitInternalConfigForToken<T extends Record<string, unknown>>(ch
   delete publicChecklist.ownerEmail;
   // Per-tab edit/notify timestamps for the owner-email feature: internal bookkeeping.
   delete publicChecklist.notificationState;
+  // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
+  delete publicChecklist.accountId;
   return publicChecklist;
 }

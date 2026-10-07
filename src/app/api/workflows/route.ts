@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { sanitizeText } from "@/lib/workflow/text";
 import { applyLayout, layoutDiagram } from "@/lib/workflow/process-map/diagram-layout";
+import { findLinkableAccount } from "@/lib/accounts/company-link";
 
 type NodeCountRow = {
   id: string;
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         clientName: true,
+        accountId: true,
         workflowName: true,
         description: true,
         status: true,
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientName, workflowName, description, templateId } = body;
+    const { clientName, workflowName, description, templateId, accountId } = body;
     // New workflows use the Process Map style unless the caller asks for the original look.
     const diagramStyle: "classic" | "process_map" = body.diagramStyle === "classic" ? "classic" : "process_map";
     // New workflows get the readable look; only an explicit "original" keeps the old one.
@@ -129,6 +131,17 @@ export async function POST(request: NextRequest) {
         { error: "Client name and workflow name are required" },
         { status: 400 }
       );
+    }
+
+    // Optional: file the new workflow under a company straight away.
+    let linkedAccountId: string | null = null;
+    if (accountId !== undefined && accountId !== null) {
+      if (typeof accountId !== "string" || !accountId.trim()) {
+        return NextResponse.json({ error: "accountId must be a company id." }, { status: 400 });
+      }
+      const target = await findLinkableAccount(accountId.trim());
+      if (!target.ok) return NextResponse.json({ error: target.error }, { status: target.status });
+      linkedAccountId = target.account.id;
     }
 
     let nodes: unknown = [];
@@ -164,6 +177,7 @@ export async function POST(request: NextRequest) {
     const workflow = await prisma.workflowProject.create({
       data: {
         clientName: sanitizedClientName,
+        accountId: linkedAccountId,
         workflowName: sanitizedWorkflowName,
         description: sanitizedDescription || null,
         templateId: templateId || null,

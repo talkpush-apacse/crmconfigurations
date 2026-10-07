@@ -728,8 +728,9 @@ async function duplicateWorkflow(args: ToolArguments, context: ToolContext) {
       workflowName,
       description: description ?? null,
       templateId: source.templateId,
-      // A copy looks like the map it was copied from.
+      // A copy looks like the map it was copied from, and stays under the same company.
       look: source.look,
+      accountId: source.accountId,
       nodes: toJson(cloned.nodes),
       edges: toJson(cloned.edges),
       pages: toJson([initialPage]),

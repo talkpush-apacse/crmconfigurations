@@ -13,6 +13,7 @@ const row = {
   version: 3,
   fieldVersions: { sites: 3 },
   notificationState: { sites: { pendingChanges: true } },
+  accountId: "acct_internal_company_id",
   atsIntegrations: [{ vendor: "x" }],
   integrations: [{ vendor: "y" }],
   configuratorChecklist: { steps: [] },
@@ -24,7 +25,7 @@ const row = {
 
 test("client link: never receives the editor token, owner email, internal config or bookkeeping", () => {
   const out = omitInternalConfigForSlug(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist"]) {
+  for (const key of ["editorToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
     assert.equal(key in out, false, `${key} must not reach a client link`);
   }
   assert.equal(out.slug, "acme");
@@ -34,7 +35,7 @@ test("client link: never receives the editor token, owner email, internal config
 
 test("editor link: keeps admin settings and field versions, but never the token echo, owner email or internal config", () => {
   const out = omitInternalConfigForToken(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist"]) {
+  for (const key of ["editorToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
     assert.equal(key in out, false, `${key} must not reach an editor link`);
   }
   assert.deepEqual(out.adminSettings, { sms: "internal" });
