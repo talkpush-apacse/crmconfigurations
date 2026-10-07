@@ -348,7 +348,7 @@ interface VersionListItem {
   createdAt: string;
 }
 
-const MAX_HISTORY = 20;
+const MAX_HISTORY = 50;
 
 // ─── Inner editor (inside ReactFlow context) ─────────────────────────────────
 
@@ -424,7 +424,7 @@ function EditorInner({
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window === "undefined" ? true : window.innerWidth >= 768));
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(workflow.workflowName);
-  const [lassoMode, setLassoMode] = useState(false);
+  const [lassoMode, setLassoMode] = useState(true);
   // The minimap would cover most of a phone-width canvas, so it starts hidden there.
   const [showMinimap, setShowMinimap] = useState(() => typeof window === "undefined" || window.innerWidth >= 768);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -689,7 +689,19 @@ function EditorInner({
   ]);
   const historyIndexRef = useRef(0);
 
-  function pushHistory(newNodes: FlowNode[], newEdges: Edge[]) {
+  // Rapid edits to the same thing (typing in a field) share a coalesceKey, so one undo
+  // reverts the whole burst instead of one keystroke.
+  const lastHistoryEditRef = useRef<{ key: string; at: number } | null>(null);
+
+  function pushHistory(newNodes: FlowNode[], newEdges: Edge[], coalesceKey?: string) {
+    const now = Date.now();
+    const last = lastHistoryEditRef.current;
+    const atTip = historyIndexRef.current === historyRef.current.length - 1;
+    lastHistoryEditRef.current = coalesceKey ? { key: coalesceKey, at: now } : null;
+    if (coalesceKey && last && last.key === coalesceKey && now - last.at < 1500 && atTip && historyIndexRef.current > 0) {
+      historyRef.current[historyIndexRef.current] = { nodes: newNodes, edges: newEdges };
+      return;
+    }
     // Drop any future states beyond current cursor
     historyRef.current = historyRef.current.slice(
       0,
@@ -705,6 +717,7 @@ function EditorInner({
   function undo() {
     if (historyIndexRef.current <= 0) return;
     historyIndexRef.current--;
+    lastHistoryEditRef.current = null;
     const snap = historyRef.current[historyIndexRef.current];
     setNodes(snap.nodes);
     setEdges(snap.edges);
@@ -714,6 +727,7 @@ function EditorInner({
   function redo() {
     if (historyIndexRef.current >= historyRef.current.length - 1) return;
     historyIndexRef.current++;
+    lastHistoryEditRef.current = null;
     const snap = historyRef.current[historyIndexRef.current];
     setNodes(snap.nodes);
     setEdges(snap.edges);
@@ -911,6 +925,7 @@ function EditorInner({
           return applyEdgeRendering({ ...edge, data }, data);
         });
         setNodes((ns) => {
+          pushHistory(ns, next);
           triggerSave(ns, next, activePageIdRef.current);
           return ns;
         });
@@ -1865,6 +1880,7 @@ function EditorInner({
       const next = prev.map((n) =>
         n.id === id ? { ...n, data: { ...n.data, ...updates } } : n
       );
+      pushHistory(next, edges, `node:${id}`);
       triggerSave(next, edges, activePageIdRef.current);
       return next;
     });
@@ -1886,6 +1902,7 @@ function EditorInner({
             }
           : n
       );
+      pushHistory(next, edges, `node:${id}`);
       triggerSave(next, edges, activePageIdRef.current);
       return next;
     });
@@ -1948,6 +1965,7 @@ function EditorInner({
         );
       });
       setNodes((currentNodes) => {
+        pushHistory(currentNodes, nextEdges, `edge:${id}`);
         triggerSave(currentNodes, nextEdges, activePageIdRef.current);
         return currentNodes;
       });
@@ -2007,6 +2025,7 @@ function EditorInner({
         return applyEdgeRendering({ ...e, label: editingEdge.label, data }, data);
       });
       setNodes((currentNodes) => {
+        pushHistory(currentNodes, next);
         triggerSave(currentNodes, next, activePageIdRef.current);
         return currentNodes;
       });
@@ -2850,6 +2869,8 @@ function EditorInner({
               selectionOnDrag={lassoMode}
               selectionMode={SelectionMode.Partial}
               panOnDrag={lassoMode ? [1, 2] : true}
+              panActivationKeyCode="Space"
+              minZoom={0.05}
               nodesDraggable={!isCanvasLocked}
               nodesConnectable={!isCanvasLocked}
               elementsSelectable={!isCanvasLocked}

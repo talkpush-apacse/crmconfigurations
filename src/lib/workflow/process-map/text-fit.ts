@@ -2,6 +2,7 @@ import { PM, circled } from "./tokens";
 import { actionTypeOf, personActs, roleBracket, shapeKindOf, tagOf, type ShapeKind } from "./model";
 import { channelWhen } from "./channel";
 import { hasInline, richWords, stripInline } from "./inline-text";
+import { wrapRich } from "../rich-text";
 
 /**
  * Text and box sizes, worked out from a formula instead of measuring the screen. That is what keeps a diagram
@@ -15,6 +16,7 @@ export interface Run {
   text: string;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
   muted?: boolean;
   size?: number;
 }
@@ -112,6 +114,10 @@ export function wrapRuns(text: string, max: number, extra: Partial<Run> = {}): T
   });
 }
 
+/** Notes can carry **bold**, *italic* and __underline__; each wrapped line keeps those styles. */
+const richLines = (notes: string, max: number, extra: Partial<Run> = {}): TextLine[] =>
+  wrapRich(notes, max).map((runs) => ({ runs: runs.map(({ text, bold, italic, underline }) => ({ text, ...extra, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}), ...(underline ? { underline } : {}) })) }));
+
 export const charsPerLine = (width: number, pad: number = PM.type.pad) => Math.max(8, Math.floor((width - 2 * pad) / PM.type.charW));
 
 function numberRuns(numbers: NodeNumbers, lead: string | null): Run[] {
@@ -162,7 +168,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
     const width = S.noteW;
     const max = charsPerLine(width);
     if (label) for (const t of wrapText(stripInline(label), max)) lines.push(plain(t, { bold: true }));
-    if (notes) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t));
+    if (notes) lines.push(...richLines(notes, max));
     return { kind, width, height: Math.max(56, 32 + lines.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
@@ -173,7 +179,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   const head = numberRuns(numbers, lead);
   if (head.length) lines.push({ runs: head });
   if (label) for (const t of wrapRuns(label, max)) lines.push(t);
-  if (notes && notes !== label) for (const t of wrapText(stripInline(notes), max)) lines.push(plain(t, { size: PM.type.small }));
+  if (notes && notes !== label) lines.push(...richLines(notes, max, { size: PM.type.small }));
   // "Channel · When" for automated messages, calls and alerts; for any other step, just its timing.
   const when = channelWhen(node);
   if (when) for (const t of wrapText(when, max)) lines.push(plain(t, { italic: true }));

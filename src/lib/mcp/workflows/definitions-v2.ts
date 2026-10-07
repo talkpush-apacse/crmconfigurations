@@ -15,7 +15,7 @@ const flowRow = {
     kind: { type: "string", enum: ["step", "decision", "end", "jump"], description: "Default step. A question mark at the end of the action also makes a decision." },
     endKind: { type: "string", enum: ["success", "failure", "neutral", "soft"] },
     jumpTo: { type: "string", description: "For a jump row: the step number it points at." },
-    notes: { type: "string" },
+    notes: { type: "string", description: "Extra detail shown in the box. May use **bold**, *italic* and __underline__ for emphasis; keep it short." },
     timing: { type: "string", description: "When it happens. REQUIRED for every automated message, call or alert: when it goes out, for example 'immediately', '1 hour after', '2 days after', 'the day before the interview'. Shown in italics on the box." },
     lane: { type: "string", description: "Lanes layout: the row this step sits in, in the client's words and spelled the same on every row (for example 'Candidate', 'Recruiter', 'Assessment platform', 'HRIS'). Leave out to use the actor. Leave out on end and jump rows." },
     stage: { type: "string", description: "Lanes layout: write the stage name on the FIRST row of each stage (a short plain phrase, for example '2. Assessment'); the rows after it stay in that stage until the next one." },

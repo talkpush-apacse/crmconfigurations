@@ -25,6 +25,7 @@ import {
   type WorkflowNodeData,
 } from "@/lib/workflow/types";
 
+import { RichNotesField } from "../RichNotesField";
 import ProcessMapProperties, { type LaneControls, type StepOption } from "./ProcessMapProperties";
 
 interface NodePropertiesProps {
@@ -819,12 +820,10 @@ export default function NodeProperties({
           <label className="text-sm font-medium text-foreground/85 mb-1 block">
             Notes
           </label>
-          <textarea
-            value={data.notes}
-            onChange={(e) => onChange(nodeId, { notes: e.target.value })}
-            rows={3}
+          <RichNotesField
+            value={data.notes ?? ""}
+            onChange={(next) => onChange(nodeId, { notes: next })}
             placeholder="Describe this step..."
-            className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-ring focus:outline-none"
           />
         </div>
 

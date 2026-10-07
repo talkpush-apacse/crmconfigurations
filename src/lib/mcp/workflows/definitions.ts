@@ -133,7 +133,7 @@ const workflowSpecNodeProperty = {
     label: { type: "string" },
     actor: actorProperty,
     actorLabel: { type: "string" },
-    notes: { type: "string" },
+    notes: { type: "string", description: "Extra detail shown in the box. May use **bold**, *italic* and __underline__ for emphasis; keep it short." },
     feasibility: feasibilityProperty,
     feasibilityNote: { type: "string" },
     position: {
