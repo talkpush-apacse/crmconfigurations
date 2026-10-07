@@ -118,6 +118,9 @@ test("company link (local DB): file checklists and workflows under a company, se
     assert.equal(wAfter.updatedAt.getTime(), wBefore.updatedAt.getTime(), "clients do not see 'updated just now' for a workflow nobody edited");
     const audit = await prisma.workflowAuditEvent.findFirst({ where: { workflowId: w1.body.id, action: "account.linked" } });
     assert.ok(audit, "the move is in the workflow's activity log");
+    const detail = audit!.detail as Json;
+    assert.equal(detail.accountName, "Globex Link Test", "the log keeps the company's name, so it can say where it went");
+    assert.equal(detail.previousAccountName, "Acme Link Test", "and where it came from");
     // the same company again is a no-op and logs nothing more
     await call(workflowAccount.PUT as never, `/api/workflows/${w1.body.id}/account`, { method: "PUT", body: { accountId: globex.id }, params: { id: w1.body.id } });
     assert.equal(await prisma.workflowAuditEvent.count({ where: { workflowId: w1.body.id, action: "account.linked" } }), 1);
