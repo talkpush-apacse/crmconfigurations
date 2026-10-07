@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { AlertTriangle, ChevronDown, ChevronRight, History as HistoryIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -144,6 +144,9 @@ export default function EditHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [details, setDetails] = useState<Record<string, Detail | "loading" | "error">>({});
+  // Each new list request gets a number; an answer to an older request is ignored, so switching filters quickly
+  // (or pressing "Show older changes" just as a filter changes) can never show the wrong list.
+  const requestRef = useRef(0);
 
   const query = useCallback(
     (cursor?: string | null) => {
@@ -157,11 +160,13 @@ export default function EditHistoryPage() {
   );
 
   const loadFirst = useCallback(async () => {
+    const request = ++requestRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(query(), { cache: "no-store" });
       const body = (await res.json().catch(() => ({}))) as Partial<Page> & { error?: string };
+      if (request !== requestRef.current) return;
       if (!res.ok) throw new Error(body.error ?? "Could not load the edit history.");
       setEvents(body.events ?? []);
       setNextCursor(body.nextCursor ?? null);
@@ -169,9 +174,10 @@ export default function EditHistoryPage() {
       if (body.overview) setOverview((prev) => (person || tab ? prev ?? body.overview! : body.overview!));
       setOpen({});
     } catch (e) {
+      if (request !== requestRef.current) return;
       setError(e instanceof Error ? e.message : "Could not load the edit history.");
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
   }, [query, person, tab]);
 
@@ -181,14 +187,17 @@ export default function EditHistoryPage() {
 
   async function loadMore() {
     if (!nextCursor) return;
+    const request = requestRef.current;
     setLoadingMore(true);
     try {
       const res = await fetch(query(nextCursor), { cache: "no-store" });
       const body = (await res.json().catch(() => ({}))) as Partial<Page> & { error?: string };
+      if (request !== requestRef.current) return; // the filter changed while this was loading
       if (!res.ok) throw new Error(body.error ?? "Could not load more.");
       setEvents((prev) => [...prev, ...(body.events ?? [])]);
       setNextCursor(body.nextCursor ?? null);
     } catch (e) {
+      if (request !== requestRef.current) return;
       setError(e instanceof Error ? e.message : "Could not load more.");
     } finally {
       setLoadingMore(false);

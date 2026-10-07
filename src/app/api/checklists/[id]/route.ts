@@ -286,6 +286,7 @@ export async function PUT(
       actor,
       version: checklist.version,
       fieldCount: CHECKLIST_JSON_FIELDS.filter((field) => hasOwn(body, field)).length,
+      markFields: CHECKLIST_JSON_FIELDS,
     });
     return response;
   } catch (err) {

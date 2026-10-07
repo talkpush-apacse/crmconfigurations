@@ -292,7 +292,7 @@ export async function PUT(
 
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
     scheduleNotificationSweep(requestOrigin);
-    scheduleWholeDocumentRecord({ checklistId: id, actor: SLUG_ACTOR, version: checklist.version, fieldCount: changedFieldsForNotification.length });
+    scheduleWholeDocumentRecord({ checklistId: id, actor: SLUG_ACTOR, version: checklist.version, fieldCount: changedFieldsForNotification.length, markFields: PUBLIC_JSON_FIELDS });
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-slug/[slug] error:", err);

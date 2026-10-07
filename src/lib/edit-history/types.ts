@@ -35,7 +35,9 @@ export type EditChangeType =
   | "replaced"
   | "setup"
   | "file"
-  | "system";
+  | "system"
+  /** Bookkeeping, never shown: "this save looked at this section and nothing changed". */
+  | "checked";
 
 /** One change worked out from a before/after pair. Not stored until it is given an actor and a version. */
 export interface DraftEvent {

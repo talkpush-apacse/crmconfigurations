@@ -347,7 +347,9 @@ export async function restoreSnapshot(
       history: {
         before: current as unknown as Record<string, unknown>,
         after: snapshotPayload,
-        fields: CHECKLIST_JSON_FIELDS.filter((field) => Object.prototype.hasOwnProperty.call(snapshotPayload, field)),
+        // A restore raises the version of EVERY section, so every section is looked at (those the snapshot does not
+        // carry, or leaves as they were, simply find no change).
+        fields: [...CHECKLIST_JSON_FIELDS],
         snapshotLabel: snapshotRow.label,
       },
     };

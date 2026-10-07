@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { diffChecklistFields, humanise, isSensitiveKey, systemEvent, wholeDocumentEvent } from "../src/lib/edit-history/diff";
+import { checkedMarkers, diffChecklistFields, humanise, isCustomTabKey, isSensitiveKey, systemEvent, wholeDocumentEvent } from "../src/lib/edit-history/diff";
 import { MAX_VALUE_CHARS } from "../src/lib/edit-history/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -204,4 +204,80 @@ test("coarse helpers", () => {
   assert.match(w.summary, /12 sections/);
   const s = systemEvent("Restored a snapshot");
   assert.equal(s.changeType, "system");
+});
+
+test("secret-looking names are hidden at any depth, in lists, and never become a row's name", () => {
+  const cell = run(
+    { customTabs: [{ id: "t", slug: "keys", label: "Keys", icon: "i", fields: [], mode: "table", columns: [{ key: "private_key", label: "Private key", type: "text" }, { key: "note", label: "Note", type: "text" }], rows: [{ id: "r", private_key: "AAA111", note: "n1" }] }] },
+    { customTabs: [{ id: "t", slug: "keys", label: "Keys", icon: "i", fields: [], mode: "table", columns: [{ key: "private_key", label: "Private key", type: "text" }, { key: "note", label: "Note", type: "text" }], rows: [{ id: "r", private_key: "BBB222", note: "n1" }] }] },
+    ["customTabs"]
+  );
+  assert.equal(cell.length, 1);
+  assert.equal(JSON.stringify(cell).includes("AAA111"), false);
+  assert.equal(JSON.stringify(cell).includes("BBB222"), false);
+  assert.equal(cell[0].rowLabel, "n1", "the secret column never names the row");
+
+  for (const key of ["accessKey", "sshKey", "bearerToken", "licenseKey", "signature", "otp", "authCode", "pin"]) {
+    const ev = run({ users: [{ id: "u", name: "Bo", [key]: "S3CRET-OLD" }] }, { users: [{ id: "u", name: "Bo", [key]: "S3CRET-NEW" }] }, ["users"]);
+    assert.equal(JSON.stringify(ev).includes("S3CRET"), false, `${key} must be hidden`);
+  }
+  assert.equal(isSensitiveKey("passing_score"), false, "harmless names that merely contain 'pass' are kept");
+  assert.equal(isSensitiveKey("shipping"), false);
+  assert.equal(isSensitiveKey("mapping"), false);
+
+  // Secrets nested inside a value that is stored whole.
+  const nested = run({ customData: { f: { rows: [{ name: "a", apiKey: "N1" }] } } }, { customData: { f: { rows: [{ name: "a", apiKey: "N2" }] } } }, ["customData"]);
+  assert.equal(JSON.stringify(nested).includes("N1"), false);
+  assert.equal(JSON.stringify(nested).includes("N2"), false);
+  // A plain list under a secret-looking name.
+  const list = run({ aiCallFaqs: { apiKeys: ["k-old"] } }, { aiCallFaqs: { apiKeys: ["k-new"] } }, ["aiCallFaqs"]);
+  assert.equal(JSON.stringify(list).includes("k-old"), false);
+  assert.equal(JSON.stringify(list).includes("k-new"), false);
+});
+
+test("characters the database refuses are cleaned: NUL, half an emoji, and a cut never splits an emoji", () => {
+  const dirty = `bad\u0000text \uD83D alone and fine \u{1F600}`;
+  const ev = run({ companyInfo: { companyName: "x" } }, { companyInfo: { companyName: dirty } }, ["companyInfo"]);
+  const text = ev[0].after as string;
+  assert.equal(text.includes("\u0000"), false);
+  assert.equal(typeof (text as unknown as { isWellFormed?: () => boolean }).isWellFormed === "function" ? (text as unknown as { isWellFormed: () => boolean }).isWellFormed() : true, true);
+  assert.ok(text.includes("\u{1F600}"), "a whole emoji survives");
+
+  const emoji = "\u{1F600}".repeat(MAX_VALUE_CHARS + 5);
+  const cut = run({ companyInfo: { companyName: "x" } }, { companyInfo: { companyName: emoji } }, ["companyInfo"]);
+  const cutText = cut[0].after as string;
+  assert.equal(Array.from(cutText).length, MAX_VALUE_CHARS, "cut on whole characters");
+  assert.equal(cut[0].truncated, true);
+
+  const nested = run({ customData: {} }, { customData: { k: { note: "a\u0000b" } } }, ["customData"]);
+  assert.equal(JSON.stringify(nested).includes("\\u0000"), false);
+
+  const longLabel = run({ users: [] }, { users: [{ id: "u", name: "\u{1F600}".repeat(200) }] }, ["users"]);
+  assert.equal((longLabel[0].rowLabel as string).includes("�"), false, "a label cut at 80 characters never leaves half an emoji");
+});
+
+test("field names that match built-in object members do not break the comparison", () => {
+  const before = { aiCallFaqs: { agentName: "x" }, customData: { c: { values: { constructor: "a" } } } };
+  const after = { aiCallFaqs: { agentName: "x", toString: "new", valueOf: "v" }, customData: { c: { values: { constructor: "b", hasOwnProperty: "h" } } } };
+  assert.doesNotThrow(() => run(before, after, ["aiCallFaqs", "customData"]));
+  const ev = run(before, after, ["aiCallFaqs", "customData"]);
+  assert.ok(ev.some((e) => e.fieldKey === "toString" && e.after === "new"));
+  assert.ok(ev.some((e) => e.fieldKey === "constructor" && e.before === "a" && e.after === "b"));
+  const fromJson = JSON.parse('{"companyInfo":{"__proto__":"p","companyName":"n"}}');
+  assert.doesNotThrow(() => run({ companyInfo: {} }, fromJson, ["companyInfo"]));
+});
+
+test("a section a save looked at but did not change gets a hidden 'checked' marker, so it is not reported as missing", () => {
+  const changes = run({ users: [{ id: "u", name: "A" }], sites: [] }, { users: [{ id: "u", name: "B" }], sites: [] }, ["users", "sites"]);
+  const marks = checkedMarkers(["users", "sites"], changes);
+  assert.deepEqual(marks.map((m) => [m.tabKey, m.changeType]), [["sites", "checked"]], "users has a real line; sites needs a marker");
+  // Custom sections are covered by any custom-tab line.
+  const custom = [{ tabKey: "custom-x", changeType: "edited" }] as never[];
+  assert.deepEqual(checkedMarkers(["customTabs", "customData"], custom), []);
+  assert.deepEqual(checkedMarkers(["customTabs"], []).map((m) => m.tabKey), ["customTabs"]);
+  // Sections that are never itemised are not tracked at all.
+  assert.deepEqual(checkedMarkers(["adminSettings", "enabledTabs", "tabUploadMeta"], []), []);
+  assert.equal(isCustomTabKey("customTabs"), true);
+  assert.equal(isCustomTabKey("custom-scripts"), true);
+  assert.equal(isCustomTabKey("users"), false);
 });

@@ -319,7 +319,7 @@ export async function PUT(
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
     scheduleNotificationSweep(requestOrigin);
     // This older method sends the whole document, so the old values for every field are not at hand: one coarse line.
-    scheduleWholeDocumentRecord({ checklistId: id, actor, version: checklist.version, fieldCount: changedFieldsForNotification.length });
+    scheduleWholeDocumentRecord({ checklistId: id, actor, version: checklist.version, fieldCount: changedFieldsForNotification.length, markFields: PUBLIC_JSON_FIELDS });
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-token/[token] error:", err);

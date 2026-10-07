@@ -26,6 +26,9 @@ type Rec = Record<string, unknown>;
 const isRecord = (v: unknown): v is Rec => typeof v === "object" && v !== null && !Array.isArray(v);
 const hasOwn = (o: unknown, k: string) => !!o && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k);
 
+/** Reads an object's OWN property only, so a key like "toString" or "constructor" never returns a built-in function. */
+const get = (o: unknown, k: string): unknown => (hasOwn(o, k) ? (o as Rec)[k] : undefined);
+
 /** JSON with keys in a fixed order, so two objects with the same content compare equal. */
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
@@ -33,7 +36,19 @@ function stable(value: unknown): string {
     const keys = Object.keys(value).sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
     return `{${keys.map((k) => `${JSON.stringify(k)}:${stable(value[k])}`).join(",")}}`;
   }
-  return JSON.stringify(value ?? null);
+  if (typeof value === "function" || typeof value === "symbol" || typeof value === "bigint") return "null";
+  return JSON.stringify(value ?? null) ?? "null";
+}
+
+/**
+ * Text made safe for the database: no NUL characters (Postgres refuses them in text and jsonb) and no lone halves
+ * of an emoji (jsonb refuses those too). One bad character must never cost a whole save's history.
+ */
+function cleanText(text: string): string {
+  let t = text.replace(/\u0000/g, "");
+  const wf = (t as unknown as { toWellFormed?: () => string }).toWellFormed;
+  t = typeof wf === "function" ? wf.call(t) : t.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+  return t;
 }
 
 /** null, undefined, "", whitespace, [] and {} all mean "nothing there". */
@@ -50,8 +65,11 @@ function sameValue(a: unknown, b: unknown): boolean {
   return stable(a) === stable(b);
 }
 
-const SENSITIVE_KEY = /pass(word|code)?|secret|api[-_ ]?key|token|webhook|openai|credential/i;
-export const isSensitiveKey = (key: string) => SENSITIVE_KEY.test(key);
+// Names that suggest a secret. Deliberately broad: hiding a harmless value is better than storing a password.
+const SENSITIVE_KEY =
+  /pass(word|code|phrase)?(?!ing)|secret|api[-_ ]?key|private[-_ ]?key|access[-_ ]?key|ssh|token|webhook|openai|credential|bearer|signature|licen[cs]e[-_ ]?key|(^|[^a-z])(pin|otp|auth)([^a-z]|$)/i;
+// "authCode" is read as "auth_Code", so short words like auth / pin / otp are found inside camelCase names too.
+export const isSensitiveKey = (key: string) => SENSITIVE_KEY.test(key.replace(/([a-z0-9])([A-Z])/g, "$1_$2"));
 
 /** "companyAddress" -> "Company address". */
 export function humanise(key: string): string {
@@ -64,23 +82,42 @@ export function humanise(key: string): string {
 }
 
 function clip(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+  // Cut on whole characters, so an emoji is never split in half.
+  const chars = Array.from(cleanText(text));
+  return chars.length > max ? `${chars.slice(0, max - 1).join("").trimEnd()}…` : chars.join("");
+}
+
+/** A copy of a value that is safe to store: clean text, and anything under a secret-looking name hidden, at any depth. */
+function scrub(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") return cleanText(value);
+  if (value === null || typeof value !== "object") return typeof value === "function" || typeof value === "symbol" || typeof value === "bigint" ? null : value;
+  if (depth > 8) return "[too deep]";
+  if (Array.isArray(value)) return value.map((x) => scrub(x, depth + 1));
+  const out: Rec = {};
+  for (const k of Object.keys(value as Rec)) {
+    out[cleanText(k)] = isSensitiveKey(k) ? "[hidden]" : scrub((value as Rec)[k], depth + 1);
+  }
+  return out;
 }
 
 /** A value made safe to store: file objects keep only their name, long text is cut. */
 function shorten(value: unknown): { value: unknown; truncated: boolean } {
   if (value === undefined) return { value: undefined, truncated: false };
-  let v = value;
+  let v: unknown = value;
   if (isRecord(v) && typeof v.url === "string") {
     const name = typeof v.name === "string" ? v.name : typeof v.fileName === "string" ? v.fileName : "file";
     v = { name };
   }
+  v = scrub(v);
   if (typeof v === "string") {
-    return v.length > MAX_VALUE_CHARS ? { value: v.slice(0, MAX_VALUE_CHARS), truncated: true } : { value: v, truncated: false };
+    if (v.length <= MAX_VALUE_CHARS) return { value: v, truncated: false };
+    return { value: cleanText(Array.from(v).slice(0, MAX_VALUE_CHARS).join("")), truncated: true };
   }
   if (v !== null && typeof v === "object") {
     const text = JSON.stringify(v);
-    return text.length > MAX_VALUE_CHARS ? { value: text.slice(0, MAX_VALUE_CHARS), truncated: true } : { value: v, truncated: false };
+    return text.length > MAX_VALUE_CHARS
+      ? { value: cleanText(Array.from(text).slice(0, MAX_VALUE_CHARS).join("")), truncated: true }
+      : { value: v, truncated: false };
   }
   return { value: v, truncated: false };
 }
@@ -93,7 +130,7 @@ const PREFERRED_LABEL_KEYS = [
 ];
 
 function textOf(v: unknown): string {
-  return typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "";
+  return typeof v === "string" ? cleanText(v.trim()) : typeof v === "number" ? String(v) : "";
 }
 
 /** A short name for a row, from named columns when the tab defines them, otherwise from familiar keys. */
@@ -103,7 +140,7 @@ function labelRow(row: Rec, columnOrder?: string[]): string | null {
     // The first filled-in column names the row. A second one is added only when both are short, so a long call
     // script or paragraph never becomes the row's name.
     for (const key of columnOrder) {
-      const t = textOf(row[key]);
+      const t = textOf(get(row, key));
       if (!t || isSensitiveKey(key)) continue;
       if (parts.length === 0) parts.push(t);
       else if (parts[0].length <= 30 && t.length <= 30) parts.push(t);
@@ -111,7 +148,7 @@ function labelRow(row: Rec, columnOrder?: string[]): string | null {
     }
   } else {
     for (const key of PREFERRED_LABEL_KEYS) {
-      const t = textOf(row[key]);
+      const t = textOf(get(row, key));
       if (t) {
         parts.push(t);
         break;
@@ -120,7 +157,7 @@ function labelRow(row: Rec, columnOrder?: string[]): string | null {
     if (parts.length === 0) {
       for (const key of Object.keys(row).sort()) {
         if (META_KEYS.has(key) || isSensitiveKey(key)) continue;
-        const t = textOf(row[key]);
+        const t = textOf(get(row, key));
         if (t) {
           parts.push(t);
           break;
@@ -135,12 +172,12 @@ function compactRow(row: Rec): { value: unknown; truncated: boolean } {
   const cells: Rec = {};
   let hidden = false;
   for (const key of Object.keys(row).sort()) {
-    if (META_KEYS.has(key) || isEmpty(row[key])) continue;
+    if (META_KEYS.has(key) || isEmpty(get(row, key))) continue;
     if (isSensitiveKey(key)) {
       hidden = true;
       continue;
     }
-    cells[key] = shorten(row[key]).value;
+    cells[cleanText(key)] = shorten(get(row, key)).value;
   }
   const out = shorten(cells);
   return { value: out.value, truncated: out.truncated || hidden };
@@ -162,19 +199,20 @@ class Collector {
   events: DraftEvent[] = [];
 
   push(tab: TabRef, e: Omit<DraftEvent, "tabKey" | "tabLabel" | "subject" | "truncated"> & { truncated?: boolean }) {
+    const t = (x: string | null) => (x === null ? null : cleanText(x));
     this.events.push({
-      tabKey: tab.key,
-      tabLabel: tab.label,
-      rowId: e.rowId,
-      rowLabel: e.rowLabel,
-      fieldKey: e.fieldKey,
-      fieldLabel: e.fieldLabel,
+      tabKey: cleanText(tab.key),
+      tabLabel: cleanText(tab.label),
+      rowId: t(e.rowId),
+      rowLabel: t(e.rowLabel),
+      fieldKey: t(e.fieldKey),
+      fieldLabel: t(e.fieldLabel),
       changeType: e.changeType,
-      summary: e.summary,
+      summary: cleanText(e.summary),
       before: e.before,
       after: e.after,
       truncated: e.truncated ?? false,
-      subject: `${tab.key}|${e.rowId ?? ""}|${e.fieldKey ?? ""}|${e.changeType}`,
+      subject: `${cleanText(tab.key)}|${t(e.rowId) ?? ""}|${t(e.fieldKey) ?? ""}|${e.changeType}`,
     });
   }
 
@@ -270,14 +308,14 @@ function diffRows(c: Collector, tab: TabRef, path: string[], bRows: Rec[], aRows
     if (isDeleted) continue;
     const keys = Array.from(new Set([...Object.keys(old), ...Object.keys(row)])).filter((k) => !META_KEYS.has(k)).sort();
     for (const key of keys) {
-      if (sameValue(old[key], row[key])) continue;
+      if (sameValue(get(old, key), get(row, key))) continue;
       pushCell(c, tab, {
         rowId: id,
         rowLabel: label,
         fieldKey: prefix ? `${prefix}.${key}` : key,
         fieldLabel: spec.labelCol(key),
-        before: old[key],
-        after: row[key],
+        before: get(old, key),
+        after: get(row, key),
       });
     }
   }
@@ -309,6 +347,13 @@ function diffList(c: Collector, tab: TabRef, path: string[], b: unknown, a: unkn
   const al = Array.isArray(a) ? a : [];
   const fieldKey = path.join(".");
   const fieldLabel = humanise(path[path.length - 1] ?? tab.label);
+  if (isSensitiveKey(fieldKey) || path.some(isSensitiveKey)) {
+    c.push(tab, {
+      rowId: null, rowLabel: null, fieldKey, fieldLabel, changeType: "edited",
+      summary: `Changed ${fieldLabel} (value not recorded)`, truncated: true,
+    });
+    return;
+  }
   const allPrimitive = [...bl, ...al].every((x) => x === null || ["string", "number", "boolean"].includes(typeof x));
   if (!allPrimitive) {
     pushCell(c, tab, { rowId: null, rowLabel: null, fieldKey, fieldLabel, before: bl, after: al });
@@ -367,7 +412,7 @@ function standardWalk(c: Collector, tab: TabRef, path: string[], b: unknown, a: 
     const left = isRecord(b) ? b : {};
     const right = isRecord(a) ? a : {};
     for (const key of Array.from(new Set([...Object.keys(left), ...Object.keys(right)])).sort()) {
-      standardWalk(c, tab, [...path, key], left[key], right[key]);
+      standardWalk(c, tab, [...path, key], get(left, key), get(right, key));
     }
     return;
   }
@@ -463,8 +508,8 @@ function diffCustomData(c: Collector, b: unknown, a: unknown, tabs: CustomTab[])
   };
 
   for (const k of Array.from(new Set([...Object.keys(left), ...Object.keys(right)])).sort()) {
-    const lv = left[k];
-    const rv = right[k];
+    const lv = get(left, k);
+    const rv = get(right, k);
     const container = (isRecord(lv) && isRecord(lv.values)) || (isRecord(rv) && isRecord(rv.values));
     if (container) {
       const tab = tabs.find((t) => t.id === k);
@@ -472,10 +517,10 @@ function diffCustomData(c: Collector, b: unknown, a: unknown, tabs: CustomTab[])
       const lvals = isRecord(lv) && isRecord(lv.values) ? lv.values : {};
       const rvals = isRecord(rv) && isRecord(rv.values) ? rv.values : {};
       for (const fk of Array.from(new Set([...Object.keys(lvals), ...Object.keys(rvals)])).sort()) {
-        if (sameValue(lvals[fk], rvals[fk])) continue;
+        if (sameValue(get(lvals, fk), get(rvals, fk))) continue;
         const field = tab?.fields?.find((f) => fieldKeyOf(f) === fk || f.id === fk);
         pushCell(c, ref, {
-          rowId: null, rowLabel: null, fieldKey: fk, fieldLabel: field?.label ?? humanise(fk), before: lvals[fk], after: rvals[fk],
+          rowId: null, rowLabel: null, fieldKey: fk, fieldLabel: field?.label ?? humanise(fk), before: get(lvals, fk), after: get(rvals, fk),
         });
       }
       continue;
@@ -516,16 +561,51 @@ function diffUploadMeta(c: Collector, b: unknown, a: unknown) {
   const left = isRecord(b) ? b : {};
   const right = isRecord(a) ? a : {};
   for (const k of Array.from(new Set([...Object.keys(left), ...Object.keys(right)])).sort()) {
-    if (sameValue(left[k], right[k])) continue;
+    const lv = get(left, k);
+    const rv = get(right, k);
+    if (sameValue(lv, rv)) continue;
     const tab = tabForField(k);
-    const before = (isRecord(left[k]) && Array.isArray(left[k].uploadedFiles) ? (left[k].uploadedFiles as unknown[]).length : 0);
-    const after = (isRecord(right[k]) && Array.isArray(right[k].uploadedFiles) ? (right[k].uploadedFiles as unknown[]).length : 0);
+    const filesIn = (v: unknown) => (isRecord(v) && Array.isArray(get(v, "uploadedFiles")) ? (get(v, "uploadedFiles") as unknown[]).length : 0);
+    const before = filesIn(lv);
+    const after = filesIn(rv);
     c.push(tab, {
       rowId: null, rowLabel: null, fieldKey: "attachments", fieldLabel: "Attachments", changeType: "file",
       summary:
         after > before ? "Attached a file" : after < before ? "Removed an attached file" : "Changed the attachment or \"skip\" setting",
     });
   }
+}
+
+/**
+ * Sections whose saves are never itemised with values, so the History page does not look for them when it checks for
+ * changes that were not recorded.
+ */
+export const UNTRACKED_FIELDS: readonly string[] = [
+  "adminSettings", "integrations", "atsIntegrations", "enabledTabs", "tabOrder", "tabFilledBy",
+  "communicationChannels", "featureToggles", "customSchema", "tabUploadMeta",
+];
+
+/** Custom tab rows and form values are recorded under `custom-<tab>` keys (or the field name for collapsed lines). */
+export const isCustomTabKey = (tabKey: string) => tabKey.startsWith("custom-") || tabKey === "customTabs" || tabKey === "customData";
+
+/**
+ * Bookkeeping, never shown: for every section a save or restore looked at where no change was found, one hidden
+ * "checked" line. A save that finds nothing still raises the section's version number, so without this the History
+ * page could not tell "nothing changed" from "a change that was not recorded".
+ */
+export function checkedMarkers(fields: readonly string[], events: readonly DraftEvent[]): DraftEvent[] {
+  const out: DraftEvent[] = [];
+  for (const field of fields) {
+    if (UNTRACKED_FIELDS.includes(field)) continue;
+    const custom = field === "customTabs" || field === "customData";
+    const covered = events.some((e) => (custom ? isCustomTabKey(e.tabKey) : e.tabKey === field));
+    if (covered) continue;
+    out.push({
+      tabKey: field, tabLabel: tabForField(field).label, rowId: null, rowLabel: null, fieldKey: null, fieldLabel: null,
+      changeType: "checked", summary: "No change", truncated: false, subject: `${field}|||checked`,
+    });
+  }
+  return out;
 }
 
 export interface DiffInput {
@@ -545,7 +625,7 @@ export function diffChecklistFields(input: DiffInput): DraftEvent[] {
   const labelTabs = Array.isArray(tabsAfter) ? (tabsAfter as CustomTab[]) : [];
 
   for (const field of fields) {
-    const b = before[field];
+    const b = get(before, field);
     const a = hasOwn(after, field) ? after[field] : b;
     if (sameValue(b, a)) continue;
     const start = c.events.length;

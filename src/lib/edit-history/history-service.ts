@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { TAB_CONFIG } from "@/lib/tab-config";
+import { UNTRACKED_FIELDS, isCustomTabKey } from "./diff";
 import type { EditActorType, EditChangeType, EditEventRow, EditPerson, EditTabOption } from "./types";
 
 /**
@@ -77,6 +78,7 @@ export async function listEditEvents(args: ListEventsArgs): Promise<{ events: Ed
   const cursor = decodeCursor(args.cursor);
   const where: Prisma.ChecklistEditEventWhereInput = {
     checklistId: args.checklistId,
+    changeType: { not: "checked" },
     ...personWhere(args.person),
     ...(args.tab ? { tabKey: args.tab } : {}),
     ...(cursor
@@ -125,8 +127,8 @@ function labelForField(field: string): string {
 
 export async function getHistoryOverview(checklistId: string): Promise<HistoryOverview> {
   const [people, tabs, bounds, checklist] = await Promise.all([
-    prisma.checklistEditEvent.groupBy({ by: ["actorType", "actorName", "linkId"], where: { checklistId }, _count: { _all: true } }),
-    prisma.checklistEditEvent.groupBy({ by: ["tabKey", "tabLabel"], where: { checklistId }, _count: { _all: true } }),
+    prisma.checklistEditEvent.groupBy({ by: ["actorType", "actorName", "linkId"], where: { checklistId, changeType: { not: "checked" } }, _count: { _all: true } }),
+    prisma.checklistEditEvent.groupBy({ by: ["tabKey", "tabLabel"], where: { checklistId, changeType: { not: "checked" } }, _count: { _all: true } }),
     prisma.checklistEditEvent.aggregate({ where: { checklistId }, _min: { createdAt: true, checklistVersion: true } }),
     prisma.checklist.findUnique({ where: { id: checklistId }, select: { fieldVersions: true } }),
   ]);
@@ -153,9 +155,10 @@ export async function getHistoryOverview(checklistId: string): Promise<HistoryOv
     const seen = new Set<string>();
     for (const [field, version] of Object.entries(fieldVersions)) {
       if (typeof version !== "number" || version <= startedAt) continue;
-      if (["adminSettings", "integrations", "atsIntegrations", "enabledTabs", "tabOrder", "tabFilledBy", "communicationChannels", "featureToggles", "customSchema", "tabUploadMeta"].includes(field)) continue;
+      if (UNTRACKED_FIELDS.includes(field)) continue;
       const isCustom = field === "customTabs" || field === "customData";
-      const recorded = isCustom ? maxVersion((k) => k.startsWith("custom-")) : maxVersion((k) => k === field);
+      // Hidden "checked" lines count too: a save that found nothing to change is not a missing record.
+      const recorded = isCustom ? maxVersion(isCustomTabKey) : maxVersion((k) => k === field);
       if (recorded < version) {
         const label = labelForField(field);
         if (!seen.has(label)) {

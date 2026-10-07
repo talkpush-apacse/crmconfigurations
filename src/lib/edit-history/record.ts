@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
-import { diffChecklistFields, wholeDocumentEvent } from "./diff";
+import { checkedMarkers, diffChecklistFields, wholeDocumentEvent } from "./diff";
 import { touchEditLink } from "./resolve";
 import { COALESCE_WINDOW_MS, type DraftEvent, type EditActor } from "./types";
 
@@ -92,13 +92,13 @@ export async function recordEditEvents(args: RecordArgs): Promise<number> {
     )`
   );
 
-  await prisma.$executeRaw`
+  const insert = (values: Prisma.Sql[]) => prisma.$executeRaw`
     INSERT INTO "ChecklistEditEvent" (
       "id", "checklistId", "linkId", "actorType", "actorName",
       "tabKey", "tabLabel", "rowId", "rowLabel", "fieldKey", "fieldLabel",
       "changeType", "summary", "before", "after", "truncated",
       "checklistVersion", "coalesceKey", "createdAt", "updatedAt"
-    ) VALUES ${Prisma.join(rows)}
+    ) VALUES ${Prisma.join(values)}
     ON CONFLICT ("checklistId", "coalesceKey") DO UPDATE SET
       "after" = EXCLUDED."after",
       "summary" = EXCLUDED."summary",
@@ -106,6 +106,24 @@ export async function recordEditEvents(args: RecordArgs): Promise<number> {
       "checklistVersion" = EXCLUDED."checklistVersion",
       "updatedAt" = EXCLUDED."updatedAt"
     WHERE "ChecklistEditEvent"."checklistVersion" < EXCLUDED."checklistVersion"`;
+
+  try {
+    await insert(rows);
+  } catch (err) {
+    if (rows.length === 1) throw err;
+    // One line the database cannot take must not cost the others: try them one by one and keep what works.
+    console.error("[edit-history] batch insert failed, retrying line by line:", err instanceof Error ? err.message : err);
+    let kept = 0;
+    for (const row of rows) {
+      try {
+        await insert([row]);
+        kept += 1;
+      } catch (rowErr) {
+        console.error("[edit-history] dropped one line:", rowErr instanceof Error ? rowErr.message : rowErr);
+      }
+    }
+    return kept;
+  }
   return rows.length;
 }
 
@@ -137,16 +155,29 @@ export interface SaveRecord {
 export function scheduleSaveRecord(save: SaveRecord): void {
   runAfterResponse(async () => {
     if (save.actor.linkId) await touchEditLink(save.actor.linkId);
-    const events = [...(save.leadEvents ?? []), ...diffChecklistFields({ before: save.before, after: save.after, fields: save.fields })];
+    const changes = diffChecklistFields({ before: save.before, after: save.after, fields: save.fields });
+    const events = [...(save.leadEvents ?? []), ...changes, ...checkedMarkers(save.fields, changes)];
     await recordEditEventsSafely({ checklistId: save.checklistId, actor: save.actor, version: save.version, events });
   });
 }
 
 /** After a save that sent the whole document: one honest, coarse line. */
-export function scheduleWholeDocumentRecord(p: { checklistId: string; actor: EditActor; version: number; fieldCount: number }): void {
+export function scheduleWholeDocumentRecord(p: {
+  checklistId: string;
+  actor: EditActor;
+  version: number;
+  fieldCount: number;
+  /** Every section this save raised the version of (the older method raises them all). */
+  markFields: readonly string[];
+}): void {
   runAfterResponse(async () => {
     if (p.actor.linkId) await touchEditLink(p.actor.linkId);
-    await recordEditEventsSafely({ checklistId: p.checklistId, actor: p.actor, version: p.version, events: [wholeDocumentEvent(p.fieldCount)] });
+    await recordEditEventsSafely({
+      checklistId: p.checklistId,
+      actor: p.actor,
+      version: p.version,
+      events: [wholeDocumentEvent(p.fieldCount), ...checkedMarkers(p.markFields, [])],
+    });
   });
 }
 

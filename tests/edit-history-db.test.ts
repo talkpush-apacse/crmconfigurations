@@ -414,3 +414,75 @@ test("edit history (local DB): a history failure never fails a save; Claude's ch
     await t.cleanup();
   }
 });
+
+test("edit history (local DB): the 'may be missing' note appears only for real gaps; one bad line never loses the others", { skip }, async () => {
+  const t = await setup();
+  try {
+    const c = await t.mkChecklist();
+    const jane = await t.newLink(c.id, "Jane Cruz (TP)");
+    const overview = async () =>
+      (await t.call(t.routes.history.GET, `/api/checklists/${c.id}/edit-history`, { as: "editor", params: { id: c.id } })).body.overview as Json;
+
+    // A real change starts the record.
+    const s1 = await t.putToken(jane.token, t.usersBody(0, "a@x.com"));
+    assert.equal(s1.status, 200, s1.text);
+    await t.flush();
+    assert.deepEqual((await overview()).possiblyMissing, []);
+
+    // A save that changes nothing (the client typed and deleted a letter) is not a missing record.
+    const s2 = await t.putToken(jane.token, t.usersBody(s1.body.version, "a@x.com"));
+    assert.equal(s2.status, 200);
+    await t.flush();
+    assert.deepEqual((await overview()).possiblyMissing, [], "an unchanged save does not trigger the note");
+
+    // A restore raises every section's version; only what really changed shows lines, and nothing is flagged.
+    const { restoreSnapshot } = await import("../src/lib/snapshot-service");
+    const now = await t.prisma.checklist.findUniqueOrThrow({ where: { id: c.id } });
+    const snap = await t.prisma.checklistSnapshot.create({
+      data: { checklistId: c.id, label: "same", payload: { users: now.users as never, sites: [] }, versionAtSnapshot: now.version, createdBy: "admin" },
+    });
+    await restoreSnapshot(snap.id, { createdBy: "admin", createdByLabel: "preview-admin@example.invalid" });
+    await t.flush();
+    assert.deepEqual((await overview()).possiblyMissing, [], "a restore does not flag every section");
+
+    // The older whole-document save raises every section too.
+    const cur = await t.prisma.checklist.findUniqueOrThrow({ where: { id: c.id } });
+    const whole = await t.putToken(jane.token, { version: cur.version, users: [{ id: "u1", name: "Jane Cruz", email: "whole@x.com" }] });
+    assert.equal(whole.status, 200, whole.text);
+    await t.flush();
+    assert.deepEqual((await overview()).possiblyMissing, [], "a whole-document save does not flag sections");
+
+    // A big paste into a custom tab collapses into one line and is still counted as recorded.
+    const rows = Array.from({ length: 40 }, (_, i) => ({ id: `r${i}`, name: `Row ${i}` }));
+    const tab = { id: "ct1", slug: "pasted", label: "Pasted", icon: "i", fields: [], mode: "table", columns: [{ key: "name", label: "Name", type: "text" }], rows: [] as unknown[] };
+    const seedTabs = await t.putToken(jane.token, { version: whole.body.version, changedFields: ["customTabs"], customTabs: [tab] });
+    assert.equal(seedTabs.status, 200, seedTabs.text);
+    const paste = await t.putToken(jane.token, { version: seedTabs.body.version, changedFields: ["customTabs"], customTabs: [{ ...tab, rows }] });
+    assert.equal(paste.status, 200, paste.text);
+    await t.flush();
+    const collapsed = (await t.events(c.id)).find((e) => e.changeType === "replaced" && e.tabKey === "customTabs");
+    assert.ok(collapsed, "the paste is one collapsed line");
+    assert.deepEqual((await overview()).possiblyMissing, [], "a collapsed paste is not reported as missing");
+
+    // The hidden bookkeeping lines never show in the list, the people list or the tab list.
+    const list = await t.call(t.routes.history.GET, `/api/checklists/${c.id}/edit-history`, { as: "editor", params: { id: c.id } });
+    assert.ok(list.body.events.every((e: Json) => e.changeType !== "checked"));
+    assert.ok((await t.prisma.checklistEditEvent.count({ where: { checklistId: c.id, changeType: "checked" } })) > 0, "markers do exist");
+    assert.ok(list.body.overview.tabs.every((x: Json) => x.tabKey !== "sites"), "a marker-only section is not listed as a tab with changes");
+
+    // A genuine gap is still reported.
+    await t.prisma.$executeRaw`UPDATE "Checklist" SET "fieldVersions" = jsonb_set(COALESCE("fieldVersions", '{}'::jsonb), '{users}', '9999'::jsonb) WHERE id = ${c.id}`;
+    assert.deepEqual((await overview()).possiblyMissing, ["User List"]);
+
+    // One line the database cannot take (a NUL character) does not cost the other lines of the same batch.
+    const actor = { type: "link" as const, name: "Jane Cruz (TP)", linkId: jane.id };
+    const mk = (summary: string, rowId: string) => ({ tabKey: "users", tabLabel: "User List", rowId, rowLabel: "r", fieldKey: "email", fieldLabel: "Email", changeType: "edited" as const, summary, before: "a", after: "b", truncated: false, subject: `users|${rowId}|email|edited` });
+    const kept = await t.record.recordEditEvents({ checklistId: c.id, actor, version: 99999, events: [mk("fine one", "k1"), mk("bad\u0000line", "k2"), mk("fine two", "k3")] });
+    assert.equal(kept, 2, "the two good lines were kept");
+    const rowsNow = await t.events(c.id);
+    assert.ok(rowsNow.some((e) => e.rowId === "k1") && rowsNow.some((e) => e.rowId === "k3"));
+    assert.ok(!rowsNow.some((e) => e.rowId === "k2"));
+  } finally {
+    await t.cleanup();
+  }
+});
