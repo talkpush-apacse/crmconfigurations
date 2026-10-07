@@ -11,6 +11,7 @@ export const CHECKLIST_READ_TOOLS: ReadonlySet<string> = new Set([
   "get_section",
   "list_attachments",
   "fetch_attachment",
+  "read_attachment",
   "list_requirements_templates",
   "get_requirements_template",
   "list_custom_tabs",

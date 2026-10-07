@@ -47,6 +47,13 @@ import {
   type Attachment,
 } from "./mcp/attachments";
 import {
+  detectKind,
+  downloadBytes,
+  MAX_READ_BYTES,
+  readAttachmentContent,
+  unsupportedReason,
+} from "./mcp/attachment-reader";
+import {
   ConfiguratorServiceError,
   generateConfiguratorChecklist,
   getConfiguratorChecklist,
@@ -772,6 +779,97 @@ export function registerChecklistTools(server: McpServer): void {
           signedUrlExpiresAt: signed.signedUrlExpiresAt,
           ...(bytesBase64 ? { bytesBase64 } : {}),
           ...(warning ? { warning } : {}),
+        });
+      } catch (error) {
+        return mcpError(error);
+      }
+    }
+  );
+
+  server.tool(
+    "read_attachment",
+    "Open an uploaded checklist file and read what is inside it. Works for Excel (.xlsx), Word (.docx), PDF, HTML, text/CSV/JSON files (returned as text) and PNG/JPG/GIF/WEBP pictures (returned as an image). Use list_attachments first to get tab and fieldPath. Long files come back in parts: pass part=2, 3, ... for the rest.",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      tab: z.string().describe("Tab key returned by list_attachments"),
+      fieldPath: z.string().describe("Attachment fieldPath returned by list_attachments"),
+      part: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .default(1)
+        .describe("Which part of a long file to return (starts at 1). The reply says how many parts there are."),
+    },
+    async ({ slug, tab, fieldPath, part }) => {
+      try {
+        const checklist = await prisma.checklist.findUnique({
+          where: { slug },
+        });
+
+        if (!checklist) {
+          return mcpError(new Error(`Checklist with slug "${slug}" not found`));
+        }
+
+        const checklistRecord = checklist as unknown as Record<string, unknown>;
+        const validTabs = getAttachmentTabKeys(checklistRecord);
+        if (!validTabs.has(tab)) {
+          return mcpError(new Error(`Tab "${tab}" not found`));
+        }
+
+        const attachment = scanChecklistForAttachments(checklistRecord).find(
+          (candidate) => candidate.tab === tab && candidate.fieldPath === fieldPath
+        );
+
+        if (!attachment) {
+          return mcpError(new Error(`Attachment not found at ${tab}.${fieldPath}`));
+        }
+
+        const info = {
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+        };
+
+        // Check the type before downloading so an unreadable file costs nothing.
+        if (!detectKind(attachment.fileName, attachment.mimeType)) {
+          return mcpJson({ ...info, readable: false, reason: unsupportedReason(attachment.fileName, attachment.mimeType) });
+        }
+
+        const signed = await createAttachmentSignedUrl(attachment, 300);
+        const bytes = await downloadBytes(signed.signedUrl);
+        if ("tooLarge" in bytes) {
+          return mcpJson({
+            ...info,
+            readable: false,
+            reason: `The file is larger than ${MAX_READ_BYTES / (1024 * 1024)} MB, so it cannot be opened here.`,
+          });
+        }
+
+        const content = await readAttachmentContent(bytes, info, part);
+
+        if (content.kind === "unsupported") {
+          return mcpJson({ ...info, readable: false, reason: content.reason });
+        }
+
+        if (content.kind === "image") {
+          return {
+            content: [
+              { type: "text" as const, text: JSON.stringify({ ...info, readable: true, format: "image" }, null, 2) },
+              { type: "image" as const, data: content.base64, mimeType: content.mimeType },
+            ],
+          };
+        }
+
+        return mcpJson({
+          ...info,
+          readable: true,
+          format: content.format,
+          part: content.part,
+          totalParts: content.totalParts,
+          totalChars: content.totalChars,
+          ...(content.notes.length ? { notes: content.notes } : {}),
+          text: content.text,
         });
       } catch (error) {
         return mcpError(error);
