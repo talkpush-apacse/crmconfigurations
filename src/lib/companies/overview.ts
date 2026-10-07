@@ -40,7 +40,10 @@ const latest = (...dates: (Date | null | undefined)[]) => dates.filter((d): d is
 
 export async function listCompanies(): Promise<{ companies: CompanyCardData[]; unassigned: { checklists: number; workflows: number } }> {
   const [accounts, checklistGroups, workflowGroups, projectGroups, linkedWorkflows] = await Promise.all([
-    prisma.trackerAccount.findMany({ where: { archived: false }, select: { id: true, name: true, slug: true, notes: true, updatedAt: true } }),
+    prisma.trackerAccount.findMany({
+      where: { archived: false },
+      select: { id: true, name: true, slug: true, notes: true, updatedAt: true, companyId: true, geo: true, geoCode: true, company: { select: { name: true } } },
+    }),
     prisma.checklist.groupBy({ by: ["accountId"], _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.workflowProject.groupBy({ by: ["accountId"], _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.trackerProject.groupBy({ by: ["accountId"], where: { archived: false }, _count: { _all: true }, _max: { updatedAt: true } }),
@@ -69,6 +72,10 @@ export async function listCompanies(): Promise<{ companies: CompanyCardData[]; u
     name: a.name,
     slug: a.slug,
     notes: a.notes,
+    companyId: a.companyId,
+    companyName: a.company?.name ?? null,
+    geo: a.geo,
+    geoCode: a.geoCode,
     checklistCount: checklists.get(a.id)?._count._all ?? 0,
     workflowCount: workflows.get(a.id)?._count._all ?? 0,
     projectCount: projects.get(a.id)?._count._all ?? 0,
@@ -104,8 +111,8 @@ export interface CompanyWorkflowItem {
 }
 
 export async function getCompany(id: string) {
-  const account = await prisma.trackerAccount.findUnique({ where: { id } });
-  if (!account) throw notFound("Company");
+  const account = await prisma.trackerAccount.findUnique({ where: { id }, include: { company: { select: { name: true } } } });
+  if (!account) throw notFound("Account");
   const [checklistRows, workflowRows] = await Promise.all([
     prisma.checklist.findMany({ where: { accountId: id }, orderBy: { updatedAt: "desc" } }),
     prisma.workflowProject.findMany({

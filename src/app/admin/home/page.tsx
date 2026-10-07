@@ -4,7 +4,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { CompanyGallery } from "@/components/companies/CompanyGallery";
 import { PENDING_CONNECT_COOKIE } from "@/lib/mcp/oauth/session";
 
-export const metadata = { title: "Companies | Talkpush Implementation Hub" };
+export const metadata = { title: "Accounts | Talkpush Implementation Hub" };
 
 export default async function AdminHomePage() {
   // Someone who started connecting Claude before signing in is sent back to finish it.

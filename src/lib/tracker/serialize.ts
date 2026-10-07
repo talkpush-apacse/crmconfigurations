@@ -8,13 +8,18 @@ import type {
 import { toDateOnly } from "./dates";
 import { needsStaffReview } from "./review";
 
-export function serializeAccount(a: TrackerAccount) {
+export function serializeAccount(a: TrackerAccount & { company?: { name: string } | null }) {
   return {
     id: a.id,
     name: a.name,
     slug: a.slug,
     notes: a.notes,
     archived: a.archived,
+    /** The company this account is for and its geo, empty on accounts made before companies existed. */
+    companyId: a.companyId,
+    companyName: a.company?.name ?? null,
+    geo: a.geo,
+    geoCode: a.geoCode,
     createdAt: a.createdAt.toISOString(),
   };
 }

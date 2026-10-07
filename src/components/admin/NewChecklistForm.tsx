@@ -141,7 +141,7 @@ export function NewChecklistForm({ fromCompany }: { fromCompany: string | null }
       <div className="mx-auto max-w-2xl p-4 md:p-6">
         <Link href={fromCompany ? `/admin/companies/${fromCompany}` : "/admin"} className="mb-4 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground md:mb-6 md:min-h-0">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          {fromCompany ? (company ? `Back to ${company.name}` : "Back to the company") : "Back to dashboard"}
+          {fromCompany ? (company ? `Back to ${company.name}` : "Back to the account") : "Back to dashboard"}
         </Link>
 
         <Card>
@@ -152,13 +152,13 @@ export function NewChecklistForm({ fromCompany }: { fromCompany: string | null }
             <form onSubmit={handleSubmit} className="space-y-6">
               {companies.length > 0 && (
                 <div>
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="company">Account</Label>
                   <Select value={companyId} onValueChange={pickCompany}>
                     <SelectTrigger id="company" className="h-11 w-full md:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_COMPANY}>No company yet (add one later)</SelectItem>
+                      <SelectItem value={NO_COMPANY}>No account yet (add one later)</SelectItem>
                       {companies.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -168,7 +168,7 @@ export function NewChecklistForm({ fromCompany }: { fromCompany: string | null }
                   </Select>
                   {companyId !== NO_COMPANY && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      A company can have several checklists. Give each its own name, for example “{company?.name ?? "Acme"} PH”.
+                      An account can have several checklists. Give each its own name, for example “{company?.name ?? "Concentrix PH"} Recruitment”.
                     </p>
                   )}
                 </div>

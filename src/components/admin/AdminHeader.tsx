@@ -40,7 +40,7 @@ export function AdminHeader() {
           <span className="hidden sm:inline">Talkpush Implementation Hub</span>
           <span className="sm:hidden">Implementation Hub</span>
         </Link>
-        {/* Companies is the front door; the three modules are the same tools seen across every company. */}
+        {/* Accounts is the front door; the three modules are the same tools seen across every account. */}
         <nav aria-label="Main" className="flex items-center gap-1">
           <Link
             href="/admin/home"
@@ -51,7 +51,7 @@ export function AdminHeader() {
             )}
           >
             <Building2 className="h-4 w-4" aria-hidden="true" />
-            Companies
+            Accounts
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -61,7 +61,7 @@ export function AdminHeader() {
                   "flex min-h-11 items-center gap-1 rounded-md px-2.5 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8",
                   activeModule ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-                aria-label={activeModule ? `All companies' tools (current: ${activeModule.label})` : "All companies' tools"}
+                aria-label={activeModule ? `All accounts' tools (current: ${activeModule.label})` : "All accounts' tools"}
               >
                 {activeModule ? activeModule.shortLabel : "All tools"}
                 <ChevronDown className="h-3 w-3" aria-hidden="true" />
@@ -71,10 +71,10 @@ export function AdminHeader() {
               <DropdownMenuItem asChild className="cursor-pointer sm:hidden">
                 <Link href="/admin/home" className="flex min-h-11 items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Companies
+                  Accounts
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Across all companies</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Across all accounts</DropdownMenuLabel>
               {PORTAL_MODULES.map((m) => (
                 <DropdownMenuItem key={m.id} asChild className="cursor-pointer">
                   <Link href={m.href} className="flex min-h-11 items-center justify-between gap-2 md:min-h-0">

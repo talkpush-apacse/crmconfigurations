@@ -8,9 +8,15 @@ export interface CompanyAttention {
 
 export interface CompanyCardData {
   id: string;
+  /** The account's name, for example "Concentrix PH". */
   name: string;
   slug: string;
   notes: string | null;
+  /** The company this account belongs to ("Concentrix") and its geo, empty on accounts made before companies existed. */
+  companyId: string | null;
+  companyName: string | null;
+  geo: string | null;
+  geoCode: string | null;
   checklistCount: number;
   workflowCount: number;
   projectCount: number;
@@ -29,9 +35,36 @@ export const SORT_LABELS: Record<GallerySort, string> = {
 
 export const attentionTotal = (a: CompanyAttention) => a.openComments + a.pendingSuggestions + a.openRequests;
 
+/** Search matches the account's name, its company, or its geo (name or code). */
 export function filterCompanies(list: CompanyCardData[], query: string): CompanyCardData[] {
   const q = query.trim().toLowerCase();
-  return q ? list.filter((c) => c.name.toLowerCase().includes(q)) : list;
+  if (!q) return list;
+  return list.filter((c) => [c.name, c.companyName, c.geo, c.geoCode].some((t) => (t ?? "").toLowerCase().includes(q)));
+}
+
+export type GalleryUnit =
+  | { kind: "account"; card: CompanyCardData }
+  | { kind: "company"; companyId: string; name: string; cards: CompanyCardData[] };
+
+/**
+ * Accounts of the same company sit together under the company's name when it has more than one in view; an account on its
+ * own is just a card. Units keep the order the list was sorted in (a company sits where its first account would).
+ */
+export function arrangeGallery(sorted: CompanyCardData[]): GalleryUnit[] {
+  const perCompany = new Map<string, CompanyCardData[]>();
+  for (const c of sorted) if (c.companyId) perCompany.set(c.companyId, [...(perCompany.get(c.companyId) ?? []), c]);
+  const units: GalleryUnit[] = [];
+  const placed = new Set<string>();
+  for (const c of sorted) {
+    const group = c.companyId ? perCompany.get(c.companyId) : undefined;
+    if (!c.companyId || !group || group.length < 2) {
+      units.push({ kind: "account", card: c });
+    } else if (!placed.has(c.companyId)) {
+      placed.add(c.companyId);
+      units.push({ kind: "company", companyId: c.companyId, name: c.companyName ?? c.name, cards: group });
+    }
+  }
+  return units;
 }
 
 export function sortCompanies(list: CompanyCardData[], sort: GallerySort): CompanyCardData[] {

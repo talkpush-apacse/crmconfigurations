@@ -44,10 +44,17 @@ import {
 
 export const createAccountTool = defineTool({
   name: "create_account",
-  description: "Create a client account (company).",
+  description:
+    "Create a client account: a company in one geo, for example Concentrix in the Philippines is the account \"Concentrix PH\". Give company and geo and the account name is built for you (company + the geo's short code: PH, US, UK, SG, APAC...). There is only ever one of each company: a company name that already exists (ignoring capitals, punctuation and endings like Inc) is reused, so do not create a second Concentrix. A company has at most one account per geo. Checklists, workflows and trackers link to the account. Geo is a country (\"Philippines\" or \"PH\") or a region (Global, APAC, EMEA, LATAM, North America); any other geo also needs geo_code. Use name alone only for an account with no company. The account name is what clients see on their tracker link.",
   access: "write",
-  input: { name: z.string(), notes: z.string().optional().describe("Internal notes. Never shown to clients.") },
-  handler: async (args) => createAccount(args),
+  input: {
+    company: z.string().optional().describe("The company, for example \"Concentrix\". Use list_accounts to see the companies that exist."),
+    geo: z.string().optional().describe("The geo: a country name or code, or Global, APAC, EMEA, LATAM, North America."),
+    geo_code: z.string().optional().describe("The short code for a geo that is not a country or region in the list, for example GBA."),
+    name: z.string().optional().describe("Only to override the generated name (\"Concentrix PH\"), or for an account with no company."),
+    notes: z.string().optional().describe("Internal notes. Never shown to clients."),
+  },
+  handler: async ({ geo_code, ...rest }) => createAccount({ ...rest, ...(geo_code ? { geoCode: geo_code } : {}) }),
 });
 
 export const createPersonTool = defineTool({

@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
+import { accountName, customGeo, findGeo, type Geo } from "@/lib/companies/geo";
+import { nameKey } from "@/lib/companies/names";
 import { badRequest, notFound } from "./errors";
 import { serializeAccount, serializePerson } from "./serialize";
 import {
@@ -34,7 +37,7 @@ export async function listAccounts(includeArchived = false) {
   const accounts = await prisma.trackerAccount.findMany({
     where: includeArchived ? {} : { archived: false },
     orderBy: { name: "asc" },
-    include: { _count: { select: { projects: true, people: true } } },
+    include: { _count: { select: { projects: true, people: true } }, company: { select: { name: true } } },
   });
   return accounts.map((a) => ({
     ...serializeAccount(a),
@@ -43,12 +46,87 @@ export async function listAccounts(includeArchived = false) {
   }));
 }
 
+/** A geo from what was typed: in the list (by name, code or nickname), or a custom one that comes with its own short code. */
+function resolveGeo(geo: string, geoCode?: string): Geo {
+  const known = findGeo(geo);
+  if (known) return known;
+  const custom = geoCode ? customGeo(geo, geoCode) : null;
+  if (custom) return custom;
+  throw badRequest(`"${geo}" is not in the geo list. Pick one from the list, or give it a short code of your own (geoCode).`);
+}
+
+/**
+ * The company for a name: the one that already exists (matched ignoring capitals, punctuation and endings like Inc or
+ * Corp, so there is only ever one "Concentrix"), or a new one.
+ */
+export async function findOrCreateCompany(name: string) {
+  const clean = name.trim().replace(/\s+/g, " ");
+  const key = nameKey(clean);
+  if (!key) throw badRequest("Give the company a name.");
+  const existing = await prisma.trackerCompany.findUnique({ where: { nameKey: key } });
+  if (existing) return existing;
+  try {
+    return await prisma.trackerCompany.create({ data: { name: clean, nameKey: key } });
+  } catch (err) {
+    // Two people adding the same company at the same moment: the second one gets the first one's company.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const winner = await prisma.trackerCompany.findUnique({ where: { nameKey: key } });
+      if (winner) return winner;
+    }
+    throw err;
+  }
+}
+
+async function companyFor(data: { company?: string; companyId?: string }) {
+  if (data.companyId) {
+    const found = await prisma.trackerCompany.findUnique({ where: { id: data.companyId } });
+    if (!found) throw notFound("Company");
+    return found;
+  }
+  return findOrCreateCompany(data.company as string);
+}
+
+/** Said when a company already has an account for that geo, naming it so the person can use it instead. */
+async function duplicateGeoError(companyId: string, companyName: string, geo: Geo) {
+  const existing = await prisma.trackerAccount.findFirst({ where: { companyId, geoCode: geo.code }, select: { name: true } });
+  return badRequest(`${companyName} already has an account for ${geo.name}${existing ? `: ${existing.name}` : ""}. Use that one.`);
+}
+
+const isUniqueViolation = (err: unknown) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+
 export async function createAccount(input: unknown) {
   const data = accountCreateSchema.parse(input);
-  const account = await prisma.trackerAccount.create({
-    data: { name: data.name, notes: data.notes ?? null, slug: await uniqueSlug(data.name) },
+
+  // An account with no company: just a typed name (how accounts were made before companies existed).
+  if (!data.company && !data.companyId) {
+    const account = await prisma.trackerAccount.create({
+      data: { name: data.name as string, notes: data.notes ?? null, slug: await uniqueSlug(data.name as string) },
+    });
+    return serializeAccount(account);
+  }
+
+  const geo = resolveGeo(data.geo as string, data.geoCode);
+  const company = await companyFor(data);
+  const name = data.name ?? accountName(company.name, geo);
+  try {
+    const account = await prisma.trackerAccount.create({
+      data: { name, notes: data.notes ?? null, slug: await uniqueSlug(name), companyId: company.id, geo: geo.name, geoCode: geo.code },
+      include: { company: { select: { name: true } } },
+    });
+    return serializeAccount(account);
+  } catch (err) {
+    if (isUniqueViolation(err)) throw await duplicateGeoError(company.id, company.name, geo);
+    throw err;
+  }
+}
+
+/** Every company with the geos it already has an account for, for the "New account" form. */
+export async function listCompanies() {
+  const companies = await prisma.trackerCompany.findMany({
+    orderBy: { name: "asc" },
+    include: { accounts: { where: { archived: false }, select: { id: true, name: true, geo: true, geoCode: true } } },
   });
-  return serializeAccount(account);
+  return companies.map((c) => ({ id: c.id, name: c.name, accounts: c.accounts }));
 }
 
 export async function getAccount(id: string) {
@@ -56,6 +134,7 @@ export async function getAccount(id: string) {
     where: { id },
     include: {
       people: { where: { archived: false }, orderBy: [{ side: "asc" }, { name: "asc" }] },
+      company: { select: { name: true } },
     },
   });
   if (!account) throw notFound("Account");
@@ -67,17 +146,39 @@ export async function getAccount(id: string) {
 
 export async function updateAccount(id: string, input: unknown) {
   const data = accountUpdateSchema.parse(input);
-  const existing = await prisma.trackerAccount.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.trackerAccount.findUnique({ where: { id }, include: { company: { select: { id: true, name: true } } } });
   if (!existing) throw notFound("Account");
-  const account = await prisma.trackerAccount.update({
-    where: { id },
-    data: {
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.notes !== undefined ? { notes: data.notes } : {}),
-      ...(data.archived !== undefined ? { archived: data.archived } : {}),
-    },
-  });
-  return serializeAccount(account);
+
+  // Setting or changing the company or geo: both must end up known, and the name follows unless one was given.
+  let placement: { companyId: string; geo: string; geoCode: string; name?: string } | null = null;
+  let companyForError: { id: string; name: string } | null = null;
+  let geoForError: Geo | null = null;
+  if (data.company || data.companyId || data.geo) {
+    const company = data.company || data.companyId ? await companyFor(data) : existing.company;
+    const geoText = data.geo ?? existing.geo;
+    if (!company || !geoText) throw badRequest("Give both a company and a geo.");
+    const geo = data.geo ? resolveGeo(data.geo, data.geoCode) : { name: existing.geo as string, code: existing.geoCode as string, kind: "custom" as const };
+    placement = { companyId: company.id, geo: geo.name, geoCode: geo.code, ...(data.name === undefined ? { name: accountName(company.name, geo) } : {}) };
+    companyForError = company;
+    geoForError = geo;
+  }
+
+  try {
+    const account = await prisma.trackerAccount.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(placement ?? {}),
+        ...(data.notes !== undefined ? { notes: data.notes } : {}),
+        ...(data.archived !== undefined ? { archived: data.archived } : {}),
+      },
+      include: { company: { select: { name: true } } },
+    });
+    return serializeAccount(account);
+  } catch (err) {
+    if (isUniqueViolation(err) && companyForError && geoForError) throw await duplicateGeoError(companyForError.id, companyForError.name, geoForError);
+    throw err;
+  }
 }
 
 /** People for owner pickers: Talkpush staff plus (optionally) one account's contacts. */

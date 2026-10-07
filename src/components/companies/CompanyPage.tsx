@@ -50,7 +50,7 @@ export function CompanyPage({ id }: { id: string }) {
   };
 
   if (detail.error) return <ErrorBlock message={detail.error} onRetry={reload} />;
-  if (!detail.data || !company) return <LoadingBlock label="Loading company" />;
+  if (!detail.data || !company) return <LoadingBlock label="Loading account" />;
 
   const { checklists, workflows, contacts } = detail.data;
   const projects = trackers.data?.projects ?? [];
@@ -60,11 +60,11 @@ export function CompanyPage({ id }: { id: string }) {
     <>
       <Link href="/admin/home" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:min-h-8">
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        Companies
+        Accounts
       </Link>
       <PageHeader
         title={company.name}
-        description={company.notes ?? undefined}
+        description={[company.companyName && company.geo ? `${company.companyName} · ${company.geo}` : "", company.notes ?? ""].filter(Boolean).join(" — ") || undefined}
         actions={
           <>
             <Button variant="outline" asChild>
@@ -187,7 +187,7 @@ export function CompanyPage({ id }: { id: string }) {
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}
         title={`Take “${removing?.name ?? ""}” out of ${company.name}?`}
-        description="Nothing is deleted and nothing changes for the client. It moves to “Needs a company” so you can file it under another one."
+        description="Nothing is deleted and nothing changes for the client. It moves to “Needs an account” so you can file it under another one."
         confirmLabel="Take out"
         onConfirm={async () => {
           if (removing) await linkItem(removing.kind, removing.id, null);
@@ -290,10 +290,10 @@ function ItemMenu({ name, onMove, onRemove }: { name: string; onMove: () => void
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem className="min-h-11 cursor-pointer md:min-h-0" onSelect={onMove}>
-          Move to another company
+          Move to another account
         </DropdownMenuItem>
         <DropdownMenuItem className="min-h-11 cursor-pointer md:min-h-0" onSelect={onRemove}>
-          Take out of this company
+          Take out of this account
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

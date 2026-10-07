@@ -14,6 +14,7 @@ import { plural } from "@/lib/tracker/format";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { linkItem, openItemHref } from "@/lib/companies/client";
 import { unassignedTotal, type UnassignedGroup } from "@/lib/companies/unassigned";
+import { guessCompanyAndGeo } from "@/lib/companies/geo";
 
 const NEW_COMPANY = "__new";
 
@@ -23,7 +24,7 @@ interface Response {
 }
 
 /**
- * The "needs a company" holding area. Items are grouped by the client name typed on them, so everything for one client
+ * The "needs an account" holding area. Items are grouped by the client name typed on them, so everything for one client
  * is filed in one step: under an existing company, or under a new one made from that name.
  */
 export function UnassignedList() {
@@ -33,11 +34,11 @@ export function UnassignedList() {
     <>
       <Link href="/admin/home" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:min-h-8">
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        Companies
+        Accounts
       </Link>
       <PageHeader
-        title="Needs a company"
-        description="These checklists and workflows are not filed under a company yet. Pick a company for each client name below and everything under that name moves together."
+        title="Needs an account"
+        description="These checklists and workflows are not filed under an account yet. Pick an account for each client name below and everything under that name moves together."
       />
       {error ? (
         <ErrorBlock message={error} onRetry={reload} />
@@ -47,10 +48,10 @@ export function UnassignedList() {
         <EmptyState
           icon={CheckCircle2}
           title="Everything is filed"
-          description="Every checklist and workflow belongs to a company."
+          description="Every checklist and workflow belongs to an account."
           action={
             <Button asChild>
-              <Link href="/admin/home">Back to companies</Link>
+              <Link href="/admin/home">Back to accounts</Link>
             </Button>
           }
         />
@@ -85,7 +86,12 @@ function GroupCard({ group, accounts, onFiled }: { group: UnassignedGroup; accou
     try {
       let accountId = target;
       if (target === NEW_COMPANY) {
-        const created = await api<AccountDTO>("/api/tracker/accounts", { method: "POST", body: { name: group.clientName } });
+        // "McDonald's PH" becomes the company McDonald's in the Philippines; a name with no geo in it stays a plain account.
+        const guess = guessCompanyAndGeo(group.clientName);
+        const created = await api<AccountDTO>("/api/tracker/accounts", {
+          method: "POST",
+          body: guess ? { company: guess.company, geo: guess.geo.name } : { name: group.clientName },
+        });
         accountId = created.id;
       }
       const failed: string[] = [];
@@ -131,11 +137,11 @@ function GroupCard({ group, accounts, onFiled }: { group: UnassignedGroup; accou
       {canEdit && (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger className="h-11 w-full sm:w-72 md:h-9" aria-label={`Company for ${group.clientName}`}>
-              <SelectValue placeholder="Choose a company" />
+            <SelectTrigger className="h-11 w-full sm:w-72 md:h-9" aria-label={`Account for ${group.clientName}`}>
+              <SelectValue placeholder="Choose an account" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NEW_COMPANY}>New company “{group.clientName}”</SelectItem>
+              <SelectItem value={NEW_COMPANY}>New account “{group.clientName}”</SelectItem>
               {accounts.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   {a.name}
