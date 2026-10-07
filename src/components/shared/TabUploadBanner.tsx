@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import {
   CheckCircle2,
   Download,
-  FileSpreadsheet,
+  File as FileIcon,
   Loader2,
   Upload,
   X,
@@ -15,6 +15,7 @@ import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { TabUploadFile } from "@/lib/types";
+import { MAX_UPLOAD_BYTES, isBlockedFile } from "@/lib/upload-rules";
 
 interface TabUploadBannerProps {
   /**
@@ -23,7 +24,7 @@ interface TabUploadBannerProps {
    * inside the shared `tabUploadMeta` JSON column.
    */
   tabKey: string;
-  /** Display name shown in the banner copy ("Already have your <tabLabel> in a spreadsheet?") */
+  /** Display name shown in the banner copy ("Already have your <tabLabel> in a file?") */
   tabLabel: string;
   /**
    * Renders as a single line instead of a full-width panel.
@@ -35,11 +36,6 @@ interface TabUploadBannerProps {
    */
   compact?: boolean;
 }
-
-const ACCEPT =
-  ".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv";
-
-const ALLOWED_EXTENSIONS = [".xlsx", ".xls", ".csv"];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -92,12 +88,16 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
 
     setError(null);
 
-    // Validate extensions client-side before sending
-    const invalid = files.find(
-      (f) => !ALLOWED_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext))
-    );
-    if (invalid) {
-      setError(`"${invalid.name}" is not an Excel or CSV file.`);
+    // Any file type is accepted except executables; check before sending.
+    const blocked = files.find((f) => isBlockedFile(f.name, f.type));
+    if (blocked) {
+      setError(`"${blocked.name}" can't be uploaded — executable (.exe) files aren't allowed.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    const tooBig = files.find((f) => f.size > MAX_UPLOAD_BYTES);
+    if (tooBig) {
+      setError(`"${tooBig.name}" is too large. Maximum size is 10 MB.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -118,9 +118,15 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
           method: "POST",
           body: formData,
         });
-        const body = await res.json();
+        // The host can reject large bodies with a non-JSON response, so parse defensively.
+        const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError(body.error || `Upload failed for "${file.name}"`);
+          setError(
+            body.error ||
+              (res.status === 413
+                ? `"${file.name}" is too large to upload.`
+                : `Upload failed for "${file.name}"`)
+          );
           break;
         }
         newFiles.push({
@@ -169,19 +175,19 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
       >
         {compact ? (
           <p className="text-[13px] text-muted-foreground">
-            Already have your {tabLabel.toLowerCase()} in a spreadsheet?
+            Already have your {tabLabel.toLowerCase()} in a file?
           </p>
         ) : (
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-lavender text-brand-lavender-darker">
-              <FileSpreadsheet className="h-5 w-5" />
+              <FileIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <h4 className="text-sm font-semibold text-foreground">
-                Already have your {tabLabel.toLowerCase()} in a spreadsheet?
+                Already have your {tabLabel.toLowerCase()} in a file?
               </h4>
               <p className="mt-0.5 text-[13px] text-muted-foreground">
-                Upload your existing Excel or CSV file and our team will review it.
+                Upload any file (spreadsheet, document, image) and our team will review it.
                 You can still fill in the fields below if you prefer.
               </p>
             </div>
@@ -192,7 +198,6 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
           <input
             ref={fileInputRef}
             type="file"
-            accept={ACCEPT}
             onChange={handleFileSelect}
             className="hidden"
             multiple
@@ -216,7 +221,7 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
             ) : (
               <>
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
-                {hasFiles ? "Add another file" : "Upload spreadsheet"}
+                {hasFiles ? "Add another file" : "Upload file"}
               </>
             )}
           </Button>
@@ -238,7 +243,7 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
                 className="flex items-center justify-between gap-2 rounded-md border border-brand-lavender/40 bg-white px-3 py-2 text-[13px]"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4 shrink-0 text-brand-lavender-darker" />
+                  <FileIcon className="h-4 w-4 shrink-0 text-brand-lavender-darker" />
                   <span className="truncate font-medium text-gray-800" title={file.fileName}>
                     {file.fileName}
                   </span>
@@ -312,7 +317,7 @@ export function TabUploadSkippedNotice({ fileCount }: { fileCount: number }) {
       </p>
       <p className="mt-1 text-[13px] text-emerald-800/80">
         Our implementation team will review and configure this section based on your
-        spreadsheet. Untick the skip option above to switch back to the form.
+        uploaded file. Untick the skip option above to switch back to the form.
       </p>
     </div>
   );

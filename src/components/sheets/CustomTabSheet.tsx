@@ -293,14 +293,14 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
         }}
       />
 
-      {/* Spreadsheet upload section */}
+      {/* Reference file upload section */}
       <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-5">
         <div className="flex items-start gap-3">
           <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800">Reference Spreadsheet</p>
+            <p className="text-sm font-medium text-gray-800">Reference File</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Attach an Excel or CSV file as a reference for this tab. The file is stored as-is. It
+              Attach any file (spreadsheet, document, image) as a reference for this tab. The file is stored as-is. It
               does not modify the table above.
             </p>
 
@@ -350,7 +350,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
                     disabled={uploading}
                   >
                     <Upload className="h-4 w-4" />
-                    {uploading ? "Uploading…" : "Upload Spreadsheet"}
+                    {uploading ? "Uploading…" : "Upload File"}
                   </Button>
                 </div>
               )
@@ -366,7 +366,6 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".xlsx,.xls,.csv"
         className="hidden"
         onChange={handleFileInputChange}
       />
