@@ -186,7 +186,7 @@ function normalizeIntegration(integration: Partial<AtsIntegration>): AtsIntegrat
 function SectionDivider({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="mb-4 mt-6 flex items-center gap-3 first:mt-0">
-      <h3 className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      <h3 className="cf-group-title shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
         {title}
       </h3>
       <div className="h-px flex-1 bg-gray-200" />

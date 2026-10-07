@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 function SectionDivider({ title }: { title: string }) {
   return (
     <div className="mb-4 mt-8 first:mt-0 flex items-center gap-3">
-      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+      <h3 className="cf-group-title text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
         {title}
       </h3>
       <div className="h-px flex-1 bg-gray-200" />

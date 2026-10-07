@@ -5,6 +5,7 @@ import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
 import { SectionSelect } from "@/components/layout/SectionSelect";
+import { useClientFormScope } from "@/components/layout/useClientFormScope";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs, excludeTalkpushTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -18,12 +19,16 @@ import type { NavItem } from "@/components/layout/TopNav";
 export function ClientChecklistShell({
   slug,
   initialData,
+  fontClass = "",
   children,
 }: {
   slug: string;
   initialData: ChecklistData | null;
+  /** next/font class for the client form type. See useClientFormScope. */
+  fontClass?: string;
   children: React.ReactNode;
 }) {
+  useClientFormScope(fontClass);
   const {
     data,
     loading,
@@ -143,7 +148,7 @@ export function ClientChecklistShell({
 
   return (
     <ChecklistContext.Provider value={contextValue}>
-      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <div className={`client-form ${fontClass} flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
         <Header
           clientName={data.clientName}
           slug={slug}

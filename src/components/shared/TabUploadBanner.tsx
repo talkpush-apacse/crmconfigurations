@@ -163,7 +163,7 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
       className={
         compact
           ? "mb-3"
-          : "mb-6 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-4"
+          : "cf-panel mb-6 rounded-lg border border-brand-lavender-lighter bg-brand-lavender-lightest p-4"
       }
     >
       <div

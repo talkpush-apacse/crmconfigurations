@@ -603,3 +603,281 @@ select:not([data-slot]):focus {
   --font-sans: var(--font-inter);
   font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+
+/* ---- Client form face (DESIGN.md "Client form face") ----
+   The checklist editor and the read-only client view, nothing else. Navy ink on white,
+   Figtree, 16px body, 2px field borders, help text that is always visible. Every rule
+   is scoped to .client-form so staff screens never pick it up. Colours are only set as
+   tokens here; components keep reading the shared token names. */
+.client-form {
+  --cf-accent: #1B365D;
+  --cf-ink: #12182B;
+  --cf-muted: #4A5468;
+  --cf-line: #D5DAE3;
+  --cf-field: #3B4558;
+  --cf-wash: #EEF1F6;
+  --cf-wash-2: #E1E7F0;
+  --cf-focus: #2F5BA8;
+  --cf-danger: #A1122B;
+  --cf-ok: #0D6638;
+  --cf-wait: #8A5A00;
+
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-sans);
+
+  --radius: 0.25rem;
+  --background: #FFFFFF;
+  --foreground: var(--cf-ink);
+  --card: #FFFFFF;
+  --card-foreground: var(--cf-ink);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--cf-ink);
+  --primary: var(--cf-accent);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--cf-wash);
+  --secondary-foreground: var(--cf-ink);
+  --muted: var(--cf-wash);
+  --muted-foreground: var(--cf-muted);
+  --accent: var(--cf-wash-2);
+  --accent-foreground: var(--cf-ink);
+  --destructive: var(--cf-danger);
+  --border: var(--cf-line);
+  --input: var(--cf-field);
+  --ring: var(--cf-focus);
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: var(--cf-ink);
+  --sidebar-border: var(--cf-line);
+
+  /* Pastel chrome used by banners and tabs becomes navy tints. Done is green, the
+     one place colour carries meaning. */
+  --brand-lavender: #C5D0E4;
+  --brand-lavender-lightest: var(--cf-wash);
+  --brand-lavender-lighter: var(--cf-wash-2);
+  --brand-lavender-darker: var(--cf-accent);
+  --brand-sage-darker: var(--cf-ok);
+
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--cf-ink);
+  background-color: #FFFFFF;
+  background-image: none;
+}
+.client-form h1, .client-form h2, .client-form h3, .client-form h4 {
+  font-family: var(--font-sans);
+  text-wrap: balance;
+}
+.client-form ::selection { background: var(--cf-accent); color: #FFFFFF; }
+.client-form .brand-gradient-strip { display: none; }
+
+/* Small type floor. 11px and 12px text is where most of the reading trouble was. */
+.client-form .text-xs,
+.client-form .text-\[12px\],
+.client-form .text-\[13px\] { font-size: 0.875rem; line-height: 1.45; }
+.client-form .text-\[9px\],
+.client-form .text-\[10px\],
+.client-form .text-\[11px\] { font-size: 0.8125rem; line-height: 1.4; }
+.client-form .text-sm { font-size: 0.9375rem; }
+/* Greys that failed contrast (about 2.5:1) read as the muted ink instead. */
+.client-form .text-gray-300:not(:hover):not(:focus-visible),
+.client-form .text-gray-400:not(:hover):not(:focus-visible),
+.client-form .text-gray-500:not(:hover):not(:focus-visible),
+.client-form .text-slate-400:not(:hover):not(:focus-visible),
+.client-form .text-slate-500:not(:hover):not(:focus-visible) { color: var(--cf-muted); }
+
+/* Show-or-hide hooks. Default context is untouched; the client form swaps tooltips for visible text. */
+.cf-only { display: none; }
+.client-form .cf-only { display: block; }
+.client-form .cf-hide { display: none; }
+
+/* Page title and the line that says what the page is for */
+.client-form .cf-title {
+  font-size: 1.75rem; line-height: 1.12; font-weight: 800; letter-spacing: -0.03em; color: var(--cf-ink);
+}
+.client-form .cf-title-sub { font-size: 1.375rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em; }
+.client-form .cf-lede { font-size: 1.0625rem; line-height: 1.5; color: var(--cf-muted); max-width: 62ch; margin-top: 0.5rem; }
+.client-form .cf-group-title {
+  font-size: 1.375rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em;
+  text-transform: none; color: var(--cf-ink); white-space: normal;
+}
+.client-form .cf-sectionheader {
+  background: transparent; box-shadow: none; border: 0; border-radius: 0; padding: 0; backdrop-filter: none;
+  --tw-ring-shadow: 0 0 #0000; margin-bottom: 1.5rem;
+}
+.client-form .cf-sectionheader > div { gap: 0; }
+.client-form .cf-sectionheader p { font-size: 1.0625rem; line-height: 1.5; color: var(--cf-muted); max-width: 62ch; margin-top: 0.5rem; }
+
+/* Buttons: 44px targets, 2px outline, one solid navy primary */
+.client-form [data-slot="button"]:is([data-size="default"], [data-size="sm"], [data-size="lg"]) {
+  min-height: 44px; font-size: 0.9375rem; font-weight: 700; letter-spacing: 0;
+}
+.client-form [data-slot="button"][data-variant="default"] { box-shadow: none; }
+.client-form [data-slot="button"][data-variant="outline"] {
+  border: 2px solid var(--cf-accent); color: var(--cf-accent); background: #FFFFFF; box-shadow: none;
+}
+.client-form [data-slot="button"][data-variant="outline"]:hover { background: var(--cf-wash); }
+.client-form :where(a, button, [role="button"], summary, select):focus-visible {
+  outline: 3px solid var(--cf-focus); outline-offset: 2px;
+}
+
+/* Fields: a field must look like a field. 2px dark border, 16px text, 44px high. */
+.client-form :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], .cf-box):not(.cf-grid *) {
+  border: 2px solid var(--cf-field); border-radius: 4px; background: #FFFFFF; box-shadow: none;
+  color: var(--cf-ink); font-size: 1rem; min-height: 44px;
+}
+.client-form .cf-grid :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], .cf-box) {
+  border: 1.5px solid var(--cf-field); border-radius: 4px; box-shadow: none; color: var(--cf-ink); font-size: 0.9375rem;
+}
+.client-form :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"], .cf-box):hover:not(:disabled):not(:focus-visible) {
+  border-color: var(--cf-ink);
+}
+.client-form :is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):focus-visible,
+.client-form .cf-box:focus-within {
+  border-color: var(--cf-accent); box-shadow: 0 0 0 3px rgb(47 91 168 / 0.3); outline: none;
+}
+.client-form :is([data-slot="input"], [data-slot="textarea"])::placeholder { color: #5B6578; opacity: 1; font-style: normal; }
+.client-form [data-slot="checkbox"] { border: 2px solid var(--cf-field); width: 1.25rem; height: 1.25rem; }
+.client-form [data-slot="checkbox"][data-state="checked"] { background: var(--cf-accent); border-color: var(--cf-accent); }
+
+/* A tinted panel for one task, such as "already have this in a file?" */
+.client-form .cf-panel { background: var(--cf-wash); border: 2px solid var(--cf-accent); border-radius: 4px; }
+.client-form .cf-panel h4 { font-size: 1rem; font-weight: 800; color: var(--cf-ink); }
+.client-form .cf-panel p { font-size: 0.9375rem; color: var(--cf-ink); }
+.client-form .cf-example { background: #FFFFFF; border: 2px solid var(--cf-line); border-radius: 4px; }
+.client-form .cf-example > button, .client-form .cf-example [role="button"] {
+  color: var(--cf-accent); font-size: 0.9375rem; font-weight: 700; min-height: 44px;
+}
+
+/* Key and value forms (Company Information and similar): label, help, field, example, one column */
+.client-form .cf-kv { max-width: 46rem; border: 0; border-radius: 0; overflow: visible; }
+.client-form .cf-kv-head { display: none; }
+.client-form .cf-kv-row {
+  display: block; background: transparent; border-bottom: 1px solid var(--cf-line); padding: 1.25rem 0;
+}
+.client-form .cf-kv-row:last-child { border-bottom: 0; }
+.client-form .cf-kv-label { padding: 0 0 0.5rem; min-height: 0; }
+.client-form .cf-kv-label-text { font-size: 1rem; font-weight: 700; color: var(--cf-ink); line-height: 1.3; }
+.client-form .cf-help { font-size: 0.9375rem; line-height: 1.5; color: var(--cf-muted); margin-top: 0.25rem; max-width: 62ch; }
+.client-form .cf-kv-input { display: flex; flex-direction: column; padding: 0; }
+.client-form .cf-example-line {
+  display: block; order: 2; padding: 0.5rem 0 0; font-size: 0.9375rem; font-style: normal; color: var(--cf-muted);
+}
+.client-form .cf-example-line::before { content: "Example: "; font-weight: 700; }
+.client-form .cf-kv-sample { display: none; }
+
+/* Section rail (sidebar) */
+.client-form .cf-nav { background: #FFFFFF; border-right: 1px solid var(--cf-line); }
+.client-form .cf-nav a { font-size: 0.9375rem; }
+.client-form .cf-nav-owner { font-size: 0.9375rem; font-weight: 800; color: var(--cf-ink); }
+.client-form .cf-nav-chunk { font-size: 0.8125rem; font-weight: 700; color: var(--cf-muted); }
+.client-form .cf-nav-label { font-weight: 700; color: inherit; }
+.client-form .cf-nav-status { font-size: 0.8125rem; font-weight: 600; color: var(--cf-muted); }
+.client-form .cf-nav a[data-active="true"] { background: var(--cf-accent); color: #FFFFFF; box-shadow: none; }
+.client-form .cf-nav a[data-active="true"] .cf-nav-status { color: #FFFFFF; }
+.client-form .cf-nav a:not([data-active="true"]):hover { background: var(--cf-wash); color: var(--cf-ink); }
+.client-form .cf-nav-icon { background: transparent; border-color: transparent; }
+.client-form .cf-nav a[data-active="true"] .cf-nav-icon { background: rgb(255 255 255 / 0.14); border-color: transparent; }
+
+/* Section state: three different shapes and a text label, never colour alone */
+.client-form .cf-status {
+  display: inline-block; width: 1rem; height: 1rem; flex: none; border: 0; border-radius: 0;
+  background: currentColor; box-shadow: none; animation: none;
+  -webkit-mask: var(--cf-status-icon) center / contain no-repeat; mask: var(--cf-status-icon) center / contain no-repeat;
+}
+.client-form .cf-status[data-status="complete"] {
+  color: var(--cf-ok);
+  --cf-status-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m8.5 12.5 2.5 2.5 4.5-5'/%3E%3C/svg%3E");
+}
+.client-form .cf-status[data-status="in-progress"] {
+  color: var(--cf-wait);
+  --cf-status-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 6a6 6 0 0 1 0 12z' fill='black'/%3E%3C/svg%3E");
+}
+.client-form .cf-status[data-status="not-started"] {
+  color: var(--cf-muted);
+  --cf-status-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E");
+}
+.client-form .cf-status[data-status="none"] {
+  color: var(--cf-muted);
+  --cf-status-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='4' fill='black'/%3E%3C/svg%3E");
+}
+.client-form .cf-nav a[data-active="true"] .cf-status { color: #FFFFFF; }
+
+/* Top bar */
+.client-form header { border-bottom: 1px solid var(--cf-line); }
+.client-form header h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+.client-form [role="progressbar"] { height: 0.5rem; width: 7.5rem; background: var(--cf-wash-2); }
+.client-form [role="progressbar"] > div { background: var(--cf-accent); }
+.client-form .cf-eg { display: none; }
+
+/* Record cards: one record per card, two columns of labelled fields, long text full width */
+.cf-viewtoggle, .cf-chip, .cf-card-title { display: none; }
+.client-form .cf-card-title-hide { display: none; }
+.client-form .cf-cards { display: block; max-width: 60rem; }
+.client-form .cf-gridview { display: none; }
+@media (min-width: 768px) {
+  .client-form .cf-viewtoggle { display: flex; }
+  .client-form [data-cf-view="grid"] .cf-cards { display: none; }
+  .client-form [data-cf-view="grid"] .cf-gridview { display: block; }
+}
+.client-form .cf-seg { display: inline-flex; border: 2px solid var(--cf-accent); border-radius: 4px; overflow: hidden; }
+.client-form .cf-seg button {
+  min-height: 40px; padding: 0 1rem; font-size: 0.9375rem; font-weight: 700; color: var(--cf-accent); background: #FFFFFF;
+}
+.client-form .cf-seg button + button { border-left: 2px solid var(--cf-accent); }
+.client-form .cf-seg button[aria-pressed="true"] { background: var(--cf-accent); color: #FFFFFF; }
+.client-form .cf-seg button:not([aria-pressed="true"]):hover { background: var(--cf-wash); }
+
+.client-form .cf-card { background: #FFFFFF; border: 2px solid var(--cf-line); border-radius: 4px; box-shadow: none; padding: 1.5rem; }
+.client-form .cf-card-title { display: block; font-size: 1.1875rem; line-height: 1.3; font-weight: 800; letter-spacing: -0.01em; color: var(--cf-ink); overflow-wrap: anywhere; }
+.client-form .cf-chip {
+  display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.375rem;
+  font-size: 0.9375rem; font-weight: 700; color: var(--cf-muted);
+}
+.client-form .cf-chip[data-status="complete"] { color: var(--cf-ok); }
+.client-form .cf-chip[data-status="in-progress"] { color: var(--cf-wait); }
+.client-form .cf-card-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.client-form .cf-card-fields > * { margin-top: 0; }
+@media (min-width: 640px) {
+  .client-form .cf-card-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 1.5rem; }
+  .client-form .cf-card-field[data-cf-type="textarea"] { grid-column: 1 / -1; }
+}
+.client-form .cf-card-label {
+  font-size: 1rem; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--cf-ink); line-height: 1.3;
+}
+.client-form .cf-card-field .cf-help { margin-top: 0; }
+.client-form .cf-card-field .cf-example-line { padding-top: 0; }
+.client-form .cf-card-field [data-slot="textarea"] { min-height: 7.5rem; }
+.client-form .cf-card-section { border-top: 1px solid var(--cf-line); padding-top: 1rem; }
+.client-form .cf-card-section-summary {
+  cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 1rem; font-weight: 800; color: var(--cf-accent);
+}
+.client-form .cf-card-section-summary { list-style: none; }
+.client-form .cf-card-section-summary::-webkit-details-marker { display: none; }
+.client-form .cf-card-section-summary::before {
+  content: ""; flex: none; width: 0.5rem; height: 0.5rem; margin-right: 0.75rem;
+  border-right: 2px solid var(--cf-accent); border-bottom: 2px solid var(--cf-accent); transform: rotate(-45deg); transition: transform 150ms ease-out;
+}
+.client-form .cf-card-section[open] > .cf-card-section-summary::before { transform: rotate(45deg); }
+.client-form .cf-help-more summary { cursor: pointer; font-size: 0.9375rem; font-weight: 700; color: var(--cf-accent); min-height: 32px; display: flex; align-items: center; }
+.client-form .cf-help-more[open] summary { margin-bottom: 0.25rem; }.client-form .cf-help-more summary { list-style: none; }
+.client-form .cf-help-more summary::-webkit-details-marker { display: none; }
+.client-form .cf-help-more summary::before {
+  content: ""; flex: none; width: 0.4rem; height: 0.4rem; margin-right: 0.625rem;
+  border-right: 2px solid var(--cf-accent); border-bottom: 2px solid var(--cf-accent); transform: rotate(-45deg); transition: transform 150ms ease-out;
+}
+.client-form .cf-help-more[open] > summary::before { transform: rotate(45deg); }
+.client-form .cf-sample { background: var(--cf-wash); border: 2px solid var(--cf-line); border-radius: 4px; }
+.client-form .cf-sample summary { font-size: 1rem; font-weight: 800; text-transform: none; letter-spacing: 0; color: var(--cf-accent); min-height: 44px; display: flex; align-items: center; }
+.client-form .cf-sample[open] summary { margin-bottom: 0.25rem; }
+.client-form .cf-sample summary { list-style: none; }
+.client-form .cf-sample summary::-webkit-details-marker { display: none; }
+.client-form .cf-sample summary::before {
+  content: ""; flex: none; width: 0.5rem; height: 0.5rem; margin-right: 0.75rem;
+  border-right: 2px solid var(--cf-accent); border-bottom: 2px solid var(--cf-accent); transform: rotate(-45deg); transition: transform 150ms ease-out;
+}
+.client-form .cf-sample[open] > summary::before { transform: rotate(45deg); }
+.client-form .cf-sample-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem; }
+.client-form .cf-sample-fields > * { margin-top: 0; }
+.client-form .cf-sample p.uppercase { font-size: 0.875rem; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--cf-muted); }
+.client-form .cf-sample p.italic { font-style: normal; font-size: 1rem; color: var(--cf-ink); }

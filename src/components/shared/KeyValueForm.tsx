@@ -30,11 +30,11 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
   const hasSamples = fields.some((f) => f.example);
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="cf-kv rounded-lg border overflow-hidden">
       {/* Column headers — hidden on mobile */}
       <div
         className={cn(
-          "hidden lg:grid bg-primary text-primary-foreground",
+          "cf-kv-head hidden lg:grid bg-primary text-primary-foreground",
           hasSamples
             ? "lg:grid-cols-[180px_minmax(200px,1fr)_200px] xl:grid-cols-[200px_minmax(220px,1fr)_220px]"
             : "lg:grid-cols-[180px_minmax(200px,1fr)] xl:grid-cols-[200px_minmax(220px,1fr)]"
@@ -48,7 +48,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
         <div
           key={field.key}
           className={cn(
-            "flex flex-col border-b last:border-b-0",
+            "cf-kv-row flex flex-col border-b last:border-b-0",
             hasSamples
               ? "lg:grid lg:grid-cols-[180px_minmax(200px,1fr)_200px] xl:grid-cols-[200px_minmax(220px,1fr)_220px]"
               : "lg:grid lg:grid-cols-[180px_minmax(200px,1fr)] xl:grid-cols-[200px_minmax(220px,1fr)]",
@@ -56,16 +56,16 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           )}
         >
           {/* Field label with ⓘ description tooltip */}
-          <div className="flex flex-col justify-center px-4 py-3 min-h-[52px]">
+          <div className="cf-kv-label flex flex-col justify-center px-4 py-3 min-h-[52px]">
             <div className="flex items-center gap-1.5">
-            <span className="text-[15px] font-medium text-gray-700 leading-snug">{field.label}</span>
+            <span className="cf-kv-label-text text-[15px] font-medium text-gray-700 leading-snug">{field.label}</span>
             {field.description && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     aria-label={`Description for ${field.label}`}
-                    className="shrink-0 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                    className="cf-hide shrink-0 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     <Info className="h-3.5 w-3.5" />
                   </button>
@@ -89,16 +89,19 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
               </Tooltip>
             )}
             </div>
+            {field.description && (
+              <p className="cf-only cf-help">{field.description}</p>
+            )}
             {field.helperText && (
-              <p className="mt-1 text-[11px] text-gray-400 leading-tight">{field.helperText}</p>
+              <p className="cf-help mt-1 text-[11px] text-gray-400 leading-tight">{field.helperText}</p>
             )}
           </div>
           {/* Client response input */}
-          <div className={cn("p-1.5", field.type === "textarea" ? "" : "lg:py-1.5")}>
+          <div className={cn("cf-kv-input p-1.5", field.type === "textarea" ? "" : "lg:py-1.5")}>
             {/* Mobile-only sample hint — shown above the response input */}
             {field.example && (
-              <p className="lg:hidden px-1 pt-0.5 pb-1 text-xs text-gray-400 italic">
-                e.g. {field.example}
+              <p className="cf-example-line lg:hidden px-1 pt-0.5 pb-1 text-xs text-gray-400 italic">
+                <span className="cf-eg">e.g. </span>{field.example}
               </p>
             )}
             {field.type === "file" ? (
@@ -120,7 +123,7 @@ export function KeyValueForm({ fields, data, onChange }: KeyValueFormProps) {
           </div>
           {/* Sample column — desktop only, read-only */}
           {hasSamples && (
-            <div className="hidden lg:flex items-start px-4 py-3 border-l">
+            <div className="cf-kv-sample hidden lg:flex items-start px-4 py-3 border-l">
               {field.example ? (
                 <span className="text-[13px] text-gray-400 italic">{field.example}</span>
               ) : (

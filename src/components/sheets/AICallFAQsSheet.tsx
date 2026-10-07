@@ -240,7 +240,7 @@ export function AICallFAQsSheet() {
       {allowVoiceSelection && <VoicePreview selectedGender={aiCallData.gender} />}
 
       <div className="mt-8">
-        <SectionHeader
+        <SectionHeader level="section"
           title="AI Call FAQs"
           description="Define the frequently asked questions and responses for the AI call system."
         />

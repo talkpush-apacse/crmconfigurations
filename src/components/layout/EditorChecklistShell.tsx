@@ -5,6 +5,7 @@ import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
 import { Header } from "@/components/layout/Header";
 import { SectionSelect } from "@/components/layout/SectionSelect";
+import { useClientFormScope } from "@/components/layout/useClientFormScope";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -18,13 +19,17 @@ import type { NavItem } from "@/components/layout/TopNav";
 export function EditorChecklistShell({
   token,
   initialData,
+  fontClass = "",
   children,
 }: {
   token: string;
   initialData: ChecklistData | null;
+  /** next/font class for the client form type. See useClientFormScope. */
+  fontClass?: string;
   children: React.ReactNode;
 }) {
   const [isAdmin, setIsAdmin] = useState(false);
+  useClientFormScope(fontClass);
 
   useEffect(() => {
     fetch("/api/auth/check")
@@ -136,7 +141,7 @@ export function EditorChecklistShell({
         basePath: `/editor/${token}`,
       }}
     >
-      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <div className={`client-form ${fontClass} flex h-screen flex-col overflow-hidden bg-background text-foreground`}>
         <Header
           clientName={data.clientName}
           slug={data.slug}

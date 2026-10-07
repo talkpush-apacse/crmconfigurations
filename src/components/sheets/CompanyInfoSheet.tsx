@@ -229,7 +229,7 @@ export function CompanyInfoSheet() {
       {/* Company Details */}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Details</h3>
+          <h3 className="cf-group-title text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Details</h3>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
         <KeyValueForm
@@ -242,7 +242,7 @@ export function CompanyInfoSheet() {
       {/* Facebook Details */}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Facebook Details</h3>
+          <h3 className="cf-group-title text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Facebook Details</h3>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
         <KeyValueForm
@@ -255,7 +255,7 @@ export function CompanyInfoSheet() {
       {/* Company Branding Assets */}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Branding Assets</h3>
+          <h3 className="cf-group-title text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Company Branding Assets</h3>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
         <KeyValueForm
@@ -268,7 +268,7 @@ export function CompanyInfoSheet() {
       {/* Recruitment Process */}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-3">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruitment Process</h3>
+          <h3 className="cf-group-title text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Recruitment Process</h3>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
         <KeyValueForm
@@ -280,6 +280,7 @@ export function CompanyInfoSheet() {
 
       <div className="mb-6">
         <SectionHeader
+          level="section"
           title="Business Hours"
           description="Defines the window during which automated messages (autoflows) are sent to candidates. Messages triggered outside these hours are queued and delivered at the next opening time. Manual recruiter messages are not affected by this setting."
         />
