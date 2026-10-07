@@ -15,7 +15,7 @@ import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useTabUpload } from "@/hooks/useTabUpload";
 import { useChecklistContext } from "@/lib/checklist-context";
 import type { TabUploadFile } from "@/lib/types";
-import { MAX_UPLOAD_BYTES, isBlockedFile } from "@/lib/upload-rules";
+import { uploadTabFile } from "@/lib/upload-client";
 
 interface TabUploadBannerProps {
   /**
@@ -88,54 +88,24 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
 
     setError(null);
 
-    // Any file type is accepted except executables; check before sending.
-    const blocked = files.find((f) => isBlockedFile(f.name, f.type));
-    if (blocked) {
-      setError(`"${blocked.name}" can't be uploaded — executable (.exe) files aren't allowed.`);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    const tooBig = files.find((f) => f.size > MAX_UPLOAD_BYTES);
-    if (tooBig) {
-      setError(`"${tooBig.name}" is too large. Maximum size is 10 MB.`);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
     setUploading(true);
 
     try {
       const newFiles: TabUploadFile[] = [];
       for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "tab-uploads");
-        formData.append("tabKey", tabKey);
-        if (editorToken) formData.append("editorToken", editorToken);
-        if (clientSlug) formData.append("slug", clientSlug);
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        // The host can reject large bodies with a non-JSON response, so parse defensively.
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setError(
-            body.error ||
-              (res.status === 413
-                ? `"${file.name}" is too large to upload.`
-                : `Upload failed for "${file.name}"`)
-          );
+        try {
+          const uploaded = await uploadTabFile(file, { tabKey, editorToken, slug: clientSlug });
+          newFiles.push({
+            id: generateId(),
+            fileName: file.name,
+            fileUrl: uploaded.url,
+            fileSize: file.size,
+            uploadedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : `Upload failed for "${file.name}"`);
           break;
         }
-        newFiles.push({
-          id: generateId(),
-          fileName: file.name,
-          fileUrl: body.url as string,
-          fileSize: file.size,
-          uploadedAt: new Date().toISOString(),
-        });
       }
       if (newFiles.length > 0) {
         setUploadedFiles([...uploadedFiles, ...newFiles]);

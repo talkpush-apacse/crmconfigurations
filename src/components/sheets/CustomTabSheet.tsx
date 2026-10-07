@@ -8,6 +8,7 @@ import { EditableTable } from "@/components/shared/EditableTable";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { uid } from "@/lib/template-data";
+import { uploadTabFile } from "@/lib/upload-client";
 import type { CustomTab, CustomTabRow } from "@/lib/types";
 import { buildColumnDefs, defaultCellValue } from "@/lib/custom-tab-columns";
 
@@ -208,17 +209,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
       setUploading(true);
       setUploadError(null);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "tab-uploads");
-        formData.append("slug", data?.slug ?? "");
-
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Upload failed");
-        }
-        const { url } = await res.json();
+        const { url } = await uploadTabFile(file, { slug: data?.slug ?? "" });
 
         updateTab((tab) => ({
           ...tab,
