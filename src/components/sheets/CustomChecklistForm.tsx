@@ -17,6 +17,7 @@ import {
 import { FileUploadCell } from "@/components/shared/FileUploadCell";
 import { EditableTable } from "@/components/shared/EditableTable";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { uploadTabFile } from "@/lib/upload-client";
 import {
   getCustomFieldKey,
   getCustomTabFormValues,
@@ -142,19 +143,12 @@ function CustomFormFileField({
     try {
       const uploaded: CustomFormFileValue[] = [];
       for (const file of selected) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "tab-uploads");
-        formData.append("slug", data.slug);
-        formData.append("tabKey", `custom-${customTab.slug}`);
-        formData.append("customTabId", customTab.id);
-        formData.append("fieldKey", getCustomFieldKey(field));
-
-        const response = await fetch("/api/upload", { method: "POST", body: formData });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(body.error || "Upload failed");
-        }
+        const body = await uploadTabFile(file, {
+          slug: data.slug,
+          tabKey: `custom-${customTab.slug}`,
+          customTabId: customTab.id,
+          fieldKey: getCustomFieldKey(field),
+        });
         uploaded.push({
           fileName: body.fileName || file.name,
           url: body.url,

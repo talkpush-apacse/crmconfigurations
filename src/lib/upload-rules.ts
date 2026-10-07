@@ -49,3 +49,30 @@ export function checkUploadType(folder: string, fileName: string, mimeType: stri
   }
   return null;
 }
+
+/** Folder used by the two-step (browser -> storage direct) tab upload. */
+export const TAB_UPLOAD_FOLDER = "tab-uploads";
+
+/** Storage-safe version of a file name: letters, digits, dot, dash, underscore. */
+export function safeUploadName(fileName: string): string {
+  const base = fileName.split(/[\\/]/).pop() ?? "";
+  return base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "file";
+}
+
+/** Checks a tab-upload file before any bytes move. Returns an error message, or null when fine. */
+export function checkTabUploadFile(fileName: string, size: number, mimeType: string): string | null {
+  if (!Number.isFinite(size) || size <= 0) return "That file is empty.";
+  if (size > MAX_UPLOAD_BYTES) return "File too large. Maximum size is 10 MB.";
+  return checkUploadType(TAB_UPLOAD_FOLDER, fileName, mimeType);
+}
+
+const TAB_UPLOAD_PATH = /^tab-uploads\/\d+-[0-9a-f-]{36}-[A-Za-z0-9._-]+$/;
+
+/** True only for paths this app generated itself, so a caller cannot point us at some other file. */
+export function isTabUploadPath(path: string): boolean {
+  return TAB_UPLOAD_PATH.test(path);
+}
+
+export function buildTabUploadPath(fileName: string, id: string, now: number = Date.now()): string {
+  return `${TAB_UPLOAD_FOLDER}/${now}-${id}-${safeUploadName(fileName)}`;
+}
