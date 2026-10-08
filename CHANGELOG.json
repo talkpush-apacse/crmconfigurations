@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5",
+    "name": "Version 3.5 - Named edit links and edit history",
+    "changes": [
+      "Give each person their own editor link (for example \"Jane Cruz (TP)\"): create, copy, rename, give a new address, or turn off, from the checklist's ... menu",
+      "New Edit history page per checklist: who changed what, when, and the text before and after, with filters for person and tab",
+      "Edits through a named link, the original editor link, the client form link, staff saves, Claude's custom-tab changes and snapshot restores are recorded; passwords and keys are never stored",
+      "Editor pages show \"Editing as <name>\" for a named link, and a friendly page when a link has been turned off",
+      "The original editor link keeps working and is shown in the history as \"Original shared link (unnamed)\"",
+      "History starts when this ships; earlier changes are not recorded",
+      "Editor links and exports no longer pass the secret address on to other sites and are not cached",
+      "Database: 2 new tables only, applied with supabase/migrations/20261008120000_add_checklist_edit_history.sql"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.4",
     "name": "Version 3.4 - Talkpush Implementation Hub",
     "changes": [

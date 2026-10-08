@@ -5,6 +5,8 @@ import { normalizeOwnerEmail } from "@/lib/notifications";
 import { requireAuth } from "@/lib/api-auth";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 import { validateCustomTabsData } from "@/lib/custom-tab-service";
+import { scheduleSaveRecord, scheduleWholeDocumentRecord } from "@/lib/edit-history/record";
+import type { EditActor } from "@/lib/edit-history/types";
 
 const JSON_FIELDS_SET = new Set<string>(CHECKLIST_JSON_FIELDS);
 
@@ -45,6 +47,8 @@ export async function PUT(
   try {
     const auth = await requireAuth(request);
     if (auth instanceof NextResponse) return auth;
+    // The signed-in staff member, for the edit history (their own edits are told apart from a client's).
+    const actor: EditActor = { type: "admin", name: auth.email };
 
     const { id } = await params;
     const requestOrigin = new URL(request.url).origin;
@@ -126,12 +130,17 @@ export async function PUT(
           updateData.ownerEmail = normalizedOwnerEmail?.value ?? null;
         }
 
+        // What is saved right now for these fields (read under the lock), so the history can say what changed.
+        const beforeSelect: Record<string, true> = { customTabs: true };
+        for (const field of validFields) beforeSelect[field] = true;
+        const before = (await tx.checklist.findUnique({ where: { id }, select: beforeSelect })) as Record<string, unknown> | null;
+
         const checklist = await tx.checklist.update({
           where: { id },
           data: updateData,
         });
 
-        return { status: 200 as const, checklist };
+        return { status: 200 as const, checklist, before: before ?? {} };
       });
 
       if (result.status === 404) {
@@ -154,6 +163,16 @@ export async function PUT(
         updatedAt: result.checklist.updatedAt,
       });
       scheduleNotificationSweep(requestOrigin);
+      if (validFields.length > 0) {
+        scheduleSaveRecord({
+          checklistId: id,
+          actor,
+          version: result.checklist.version,
+          before: result.before,
+          after: body as Record<string, unknown>,
+          fields: validFields,
+        });
+      }
       return response;
     }
 
@@ -262,6 +281,13 @@ export async function PUT(
     });
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
     scheduleNotificationSweep(requestOrigin);
+    scheduleWholeDocumentRecord({
+      checklistId: id,
+      actor,
+      version: checklist.version,
+      fieldCount: CHECKLIST_JSON_FIELDS.filter((field) => hasOwn(body, field)).length,
+      markFields: CHECKLIST_JSON_FIELDS,
+    });
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/[id] error:", err);

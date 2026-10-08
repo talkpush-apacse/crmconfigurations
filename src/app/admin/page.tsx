@@ -55,10 +55,13 @@ import {
   MoreHorizontal,
   RefreshCw,
   Mail,
+  Users,
+  History,
 } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
+import { EditLinksDialog } from "@/components/admin/EditLinksDialog";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { getAllSelectableTabSlugs } from "@/lib/tab-config";
 import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
@@ -219,6 +222,8 @@ export default function AdminDashboard() {
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
   // Confirmation state for token regeneration
   const [regenTarget, setRegenTarget] = useState<ChecklistSummary | null>(null);
+  // Named edit links (one per person) for this checklist.
+  const [editLinksTarget, setEditLinksTarget] = useState<ChecklistSummary | null>(null);
   // P4-05: Optimistic delete with 5s undo window
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   // P4-02: Sort state
@@ -627,6 +632,18 @@ export default function AdminDashboard() {
               }
             />
 
+            {/* Named edit links: one personal link per person, so the edit history can say who changed what */}
+            {editLinksTarget && (
+              <EditLinksDialog
+                checklistId={editLinksTarget.id}
+                clientName={editLinksTarget.clientName}
+                open
+                onOpenChange={(open) => {
+                  if (!open) setEditLinksTarget(null);
+                }}
+              />
+            )}
+
             {/* Regen token confirmation dialog */}
             <Dialog open={!!regenTarget} onOpenChange={() => setRegenTarget(null)}>
               <DialogContent>
@@ -838,6 +855,12 @@ export default function AdminDashboard() {
                                     Export to XLS
                                   </a>
                                 </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/checklists/${c.id}/history`}>
+                                    <History className="h-4 w-4" />
+                                    Edit history
+                                  </Link>
+                                </DropdownMenuItem>
                                 {canEdit && (
                                 <>
                                 <DropdownMenuItem onClick={() => handleEditSettings(c)}>
@@ -849,9 +872,13 @@ export default function AdminDashboard() {
                                   Duplicate checklist
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setEditLinksTarget(c)}>
+                                  <Users className="h-4 w-4" />
+                                  Named edit links
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
                                   <RefreshCw className="h-4 w-4" />
-                                  Regenerate editor link
+                                  Regenerate original editor link
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
@@ -1040,6 +1067,12 @@ export default function AdminDashboard() {
                                         Export to XLS
                                       </a>
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/admin/checklists/${c.id}/history`}>
+                                        <History className="h-4 w-4" />
+                                        Edit history
+                                      </Link>
+                                    </DropdownMenuItem>
                                     {canEdit && (
                                     <>
                                     <DropdownMenuItem onClick={() => handleEditSettings(c)}>
@@ -1051,9 +1084,13 @@ export default function AdminDashboard() {
                                       Duplicate checklist
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setEditLinksTarget(c)}>
+                                      <Users className="h-4 w-4" />
+                                      Named edit links
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
                                       <RefreshCw className="h-4 w-4" />
-                                      Regenerate editor link
+                                      Regenerate original editor link
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive"

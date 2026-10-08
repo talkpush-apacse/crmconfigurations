@@ -41,6 +41,10 @@ interface HeaderProps {
   /** Staff only. The company this checklist is filed under: the way back leads to it instead of the checklist list. */
   company?: { id: string; name: string } | null;
   snapshotsHref?: string;
+  /** Staff only. The edit history page: who changed what. */
+  historyHref?: string;
+  /** Editor link only. The person's name when they came in through a named link ("Editing as ..."). */
+  editingAs?: string | null;
   /** Staff only. Opens the "Apply template" sheet from the actions menu. */
   onApplyTemplate?: () => void;
   /**
@@ -71,6 +75,8 @@ export function Header({
   variant = "client",
   company = null,
   snapshotsHref,
+  historyHref,
+  editingAs = null,
   onApplyTemplate,
   shareLink,
 }: HeaderProps) {
@@ -117,7 +123,7 @@ export function Header({
 
   // On wide screens Export is its own button, so the menu only has something
   // to hold when there are staff actions. On phones it always holds Export.
-  const hasSecondaryActions = Boolean(snapshotsHref) || Boolean(onApplyTemplate);
+  const hasSecondaryActions = Boolean(snapshotsHref) || Boolean(historyHref) || Boolean(onApplyTemplate);
 
   return (
     <header className="shrink-0 border-b border-border bg-card">
@@ -143,6 +149,14 @@ export function Header({
           {isReadOnly && (
             <span className="shrink-0 rounded-full border border-brand-amber/40 bg-brand-amber-lightest px-2.5 py-0.5 text-[11px] font-medium text-foreground">
               View only
+            </span>
+          )}
+          {editingAs && (
+            <span
+              className="max-w-48 shrink-0 truncate rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-foreground"
+              title={`Your changes are recorded under the name ${editingAs}`}
+            >
+              Editing as {editingAs}
             </span>
           )}
         </div>
@@ -296,6 +310,14 @@ export function Header({
                   <Link href={snapshotsHref}>
                     <History className="h-4 w-4" />
                     Snapshots
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {historyHref && (
+                <DropdownMenuItem asChild className="min-h-11 md:min-h-0">
+                  <Link href={historyHref}>
+                    <History className="h-4 w-4" />
+                    Edit history
                   </Link>
                 </DropdownMenuItem>
               )}

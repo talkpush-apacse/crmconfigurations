@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findChecklistByEditorToken } from "@/lib/edit-history/resolve";
 import { sendOwnerNotification } from "@/lib/email";
 import { buildClientTabUrl, getNotificationTabMeta } from "@/lib/notifications";
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
@@ -78,8 +79,12 @@ async function authorize(
   }
 
   const select = { slug: true, clientName: true, ownerEmail: true, customTabs: true } as const;
-  const checklist = input.editorToken
-    ? await prisma.checklist.findUnique({ where: { editorToken: input.editorToken }, select })
+  // A turned-off named link finds nothing here, the same as an unknown one.
+  const byToken = input.editorToken ? await findChecklistByEditorToken(input.editorToken, select) : null;
+  const checklist = byToken
+    ? byToken.ok
+      ? byToken.checklist
+      : null
     : input.slug
       ? await prisma.checklist.findUnique({ where: { slug: input.slug }, select })
       : null;

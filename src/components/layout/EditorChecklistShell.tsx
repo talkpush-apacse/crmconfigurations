@@ -8,6 +8,7 @@ import { SectionSelect } from "@/components/layout/SectionSelect";
 import { ChecklistLookProvider, useChecklistLookState } from "@/components/layout/ChecklistLook";
 import type { ChecklistLook } from "@/lib/checklist-look";
 import { ChecklistContext } from "@/lib/checklist-context";
+import { LINK_OFF_HELP, LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
 import type { ChecklistData, CustomTab, CustomData, TabUploadMetaMap } from "@/lib/types";
@@ -63,6 +64,17 @@ export function EditorChecklistShell({
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="mt-4 text-sm text-muted-foreground">Loading checklist...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === LINK_OFF_MESSAGE) {
+    return (
+      <div className="flex h-screen items-center justify-center px-6">
+        <div role="alert" className="max-w-md text-center">
+          <p className="text-lg font-semibold text-foreground">This link has been turned off</p>
+          <p className="mt-2 text-sm text-muted-foreground">{LINK_OFF_HELP}</p>
         </div>
       </div>
     );
@@ -156,6 +168,7 @@ export function EditorChecklistShell({
           onRetrySave={retrySave}
           isReadOnly={false}
           editorToken={token}
+          editingAs={data.editingAs ?? null}
           shareLink={isAdmin ? `${window.location.origin}/editor/${token}/welcome` : undefined}
           hasPendingChanges={hasPendingChanges}
           lastSavedAt={lastSavedAt}
