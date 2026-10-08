@@ -226,7 +226,8 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
     <div className="mb-3 flex flex-wrap items-center gap-2">
       {/* One menu instead of three loose buttons: importing and exporting are occasional jobs. */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        {/* data-slot="button": the menu trigger would otherwise replace it, and the Modern look styles buttons by that name. */}
+        <DropdownMenuTrigger asChild data-slot="button">
           <Button
             variant="outline"
             size="sm"

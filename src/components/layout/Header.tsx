@@ -276,7 +276,8 @@ export function Header({
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            {/* data-slot="button": the menu trigger would otherwise replace it, and the Modern look styles buttons by that name. */}
+            <DropdownMenuTrigger asChild data-slot="button">
               <Button
                 type="button"
                 variant="outline"
