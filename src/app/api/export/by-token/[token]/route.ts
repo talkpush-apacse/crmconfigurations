@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findFullChecklistByEditorToken } from "@/lib/edit-history/resolve";
 import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
-import { generateExcel } from "@/lib/excel-export";
-import type { ChecklistData } from "@/lib/types";
+import { buildExportResponse } from "@/lib/export-response";
 
 /**
  * Public export endpoint — allows editor link holders to export without auth.
  * Uses editorToken for access control.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
@@ -27,16 +26,8 @@ export async function GET(
     }
     const checklist = found.checklist;
 
-    const buffer = await generateExcel(checklist as unknown as ChecklistData);
-
-    const filename = `${checklist.clientName.replace(/[^a-zA-Z0-9]/g, "_")}_CRM_Config.xlsx`;
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
+    // await: so a failure is caught below and answered, not thrown past this handler
+    return await buildExportResponse(checklist, request.nextUrl.searchParams.get("tab"), "editor");
   } catch (err) {
     console.error("GET /api/export/by-token/[token] error:", err);
     return NextResponse.json({ error: "Failed to export checklist. Check database connection." }, { status: 500 });

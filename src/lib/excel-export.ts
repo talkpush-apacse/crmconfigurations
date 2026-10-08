@@ -1,13 +1,27 @@
 import ExcelJS from "exceljs";
 import path from "path";
 import type { ChecklistData, AiCallData, TabUploadMetaMap, AutoflowRule, IntegrationRow, CustomTab, CustomData } from "./types";
-import { TAB_CONFIG } from "./tab-config";
+import { TAB_CONFIG, type TabConfig } from "./tab-config";
+import { sheetNamesForTab } from "./export-scope";
 import { getCustomFieldKey, getCustomTabFormValues, getCustomTabMode } from "./custom-tab-service";
 import {
   integrationToCsvRow,
 } from "./integration-utils";
 
-export async function generateExcel(data: ChecklistData): Promise<Buffer> {
+/** The tab has nothing to put in a one-page export (for example a custom tab with no columns or fields yet). */
+export class EmptyPageExportError extends Error {
+  constructor(tabLabel: string) {
+    super(`"${tabLabel}" has nothing to export yet.`);
+    this.name = "EmptyPageExportError";
+  }
+}
+
+/**
+ * Builds the workbook. With `onlyTab`, the file holds just that tab's sheet(s),
+ * built from the same data and the same code as the full workbook so the two can
+ * never disagree. Without it, the whole checklist, exactly as before.
+ */
+export async function generateExcel(data: ChecklistData, onlyTab?: TabConfig): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const templatePath = path.join(process.cwd(), "public", "template.xlsx");
 
@@ -22,7 +36,7 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
         `If the template was re-exported from openpyxl or Google Sheets, run: node scripts/repair-template.mjs`,
       error
     );
-    return generateFreshExcel(data);
+    return generateFreshExcel(data, onlyTab);
   }
 
   // Populate Company Information (sheet 3)
@@ -46,11 +60,63 @@ export async function generateExcel(data: ChecklistData): Promise<Buffer> {
 
   addAutoflowsSheet(workbook, data.autoflows);
   addIntegrationsSheet(workbook, data.integrations);
-  addCustomTabSheets(workbook, data.customTabs, data.customData as CustomData | null);
-  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
+  const customSheets = addCustomTabSheets(workbook, scopedCustomTabs(data.customTabs, onlyTab), data.customData as CustomData | null);
+  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null, onlyTab);
 
+  return finishWorkbook(workbook, onlyTab, customSheets);
+}
+
+/**
+ * Writes the workbook, first cutting it down to one tab's sheets when asked.
+ * Nothing is built differently for a one-page export: the sheets are made by the
+ * normal code above and the others are dropped, so a field can't be missing from
+ * "this page" but present in "entire checklist".
+ */
+async function finishWorkbook(workbook: ExcelJS.Workbook, onlyTab: TabConfig | undefined, customSheets: string[]): Promise<Buffer> {
+  if (onlyTab) keepOnlyTabSheets(workbook, onlyTab, customSheets);
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
+}
+
+/** For a one-page export of a custom tab, only that tab; for any other tab, no custom tabs at all (their sheet names could collide with a standard one). */
+function scopedCustomTabs(customTabs: CustomTab[] | null | undefined, onlyTab: TabConfig | undefined): CustomTab[] | null | undefined {
+  if (!onlyTab) return customTabs;
+  if (!onlyTab.customTabId) return null;
+  return (customTabs ?? []).filter((t) => t.id === onlyTab.customTabId);
+}
+
+/** Sheets that go with a tab even though they are not "its" sheet: the list of files the client uploaded in place of typing. */
+const TAB_UPLOADS_SHEET = "Tab File Uploads";
+
+function keepOnlyTabSheets(workbook: ExcelJS.Workbook, tab: TabConfig, customSheets: string[]) {
+  const keep = new Set<string>(tab.customTabId ? customSheets : sheetNamesForTab(tab.slug) ?? []);
+  const hasData = workbook.worksheets.some((ws) => keep.has(ws.name));
+  if (!hasData) throw new EmptyPageExportError(tab.label);
+  keep.add(TAB_UPLOADS_SHEET);
+
+  for (const ws of workbook.worksheets.filter((w) => !keep.has(w.name))) {
+    workbook.removeWorksheet(ws.id);
+  }
+
+  // The template remembers which sheet Excel should open on, by position. With the
+  // others gone that position can point past the end, and several sheets can be
+  // marked "selected", which Excel treats as grouped (an edit then lands on all of them).
+  // (Either list can be missing when a workbook was never given any views.)
+  (workbook.views ?? []).forEach((v) => {
+    v.activeTab = 0;
+    v.firstSheet = 0;
+  });
+  workbook.worksheets.forEach((ws, i) => {
+    ws.state = "visible";
+    ws.views = (ws.views ?? []).map((v) => ({ ...v, tabSelected: i === 0 }));
+  });
+
+  // The template's logos sit on the Welcome and Read Me sheets. Dropping those
+  // sheets does not drop the pictures, which would ride along unseen (about 100 KB
+  // on a file that is otherwise a few KB). Only strip them when nothing left uses one.
+  const usesPicture = workbook.worksheets.some((ws) => ws.getImages().length > 0 || ws.getBackgroundImageId() !== undefined);
+  // `media` is a real property of the workbook, just missing from ExcelJS's type definitions.
+  if (!usesPicture) (workbook as unknown as { media: unknown[] }).media = [];
 }
 
 /**
@@ -361,7 +427,7 @@ function setCellSafe(sheet: ExcelJS.Worksheet, ref: string, value: unknown) {
   }
 }
 
-async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
+async function generateFreshExcel(data: ChecklistData, onlyTab?: TabConfig): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
 
   // Company Information
@@ -537,11 +603,10 @@ async function generateFreshExcel(data: ChecklistData): Promise<Buffer> {
 
   addAutoflowsSheet(workbook, data.autoflows);
   addIntegrationsSheet(workbook, data.integrations);
-  addCustomTabSheets(workbook, data.customTabs, data.customData as CustomData | null);
-  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null);
+  const customSheets = addCustomTabSheets(workbook, scopedCustomTabs(data.customTabs, onlyTab), data.customData as CustomData | null);
+  addTabUploadsSheet(workbook, data.tabUploadMeta as TabUploadMetaMap | null, onlyTab);
 
-  const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+  return finishWorkbook(workbook, onlyTab, customSheets);
 }
 
 function addAutoflowsSheet(workbook: ExcelJS.Workbook, autoflows: AutoflowRule[] | null | undefined) {
@@ -637,7 +702,8 @@ function addIntegrationsSheet(workbook: ExcelJS.Workbook, integrations: Integrat
  */
 function addTabUploadsSheet(
   workbook: ExcelJS.Workbook,
-  tabUploadMeta: TabUploadMetaMap | null
+  tabUploadMeta: TabUploadMetaMap | null,
+  onlyTab?: TabConfig
 ) {
   if (!tabUploadMeta) return;
 
@@ -652,6 +718,7 @@ function addTabUploadsSheet(
 
   for (const tab of TAB_CONFIG) {
     if (!tab.dataKey) continue;
+    if (onlyTab && tab.slug !== onlyTab.slug) continue;
     const meta = tabUploadMeta[tab.dataKey];
     if (!meta || meta.uploadedFiles.length === 0) continue;
     rows.push({
@@ -734,9 +801,9 @@ function appendUploadedFileNote(sheet: ExcelJS.Worksheet, tab: CustomTab) {
 function addCustomTableTabSheet(
   workbook: ExcelJS.Workbook,
   tab: CustomTab
-) {
+): string | null {
   const columns = tab.columns ?? [];
-  if (columns.length === 0) return;
+  if (columns.length === 0) return null;
 
   const sheet = workbook.addWorksheet(toUniqueSheetName(workbook, tab.label));
   sheet.columns = columns.map((col) => ({
@@ -767,6 +834,7 @@ function addCustomTableTabSheet(
   });
 
   appendUploadedFileNote(sheet, tab);
+  return sheet.name;
 }
 
 /**
@@ -777,9 +845,9 @@ function addCustomFieldTabSheet(
   workbook: ExcelJS.Workbook,
   tab: CustomTab,
   customData: CustomData | null
-) {
+): string | null {
   const fields = tab.fields ?? [];
-  if (fields.length === 0) return;
+  if (fields.length === 0) return null;
   const values = getCustomTabFormValues(tab, customData);
 
   const sheet = workbook.addWorksheet(toUniqueSheetName(workbook, tab.label));
@@ -808,18 +876,22 @@ function addCustomFieldTabSheet(
   });
 
   appendUploadedFileNote(sheet, tab);
+  return sheet.name;
 }
 
 /**
  * Adds one worksheet per custom tab. Without this, anything a client entered
- * into a custom tab is absent from the exported workbook.
+ * into a custom tab is absent from the exported workbook. Returns the names of
+ * the sheets it made (a one-page export needs them, since a name can be changed
+ * to stay unique and within Excel's limits).
  */
 function addCustomTabSheets(
   workbook: ExcelJS.Workbook,
   customTabs: CustomTab[] | null | undefined,
   customData: CustomData | null
-) {
-  if (!customTabs || customTabs.length === 0) return;
+): string[] {
+  const made: string[] = [];
+  if (!customTabs || customTabs.length === 0) return made;
 
   // Respect the in-app tab ordering.
   const ordered = [...customTabs].sort(
@@ -827,10 +899,11 @@ function addCustomTabSheets(
   );
 
   for (const tab of ordered) {
-    if (getCustomTabMode(tab) === "table") {
-      addCustomTableTabSheet(workbook, tab);
-    } else {
-      addCustomFieldTabSheet(workbook, tab, customData);
-    }
+    const name =
+      getCustomTabMode(tab) === "table"
+        ? addCustomTableTabSheet(workbook, tab)
+        : addCustomFieldTabSheet(workbook, tab, customData);
+    if (name) made.push(name);
   }
+  return made;
 }
