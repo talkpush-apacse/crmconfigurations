@@ -264,7 +264,15 @@ export function EditableCell({
       );
     }
     return (
-      <div className={cn("px-2 py-1.5 text-sm text-muted-foreground", className)}>
+      // Someone only looking (the view link) is reading the answers, so they get full-strength text that wraps.
+      // Fields that are read-only by design (type "readonly") stay muted.
+      <div
+        className={cn(
+          "whitespace-pre-wrap break-words px-2 py-1.5 text-sm",
+          isReadOnly && type !== "readonly" && value ? "text-foreground" : "text-muted-foreground",
+          className
+        )}
+      >
         {String(value || "Not set")}
       </div>
     );

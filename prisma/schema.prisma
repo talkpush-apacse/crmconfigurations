@@ -11,6 +11,9 @@ model Checklist {
   id          String   @id @default(cuid())
   slug        String   @unique
   editorToken String   @unique @default(uuid())
+  // The read-only "can view" link (/view/<viewToken>). Empty = no view link is on. Staff can turn it off or give it a
+  // new address at any time. Never sent to a client, editor or view link: see src/lib/checklist-public.ts.
+  viewToken   String?  @unique
   clientName  String
   ownerEmail  String?
   // Which company this checklist belongs to. Empty = not linked yet ("needs a company").

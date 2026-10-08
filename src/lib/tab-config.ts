@@ -185,7 +185,7 @@ export function excludeTalkpushTabs(tabs: TabConfig[]): TabConfig[] {
   return tabs.filter((tab) => tab.filledBy !== "talkpush");
 }
 
-/** True for the client-facing checklist route, which hides Talkpush tabs. */
+/** True for the client-facing checklist routes (the client form and the read-only view link), which hide Talkpush tabs. */
 export function isClientView(basePath: string | null | undefined): boolean {
-  return !!basePath && basePath.startsWith("/client/");
+  return !!basePath && (basePath.startsWith("/client/") || basePath.startsWith("/view/"));
 }
