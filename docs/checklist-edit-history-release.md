@@ -114,6 +114,17 @@ DROP TABLE IF EXISTS "ChecklistEditLink" CASCADE;
 COMMIT;
 ```
 
+## Banner: who else is editing this tab (version 3.6, no database change)
+
+A banner on each checklist tab (editor link, client form link, staff pages) when someone else has saved a change to that tab.
+
+- **Amber, with Reload:** someone saved this tab after you opened the page, so your next save of it would be refused. Reload first.
+- **Quiet note:** someone changed this tab in the last 10 minutes. If you both edit it, whoever saves second has to reload.
+- **Names:** from the edit history. Clients see staff and Claude as "Talkpush team" (never an email address); staff see full names. People on the original shared link or the client form link are described ("Someone using the shared link"), not named.
+- **What it cannot do:** it only knows about SAVED changes (autosave runs half a second after typing stops), so it cannot show who merely has the tab open. All custom tabs are saved together, so a change to any custom tab warns people on every custom tab.
+- **Cost:** one small read every 15 seconds per open page, and only while the page is on screen. Never part of saving.
+- **Verify:** open a tab in two places (for example your staff view and a named link). Change a cell in one and click away. Within about 15 seconds the other shows the amber banner. Reload clears it and leaves the quiet note.
+
 ## Follow-ups to decide later
 
 1. Keep or close the public client form link (`/client/<slug>`) as a way to save changes.
