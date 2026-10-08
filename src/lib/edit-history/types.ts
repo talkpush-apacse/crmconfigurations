@@ -114,3 +114,21 @@ export const MAX_VALUE_CHARS = 20_000;
 export const MAX_CELL_EVENTS_PER_FIELD = 25;
 /** Most before/after text kept for one save, all events together. */
 export const MAX_CHARS_PER_SAVE = 400_000;
+
+/** "Who else has been changing this tab": how recent a change still counts. */
+export const OTHERS_WINDOW_MS = 10 * 60 * 1000;
+
+/** Another person who changed the tab you are on, named the way the viewer is allowed to see them. */
+export interface OtherEditor {
+  name: string;
+  /** When their latest change to this tab was saved (ISO). */
+  at: string;
+}
+
+/** What the banner is built from. */
+export interface TabActivity {
+  /** True when this tab was saved by someone since the page was opened, so the viewer's next save of it would be refused. */
+  changedSinceYouOpened: boolean;
+  /** Others who saved a change to this tab in the last 10 minutes (at most 3, newest first). Never includes the viewer. */
+  others: OtherEditor[];
+}

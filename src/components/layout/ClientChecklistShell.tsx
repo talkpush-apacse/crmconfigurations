@@ -1,5 +1,6 @@
 "use client";
 
+import { TabActivityBanner } from "@/components/layout/TabActivityBanner";
 import { useMemo } from "react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
@@ -175,7 +176,10 @@ export function ClientChecklistShell({
               <SectionSelect items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
             )}
             <main className="flex-1 overflow-y-auto">
-              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
+              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+                <TabActivityBanner activityUrl={`/api/checklists/by-slug/${slug}/activity`} />
+                {children}
+              </div>
             </main>
           </div>
         </div>

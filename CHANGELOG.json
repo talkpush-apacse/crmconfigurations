@@ -1,5 +1,17 @@
 [
   {
+    "version": "3.6",
+    "name": "Version 3.6 - See who else is editing a tab",
+    "changes": [
+      "A banner now appears on a tab when someone else has saved a change to it: amber with a Reload button if they saved since you opened the page (your next save of that tab would not go through), or a quieter note if they changed it in the last 10 minutes",
+      "Works on editor links, the client form link and the staff checklist pages; checks every 15 seconds while the page is on screen",
+      "Names come from the edit history: clients see staff and Claude as \"Talkpush team\", never an email address; staff see full names",
+      "It only reports saved changes (it cannot tell who merely has the tab open) and never changes how saving works",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.5",
     "name": "Version 3.5 - Named edit links and edit history",
     "changes": [
@@ -12,7 +24,7 @@
       "Editor links and exports no longer pass the secret address on to other sites and are not cached",
       "Database: 2 new tables only, applied with supabase/migrations/20261008120000_add_checklist_edit_history.sql"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-08"
   },
   {
     "version": "3.4",

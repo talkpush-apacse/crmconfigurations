@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
+import { TabActivityBanner } from "@/components/layout/TabActivityBanner";
 import { Header } from "@/components/layout/Header";
 import { SectionSelect } from "@/components/layout/SectionSelect";
 import { ChecklistLookProvider, useChecklistLookState } from "@/components/layout/ChecklistLook";
@@ -162,7 +163,10 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
               <SectionSelect items={navItems} hasPendingChangesRef={hasPendingChangesRef} />
             )}
             <main className="flex-1 overflow-y-auto">
-              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</div>
+              <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+                <TabActivityBanner activityUrl={`/api/checklists/${id}/activity`} />
+                {children}
+              </div>
             </main>
           </div>
         </div>
