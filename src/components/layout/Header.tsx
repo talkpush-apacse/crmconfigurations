@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ClipboardList, Download, Eye, History, Link2, MoreHorizontal, X } from "lucide-react";
+import { ArrowLeft, Check, ClipboardList, Download, Eye, History, Link2, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { NavItem } from "./TopNav";
@@ -82,6 +86,8 @@ export function Header({
 }: HeaderProps) {
   const isStaff = variant === "staff";
   const lookControl = useChecklistLook();
+  const sameNameAsCompany =
+    !!company && company.name.trim().toLowerCase() === clientName.trim().toLowerCase();
 
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,8 +128,9 @@ export function Header({
     : 0;
 
   // On wide screens Export is its own button, so the menu only has something
-  // to hold when there are staff actions. On phones it always holds Export.
-  const hasSecondaryActions = Boolean(snapshotsHref) || Boolean(historyHref) || Boolean(onApplyTemplate);
+  // to hold when there are staff actions or the page look. On phones it always holds Export.
+  const hasSecondaryActions =
+    Boolean(snapshotsHref) || Boolean(historyHref) || Boolean(onApplyTemplate) || Boolean(lookControl);
 
   return (
     <header className="shrink-0 border-b border-border bg-card">
@@ -131,17 +138,29 @@ export function Header({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 sm:px-6 lg:px-8">
         <div className="flex min-w-0 basis-full items-center gap-2 sm:basis-0 sm:flex-1">
           {isStaff && (
-            <>
+            sameNameAsCompany ? (
+              // The company and the checklist share a name, so the trail would read "X / X". One arrow back instead.
               <Link
-                href={company ? `/admin/companies/${company.id}` : "/admin"}
-                className="flex min-h-11 max-w-40 shrink-0 items-center truncate rounded-md text-[13px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
+                href={`/admin/companies/${company!.id}`}
+                aria-label={`Back to ${company!.name}`}
+                title={`Back to ${company!.name}`}
+                className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70 md:size-8"
               >
-                {company ? company.name : "Checklists"}
+                <ArrowLeft className="h-4 w-4" />
               </Link>
-              <span className="text-muted-foreground/60" aria-hidden="true">
-                /
-              </span>
-            </>
+            ) : (
+              <>
+                <Link
+                  href={company ? `/admin/companies/${company.id}` : "/admin"}
+                  className="flex min-h-11 max-w-40 shrink-0 items-center truncate rounded-md text-[13px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
+                >
+                  {company ? company.name : "Checklists"}
+                </Link>
+                <span className="text-muted-foreground/60" aria-hidden="true">
+                  /
+                </span>
+              </>
+            )
           )}
           <h1 className="min-w-0 truncate font-[family-name:var(--font-display)] text-[19px] font-medium leading-tight tracking-[-0.02em] text-foreground">
             {clientName}
@@ -226,32 +245,6 @@ export function Header({
             />
           )}
 
-          {lookControl && (
-            <div
-              role="group"
-              aria-label="Page look"
-              title="Modern: larger text, high contrast. Classic: the previous look."
-              className="hidden items-center overflow-hidden rounded-md border-2 border-input sm:inline-flex"
-            >
-              {(["modern", "classic"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={lookControl.look === option}
-                  onClick={() => lookControl.setLook(option)}
-                  className={cn(
-                    "h-11 px-3 text-[13px] font-semibold capitalize outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/70 md:h-8",
-                    lookControl.look === option
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-foreground hover:bg-secondary"
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
-
           {shareLink && (
             <Button
               type="button"
@@ -328,13 +321,26 @@ export function Header({
                 </DropdownMenuItem>
               )}
               {lookControl && (
-                <DropdownMenuItem
-                  onClick={() => lookControl.setLook(lookControl.look === "modern" ? "classic" : "modern")}
-                  className="min-h-11 sm:hidden"
-                >
-                  <Eye className="h-4 w-4" />
-                  {lookControl.look === "modern" ? "Switch to classic look" : "Switch to modern look"}
-                </DropdownMenuItem>
+                <>
+                  {(shareLink || snapshotsHref || historyHref || onApplyTemplate) && <DropdownMenuSeparator />}
+                  <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <Eye className="h-3.5 w-3.5" />
+                    Page look
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={lookControl.look}
+                    onValueChange={(value) => lookControl.setLook(value === "classic" ? "classic" : "modern")}
+                  >
+                    <DropdownMenuRadioItem value="modern" className="min-h-11 md:min-h-0">
+                      Modern
+                      <span className="ml-auto pl-3 text-xs text-muted-foreground">larger text</span>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="classic" className="min-h-11 md:min-h-0">
+                      Classic
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator className="sm:hidden" />
+                </>
               )}
               <DropdownMenuItem onClick={handleExport} className="min-h-11 sm:hidden">
                 <Download className="h-4 w-4" />

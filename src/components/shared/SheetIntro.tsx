@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { CollapsibleText } from "@/components/shared/CollapsibleText";
 import {
   Tooltip,
   TooltipContent,
@@ -49,8 +50,10 @@ export function SheetIntro({ title, description }: SheetIntroProps) {
           </Tooltip>
         )}
       </div>
-      {/* The client form shows what the page is for as plain text. Elsewhere it stays in the tooltip. */}
-      {description && <div className="cf-only cf-lede space-y-1">{description}</div>}
+      {/* The client form shows what the page is for as plain text, two lines until asked for more. Elsewhere it stays in the tooltip. */}
+      {description && (
+        <CollapsibleText className="cf-only cf-lede space-y-1">{description}</CollapsibleText>
+      )}
     </div>
   );
 }

@@ -10,7 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Download, Upload, CheckCircle2, AlertCircle, TriangleAlert } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Download, Upload, CheckCircle2, AlertCircle, TriangleAlert, ChevronDown, FileSpreadsheet } from "lucide-react";
 import { generateCsv, generateCsvTemplate, parseCsvWithReport, downloadCsv } from "@/lib/csv-utils";
 import type { ColumnDef } from "@/lib/types";
 
@@ -217,47 +224,44 @@ export function CsvToolbar({ columns, sampleRow, onImport, sheetName, exportRows
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownloadTemplate}
-        className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
-      >
-        <Download className="mr-1 h-3.5 w-3.5" />
-        Download CSV Template
-      </Button>
-      {exportRows && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownloadCurrent}
-          className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
-        >
-          <Download className="mr-1 h-3.5 w-3.5" />
-          Download CSV
-        </Button>
-      )}
-      {extraExport && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={extraExport.onClick}
-          title={extraExport.title}
-          className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
-        >
-          <Download className="mr-1 h-3.5 w-3.5" />
-          {extraExport.label}
-        </Button>
-      )}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleUploadClick}
-        className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
-      >
-        <Upload className="mr-1 h-3.5 w-3.5" />
-        Upload CSV
-      </Button>
+      {/* One menu instead of three loose buttons: importing and exporting are occasional jobs. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            title="Import or export this table as a CSV file"
+            className="min-h-11 border-brand-lavender-darker/40 text-xs text-foreground hover:border-brand-lavender-darker hover:bg-brand-lavender-lightest md:min-h-0"
+          >
+            <FileSpreadsheet className="mr-1 h-3.5 w-3.5" />
+            Import / export CSV
+            <ChevronDown className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onSelect={handleDownloadTemplate} className="min-h-11 md:min-h-0">
+            <Download className="h-4 w-4" />
+            Download CSV template
+          </DropdownMenuItem>
+          {exportRows && (
+            <DropdownMenuItem onSelect={handleDownloadCurrent} className="min-h-11 md:min-h-0">
+              <Download className="h-4 w-4" />
+              Download CSV
+            </DropdownMenuItem>
+          )}
+          {extraExport && (
+            <DropdownMenuItem onSelect={extraExport.onClick} title={extraExport.title} className="min-h-11 md:min-h-0">
+              <Download className="h-4 w-4" />
+              {extraExport.label}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={handleUploadClick} className="min-h-11 md:min-h-0">
+            <Upload className="h-4 w-4" />
+            Upload CSV
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <input
         ref={fileInputRef}
         type="file"

@@ -242,11 +242,19 @@ function SortableNavItem({
                       aria-label="Has uploaded files"
                     />
                   )}
+                  {/* Done needs no sentence: the tick is enough. Words are kept for what still needs doing. */}
+                  {item.status === "complete" && (
+                    <span title="Complete" className="shrink-0">
+                      <StatusIndicator status={item.status} />
+                    </span>
+                  )}
                 </div>
-                <div className="cf-nav-status mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <StatusIndicator status={item.status} />
-                  <span>{getStatusLabel(item.status)}</span>
-                </div>
+                {item.status !== "complete" && (
+                  <div className="cf-nav-status mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <StatusIndicator status={item.status} />
+                    <span>{getStatusLabel(item.status)}</span>
+                  </div>
+                )}
               </div>
             </Link>
             {canChangeOwnership && (

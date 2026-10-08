@@ -706,7 +706,8 @@ select:not([data-slot]):focus {
   --tw-ring-shadow: 0 0 #0000; margin-bottom: 1.5rem;
 }
 .client-form .cf-sectionheader > div { gap: 0; }
-.client-form .cf-sectionheader p { font-size: 1.0625rem; line-height: 1.5; color: var(--cf-muted); max-width: 62ch; margin-top: 0.5rem; }
+.client-form .cf-sectionheader p,
+.client-form .cf-sectionheader .cf-sectionheader-text { font-size: 1.0625rem; line-height: 1.5; color: var(--cf-muted); max-width: 62ch; margin-top: 0.5rem; }
 
 /* Buttons: 44px targets, 2px outline, one solid navy primary */
 .client-form [data-slot="button"]:is([data-size="default"], [data-size="sm"], [data-size="lg"]) {
