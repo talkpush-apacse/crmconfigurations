@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ClipboardList, Download, Eye, History, Link2, MoreHorizontal, X } from "lucide-react";
+import { Check, ChevronDown, ClipboardList, Download, Eye, History, Link2, Loader2, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { NavItem } from "./TopNav";
@@ -15,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { SaveButton } from "@/components/shared/SaveButton";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { useChecklistLook } from "@/components/layout/ChecklistLook";
+import { useChecklistExport } from "@/components/layout/useChecklistExport";
+import { canOfferPageExport, NO_PAGE_EXPORT_REASON } from "@/lib/export-scope";
 
 interface HeaderProps {
   clientName: string;
@@ -100,12 +105,22 @@ export function Header({
   const copyLabel =
     copyState === "copied" ? "Link copied" : copyState === "failed" ? "Couldn't copy" : "Copy link";
 
-  const handleExport = () => {
-    const exportUrl = editorToken
-      ? `/api/export/by-token/${editorToken}`
-      : `/api/export/${slug}`;
-    window.open(exportUrl, "_blank");
-  };
+  // "This page" means the tab the person is on, found from the address the same way the sidebar does.
+  const pathname = usePathname();
+  const currentTab = useMemo(
+    () => items.find((item) => item.href && (pathname === item.href || pathname?.startsWith(`${item.href}/`))) ?? null,
+    [items, pathname]
+  );
+  const pageExportable = canOfferPageExport(currentTab?.slug, editorToken ? "editor" : "staff");
+  const pageReason = !currentTab ? "Open a page to export just that page." : NO_PAGE_EXPORT_REASON;
+
+  const exporter = useChecklistExport({
+    url: editorToken ? `/api/export/by-token/${editorToken}` : `/api/export/${slug}`,
+    pageSlug: pageExportable ? currentTab?.slug ?? null : null,
+    pageLabel: pageExportable ? currentTab?.label ?? null : null,
+    hasPendingChanges,
+    saveStatus,
+  });
 
   const { completeCount, inProgressCount, totalCount } = useMemo(() => {
     const statusItems = items.filter((item) => item.status !== null);
@@ -269,15 +284,22 @@ export function Header({
             </Button>
           )}
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleExport}
-            className="hidden h-11 gap-1.5 px-3 text-[13px] sm:inline-flex md:h-8"
-          >
-            <Download className="h-4 w-4" />
-            Export XLS
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden h-11 gap-1.5 px-3 text-[13px] sm:inline-flex md:h-8"
+              >
+                {exporter.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                <span aria-live="polite">{exporter.busyLabel ?? "Export XLS"}</span>
+                {!exporter.busy && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <ExportMenuItems exporter={exporter} pageExportable={pageExportable} pageReason={pageReason} />
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -336,14 +358,65 @@ export function Header({
                   {lookControl.look === "modern" ? "Switch to classic look" : "Switch to modern look"}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={handleExport} className="min-h-11 sm:hidden">
-                <Download className="h-4 w-4" />
-                Export XLS
-              </DropdownMenuItem>
+              <div className="sm:hidden">
+                <DropdownMenuSeparator />
+                <ExportMenuItems exporter={exporter} pageExportable={pageExportable} pageReason={pageReason} />
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {exporter.error && (
+        <div role="alert" className="flex items-start justify-between gap-3 border-t border-border bg-destructive/5 px-4 py-2 text-[13px] text-destructive sm:px-6 lg:px-8">
+          <span>{exporter.error}</span>
+          <button type="button" onClick={exporter.clearError} className="shrink-0 font-medium underline underline-offset-2">
+            Dismiss
+          </button>
+        </div>
+      )}
     </header>
+  );
+}
+
+/**
+ * The two ways to export. "This page" is named after the tab the person is on, so
+ * they can see what they are about to get; when the tab has no sheet in the
+ * workbook the reason is written out under it, not hidden in a tooltip.
+ */
+function ExportMenuItems({
+  exporter,
+  pageExportable,
+  pageReason,
+}: {
+  exporter: ReturnType<typeof useChecklistExport>;
+  pageExportable: boolean;
+  pageReason: string;
+}) {
+  return (
+    <>
+      <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Export to Excel</DropdownMenuLabel>
+      <DropdownMenuItem
+        disabled={!pageExportable || exporter.busy}
+        onSelect={() => exporter.start("page")}
+        className="min-h-11 items-start md:min-h-0 data-[disabled]:opacity-100"
+      >
+        <Download className={cn("mt-0.5 h-4 w-4", !pageExportable && "opacity-40")} />
+        <span className={cn("flex min-w-0 flex-col", !pageExportable && "text-muted-foreground")}>
+          <span className="truncate font-medium">
+            {pageExportable && exporter.pageLabel ? `This page: ${exporter.pageLabel}` : "This page only"}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {pageExportable ? `Just the ${exporter.pageLabel} sheet` : pageReason}
+          </span>
+        </span>
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled={exporter.busy} onSelect={() => exporter.start("all")} className="min-h-11 items-start md:min-h-0">
+        <Download className="mt-0.5 h-4 w-4" />
+        <span className="flex min-w-0 flex-col">
+          <span className="font-medium">Entire checklist</span>
+          <span className="text-xs text-muted-foreground">Every page in one workbook</span>
+        </span>
+      </DropdownMenuItem>
+    </>
   );
 }
