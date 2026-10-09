@@ -1,5 +1,18 @@
 [
   {
+    "version": "3.7",
+    "name": "Version 3.7 - Calmer checklist pages",
+    "changes": [
+      "Page intros show two lines with a Show more link, instead of a long paragraph above the table; open one and the rest open too (remembered on your device)",
+      "The three CSV buttons are now one \"Import / export CSV\" menu",
+      "The left menu shows a tick for finished sections and only spells out the status for In progress and Not started",
+      "Modern / Classic moved into the ... menu (under Page look), so the header buttons match",
+      "When the company and the checklist have the same name, the header shows a back arrow instead of repeating the name",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.6",
     "name": "Version 3.6 - See who else is editing a tab",
     "changes": [

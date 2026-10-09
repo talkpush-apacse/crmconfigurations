@@ -1,5 +1,7 @@
 "use client";
 
+import { CollapsibleText } from "@/components/shared/CollapsibleText";
+
 interface SectionHeaderProps {
   title: string;
   description?: string;
@@ -14,9 +16,9 @@ export function SectionHeader({ title, description, level = "page" }: SectionHea
         {title}
       </h2>
       {description && (
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
+        <CollapsibleText className="cf-sectionheader-text mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
           {description}
-        </p>
+        </CollapsibleText>
       )}
     </div>
   );
