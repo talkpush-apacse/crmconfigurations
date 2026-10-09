@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { omitInternalConfigForSlug, omitInternalConfigForToken } from "../src/lib/checklist-public";
+import { omitInternalConfigForSlug, omitInternalConfigForToken, omitInternalConfigForView } from "../src/lib/checklist-public";
 
 // A row shaped like a real Checklist, with every kind of column a visitor must or may not see. If this and the
 // stripping functions disagree, a visitor link is leaking something it should not (or hiding something a tab needs).
@@ -8,6 +8,7 @@ const row = {
   id: "c1",
   slug: "acme",
   editorToken: "secret-editor-token",
+  viewToken: "secret-view-token",
   clientName: "Acme",
   ownerEmail: "owner@example.com",
   version: 3,
@@ -25,7 +26,7 @@ const row = {
 
 test("client link: never receives the editor token, owner email, internal config or bookkeeping", () => {
   const out = omitInternalConfigForSlug(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
     assert.equal(key in out, false, `${key} must not reach a client link`);
   }
   assert.equal(out.slug, "acme");
@@ -35,7 +36,7 @@ test("client link: never receives the editor token, owner email, internal config
 
 test("editor link: keeps admin settings and field versions, but never the token echo, owner email or internal config", () => {
   const out = omitInternalConfigForToken(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
     assert.equal(key in out, false, `${key} must not reach an editor link`);
   }
   assert.deepEqual(out.adminSettings, { sms: "internal" });
@@ -43,9 +44,19 @@ test("editor link: keeps admin settings and field versions, but never the token 
   assert.equal(out.clientName, "Acme");
 });
 
+test("view link: gets the client slice (no admin settings), and never either secret link", () => {
+  const out = omitInternalConfigForView(row) as Record<string, unknown>;
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+    assert.equal(key in out, false, `${key} must not reach a view link`);
+  }
+  assert.equal(out.clientName, "Acme");
+  assert.deepEqual(out.sites, [{ id: "s1" }]);
+});
+
 test("stripping never mutates the row it is given", () => {
   const copy = JSON.parse(JSON.stringify(row));
   omitInternalConfigForSlug(row);
   omitInternalConfigForToken(row);
+  omitInternalConfigForView(row);
   assert.deepEqual(row, copy);
 });

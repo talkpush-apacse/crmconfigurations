@@ -11,6 +11,9 @@ model Checklist {
   id          String   @id @default(cuid())
   slug        String   @unique
   editorToken String   @unique @default(uuid())
+  // The read-only "can view" link (/view/<viewToken>). Empty = no view link is on. Staff can turn it off or give it a
+  // new address at any time. Never sent to a client, editor or view link: see src/lib/checklist-public.ts.
+  viewToken   String?  @unique
   clientName  String
   ownerEmail  String?
   // Which company this checklist belongs to. Empty = not linked yet ("needs a company").
@@ -60,9 +63,71 @@ model Checklist {
   customTabs     Json?
 
   snapshots      ChecklistSnapshot[]
+  // Named edit links and the record of who changed what. Staff-only: never sent to editor or client links.
+  editLinks      ChecklistEditLink[]
+  editEvents     ChecklistEditEvent[]
 
   @@index([clientName])
   @@index([accountId])
+}
+
+// One named link for one person (for example "Jane Cruz (TP)"). The link text is stored so staff can copy it
+// again, like the original Checklist.editorToken. Never select `token` in a list query other than the staff
+// "Edit links" screen. A turned-off link keeps its row (revokedAt) so the history still names who it was.
+model ChecklistEditLink {
+  id             String    @id @default(cuid())
+  checklistId    String
+  checklist      Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  name           String
+  token          String    @unique
+  createdByLabel String?
+  createdAt      DateTime  @default(now())
+  firstOpenedAt  DateTime?
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+
+  events         ChecklistEditEvent[]
+
+  @@index([checklistId, createdAt])
+}
+
+// One recorded change: one cell (row + column), one list item, or one whole-field/system change.
+// Written after the save has committed, so a failure here can never fail someone's save.
+model ChecklistEditEvent {
+  id               String    @id @default(cuid())
+  checklistId      String
+  checklist        Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  linkId           String?
+  link             ChecklistEditLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  // link | legacy_link | slug | admin | mcp | system. actorName is copied here so history survives a rename or turn-off.
+  actorType        String
+  actorName        String
+
+  tabKey           String
+  tabLabel         String
+  rowId            String?
+  rowLabel         String?
+  fieldKey         String?
+  fieldLabel       String?
+  // edited | added | deleted | restored | reordered | replaced | setup | file | system
+  changeType       String
+  summary          String
+  before           Json?
+  after            Json?
+  truncated        Boolean   @default(false)
+
+  checklistVersion Int
+  // Same person + same cell inside the same 10-minute window share one key, so typing makes one row, not hundreds.
+  coalesceKey      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+
+  @@unique([checklistId, coalesceKey])
+  @@index([checklistId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([checklistId, linkId, createdAt(sort: Desc)])
 }
 
 model ChecklistSnapshot {

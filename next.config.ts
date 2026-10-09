@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/client/:slug", destination: "/client/:slug/welcome", permanent: false },
       { source: "/editor/:token", destination: "/editor/:token/welcome", permanent: false },
+      { source: "/view/:token", destination: "/view/:token/welcome", permanent: false },
     ];
   },
   async headers() {
@@ -47,6 +48,15 @@ const nextConfig: NextConfig = {
       // never cache or index the response. These come after the site-wide entry so they take precedence.
       {
         source: "/share/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      // The read-only checklist view link: same rule, the secret is in the URL.
+      {
+        source: "/view/:path*",
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "Cache-Control", value: "no-store, max-age=0" },
@@ -80,6 +90,29 @@ const nextConfig: NextConfig = {
       {
         source: "/api/share/:path*",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+      // Editor links carry a secret in the URL (a named link or the original shared link): same rule as the pages above.
+      {
+        source: "/editor/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/api/checklists/by-token/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+      {
+        source: "/api/export/by-token/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
       },
       // Claude connector sign-in: pages and responses carry one-time codes and tokens, so never cache them or send a Referer.
       {

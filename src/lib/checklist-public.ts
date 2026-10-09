@@ -19,6 +19,8 @@ export function omitInternalConfigForSlug<T extends Record<string, unknown>>(che
   delete publicChecklist.configuratorChecklist;
   // editorToken must never be returned to slug-based public viewers.
   delete publicChecklist.editorToken;
+  // The read-only view link is a secret too: only staff are shown it.
+  delete publicChecklist.viewToken;
   // Internal telephony/SMS operational config, not shown to clients.
   delete publicChecklist.adminSettings;
   // Optimistic-concurrency bookkeeping: internal, not part of any tab's UI.
@@ -29,6 +31,9 @@ export function omitInternalConfigForSlug<T extends Record<string, unknown>>(che
   delete publicChecklist.notificationState;
   // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
   delete publicChecklist.accountId;
+  // Named edit links (secret link text) and the edit history: staff only.
+  delete publicChecklist.editLinks;
+  delete publicChecklist.editEvents;
   return publicChecklist;
 }
 
@@ -40,11 +45,28 @@ export function omitInternalConfigForToken<T extends Record<string, unknown>>(ch
   delete publicChecklist.configuratorChecklist;
   // editorToken is already known to the caller; don't echo it back.
   delete publicChecklist.editorToken;
+  // The view link is a different secret from the editor link: an editor must not learn it.
+  delete publicChecklist.viewToken;
   // A real person's email address. The editor UI never renders it, and a bare link needs no other auth.
   delete publicChecklist.ownerEmail;
   // Per-tab edit/notify timestamps for the owner-email feature: internal bookkeeping.
   delete publicChecklist.notificationState;
   // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
   delete publicChecklist.accountId;
+  // Named edit links (secret link text) and the edit history: staff only.
+  delete publicChecklist.editLinks;
+  delete publicChecklist.editEvents;
+  return publicChecklist;
+}
+
+/**
+ * View link (/view/<token>): read only, and shown the same slice a client sees. Anyone holding the link can read
+ * it, so it gets the narrower (client) slice, not the editor slice with the telephony/SMS settings.
+ */
+export function omitInternalConfigForView<T extends Record<string, unknown>>(checklist: T) {
+  const publicChecklist = omitInternalConfigForSlug(checklist);
+  // Never echo the secret back, and no hidden field of the editor slice sneaks in.
+  delete publicChecklist.viewToken;
+  delete publicChecklist.editorToken;
   return publicChecklist;
 }

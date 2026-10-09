@@ -840,6 +840,8 @@ export interface ChecklistData {
   id: string;
   slug: string;
   editorToken: string;
+  /** Editor pages only: the person's name for a named edit link ("Editing as ..."). Null for the original shared link. */
+  editingAs?: string | null;
   clientName: string;
   ownerEmail: string | null;
   createdAt: string;

@@ -125,3 +125,7 @@ npx tsx scripts/check-share-route.ts <url>    # public client link, over real HT
 
 See [docs/project-tracker-release.md](docs/project-tracker-release.md): the Supabase SQL (additive, re-runnable,
 rehearsed), Vercel variables, verification steps and rollback.
+
+Named edit links and edit history: [docs/checklist-edit-history-release.md](docs/checklist-edit-history-release.md)
+(2 new tables, no new variables). The tests that use a database (`tests/*-db.test.ts`) run only when
+`WORKFLOW_TEST_DATABASE_URL` points at a **local** Postgres with `ssl = on`.

@@ -1,5 +1,57 @@
 [
   {
+    "version": "3.8",
+    "name": "Version 3.8 - Share this page: can-view and can-edit links",
+    "changes": [
+      "New Share button on the checklist page: copy a can-view or can-edit link that opens the exact tab you are on",
+      "Can view is a new read-only link: they see what the client sees and cannot change anything. Staff create it when needed, can give it a new address, or turn it off at once",
+      "Can edit is the checklist's editor link; \"Give someone their own edit link\" opens the named links so their changes carry their name",
+      "Share and Export XLS now look and size the same in the Modern look",
+      "Needs a one-time database change (one new optional column); the original editor links, named links and client link are untouched"
+    ],
+    "deployed_at": null
+  },
+  {
+    "version": "3.7",
+    "name": "Version 3.7 - Calmer checklist pages",
+    "changes": [
+      "Page intros show two lines with a Show more link, instead of a long paragraph above the table; open one and the rest open too (remembered on your device)",
+      "The three CSV buttons are now one \"Import / export CSV\" menu",
+      "The left menu shows a tick for finished sections and only spells out the status for In progress and Not started",
+      "Modern / Classic moved into the ... menu (under Page look), so the header buttons match",
+      "When the company and the checklist have the same name, the header shows a back arrow instead of repeating the name",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
+    "version": "3.6",
+    "name": "Version 3.6 - See who else is editing a tab",
+    "changes": [
+      "A banner now appears on a tab when someone else has saved a change to it: amber with a Reload button if they saved since you opened the page (your next save of that tab would not go through), or a quieter note if they changed it in the last 10 minutes",
+      "Works on editor links, the client form link and the staff checklist pages; checks every 15 seconds while the page is on screen",
+      "Names come from the edit history: clients see staff and Claude as \"Talkpush team\", never an email address; staff see full names",
+      "It only reports saved changes (it cannot tell who merely has the tab open) and never changes how saving works",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
+    "version": "3.5",
+    "name": "Version 3.5 - Named edit links and edit history",
+    "changes": [
+      "Give each person their own editor link (for example \"Jane Cruz (TP)\"): create, copy, rename, give a new address, or turn off, from the checklist's ... menu",
+      "New Edit history page per checklist: who changed what, when, and the text before and after, with filters for person and tab",
+      "Edits through a named link, the original editor link, the client form link, staff saves, Claude's custom-tab changes and snapshot restores are recorded; passwords and keys are never stored",
+      "Editor pages show \"Editing as <name>\" for a named link, and a friendly page when a link has been turned off",
+      "The original editor link keeps working and is shown in the history as \"Original shared link (unnamed)\"",
+      "History starts when this ships; earlier changes are not recorded",
+      "Editor links and exports no longer pass the secret address on to other sites and are not cached",
+      "Database: 2 new tables only, applied with supabase/migrations/20261008120000_add_checklist_edit_history.sql"
+    ],
+    "deployed_at": "2026-10-08"
+  },
+  {
     "version": "3.4",
     "name": "Version 3.4 - Talkpush Implementation Hub",
     "changes": [

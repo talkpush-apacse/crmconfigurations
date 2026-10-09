@@ -4,6 +4,8 @@ import { scheduleNotificationSweep } from "@/lib/notification-sweep";
 import { accumulateNotificationState } from "@/lib/notification-state";
 import { CHECKLIST_JSON_FIELDS, type ChecklistJsonField } from "@/lib/types";
 import { validateCustomTabsData } from "@/lib/custom-tab-service";
+import { scheduleSaveRecord, scheduleWholeDocumentRecord } from "@/lib/edit-history/record";
+import { SLUG_ACTOR } from "@/lib/edit-history/types";
 
 const PUBLIC_JSON_FIELDS = CHECKLIST_JSON_FIELDS.filter(
   (field) => field !== "atsIntegrations" && field !== "integrations"
@@ -120,7 +122,7 @@ export async function PUT(
           select: { id: true, version: true, updatedAt: true },
         });
 
-        return { status: 200 as const, checklist };
+        return { status: 200 as const, checklist, before: currentChecklist };
       });
 
       if (result.status === 404) {
@@ -149,6 +151,15 @@ export async function PUT(
         updatedAt: result.checklist.updatedAt,
       });
       scheduleNotificationSweep(requestOrigin);
+      // Record who changed what (this link is shared and unnamed), after the response so it never affects the save.
+      scheduleSaveRecord({
+        checklistId: id,
+        actor: SLUG_ACTOR,
+        version: result.checklist.version,
+        before: result.before,
+        after: body as Record<string, unknown>,
+        fields: validFields,
+      });
       return response;
     }
 
@@ -281,6 +292,7 @@ export async function PUT(
 
     const response = NextResponse.json({ id: checklist.id, version: checklist.version, updatedAt: checklist.updatedAt });
     scheduleNotificationSweep(requestOrigin);
+    scheduleWholeDocumentRecord({ checklistId: id, actor: SLUG_ACTOR, version: checklist.version, fieldCount: changedFieldsForNotification.length, markFields: PUBLIC_JSON_FIELDS });
     return response;
   } catch (err) {
     console.error("PUT /api/checklists/by-slug/[slug] error:", err);
