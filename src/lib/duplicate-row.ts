@@ -128,6 +128,12 @@ function applySuffix(
  * from Excel) comes back holding only the visible rows. Rows are matched by id
  * so soft-deleted entries keep their place, and rows the paste created — which
  * have ids the full array has never seen — are appended in order.
+ *
+ * The visible rows are also written back in the ORDER given by `nextVisible`:
+ * a drag-to-reorder or a column sort hands this function the same rows in a new
+ * order, and keeping every row in its old slot silently discarded that. The
+ * slots those rows occupy are refilled in the new order; soft-deleted rows sit
+ * in slots of their own and are never moved.
  */
 export function mergeVisibleRows<T extends BaseRow>(
   fullArray: T[],
@@ -138,12 +144,33 @@ export function mergeVisibleRows<T extends BaseRow>(
     if (row.id) byId.set(row.id, row);
   }
 
-  const merged = fullArray.map((row) =>
-    row.id && byId.has(row.id) ? (byId.get(row.id) as T) : row,
-  );
-
   const knownIds = new Set(fullArray.map((r) => r.id).filter(Boolean));
   const added = nextVisible.filter((r) => !r.id || !knownIds.has(r.id));
+
+  const slots: number[] = [];
+  fullArray.forEach((row, index) => {
+    if (row.id && byId.has(row.id)) slots.push(index);
+  });
+  const inNewOrder: T[] = [];
+  const seen = new Set<string>();
+  for (const row of nextVisible) {
+    if (row.id && knownIds.has(row.id) && !seen.has(row.id)) {
+      seen.add(row.id);
+      inNewOrder.push(row);
+    }
+  }
+
+  const merged = [...fullArray];
+  if (inNewOrder.length === slots.length) {
+    slots.forEach((slot, i) => {
+      merged[slot] = inNewOrder[i];
+    });
+  } else {
+    // Duplicate ids make the slots ambiguous: keep each row where it was.
+    slots.forEach((slot) => {
+      merged[slot] = byId.get(fullArray[slot].id as string) as T;
+    });
+  }
 
   return [...merged, ...added];
 }
