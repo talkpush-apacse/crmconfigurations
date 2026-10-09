@@ -1428,7 +1428,7 @@ export function EditableTable<TRow extends EditableRow>({
           </div>
         </div>
       )}
-      {attentionIssues.length > 0 && (
+      {attentionIssues.length > 0 && !isReadOnly && (
         <div className="cf-attn mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 gap-2">

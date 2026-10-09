@@ -1,5 +1,17 @@
 [
   {
+    "version": "3.8",
+    "name": "Version 3.8 - Share this page: can-view and can-edit links",
+    "changes": [
+      "New Share button on the checklist page: copy a can-view or can-edit link that opens the exact tab you are on",
+      "Can view is a new read-only link: they see what the client sees and cannot change anything. Staff create it when needed, can give it a new address, or turn it off at once",
+      "Can edit is the checklist's editor link; \"Give someone their own edit link\" opens the named links so their changes carry their name",
+      "Share and Export XLS now look and size the same in the Modern look",
+      "Needs a one-time database change (one new optional column); the original editor links, named links and client link are untouched"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.7",
     "name": "Version 3.7 - Calmer checklist pages",
     "changes": [

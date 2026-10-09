@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/client/:slug", destination: "/client/:slug/welcome", permanent: false },
       { source: "/editor/:token", destination: "/editor/:token/welcome", permanent: false },
+      { source: "/view/:token", destination: "/view/:token/welcome", permanent: false },
     ];
   },
   async headers() {
@@ -47,6 +48,15 @@ const nextConfig: NextConfig = {
       // never cache or index the response. These come after the site-wide entry so they take precedence.
       {
         source: "/share/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      // The read-only checklist view link: same rule, the secret is in the URL.
+      {
+        source: "/view/:path*",
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "Cache-Control", value: "no-store, max-age=0" },
