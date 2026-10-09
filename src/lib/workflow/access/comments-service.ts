@@ -6,6 +6,8 @@ import { recordAudit } from "./audit";
 import { badRequest, forbidden, notFound } from "./errors";
 import { can } from "./permissions";
 import { isInternalNode } from "./client-view";
+import { alertAfterResponse } from "@/lib/comment-alerts/deliver";
+import { shouldAlertWorkflowComment } from "@/lib/comment-alerts/rules";
 
 export const commentCreateSchema = z.object({
   pageId: z.string().min(1).max(80),
@@ -80,6 +82,10 @@ export async function createComment(workflowId: string, who: ActingAs, input: Co
     },
   });
   await recordAudit({ workflowId, ...actorOf(who), action: input.parentId ? "comment.replied" : "comment.created", detail: { commentId: row.id, nodeId: row.nodeId } });
+  // Email the super admin about comments from outside the team. Runs after the response and can never fail the comment.
+  if (shouldAlertWorkflowComment(who)) {
+    alertAfterResponse({ kind: "workflow", workflowId, authorName: displayNameOf(who), body: row.body, isReply: Boolean(input.parentId) });
+  }
   return toView(row, who);
 }
 

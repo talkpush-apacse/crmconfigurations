@@ -4,6 +4,8 @@ import type { Actor } from "./actor";
 import { diffFields, logActivity, toJson } from "./activity";
 import { validateDependencySet } from "./dependencies";
 import { parseDateOnly } from "./dates";
+import { alertAfterResponse } from "@/lib/comment-alerts/deliver";
+import { shouldAlertTrackerRemark, trackerAuthorName } from "@/lib/comment-alerts/rules";
 import { badRequest, notFound } from "./errors";
 import { serializeItem, serializeRemark, type ItemWithRelations } from "./serialize";
 import { planStatusChange } from "./status";
@@ -259,6 +261,10 @@ export async function addRemark(itemId: string, input: unknown, actor: Actor) {
     });
     return created;
   });
+  // Email the super admin about shared comments from a client or Claude. Runs after the response and can never fail the comment.
+  if (shouldAlertTrackerRemark({ via: actor.via, visibility: data.visibility })) {
+    alertAfterResponse({ kind: "tracker", itemId, authorName: trackerAuthorName(actor.label, actor.via), body: data.body });
+  }
   return serializeRemark(remark);
 }
 
