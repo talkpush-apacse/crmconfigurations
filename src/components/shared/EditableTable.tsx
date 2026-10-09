@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Fragment, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
-import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info, ArrowDownCircle, ArrowUp, ArrowDown, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Copy, X, ChevronRight, ChevronDown, GripVertical, AlertTriangle, ClipboardCheck, Info, ArrowDownCircle, ArrowUp, ArrowDown, ArrowUpDown, Undo2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,6 +36,13 @@ import { EditableCell } from "./EditableCell";
 import { GridNavProvider } from "./grid-nav";
 import { CsvToolbar, type CsvImportMode } from "./CsvToolbar";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { sortRowsByColumn, restoreRowOrder, type SortDirection } from "@/lib/table-sort";
 import { BulkActionBar } from "./BulkActionBar";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { cn } from "@/lib/utils";
@@ -919,6 +926,14 @@ export function EditableTable<TRow extends EditableRow>({
     tone: "ok" | "warn";
   } | null>(null);
   const pasteNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The last sort the editor applied. `previousIds` is the row order from just
+  // before it, which is all "Undo sort" needs to put things back.
+  const [lastSort, setLastSort] = useState<{
+    key: string;
+    label: string;
+    direction: SortDirection;
+    previousIds: string[];
+  } | null>(null);
   const [highlightedIssueRowId, setHighlightedIssueRowId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1125,6 +1140,26 @@ export function EditableTable<TRow extends EditableRow>({
   };
 
   const canReorder = !!onReorder && !isReadOnly;
+
+  // Sorting re-orders the saved rows through the same `onReorder` a drag uses,
+  // so every sheet saves it exactly as it saves a drag — no per-sheet code.
+  const handleSort = (col: ColumnDef, direction: SortDirection) => {
+    if (!onReorder || data.length < 2) return;
+    setLastSort({
+      key: col.key,
+      label: col.label,
+      direction,
+      // Keep the ORIGINAL order if the editor sorts again before undoing.
+      previousIds: lastSort?.previousIds ?? sortableIds,
+    });
+    onReorder(sortRowsByColumn(data, col, direction));
+  };
+
+  const handleUndoSort = () => {
+    if (!onReorder || !lastSort) return;
+    onReorder(restoreRowOrder(data, lastSort.previousIds));
+    setLastSort(null);
+  };
 
   // ===== Spreadsheet paste =====
   //
@@ -1462,6 +1497,31 @@ export function EditableTable<TRow extends EditableRow>({
           </div>
         </div>
       )}
+      {lastSort && canReorder && (
+        <div
+          role="status"
+          className="mb-2 flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800"
+        >
+          <span>
+            Sorted by <span className="font-medium">{lastSort.label}</span>,{" "}
+            {lastSort.direction === "asc" ? "A → Z" : "Z → A"}
+          </span>
+          <span className="flex shrink-0 items-center gap-1">
+            <Button type="button" size="sm" variant="outline" onClick={handleUndoSort} className="h-8 bg-white text-xs">
+              <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+              Undo sort
+            </Button>
+            <button
+              type="button"
+              onClick={() => setLastSort(null)}
+              aria-label="Dismiss"
+              className="rounded p-1 text-slate-500 hover:text-slate-800"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        </div>
+      )}
       {pasteNotice && (
         <div
           role="status"
@@ -1746,6 +1806,48 @@ export function EditableTable<TRow extends EditableRow>({
                           </div>
                         </TooltipContent>
                       </Tooltip>
+                    )}
+                    {canReorder && data.length > 1 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Sort by ${col.label}`}
+                            title={`Sort by ${col.label}`}
+                            className={cn(
+                              "inline-flex shrink-0 items-center rounded p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-1",
+                              lastSort?.key === col.key
+                                ? spreadsheetMode
+                                  ? "text-slate-900"
+                                  : "text-white"
+                                : spreadsheetMode
+                                  ? "text-slate-400 hover:text-slate-700"
+                                  : "text-white/70 hover:text-white",
+                              spreadsheetMode ? "focus-visible:ring-slate-400" : "focus-visible:ring-white/70"
+                            )}
+                          >
+                            {lastSort?.key === col.key ? (
+                              lastSort.direction === "asc" ? (
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              )
+                            ) : (
+                              <ArrowUpDown className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-44">
+                          <DropdownMenuItem onSelect={() => handleSort(col, "asc")}>
+                            <ArrowDown className="h-4 w-4" />
+                            Sort A → Z
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleSort(col, "desc")}>
+                            <ArrowUp className="h-4 w-4" />
+                            Sort Z → A
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </span>
                   {spreadsheetMode && !isReadOnly && (
