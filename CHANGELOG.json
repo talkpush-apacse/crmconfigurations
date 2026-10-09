@@ -1,5 +1,16 @@
 [
   {
+    "version": "3.9",
+    "name": "Version 3.9 - Instant email when a client comments",
+    "changes": [
+      "The super admin now gets an email within seconds when a client comments on a workflow, or when a client or Claude adds a shared comment on a project tracker item",
+      "Comments written by signed-in Talkpush staff, and internal tracker notes, are not emailed; they still show in the weekday activity digest",
+      "A comment is always saved first; if the email cannot be sent, nothing changes for the person commenting",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.8",
     "name": "Version 3.8 - Share this page: can-view and can-edit links",
     "changes": [

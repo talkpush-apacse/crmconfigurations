@@ -95,3 +95,8 @@ export async function sendOwnerNotification(params: {
 export async function sendActivityDigest(params: { to: string; subject: string; html: string; text: string }): Promise<EmailResult> {
   return sendViaBrevo({ to: params.to, subject: params.subject, html: params.html, text: params.text });
 }
+
+/** An instant "someone commented" alert, already built by buildCommentAlertEmail. */
+export async function sendCommentAlert(params: { to: string; subject: string; html: string; text: string }): Promise<EmailResult> {
+  return sendViaBrevo({ to: params.to, subject: params.subject, html: params.html, text: params.text });
+}
