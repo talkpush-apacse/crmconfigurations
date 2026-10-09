@@ -2,16 +2,20 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
-import { getTabBySlug, getEnabledTabs, getCustomTabBySlug } from "@/lib/tab-config";
+import { getTabBySlug, getEnabledTabs, getCustomTabBySlug, excludeTalkpushTabs, isClientView } from "@/lib/tab-config";
 import { useChecklistContext } from "@/lib/checklist-context";
 import { sheetComponents, LazyAutoflowsSheet, LazyCustomChecklistForm, LazyCustomTabSheet } from "@/components/sheets/lazy-sheets";
 
+/**
+ * One tab of the editor link. The read-only view link (/view/<token>/<tab>) renders this same page: it only differs
+ * by the context its shell provides (isReadOnly, basePath), so the two can never show different content.
+ */
 export default function EditorTabPage() {
   const params = useParams();
   const router = useRouter();
   const tab = params.tab as string;
-  const token = params.token as string;
-  const { data, userRole } = useChecklistContext();
+  const { data, userRole, basePath } = useChecklistContext();
+  const isViewLink = isClientView(basePath) && basePath.startsWith("/view/");
 
   // Custom checklists: render the custom form regardless of tab slug
   const isCustom = !!data?.isCustom;
@@ -20,26 +24,26 @@ export default function EditorTabPage() {
   const customTab = isCustom ? null : getCustomTabBySlug(tab, data?.customTabs);
 
   // Admin users see admin-only tabs; editor link holders do not
-  const enabledTabs = useMemo(
-    () =>
-      isCustom
-        ? []
-        : getEnabledTabs(
-            data?.enabledTabs ?? null,
-            userRole === "admin",
-            data?.tabOrder ?? null,
-            data?.customTabs,
-          ),
-    [isCustom, userRole, data?.enabledTabs, data?.tabOrder, data?.customTabs]
-  );
+  const enabledTabs = useMemo(() => {
+    if (isCustom) return [];
+    const tabs = getEnabledTabs(
+      data?.enabledTabs ?? null,
+      userRole === "admin",
+      data?.tabOrder ?? null,
+      data?.customTabs,
+      isViewLink ? ((data?.tabFilledBy as Record<string, "talkpush" | "client"> | null) ?? null) : null,
+    );
+    // The view link shows what a client sees, so the tabs Talkpush fills in are not part of it.
+    return isViewLink ? excludeTalkpushTabs(tabs) : tabs;
+  }, [isCustom, isViewLink, userRole, data?.enabledTabs, data?.tabOrder, data?.customTabs, data?.tabFilledBy]);
   const isEnabled = isCustom || enabledTabs.some((t) => t.slug === tab);
 
   // Auto-redirect to first enabled tab if current tab is disabled
   useEffect(() => {
     if (!isCustom && !customTab && tabConfig && !isEnabled && enabledTabs.length > 0) {
-      router.replace(`/editor/${token}/${enabledTabs[0].slug}`);
+      router.replace(`${basePath}/${enabledTabs[0].slug}`);
     }
-  }, [isCustom, customTab, tabConfig, isEnabled, enabledTabs, token, router]);
+  }, [isCustom, customTab, tabConfig, isEnabled, enabledTabs, basePath, router]);
 
   // Dynamic browser tab title
   useEffect(() => {

@@ -11,6 +11,8 @@ import { ChecklistLookProvider, useChecklistLookState } from "@/components/layou
 import { figtree } from "@/lib/client-form-font";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ApplyRequirementsTemplateSheet } from "@/components/admin/ApplyRequirementsTemplateSheet";
+import { EditLinksDialog } from "@/components/admin/EditLinksDialog";
+import { ShareDialog, type ShareTab } from "@/components/layout/ShareDialog";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -21,6 +23,9 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
   const params = useParams();
   const id = params.id as string;
   const [applyTemplateOpen, setApplyTemplateOpen] = useState(false);
+  // "Share this page": the tab on screen when Share was pressed, so both links open that tab.
+  const [shareTab, setShareTab] = useState<{ tab: ShareTab | null } | null>(null);
+  const [editLinksOpen, setEditLinksOpen] = useState(false);
   // Same modern look as the client's checklist, with a switch back to classic. See ChecklistLook.
   const { value: lookValue, rootClass } = useChecklistLookState(undefined, figtree.variable);
   const {
@@ -147,6 +152,7 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
           historyHref={`/admin/checklists/${id}/history`}
           onApplyTemplate={isCustom ? undefined : () => setApplyTemplateOpen(true)}
+          onShare={(tab) => setShareTab({ tab })}
         />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {!isCustom && (
@@ -172,6 +178,21 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
         </div>
         </div>
         </ChecklistLookProvider>
+        <ShareDialog
+          open={shareTab !== null}
+          onOpenChange={(open) => !open && setShareTab(null)}
+          checklistId={id}
+          clientName={data.clientName}
+          editorToken={data.editorToken}
+          tab={shareTab?.tab ?? null}
+          onOpenNamedLinks={() => setEditLinksOpen(true)}
+        />
+        <EditLinksDialog
+          checklistId={id}
+          clientName={data.clientName}
+          open={editLinksOpen}
+          onOpenChange={setEditLinksOpen}
+        />
         {!isCustom && (
           <ApplyRequirementsTemplateSheet
             checklistId={id}

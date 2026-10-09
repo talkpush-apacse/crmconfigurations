@@ -65,7 +65,7 @@ function generateId(): string {
 export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUploadBannerProps) {
   const { uploadedFiles, isSkipped, setUploadedFiles, setIsSkipped } =
     useTabUpload(tabKey);
-  const { basePath } = useChecklistContext();
+  const { basePath, isReadOnly } = useChecklistContext();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TabUploadFile | null>(null);
@@ -127,6 +127,40 @@ export function TabUploadBanner({ tabKey, tabLabel, compact = false }: TabUpload
       setIsSkipped(false);
     }
   };
+
+  // Someone only looking (the view link) cannot add, remove or skip anything: they get the file list, or nothing.
+  if (isReadOnly) {
+    if (!hasFiles) return null;
+    return (
+      <ul className="mb-3 space-y-1.5" aria-label={`Files uploaded for ${tabLabel}`}>
+        {uploadedFiles.map((file) => (
+          <li
+            key={file.id}
+            className="flex items-center justify-between gap-2 rounded-md border border-brand-lavender/40 bg-white px-3 py-2 text-[13px]"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <FileIcon className="h-4 w-4 shrink-0 text-brand-lavender-darker" />
+              <span className="truncate font-medium text-gray-800" title={file.fileName}>
+                {file.fileName}
+              </span>
+              <span className="shrink-0 text-xs text-gray-500">
+                {formatBytes(file.fileSize)} · {formatDate(file.uploadedAt)}
+              </span>
+            </div>
+            <a
+              href={file.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-brand-lavender-lightest hover:text-brand-lavender-darker focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-lavender-darker md:size-7"
+              title="Download file"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   return (
     <div

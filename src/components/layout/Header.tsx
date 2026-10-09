@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ClipboardList, Download, Eye, History, Link2, Loader2, MoreHorizontal, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ClipboardList, Download, Eye, History, Link2, Loader2, MoreHorizontal, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { ShareTab } from "@/components/layout/ShareDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +60,11 @@ interface HeaderProps {
    * shows a "Copy link" button beside Export XLS.
    */
   shareLink?: string;
+  /**
+   * Staff only. Shows the Share button; it is called with the tab on screen so the links can open that same tab.
+   * (The editor link keeps its own "Copy link" button above.)
+   */
+  onShare?: (tab: ShareTab | null) => void;
 }
 
 /**
@@ -86,6 +92,7 @@ export function Header({
   editingAs = null,
   onApplyTemplate,
   shareLink,
+  onShare,
 }: HeaderProps) {
   const isStaff = variant === "staff";
   const lookControl = useChecklistLook();
@@ -115,6 +122,13 @@ export function Header({
     () => items.find((item) => item.href && (pathname === item.href || pathname?.startsWith(`${item.href}/`))) ?? null,
     [items, pathname]
   );
+  const shareCurrentTab = useCallback(() => {
+    onShare?.(
+      currentTab?.slug
+        ? { slug: currentTab.slug, label: currentTab.label, filledBy: currentTab.filledBy }
+        : null
+    );
+  }, [onShare, currentTab]);
   const pageExportable = canOfferPageExport(currentTab?.slug, editorToken ? "editor" : "staff");
   const pageReason = !currentTab ? "Open a page to export just that page." : NO_PAGE_EXPORT_REASON;
 
@@ -275,6 +289,20 @@ export function Header({
             </Button>
           )}
 
+          {onShare && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={shareCurrentTab}
+              title="Get a can-view or can-edit link to this page"
+              className="hidden h-11 gap-1.5 px-3 text-[13px] sm:inline-flex md:h-8"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          )}
+
+          {!isReadOnly && (
           <DropdownMenu>
             {/* data-slot="button": the menu trigger would otherwise replace it, and the Modern look styles buttons by that name. */}
             <DropdownMenuTrigger asChild data-slot="button">
@@ -292,6 +320,7 @@ export function Header({
               <ExportMenuItems exporter={exporter} pageExportable={pageExportable} pageReason={pageReason} />
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -299,13 +328,19 @@ export function Header({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className={cn("size-11 md:size-8", !hasSecondaryActions && "sm:hidden")}
+                className={cn("size-11 md:size-8", !hasSecondaryActions && "sm:hidden", isReadOnly && !hasSecondaryActions && "hidden")}
                 aria-label="More checklist actions"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              {onShare && (
+                <DropdownMenuItem onClick={shareCurrentTab} className="min-h-11 sm:hidden">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </DropdownMenuItem>
+              )}
               {shareLink && (
                 <DropdownMenuItem
                   onSelect={(e) => {
@@ -362,10 +397,12 @@ export function Header({
                   </DropdownMenuRadioGroup>
                 </>
               )}
-              <div className="sm:hidden">
-                <DropdownMenuSeparator />
-                <ExportMenuItems exporter={exporter} pageExportable={pageExportable} pageReason={pageReason} />
-              </div>
+              {!isReadOnly && (
+                <div className="sm:hidden">
+                  <DropdownMenuSeparator />
+                  <ExportMenuItems exporter={exporter} pageExportable={pageExportable} pageReason={pageReason} />
+                </div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

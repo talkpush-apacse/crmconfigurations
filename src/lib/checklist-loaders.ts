@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { findFullChecklistByEditorToken, touchEditLink } from "@/lib/edit-history/resolve";
 import { runAfterResponse } from "@/lib/edit-history/record";
 import type { ChecklistData } from "@/lib/types";
-import { omitInternalConfigForSlug, omitInternalConfigForToken } from "./checklist-public";
+import { omitInternalConfigForSlug, omitInternalConfigForToken, omitInternalConfigForView } from "./checklist-public";
 
 /**
  * Loads a checklist for the server-rendered client and editor pages, so the first response already carries the
@@ -36,4 +36,15 @@ export async function loadPublicChecklistByToken(token: string): Promise<Checkli
   }
   const body = omitInternalConfigForToken(found.checklist as unknown as Record<string, unknown>);
   return toPublicJson({ ...body, editingAs: found.actor.type === "link" ? found.actor.name : null });
+}
+
+/**
+ * The read-only view page's data: the client slice, found by the view link. Null for an unknown, empty or
+ * turned-off link (turning a link off clears the token, so there is nothing left to match).
+ */
+export async function loadPublicChecklistByViewToken(token: string): Promise<ChecklistData | null> {
+  if (!token) return null;
+  const row = await prisma.checklist.findUnique({ where: { viewToken: token } });
+  if (!row) return null;
+  return toPublicJson(omitInternalConfigForView(row as unknown as Record<string, unknown>));
 }
