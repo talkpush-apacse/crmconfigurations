@@ -263,13 +263,14 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "list_workflows",
     description:
-      "Find existing workflow maps by client, workflow name, or status and return edit URLs plus node/edge counts. Each result says which account it is filed under (account: null means it waits under \"Needs an account\").",
+      "Find existing workflow maps by client, workflow name, or status and return edit URLs plus node/edge counts. Each result says which account it is filed under (account: null means it waits under \"Needs an account\"). Archived workflows are left out unless include_archived is true.",
     inputSchema: {
       type: "object",
       properties: {
         search: { type: "string" },
         status: { type: "string" },
         limit: { type: "number", minimum: 1, maximum: 50 },
+        include_archived: { type: "boolean", description: "Also list archived workflows (each shows archivedAt). Default false." },
       },
       additionalProperties: false,
     },

@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const status = searchParams.get("status");
 
-    const where: Record<string, unknown> = {};
+    // Archived workflows stay out of the list unless asked for (?includeArchived=true).
+    const where: Record<string, unknown> = searchParams.get("includeArchived") === "true" ? {} : { archivedAt: null };
     if (status && status !== "all") {
       where.status = status;
     }
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
         workflowName: true,
         description: true,
         status: true,
+        archivedAt: true,
         currentVersion: true,
         createdAt: true,
         updatedAt: true,

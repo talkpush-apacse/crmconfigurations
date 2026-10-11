@@ -672,10 +672,12 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
   const search = cleanString(args.search);
   const status = cleanString(args.status);
   const rawLimit = typeof args.limit === "number" ? args.limit : 20;
+  const includeArchived = args.include_archived === true;
   const limit = Math.min(50, Math.max(1, Math.floor(rawLimit)));
 
   const workflows = await prisma.workflowProject.findMany({
     where: {
+      ...(includeArchived ? {} : { archivedAt: null }),
       ...(status && status !== "all" ? { status } : {}),
       ...(search
         ? {
@@ -695,6 +697,7 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
       workflowName: true,
       description: true,
       status: true,
+      archivedAt: true,
       nodes: true,
       edges: true,
       viewport: true,
@@ -715,6 +718,7 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
         workflowName: workflow.workflowName,
         description: workflow.description,
         status: workflow.status,
+        archivedAt: workflow.archivedAt,
         nodeCount: nodes.length,
         edgeCount: edges.length,
         editUrl: workflowEditUrl(context, workflow.id),
