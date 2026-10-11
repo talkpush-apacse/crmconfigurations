@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getNotificationTabMeta } from "@/lib/notifications";
+import { entriesFromChecklistEvents } from "./checklist-events";
 import { describeTrackerChange, describeWorkflowChange, truncate, WORKFLOW_ACTIONS_INCLUDED } from "./describe";
 import type { DigestArea, DigestEntry, DigestNote } from "./types";
 
@@ -111,38 +111,38 @@ async function collectWorkflows(w: Window): Promise<{ entries: DigestEntry[]; ca
   return { entries, capped };
 }
 
-/** "Contacts", "Contacts and Messaging", "Contacts, Messaging and Sources". */
-function listWords(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? "";
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
-
 /**
- * Checklists have no permanent change log yet. The one signal that exists is the per-tab "last edited" time that the two
- * client-link save routes keep. So this covers client edits only, one line per checklist, and only the latest edit of each
- * tab. Do NOT use the checklist's updatedAt or version: the owner-notification job raises both by itself.
+ * Checklist changes come from the edit history (ChecklistEditEvent), which records every saved change with who made it:
+ * client links, staff, Claude and restores. Rows are counted by when they were last updated, because the history merges
+ * one person's repeated changes to the same cell inside ten minutes into a single row. New checklists have no history
+ * line, so they are added from the checklist's own creation time.
  */
 async function collectChecklists(w: Window): Promise<{ entries: DigestEntry[]; capped: boolean }> {
-  const rows = await prisma.checklist.findMany({ where: { archivedAt: null }, select: { id: true, clientName: true, createdAt: true, notificationState: true } });
-  const entries: DigestEntry[] = [];
-  for (const row of rows) {
-    const base = { area: "checklist" as const, groupId: row.id, groupTitle: row.clientName, groupPath: `/admin/checklists/${row.id}` };
-    if (row.createdAt >= w.start && row.createdAt < w.end) entries.push({ ...base, at: row.createdAt, actor: null, text: "created the checklist" });
+  const [events, created] = await Promise.all([
+    prisma.checklistEditEvent.findMany({
+      where: { updatedAt: inWindow(w), changeType: { not: "checked" } },
+      orderBy: { updatedAt: "desc" },
+      take: ROW_CAP + 1,
+      select: {
+        actorType: true,
+        actorName: true,
+        tabKey: true,
+        tabLabel: true,
+        changeType: true,
+        summary: true,
+        updatedAt: true,
+        checklist: { select: { id: true, clientName: true } },
+      },
+    }),
+    prisma.checklist.findMany({ where: { createdAt: inWindow(w) }, orderBy: { createdAt: "desc" }, take: ROW_CAP + 1, select: { id: true, clientName: true, createdAt: true } }),
+  ]);
+  const capped = events.length > ROW_CAP || created.length > ROW_CAP;
 
-    const state = row.notificationState && typeof row.notificationState === "object" && !Array.isArray(row.notificationState) ? (row.notificationState as Record<string, { lastEditAt?: unknown }>) : {};
-    const edited: { label: string; at: Date }[] = [];
-    for (const [tabId, tab] of Object.entries(state)) {
-      const at = typeof tab?.lastEditAt === "string" ? new Date(tab.lastEditAt) : null;
-      if (!at || Number.isNaN(at.getTime()) || at < w.start || at >= w.end) continue;
-      edited.push({ label: getNotificationTabMeta(tabId)?.label ?? tabId, at });
-    }
-    if (edited.length > 0) {
-      edited.sort((a, b) => a.label.localeCompare(b.label));
-      const latest = edited.reduce((max, e) => (e.at > max ? e.at : max), edited[0].at);
-      entries.push({ ...base, at: latest, actor: "A client", text: `edited the ${listWords(edited.map((e) => e.label))} ${edited.length === 1 ? "tab" : "tabs"}` });
-    }
+  const entries = entriesFromChecklistEvents(events.slice(0, ROW_CAP));
+  for (const c of created.slice(0, ROW_CAP)) {
+    entries.push({ area: "checklist", groupId: c.id, groupTitle: c.clientName, groupPath: `/admin/checklists/${c.id}`, at: c.createdAt, actor: null, text: "created the checklist" });
   }
-  return { entries, capped: false };
+  return { entries, capped };
 }
 
 const AREA_LABEL: Record<DigestArea, string> = { tracker: "Project tracker", workflow: "Workflow", checklist: "Checklist" };
@@ -168,7 +168,5 @@ export async function collectDigest(w: Window): Promise<CollectResult> {
     if (s.value.capped) result.notes.push({ tone: "note", text: `There were more than ${ROW_CAP} ${AREA_LABEL[area].toLowerCase()} changes, so only the newest ${ROW_CAP} are counted here.` });
   });
 
-  // Always true until staff and Claude edits to checklists are logged.
-  result.notes.push({ tone: "info", text: "Checklist edits by staff and by Claude are not included yet, and checklist edits show the tab only." });
   return result;
 }

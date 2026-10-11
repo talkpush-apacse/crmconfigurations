@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { scheduleSaveRecord } from "@/lib/edit-history/record";
+import { SLUG_ACTOR } from "@/lib/edit-history/types";
 import type { MessagingTemplateRow } from "@/lib/types";
 
 function toPrismaJson(value: unknown) {
@@ -47,7 +49,7 @@ export async function DELETE(
         },
       });
 
-      return { status: 200 as const, version: newVersion, totalCount: next.length };
+      return { status: 200 as const, checklistId: current.id, version: newVersion, totalCount: next.length, before: existing, after: next };
     });
 
     if (result.status === 404) {
@@ -55,12 +57,22 @@ export async function DELETE(
       return NextResponse.json({ error }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       deleted: templateId,
       version: result.version,
       totalCount: result.totalCount,
     });
+    // Record who deleted what (this link is shared and unnamed), after the response so it never affects the delete.
+    scheduleSaveRecord({
+      checklistId: result.checklistId,
+      actor: SLUG_ACTOR,
+      version: result.version,
+      before: { messaging: result.before },
+      after: { messaging: result.after },
+      fields: ["messaging"],
+    });
+    return response;
   } catch (err) {
     console.error("DELETE /api/checklists/by-slug/[slug]/messaging/[templateId] error:", err);
     return NextResponse.json(
