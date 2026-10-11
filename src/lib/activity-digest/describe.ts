@@ -159,7 +159,7 @@ export function summariseArea(area: DigestArea, entries: DigestEntry[], recipien
   const ordered = [...byGroup.values()].sort((a, b) => b.length - a.length || a[0].groupTitle.localeCompare(b[0].groupTitle));
   return {
     area,
-    total: mine.length,
+    total: mine.reduce((n, e) => n + (e.count ?? 1), 0),
     groups: ordered.slice(0, MAX_GROUPS_PER_AREA).map((g) => buildGroup(g, recipientEmail)),
     hiddenGroups: Math.max(0, ordered.length - MAX_GROUPS_PER_AREA),
   };

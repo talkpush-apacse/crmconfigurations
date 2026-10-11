@@ -16,6 +16,8 @@ export interface DigestEntry {
   text: string;
   /** Entries by the same person with the same key are merged into one line with a count. */
   collapseKey?: string;
+  /** How many changes this one entry stands for. Defaults to 1. */
+  count?: number;
 }
 
 /** A line under the sections that says honestly what is missing or partial. */

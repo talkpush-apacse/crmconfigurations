@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { scheduleSaveRecord } from "@/lib/edit-history/record";
 import type { CustomTab } from "@/lib/types";
 import {
   buildCustomTabFromTemplate,
@@ -93,12 +94,24 @@ export async function POST(
         status: 200 as const,
         version: newVersion,
         applied,
+        before: { customTabs: existingTabs, tabFilledBy: current.tabFilledBy },
+        after: { customTabs: [...existingTabs, applied.customTab], tabFilledBy: nextTabFilledBy },
       };
     });
 
     if (result.status === 404) {
       return NextResponse.json({ error: "Checklist not found" }, { status: 404 });
     }
+
+    // Record who applied the template, after the response so it never affects the save.
+    scheduleSaveRecord({
+      checklistId: id,
+      actor: { type: "admin", name: auth.email },
+      version: result.version,
+      before: result.before,
+      after: result.after,
+      fields: ["customTabs", "tabFilledBy"],
+    });
 
     return NextResponse.json({
       appliedTab: {
