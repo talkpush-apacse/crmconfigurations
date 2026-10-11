@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.1",
+    "name": "Version 4.1 - SE Brief hidden in the workflow editor",
+    "changes": [
+      "The SE Brief button and side panel are gone from the workflow editor, to keep the toolbar focused",
+      "Nothing is deleted: any SE Brief notes already saved are kept, and Claude can still read and add them",
+      "Layout check and Review work as before",
+      "No database change"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "4.0",
     "name": "Version 4.0 - Archive a CRM config checklist",
     "changes": [
