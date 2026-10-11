@@ -13,6 +13,9 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ApplyRequirementsTemplateSheet } from "@/components/admin/ApplyRequirementsTemplateSheet";
 import { EditLinksDialog } from "@/components/admin/EditLinksDialog";
 import { ShareDialog, type ShareTab } from "@/components/layout/ShareDialog";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/tracker/ConfirmDialog";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -26,6 +29,11 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
   // "Share this page": the tab on screen when Share was pressed, so both links open that tab.
   const [shareTab, setShareTab] = useState<{ tab: ShareTab | null } | null>(null);
   const [editLinksOpen, setEditLinksOpen] = useState(false);
+  // Archive: `undefined` = use what the server sent; set once staff archive or restore from this page.
+  const { canEdit } = useCurrentUser();
+  const [archivedOverride, setArchivedOverride] = useState<string | null | undefined>(undefined);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   // Same modern look as the client's checklist, with a switch back to classic. See ChecklistLook.
   const { value: lookValue, rootClass } = useChecklistLookState(undefined, figtree.variable);
   const {
@@ -103,6 +111,26 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
     };
   });
 
+  const archivedAt = archivedOverride !== undefined ? archivedOverride : ((data as { archivedAt?: string | null }).archivedAt ?? null);
+  const isArchived = !!archivedAt;
+
+  // Archiving never touches the checklist's content or version, so it can't clash with an unsaved edit.
+  const setArchived = async (archived: boolean) => {
+    setArchiveError(null);
+    try {
+      const res = await fetch(`/api/checklists/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { archivedAt?: string | null; error?: string };
+      if (!res.ok) throw new Error(body.error || "Couldn't change the archive status. Please try again.");
+      setArchivedOverride(body.archivedAt ?? null);
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : "Couldn't change the archive status. Please try again.");
+    }
+  };
+
   const handleTabReorder = (slugs: string[]) => {
     updateField("tabOrder", slugs);
   };
@@ -152,8 +180,25 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           snapshotsHref={`/admin/checklists/${id}/snapshots`}
           historyHref={`/admin/checklists/${id}/history`}
           onApplyTemplate={isCustom ? undefined : () => setApplyTemplateOpen(true)}
+          onToggleArchive={canEdit ? () => (isArchived ? void setArchived(false) : setConfirmArchive(true)) : undefined}
+          archived={isArchived}
           onShare={(tab) => setShareTab({ tab })}
         />
+        {(isArchived || archiveError) && (
+          <div
+            role={archiveError ? "alert" : "status"}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-secondary px-4 py-2.5 text-[13px] text-foreground sm:px-6 lg:px-8"
+          >
+            <span className={archiveError ? "text-destructive" : undefined}>
+              {archiveError ?? "This checklist is archived. It is hidden from your lists and sends no reminder emails. The client's links still work."}
+            </span>
+            {canEdit && isArchived && (
+              <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={() => void setArchived(false)}>
+                Restore checklist
+              </Button>
+            )}
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {!isCustom && (
             <TopNav
@@ -186,6 +231,14 @@ export default function AdminChecklistLayout({ children }: { children: React.Rea
           editorToken={data.editorToken}
           tab={shareTab?.tab ?? null}
           onOpenNamedLinks={() => setEditLinksOpen(true)}
+        />
+        <ConfirmDialog
+          open={confirmArchive}
+          onOpenChange={setConfirmArchive}
+          title={`Archive “${data.clientName}”?`}
+          description="It moves out of your lists and its reminder emails stop. Nothing is deleted, the client's links keep working, and you can restore it any time from “Show archived”."
+          confirmLabel="Archive checklist"
+          onConfirm={() => setArchived(true)}
         />
         <EditLinksDialog
           checklistId={id}

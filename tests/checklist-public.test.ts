@@ -15,6 +15,7 @@ const row = {
   fieldVersions: { sites: 3 },
   notificationState: { sites: { pendingChanges: true } },
   accountId: "acct_internal_company_id",
+  archivedAt: "2026-10-11T00:00:00.000Z",
   atsIntegrations: [{ vendor: "x" }],
   integrations: [{ vendor: "y" }],
   configuratorChecklist: { steps: [] },
@@ -26,7 +27,7 @@ const row = {
 
 test("client link: never receives the editor token, owner email, internal config or bookkeeping", () => {
   const out = omitInternalConfigForSlug(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId", "archivedAt"]) {
     assert.equal(key in out, false, `${key} must not reach a client link`);
   }
   assert.equal(out.slug, "acme");
@@ -36,7 +37,7 @@ test("client link: never receives the editor token, owner email, internal config
 
 test("editor link: keeps admin settings and field versions, but never the token echo, owner email or internal config", () => {
   const out = omitInternalConfigForToken(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "atsIntegrations", "integrations", "configuratorChecklist", "accountId", "archivedAt"]) {
     assert.equal(key in out, false, `${key} must not reach an editor link`);
   }
   assert.deepEqual(out.adminSettings, { sms: "internal" });
@@ -46,7 +47,7 @@ test("editor link: keeps admin settings and field versions, but never the token 
 
 test("view link: gets the client slice (no admin settings), and never either secret link", () => {
   const out = omitInternalConfigForView(row) as Record<string, unknown>;
-  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId"]) {
+  for (const key of ["editorToken", "viewToken", "ownerEmail", "notificationState", "fieldVersions", "adminSettings", "atsIntegrations", "integrations", "configuratorChecklist", "accountId", "archivedAt"]) {
     assert.equal(key in out, false, `${key} must not reach a view link`);
   }
   assert.equal(out.clientName, "Acme");

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Users } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AccountDialog } from "@/components/tracker/AccountDialog";
@@ -22,7 +22,7 @@ import { formatDate, plural } from "@/lib/tracker/format";
 import type { PortfolioProjectDTO } from "@/lib/tracker/client-types";
 import type { getCompany, CompanyChecklistItem, CompanyWorkflowItem } from "@/lib/companies/overview";
 import { describeAttention, attentionTotal } from "@/lib/companies/gallery";
-import { linkItem, openItemHref, type LinkKind } from "@/lib/companies/client";
+import { archiveChecklist, linkItem, openItemHref, type LinkKind } from "@/lib/companies/client";
 import { LinkExistingDialog } from "./LinkExistingDialog";
 import { MoveToCompanyDialog } from "./MoveToCompanyDialog";
 
@@ -43,6 +43,9 @@ export function CompanyPage({ id }: { id: string }) {
   const [linking, setLinking] = useState<LinkKind | null>(null);
   const [moving, setMoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
+  const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const reload = () => {
     detail.reload();
@@ -52,7 +55,9 @@ export function CompanyPage({ id }: { id: string }) {
   if (detail.error) return <ErrorBlock message={detail.error} onRetry={reload} />;
   if (!detail.data || !company) return <LoadingBlock label="Loading account" />;
 
-  const { checklists, workflows, contacts } = detail.data;
+  const { workflows, contacts } = detail.data;
+  const checklists = detail.data.checklists.filter((c) => !c.archivedAt);
+  const archivedChecklists = detail.data.checklists.filter((c) => c.archivedAt);
   const projects = trackers.data?.projects ?? [];
   const needAttention = workflows.filter((w) => attentionTotal(w.attention) > 0);
 
@@ -121,10 +126,62 @@ export function CompanyPage({ id }: { id: string }) {
             title={c.clientName}
             meta={<ChecklistProgress item={c} />}
             updated={c.updatedAt}
-            menu={canEdit ? <ItemMenu name={c.clientName} onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })} onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })} /> : undefined}
+            menu={canEdit ? <ItemMenu name={c.clientName} onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })} onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })} onArchive={() => setArchiving({ id: c.id, name: c.clientName })} /> : undefined}
           />
         ))}
       </Section>
+
+      {archivedChecklists.length > 0 && (
+        <div className="-mt-5 mb-8">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            aria-expanded={showArchived}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${showArchived ? "" : "-rotate-90"}`} aria-hidden="true" />
+            {showArchived ? "Hide" : "Show"} archived checklists ({archivedChecklists.length})
+          </button>
+          {restoreError && (
+            <p role="alert" className="mt-1 text-sm text-destructive">
+              {restoreError}
+            </p>
+          )}
+          {showArchived && (
+            <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-muted/40">
+              {archivedChecklists.map((c) => (
+                <Row
+                  key={c.id}
+                  href={openItemHref("checklist", c.id)}
+                  title={c.clientName}
+                  meta={<span>Archived {formatDistanceToNow(c.archivedAt as string, { addSuffix: true })}</span>}
+                  menu={
+                    canEdit ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 shrink-0 md:min-h-8"
+                        onClick={async () => {
+                          setRestoreError(null);
+                          try {
+                            await archiveChecklist(c.id, false);
+                            reload();
+                          } catch (e) {
+                            setRestoreError(e instanceof Error ? e.message : "Couldn't restore the checklist. Please try again.");
+                          }
+                        }}
+                      >
+                        <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
+                        Restore
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <Section
         icon={GitBranch}
@@ -191,6 +248,17 @@ export function CompanyPage({ id }: { id: string }) {
         confirmLabel="Take out"
         onConfirm={async () => {
           if (removing) await linkItem(removing.kind, removing.id, null);
+          reload();
+        }}
+      />
+      <ConfirmDialog
+        open={!!archiving}
+        onOpenChange={(o) => !o && setArchiving(null)}
+        title={`Archive “${archiving?.name ?? ""}”?`}
+        description="It moves out of your lists and its reminder emails stop. Nothing is deleted, the client's links keep working, and you can restore it any time from “Show archived checklists”."
+        confirmLabel="Archive checklist"
+        onConfirm={async () => {
+          if (archiving) await archiveChecklist(archiving.id, true);
           reload();
         }}
       />
@@ -280,7 +348,7 @@ function Row({ href, title, meta, updated, menu }: { href: string; title: string
   );
 }
 
-function ItemMenu({ name, onMove, onRemove }: { name: string; onMove: () => void; onRemove: () => void }) {
+function ItemMenu({ name, onMove, onRemove, onArchive }: { name: string; onMove: () => void; onRemove: () => void; onArchive?: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -295,6 +363,12 @@ function ItemMenu({ name, onMove, onRemove }: { name: string; onMove: () => void
         <DropdownMenuItem className="min-h-11 cursor-pointer md:min-h-0" onSelect={onRemove}>
           Take out of this account
         </DropdownMenuItem>
+        {onArchive && (
+          <DropdownMenuItem className="min-h-11 cursor-pointer md:min-h-0" onSelect={onArchive}>
+            <Archive className="h-4 w-4" aria-hidden="true" />
+            Archive checklist
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

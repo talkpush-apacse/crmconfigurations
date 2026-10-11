@@ -295,6 +295,46 @@ export async function PUT(
   }
 }
 
+/**
+ * Archive or restore a checklist: body `{ archived: true | false }`. Archiving only hides the checklist from lists and
+ * stops its reminder emails; nothing is deleted and every link keeps working. It leaves the checklist's content, version
+ * and "last updated" untouched, so it never causes a save conflict for someone who is editing.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+
+    const { id } = await params;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body.archived !== "boolean") {
+      return NextResponse.json({ error: "Send { archived: true } or { archived: false }." }, { status: 400 });
+    }
+
+    const current = await prisma.checklist.findUnique({ where: { id }, select: { archivedAt: true, updatedAt: true } });
+    if (!current) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Already in the wanted state (for example a double click): report it as done instead of moving the date.
+    if (body.archived === !!current.archivedAt) {
+      return NextResponse.json({ id, archivedAt: current.archivedAt });
+    }
+
+    const updated = await prisma.checklist.update({
+      where: { id },
+      data: { archivedAt: body.archived ? new Date() : null, updatedAt: current.updatedAt },
+      select: { archivedAt: true },
+    });
+    return NextResponse.json({ id, archivedAt: updated.archivedAt });
+  } catch (err) {
+    console.error("PATCH /api/checklists/[id] error:", err);
+    return NextResponse.json({ error: "Couldn't change the archive status. Please try again." }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

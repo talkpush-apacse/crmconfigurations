@@ -37,12 +37,16 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
     const pageSize = 50;
     const skip = (page - 1) * pageSize;
+    // Archived checklists stay out of the list unless asked for (?includeArchived=true).
+    const where = searchParams.get("includeArchived") === "true" ? {} : { archivedAt: null };
 
     const [items, total] = await prisma.$transaction([
       prisma.checklist.findMany({
+        where,
         orderBy: { updatedAt: "desc" },
         select: {
           id: true,
+          archivedAt: true,
           slug: true,
           editorToken: true,
           clientName: true,
@@ -86,7 +90,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         skip,
       }),
-      prisma.checklist.count(),
+      prisma.checklist.count({ where }),
     ]);
 
     const itemsWithProgress = items.map((item) => ({
@@ -96,6 +100,7 @@ export async function GET(request: NextRequest) {
       clientName: item.clientName,
       ownerEmail: item.ownerEmail,
       accountId: item.accountId,
+      archivedAt: item.archivedAt,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       enabledTabs: item.enabledTabs,

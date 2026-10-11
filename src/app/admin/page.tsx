@@ -40,6 +40,8 @@ import {
   Plus,
   ExternalLink,
   Trash2,
+  Archive,
+  ArchiveRestore,
   Copy,
   Download,
   Settings,
@@ -100,6 +102,8 @@ interface ChecklistSummary {
   editorToken: string;
   clientName: string;
   ownerEmail: string | null;
+  /** When staff archived it. Empty = active. */
+  archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   enabledTabs: string[] | null;
@@ -216,6 +220,8 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  // Archived checklists are hidden unless this is on.
+  const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [saving, setSaving] = useState(false);
   // P1-01: Dialog-based delete — replaces inline deletingId pattern
@@ -248,10 +254,10 @@ export default function AdminDashboard() {
     if (checklists.length < SEARCH_THRESHOLD) setSearchQuery("");
   }, [checklists.length]);
 
-  const fetchChecklists = async (page = currentPage) => {
+  const fetchChecklists = async (page = currentPage, includeArchived = showArchived) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/checklists?page=${page}`);
+      const res = await fetch(`/api/checklists?page=${page}${includeArchived ? "&includeArchived=true" : ""}`);
       if (res.status === 401) {
         router.push("/admin/login");
         return;
@@ -494,6 +500,33 @@ export default function AdminDashboard() {
     setRegenTarget(c);
   };
 
+  // Archive hides a checklist from the list (and stops its reminder emails); nothing is deleted and its links keep working.
+  const handleArchive = async (c: ChecklistSummary, archived: boolean) => {
+    try {
+      const res = await fetch(`/api/checklists/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Couldn't change the archive status");
+      }
+      const newPage = !showArchived && checklists.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      fetchChecklists(newPage);
+      setCopySuccess(archived ? `Archived ${c.clientName}. Find it again under “Show archived”.` : `Restored ${c.clientName}`);
+      setTimeout(() => setCopySuccess(null), 5000);
+    } catch (err) {
+      setOperationError(err instanceof Error ? err.message : "Couldn't change the archive status");
+      setTimeout(() => setOperationError(null), 5000);
+    }
+  };
+
+  const handleToggleArchived = (next: boolean) => {
+    setShowArchived(next);
+    fetchChecklists(1, next);
+  };
+
   const handleConfirmRegenToken = async () => {
     if (!regenTarget) return;
     const c = regenTarget;
@@ -701,9 +734,20 @@ export default function AdminDashboard() {
             <Card className="border-border/80 shadow-sm">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
-                  <CardTitle className="text-base">
-                    All Checklists ({total})
-                  </CardTitle>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <CardTitle className="text-base">
+                      {showArchived ? "All Checklists" : "Checklists"} ({total})
+                    </CardTitle>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted-foreground md:min-h-0">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={showArchived}
+                        onChange={(e) => handleToggleArchived(e.target.checked)}
+                      />
+                      Show archived
+                    </label>
+                  </div>
 
                   {/* P2-07 + P4-06: sr-only label; shown only at threshold */}
                   {checklists.length >= SEARCH_THRESHOLD && (
@@ -790,8 +834,13 @@ export default function AdminDashboard() {
                             <ChecklistStatusBadge summary={c.completionSummary} />
                           </div>
 
-                          {(c.isCustom || c.ownerEmail) && (
+                          {(c.isCustom || c.ownerEmail || c.archivedAt) && (
                             <div className="mt-3 flex flex-wrap gap-1.5">
+                              {c.archivedAt && (
+                                <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-muted-foreground">
+                                  Archived
+                                </Badge>
+                              )}
                               {c.isCustom && (
                                 <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
                                   Custom
@@ -879,6 +928,10 @@ export default function AdminDashboard() {
                                 <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
                                   <RefreshCw className="h-4 w-4" />
                                   Regenerate original editor link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleArchive(c, !c.archivedAt)}>
+                                  {c.archivedAt ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                  {c.archivedAt ? "Restore checklist" : "Archive checklist"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
@@ -974,6 +1027,11 @@ export default function AdminDashboard() {
                                 >
                                   {c.clientName}
                                 </Link>
+                                {c.archivedAt && (
+                                  <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-muted-foreground">
+                                    Archived
+                                  </Badge>
+                                )}
                                 {c.isCustom && (
                                   <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-medium text-violet-600 border-violet-300">
                                     Custom
@@ -1091,6 +1149,10 @@ export default function AdminDashboard() {
                                     <DropdownMenuItem onClick={() => handleRegenerateToken(c)}>
                                       <RefreshCw className="h-4 w-4" />
                                       Regenerate original editor link
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleArchive(c, !c.archivedAt)}>
+                                      {c.archivedAt ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                      {c.archivedAt ? "Restore checklist" : "Archive checklist"}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive"

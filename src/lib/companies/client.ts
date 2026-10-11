@@ -10,3 +10,8 @@ export function linkItem(kind: LinkKind, id: string, accountId: string | null) {
 }
 
 export const openItemHref = (kind: LinkKind, id: string) => (kind === "checklist" ? `/admin/checklists/${id}/welcome` : `/admin/workflows/${id}`);
+
+/** Archive a checklist (hide it from lists and stop its reminder emails) or restore it. Nothing is deleted. */
+export function archiveChecklist(id: string, archived: boolean) {
+  return api<{ id: string; archivedAt: string | null }>(`/api/checklists/${id}`, { method: "PATCH", body: { archived } });
+}

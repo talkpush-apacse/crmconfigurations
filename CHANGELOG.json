@@ -1,5 +1,17 @@
 [
   {
+    "version": "4.0",
+    "name": "Version 4.0 - Archive a CRM config checklist",
+    "changes": [
+      "New Archive checklist in the ... menu on a checklist: it leaves your lists and its reminder emails stop, but nothing is deleted",
+      "Archived checklists sit under Show archived on the account page and on the checklist list, each with a Restore button",
+      "The client, editor and view links keep working for an archived checklist",
+      "Claude's list_checklists and search skip archived checklists unless asked",
+      "Database change: one new optional column, Checklist.archivedAt (apply the SQL before merging)"
+    ],
+    "deployed_at": null
+  },
+  {
     "version": "3.9",
     "name": "Version 3.9 - Instant email when a client comments",
     "changes": [

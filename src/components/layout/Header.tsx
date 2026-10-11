@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ClipboardList, Download, Eye, History, Link2, Loader2, MoreHorizontal, Share2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Check, ChevronDown, ClipboardList, Download, Eye, History, Link2, Loader2, MoreHorizontal, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ShareTab } from "@/components/layout/ShareDialog";
 import {
@@ -55,6 +55,10 @@ interface HeaderProps {
   editingAs?: string | null;
   /** Staff only. Opens the "Apply template" sheet from the actions menu. */
   onApplyTemplate?: () => void;
+  /** Staff only. Adds "Archive checklist" (or "Restore checklist" when `archived`) to the actions menu. */
+  onToggleArchive?: () => void;
+  /** Staff only. This checklist is archived: shows an "Archived" tag beside the name. */
+  archived?: boolean;
   /**
    * Admin only. The full link to share with the client. When set, the header
    * shows a "Copy link" button beside Export XLS.
@@ -91,6 +95,8 @@ export function Header({
   historyHref,
   editingAs = null,
   onApplyTemplate,
+  onToggleArchive,
+  archived = false,
   shareLink,
   onShare,
 }: HeaderProps) {
@@ -157,7 +163,7 @@ export function Header({
   // On wide screens Export is its own button, so the menu only has something
   // to hold when there are staff actions or the page look. On phones it always holds Export.
   const hasSecondaryActions =
-    Boolean(snapshotsHref) || Boolean(historyHref) || Boolean(onApplyTemplate) || Boolean(lookControl);
+    Boolean(snapshotsHref) || Boolean(historyHref) || Boolean(onApplyTemplate) || Boolean(onToggleArchive) || Boolean(lookControl);
 
   return (
     <header className="shrink-0 border-b border-border bg-card">
@@ -195,6 +201,11 @@ export function Header({
           {isReadOnly && (
             <span className="shrink-0 rounded-full border border-brand-amber/40 bg-brand-amber-lightest px-2.5 py-0.5 text-[11px] font-medium text-foreground">
               View only
+            </span>
+          )}
+          {archived && (
+            <span className="hidden shrink-0 rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground lg:inline">
+              Archived
             </span>
           )}
           {editingAs && (
@@ -376,9 +387,15 @@ export function Header({
                   Apply template
                 </DropdownMenuItem>
               )}
+              {onToggleArchive && (
+                <DropdownMenuItem onClick={onToggleArchive} className="min-h-11 md:min-h-0">
+                  {archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                  {archived ? "Restore checklist" : "Archive checklist"}
+                </DropdownMenuItem>
+              )}
               {lookControl && (
                 <>
-                  {(shareLink || snapshotsHref || historyHref || onApplyTemplate) && <DropdownMenuSeparator />}
+                  {(shareLink || snapshotsHref || historyHref || onApplyTemplate || onToggleArchive) && <DropdownMenuSeparator />}
                   <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <Eye className="h-3.5 w-3.5" />
                     Page look
