@@ -102,7 +102,6 @@ import NodePalette from "./panels/NodePalette";
 import NodeProperties from "./panels/NodeProperties";
 import EdgeProperties from "./panels/EdgeProperties";
 import QuickAddBar from "./panels/QuickAddBar";
-import SEBriefPanel from "./panels/SEBriefPanel";
 import ShareDialog from "./share/ShareDialog";
 import ReviewPanel from "./share/ReviewPanel";
 import CommentPins from "./comments/CommentPins";
@@ -455,7 +454,6 @@ function EditorInner({
   const [showMinimap, setShowMinimap] = useState(() => typeof window === "undefined" || window.innerWidth >= 768);
   const [commandOpen, setCommandOpen] = useState(false);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
-  const [seBriefOpen, setSeBriefOpen] = useState(false);
   const [versions, setVersions] = useState<VersionListItem[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
 
@@ -1383,12 +1381,10 @@ function EditorInner({
       if (ids.length > 0) {
         setEditingEdge(null);
         setVersionPanelOpen(false);
-        setSeBriefOpen(false);
         setSelectedEdgeId(null);
       } else if (selectedEdges.length > 0) {
         setEditingEdge(null);
         setVersionPanelOpen(false);
-        setSeBriefOpen(false);
       }
     },
     []
@@ -1661,7 +1657,6 @@ function EditorInner({
   function handleNodeClick(_: React.MouseEvent, node: FlowNode) {
     setEditingEdge(null);
     setVersionPanelOpen(false);
-    setSeBriefOpen(false);
     setSelectedEdgeId(null);
     if (selectedNodeIds.length === 1) {
       setSelectedNodeId(node.id);
@@ -1682,7 +1677,6 @@ function EditorInner({
     setSelectedNodeIds([]);
     setEditingEdge(null);
     setVersionPanelOpen(false);
-    setSeBriefOpen(false);
     setNodeSuggestionState((current) => ({ ...current, open: false }));
   }
 
@@ -1883,19 +1877,8 @@ function EditorInner({
     setSelectedNodeIds([]);
     setSelectedEdgeId(null);
     setEditingEdge(null);
-    setSeBriefOpen(false);
     setReviewOpen(false);
     setVersionPanelOpen(true);
-  }
-
-  function openSEBriefPanel() {
-    setSelectedNodeId(null);
-    setSelectedNodeIds([]);
-    setSelectedEdgeId(null);
-    setEditingEdge(null);
-    setVersionPanelOpen(false);
-    setReviewOpen(false);
-    setSeBriefOpen(true);
   }
 
   function openReviewPanel() {
@@ -1905,7 +1888,6 @@ function EditorInner({
     setSelectedEdgeId(null);
     setEditingEdge(null);
     setVersionPanelOpen(false);
-    setSeBriefOpen(false);
     setReviewOpen(true);
   }
 
@@ -2825,8 +2807,6 @@ function EditorInner({
         onOpenLayoutCheck={() => setLayoutCheckOpen(true)}
         reviewOpen={reviewOpen}
         onToggleReview={() => (reviewOpen ? closeReviewPanel() : openReviewPanel())}
-        seBriefOpen={seBriefOpen}
-        onToggleSEBrief={openSEBriefPanel}
         selectedCount={selectedNodeIds.length}
         exportPages={pages.map((p) => (p.id === activePageId ? { ...p, nodes, edges } : p)) as never}
         activePageId={activePageId}
@@ -3101,7 +3081,7 @@ function EditorInner({
         </div>
 
         {/* Right sidebar — node/edge properties, SE brief, or version history */}
-        {reviewOpen && !versionPanelOpen && !seBriefOpen && !selectedNode && !selectedEdge && (
+        {reviewOpen && !versionPanelOpen && !selectedNode && !selectedEdge && (
           <ReviewPanel
             workflowId={workflow.id}
             onClose={closeReviewPanel}
@@ -3113,13 +3093,7 @@ function EditorInner({
             onJump={jumpToComment}
           />
         )}
-        {seBriefOpen && !versionPanelOpen && !reviewOpen && !selectedNode && !selectedEdge && (
-          <SEBriefPanel
-            workflowId={workflow.id}
-            onClose={() => setSeBriefOpen(false)}
-          />
-        )}
-        {selectedNode && !versionPanelOpen && !seBriefOpen && !reviewOpen && (
+        {selectedNode && !versionPanelOpen && !reviewOpen && (
           <NodeProperties
             nodeId={selectedNode.id}
             data={selectedNode.data as unknown as WorkflowNodeData}
@@ -3134,7 +3108,7 @@ function EditorInner({
             onClose={() => setSelectedNodeId(null)}
           />
         )}
-        {selectedEdge && !selectedNode && !versionPanelOpen && !seBriefOpen && !reviewOpen && (
+        {selectedEdge && !selectedNode && !versionPanelOpen && !reviewOpen && (
           <EdgeProperties
             edge={selectedEdge}
             onChange={handleEdgeDataChange}

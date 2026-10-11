@@ -1,13 +1,24 @@
 [
   {
-    "version": "4.1",
-    "name": "Version 4.1 - Archive a workflow",
+    "version": "4.2",
+    "name": "Version 4.2 - Archive a workflow",
     "changes": [
       "New Archive workflow in the Workflows list menu and in the workflow editor: it leaves your lists, but nothing is deleted",
       "Archived workflows sit under Show archived on the Workflows list and on the account page, each with a Restore button",
       "Share and review links keep working for an archived workflow, and a client comment on one still emails the super admin",
       "Archived workflows are left out of account counts, the weekday digest and Claude's list_workflows (unless include_archived is true)",
       "Database change: one new optional column, WorkflowProject.archivedAt (apply the SQL before merging)"
+    ],
+    "deployed_at": null
+  },
+  {
+    "version": "4.1",
+    "name": "Version 4.1 - SE Brief hidden in the workflow editor",
+    "changes": [
+      "The SE Brief button and side panel are gone from the workflow editor, to keep the toolbar focused",
+      "Nothing is deleted: any SE Brief notes already saved are kept, and Claude can still read and add them",
+      "Layout check and Review work as before",
+      "No database change"
     ],
     "deployed_at": null
   },

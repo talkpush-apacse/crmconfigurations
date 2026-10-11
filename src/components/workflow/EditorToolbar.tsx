@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   BoxSelect,
   ChevronDown,
-  ClipboardList,
   Download,
   Eye,
   FileCode2,
@@ -91,8 +90,6 @@ export interface EditorToolbarProps {
   onOpenLayoutCheck: () => void;
   reviewOpen: boolean;
   onToggleReview: () => void;
-  seBriefOpen: boolean;
-  onToggleSEBrief: () => void;
 
   // Share group
   selectedCount: number;
@@ -344,18 +341,6 @@ export default function EditorToolbar(p: EditorToolbarProps) {
           >
             <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden xl:inline">Review</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={p.onToggleSEBrief}
-            aria-pressed={p.seBriefOpen}
-            aria-label="SE brief"
-            title="Show or hide the SE brief panel"
-            className={cn("gap-1.5 text-xs", p.seBriefOpen ? "bg-brand-lavender-lighter text-foreground" : "text-muted-foreground hover:text-foreground", TOUCH)}
-          >
-            <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden xl:inline">SE brief</span>
           </Button>
         </div>
 
