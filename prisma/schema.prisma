@@ -191,6 +191,21 @@ model AdminUser {
   mcpAuthCodes McpAuthCode[]
 }
 
+// One row per daily activity digest slot (weekdays 8:00 am Manila). Vercel runs scheduled jobs best effort, so a run can be
+// missed or happen twice: the unique windowEnd stops a duplicate from sending, and the next digest starts where the last
+// sent or skipped one ended (up to 7 days back) so a missed day is caught up. Holds no personal data and no change content.
+// status: sending | sent | skipped | failed. reason is a short plain phrase, never an error dump.
+model ActivityDigestRun {
+  id          String    @id @default(cuid())
+  windowStart DateTime
+  windowEnd   DateTime  @unique
+  status      String
+  changeCount Int       @default(0)
+  reason      String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+}
+
 // =============================================================================
 // Project Tracker (additive: new tables only, nothing above this line changes)
 // Status-like fields are plain strings validated in code (src/lib/tracker),
