@@ -252,6 +252,8 @@ export interface WorkflowProject {
   workflowName: string;
   description?: string | null;
   status: WorkflowStatus;
+  /** When staff archived it (empty = active). Staff screens only. */
+  archivedAt?: string | null;
   templateId?: string | null;
   nodes: WorkflowNodeData[];
   edges: WorkflowEdgeData[];

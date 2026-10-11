@@ -47,7 +47,7 @@ async function resolveWorkflow(ref: string) {
     select: { id: true, clientName: true, workflowName: true, pages: true, nodes: true, edges: true, publishedVersionId: true },
   });
   if (byId) return byId;
-  const all = await prisma.workflowProject.findMany({ select: { id: true, clientName: true, workflowName: true }, orderBy: { updatedAt: "desc" }, take: 500 });
+  const all = await prisma.workflowProject.findMany({ where: { archivedAt: null }, select: { id: true, clientName: true, workflowName: true }, orderBy: { updatedAt: "desc" }, take: 500 });
   const match = matchByName(all, wanted, (w) => `${w.clientName}: ${w.workflowName}`);
   if (match.kind === "one") {
     return prisma.workflowProject.findUniqueOrThrow({
@@ -112,7 +112,7 @@ export async function loadConfigPlan(opts: { checklist: string; workflow?: strin
 /** Workflows that look like they belong to this client, for the screen's picker. */
 export async function workflowsForClient(clientName: string) {
   const rows = await prisma.workflowProject.findMany({
-    where: { clientName: { equals: clientName, mode: "insensitive" } },
+    where: { clientName: { equals: clientName, mode: "insensitive" }, archivedAt: null },
     select: { id: true, workflowName: true, status: true, publishedVersionId: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
     take: 50,

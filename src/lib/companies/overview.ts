@@ -45,9 +45,9 @@ export async function listCompanies(): Promise<{ companies: CompanyCardData[]; u
       select: { id: true, name: true, slug: true, notes: true, updatedAt: true, companyId: true, geo: true, geoCode: true, company: { select: { name: true } } },
     }),
     prisma.checklist.groupBy({ by: ["accountId"], where: { archivedAt: null }, _count: { _all: true }, _max: { updatedAt: true } }),
-    prisma.workflowProject.groupBy({ by: ["accountId"], _count: { _all: true }, _max: { updatedAt: true } }),
+    prisma.workflowProject.groupBy({ by: ["accountId"], where: { archivedAt: null }, _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.trackerProject.groupBy({ by: ["accountId"], where: { archived: false }, _count: { _all: true }, _max: { updatedAt: true } }),
-    prisma.workflowProject.findMany({ where: { accountId: { not: null } }, select: { id: true, accountId: true } }),
+    prisma.workflowProject.findMany({ where: { accountId: { not: null }, archivedAt: null }, select: { id: true, accountId: true } }),
   ]);
 
   const attention = await workflowAttention(linkedWorkflows.map((w) => w.id));
@@ -107,6 +107,8 @@ export interface CompanyWorkflowItem {
   clientName: string;
   workflowName: string;
   status: string;
+  /** When staff archived it (empty = active). The company page lists archived ones apart, behind "Show archived". */
+  archivedAt: string | null;
   currentVersion: number;
   updatedAt: string;
   attention: CompanyAttention;
@@ -120,10 +122,11 @@ export async function getCompany(id: string) {
     prisma.workflowProject.findMany({
       where: { accountId: id },
       orderBy: { updatedAt: "desc" },
-      select: { id: true, clientName: true, workflowName: true, status: true, currentVersion: true, updatedAt: true },
+      select: { id: true, clientName: true, workflowName: true, status: true, archivedAt: true, currentVersion: true, updatedAt: true },
     }),
   ]);
-  const attention = await workflowAttention(workflowRows.map((w) => w.id));
+  // Archived workflows are listed apart and do not ask for attention (a client comment on one still emails staff).
+  const attention = await workflowAttention(workflowRows.filter((w) => !w.archivedAt).map((w) => w.id));
   const contacts = await prisma.trackerPerson.count({ where: { accountId: id, archived: false } });
 
   const checklists: CompanyChecklistItem[] = checklistRows.map((c) => ({
@@ -139,6 +142,7 @@ export async function getCompany(id: string) {
     clientName: w.clientName,
     workflowName: w.workflowName,
     status: w.status,
+    archivedAt: w.archivedAt ? w.archivedAt.toISOString() : null,
     currentVersion: w.currentVersion,
     updatedAt: w.updatedAt.toISOString(),
     attention: attention.get(w.id) ?? { ...NO_ATTENTION },
@@ -150,7 +154,7 @@ export async function getCompany(id: string) {
 export async function getUnassigned(): Promise<{ groups: UnassignedGroup[]; accounts: { id: string; name: string }[] }> {
   const [checklists, workflows, accounts] = await Promise.all([
     prisma.checklist.findMany({ where: { accountId: null, archivedAt: null }, select: { id: true, clientName: true, slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
-    prisma.workflowProject.findMany({ where: { accountId: null }, select: { id: true, clientName: true, workflowName: true, status: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.workflowProject.findMany({ where: { accountId: null, archivedAt: null }, select: { id: true, clientName: true, workflowName: true, status: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trackerAccount.findMany({ where: { archived: false }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   const groups = groupUnassigned(

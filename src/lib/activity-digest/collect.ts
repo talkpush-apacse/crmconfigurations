@@ -74,18 +74,18 @@ async function collectWorkflows(w: Window): Promise<{ entries: DigestEntry[]; ca
   const workflowSelect = { id: true, workflowName: true, clientName: true } as const;
   const [events, comments, created] = await Promise.all([
     prisma.workflowAuditEvent.findMany({
-      where: { createdAt: inWindow(w), OR: [{ action: { in: [...WORKFLOW_ACTIONS_INCLUDED] } }, { action: { startsWith: "mcp." } }] },
+      where: { createdAt: inWindow(w), workflow: { archivedAt: null }, OR: [{ action: { in: [...WORKFLOW_ACTIONS_INCLUDED] } }, { action: { startsWith: "mcp." } }] },
       orderBy: { createdAt: "desc" },
       take: ROW_CAP + 1,
       select: { actorType: true, actorName: true, action: true, detail: true, createdAt: true, workflow: { select: workflowSelect } },
     }),
     prisma.workflowComment.findMany({
-      where: { createdAt: inWindow(w) },
+      where: { createdAt: inWindow(w), workflow: { archivedAt: null } },
       orderBy: { createdAt: "desc" },
       take: ROW_CAP + 1,
       select: { authorName: true, body: true, parentId: true, createdAt: true, workflow: { select: workflowSelect } },
     }),
-    prisma.workflowProject.findMany({ where: { createdAt: inWindow(w) }, orderBy: { createdAt: "desc" }, take: ROW_CAP + 1, select: { ...workflowSelect, createdAt: true } }),
+    prisma.workflowProject.findMany({ where: { createdAt: inWindow(w), archivedAt: null }, orderBy: { createdAt: "desc" }, take: ROW_CAP + 1, select: { ...workflowSelect, createdAt: true } }),
   ]);
   const capped = events.length > ROW_CAP || comments.length > ROW_CAP || created.length > ROW_CAP;
 

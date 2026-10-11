@@ -13,8 +13,11 @@ import {
   History,
   LayoutDashboard,
   LayoutTemplate,
+  Archive,
+  ArchiveRestore,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   MousePointer2,
   Redo2,
   Share2,
@@ -101,6 +104,10 @@ export interface EditorToolbarProps {
   onCopyMermaid: () => void;
   onSaveTemplate: () => void;
   onShare: () => void;
+
+  // Archive (staff who can edit only): hides the workflow from lists, deletes nothing
+  archived?: boolean;
+  onToggleArchive?: () => void;
 }
 
 /** Touch-friendly below md (44px), dense on desktop. */
@@ -396,6 +403,22 @@ export default function EditorToolbar(p: EditorToolbarProps) {
             <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden xl:inline">Share</span>
           </Button>
+
+          {p.onToggleArchive && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={TOUCH} aria-label="More workflow actions">
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 text-sm">
+                <DropdownMenuItem onClick={p.onToggleArchive} className="cursor-pointer gap-2">
+                  {p.archived ? <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" /> : <Archive className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {p.archived ? "Restore workflow" : "Archive workflow"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

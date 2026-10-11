@@ -608,6 +608,9 @@ model WorkflowProject {
   workflowName   String
   description    String?
   status         String   @default("draft")
+  // When staff archived this workflow. Empty = active. Archived workflows are only hidden from lists; the workflow
+  // and every share/review link keep working, and "Restore" clears this again. Separate from `status`.
+  archivedAt     DateTime?
   templateId     String?
   nodes          Json     @default("[]")
   edges          Json     @default("[]")

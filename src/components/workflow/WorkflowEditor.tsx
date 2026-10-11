@@ -43,6 +43,8 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import { toast } from "@/components/workflow/ui/toast";
+import { ConfirmDialog } from "@/components/tracker/ConfirmDialog";
+import { useCurrentUser } from "@/lib/use-current-user";
 import { nanoid } from "@/lib/workflow/ids";
 import {
   AlertTriangle,
@@ -378,6 +380,26 @@ function EditorInner({
   onServerRevision,
 }: EditorInnerProps) {
   const router = useRouter();
+  const { canEdit } = useCurrentUser();
+  // Archive: hides the workflow from lists; nothing is deleted and its share links keep working.
+  const [archivedAt, setArchivedAt] = useState<string | null>(workflow.archivedAt ?? null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const setArchived = async (archived: boolean) => {
+    setArchiveError(null);
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { archivedAt?: string | null; error?: string };
+      if (!res.ok) throw new Error(body.error || "Couldn't change the archive status. Please try again.");
+      setArchivedAt(body.archivedAt ?? null);
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : "Couldn't change the archive status. Please try again.");
+    }
+  };
   const {
     screenToFlowPosition,
     getViewport,
@@ -2822,6 +2844,32 @@ function EditorInner({
         onCopyMermaid={handleCopyMermaid}
         onSaveTemplate={openSaveTemplateDialog}
         onShare={() => setShareDialogOpen(true)}
+        archived={!!archivedAt}
+        onToggleArchive={canEdit ? () => (archivedAt ? void setArchived(false) : setConfirmArchive(true)) : undefined}
+      />
+
+      {(archivedAt || archiveError) && (
+        <div
+          role={archiveError ? "alert" : "status"}
+          className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-secondary px-4 py-2.5 text-[13px] text-foreground"
+        >
+          <span className={archiveError ? "text-destructive" : undefined}>
+            {archiveError ?? "This workflow is archived. It is hidden from your lists. Its share and review links still work."}
+          </span>
+          {canEdit && archivedAt && (
+            <Button type="button" variant="outline" size="sm" className="min-h-11 md:min-h-0" onClick={() => void setArchived(false)}>
+              Restore workflow
+            </Button>
+          )}
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmArchive}
+        onOpenChange={setConfirmArchive}
+        title={`Archive “${workflow.workflowName}”?`}
+        description="It moves out of your lists. Nothing is deleted, its share and review links keep working, and you can restore it any time from “Show archived”."
+        confirmLabel="Archive workflow"
+        onConfirm={() => setArchived(true)}
       />
 
       <div className="lg:hidden border-b border-brand-amber/50 bg-brand-amber/15 px-4 py-3 shrink-0">

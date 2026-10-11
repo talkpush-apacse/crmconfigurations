@@ -15,3 +15,8 @@ export const openItemHref = (kind: LinkKind, id: string) => (kind === "checklist
 export function archiveChecklist(id: string, archived: boolean) {
   return api<{ id: string; archivedAt: string | null }>(`/api/checklists/${id}`, { method: "PATCH", body: { archived } });
 }
+
+/** Archive a workflow (hide it from lists) or restore it. Nothing is deleted and its share links keep working. */
+export function archiveWorkflow(id: string, archived: boolean) {
+  return api<{ id: string; archivedAt: string | null }>(`/api/workflows/${id}`, { method: "PATCH", body: { archived } });
+}

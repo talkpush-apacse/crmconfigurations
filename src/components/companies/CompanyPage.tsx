@@ -22,7 +22,7 @@ import { formatDate, plural } from "@/lib/tracker/format";
 import type { PortfolioProjectDTO } from "@/lib/tracker/client-types";
 import type { getCompany, CompanyChecklistItem, CompanyWorkflowItem } from "@/lib/companies/overview";
 import { describeAttention, attentionTotal } from "@/lib/companies/gallery";
-import { archiveChecklist, linkItem, openItemHref, type LinkKind } from "@/lib/companies/client";
+import { archiveChecklist, archiveWorkflow, linkItem, openItemHref, type LinkKind } from "@/lib/companies/client";
 import { LinkExistingDialog } from "./LinkExistingDialog";
 import { MoveToCompanyDialog } from "./MoveToCompanyDialog";
 
@@ -43,9 +43,7 @@ export function CompanyPage({ id }: { id: string }) {
   const [linking, setLinking] = useState<LinkKind | null>(null);
   const [moving, setMoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
-  const [archiving, setArchiving] = useState<{ id: string; name: string } | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
 
   const reload = () => {
     detail.reload();
@@ -55,7 +53,9 @@ export function CompanyPage({ id }: { id: string }) {
   if (detail.error) return <ErrorBlock message={detail.error} onRetry={reload} />;
   if (!detail.data || !company) return <LoadingBlock label="Loading account" />;
 
-  const { workflows, contacts } = detail.data;
+  const { contacts } = detail.data;
+  const workflows = detail.data.workflows.filter((w) => !w.archivedAt);
+  const archivedWorkflows = detail.data.workflows.filter((w) => w.archivedAt);
   const checklists = detail.data.checklists.filter((c) => !c.archivedAt);
   const archivedChecklists = detail.data.checklists.filter((c) => c.archivedAt);
   const projects = trackers.data?.projects ?? [];
@@ -126,62 +126,20 @@ export function CompanyPage({ id }: { id: string }) {
             title={c.clientName}
             meta={<ChecklistProgress item={c} />}
             updated={c.updatedAt}
-            menu={canEdit ? <ItemMenu name={c.clientName} onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })} onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })} onArchive={() => setArchiving({ id: c.id, name: c.clientName })} /> : undefined}
+            menu={canEdit ? <ItemMenu name={c.clientName} onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })} onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })} onArchive={() => setArchiving({ kind: "checklist", id: c.id, name: c.clientName })} /> : undefined}
           />
         ))}
       </Section>
 
-      {archivedChecklists.length > 0 && (
-        <div className="-mt-5 mb-8">
-          <button
-            type="button"
-            onClick={() => setShowArchived((v) => !v)}
-            aria-expanded={showArchived}
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${showArchived ? "" : "-rotate-90"}`} aria-hidden="true" />
-            {showArchived ? "Hide" : "Show"} archived checklists ({archivedChecklists.length})
-          </button>
-          {restoreError && (
-            <p role="alert" className="mt-1 text-sm text-destructive">
-              {restoreError}
-            </p>
-          )}
-          {showArchived && (
-            <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-muted/40">
-              {archivedChecklists.map((c) => (
-                <Row
-                  key={c.id}
-                  href={openItemHref("checklist", c.id)}
-                  title={c.clientName}
-                  meta={<span>Archived {formatDistanceToNow(c.archivedAt as string, { addSuffix: true })}</span>}
-                  menu={
-                    canEdit ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-h-11 shrink-0 md:min-h-8"
-                        onClick={async () => {
-                          setRestoreError(null);
-                          try {
-                            await archiveChecklist(c.id, false);
-                            reload();
-                          } catch (e) {
-                            setRestoreError(e instanceof Error ? e.message : "Couldn't restore the checklist. Please try again.");
-                          }
-                        }}
-                      >
-                        <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
-                        Restore
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <ArchivedList
+        what="checklist"
+        canEdit={canEdit}
+        items={archivedChecklists.map((c) => ({ id: c.id, title: c.clientName, archivedAt: c.archivedAt as string, href: openItemHref("checklist", c.id) }))}
+        onRestore={async (id) => {
+          await archiveChecklist(id, false);
+          reload();
+        }}
+      />
 
       <Section
         icon={GitBranch}
@@ -200,10 +158,20 @@ export function CompanyPage({ id }: { id: string }) {
             title={w.workflowName}
             meta={<WorkflowMeta item={w} />}
             updated={w.updatedAt}
-            menu={canEdit ? <ItemMenu name={w.workflowName} onMove={() => setMoving({ kind: "workflow", id: w.id, name: w.workflowName })} onRemove={() => setRemoving({ kind: "workflow", id: w.id, name: w.workflowName })} /> : undefined}
+            menu={canEdit ? <ItemMenu name={w.workflowName} onMove={() => setMoving({ kind: "workflow", id: w.id, name: w.workflowName })} onRemove={() => setRemoving({ kind: "workflow", id: w.id, name: w.workflowName })} onArchive={() => setArchiving({ kind: "workflow", id: w.id, name: w.workflowName })} archiveLabel="Archive workflow" /> : undefined}
           />
         ))}
       </Section>
+
+      <ArchivedList
+        what="workflow"
+        canEdit={canEdit}
+        items={archivedWorkflows.map((w) => ({ id: w.id, title: w.workflowName, archivedAt: w.archivedAt as string, href: openItemHref("workflow", w.id) }))}
+        onRestore={async (id) => {
+          await archiveWorkflow(id, false);
+          reload();
+        }}
+      />
 
       <Section
         icon={FolderKanban}
@@ -255,10 +223,15 @@ export function CompanyPage({ id }: { id: string }) {
         open={!!archiving}
         onOpenChange={(o) => !o && setArchiving(null)}
         title={`Archive “${archiving?.name ?? ""}”?`}
-        description="It moves out of your lists and its reminder emails stop. Nothing is deleted, the client's links keep working, and you can restore it any time from “Show archived checklists”."
-        confirmLabel="Archive checklist"
+        description={
+          archiving?.kind === "workflow"
+            ? "It moves out of your lists. Nothing is deleted, its share and review links keep working, and you can restore it any time from “Show archived workflows”."
+            : "It moves out of your lists and its reminder emails stop. Nothing is deleted, the client's links keep working, and you can restore it any time from “Show archived checklists”."
+        }
+        confirmLabel={archiving?.kind === "workflow" ? "Archive workflow" : "Archive checklist"}
         onConfirm={async () => {
-          if (archiving) await archiveChecklist(archiving.id, true);
+          if (archiving?.kind === "workflow") await archiveWorkflow(archiving.id, true);
+          else if (archiving) await archiveChecklist(archiving.id, true);
           reload();
         }}
       />
@@ -348,7 +321,7 @@ function Row({ href, title, meta, updated, menu }: { href: string; title: string
   );
 }
 
-function ItemMenu({ name, onMove, onRemove, onArchive }: { name: string; onMove: () => void; onRemove: () => void; onArchive?: () => void }) {
+function ItemMenu({ name, onMove, onRemove, onArchive, archiveLabel = "Archive checklist" }: { name: string; onMove: () => void; onRemove: () => void; onArchive?: () => void; archiveLabel?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -366,7 +339,7 @@ function ItemMenu({ name, onMove, onRemove, onArchive }: { name: string; onMove:
         {onArchive && (
           <DropdownMenuItem className="min-h-11 cursor-pointer md:min-h-0" onSelect={onArchive}>
             <Archive className="h-4 w-4" aria-hidden="true" />
-            Archive checklist
+            {archiveLabel}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -391,5 +364,72 @@ function WorkflowMeta({ item }: { item: CompanyWorkflowItem }) {
       {item.currentVersion > 0 && <span className="text-xs">v{item.currentVersion}</span>}
       {waiting && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">{waiting}</span>}
     </span>
+  );
+}
+
+/** "Show archived checklists (n)": the archived ones of one kind, each with a Restore button. */
+function ArchivedList({
+  what,
+  canEdit,
+  items,
+  onRestore,
+}: {
+  what: "checklist" | "workflow";
+  canEdit: boolean;
+  items: { id: string; title: string; archivedAt: string; href: string }[];
+  onRestore: (id: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (items.length === 0) return null;
+  return (
+    <div className="-mt-5 mb-8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
+      >
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "" : "-rotate-90"}`} aria-hidden="true" />
+        {open ? "Hide" : "Show"} archived {what}s ({items.length})
+      </button>
+      {error && (
+        <p role="alert" className="mt-1 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {open && (
+        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-muted/40">
+          {items.map((item) => (
+            <Row
+              key={item.id}
+              href={item.href}
+              title={item.title}
+              meta={<span>Archived {formatDistanceToNow(item.archivedAt, { addSuffix: true })}</span>}
+              menu={
+                canEdit ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 shrink-0 md:min-h-8"
+                    onClick={async () => {
+                      setError(null);
+                      try {
+                        await onRestore(item.id);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : `Couldn't restore the ${what}. Please try again.`);
+                      }
+                    }}
+                  >
+                    <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
+                    Restore
+                  </Button>
+                ) : undefined
+              }
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

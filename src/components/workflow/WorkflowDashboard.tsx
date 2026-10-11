@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/workflow/ui/toast";
 import { formatDistanceToNow } from "@/lib/workflow/dates";
 import {
+  Archive,
+  ArchiveRestore,
   Copy,
   LayoutTemplate,
   MoreHorizontal,
@@ -40,6 +42,8 @@ interface WorkflowItem {
   workflowName: string;
   description: string | null;
   status: WorkflowStatus;
+  /** When staff archived it (empty = active). */
+  archivedAt?: string | null;
   currentVersion?: number;
   nodeCount: number;
   createdAt: string;
@@ -75,6 +79,8 @@ export default function WorkflowDashboard() {
   const { input: searchInput, setInput: setSearchInput, query: searchQuery } = useDebouncedSearch();
   const [statusFilter, setStatusFilter] = useState("all");
   const [groupByClient, setGroupByClient] = useState(false);
+  // Archived workflows are hidden unless this is on.
+  const [showArchived, setShowArchived] = useState(false);
 
   // Modal state
   const [newModalOpen, setNewModalOpen] = useState(false);
@@ -95,6 +101,7 @@ export default function WorkflowDashboard() {
       const params = new URLSearchParams();
       if (searchQuery) params.set("search", searchQuery);
       if (statusFilter !== "all" && statusFilter !== "needs_attention") params.set("status", statusFilter);
+      if (showArchived) params.set("includeArchived", "true");
       const res = await fetch(`/api/workflows?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -103,7 +110,7 @@ export default function WorkflowDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, showArchived]);
 
   useEffect(() => {
     fetchWorkflows();
@@ -132,6 +139,22 @@ export default function WorkflowDashboard() {
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
+    }
+  }
+
+  // Archive hides a workflow from the list; nothing is deleted and its share and review links keep working.
+  async function handleArchive(workflow: WorkflowItem, archived: boolean) {
+    try {
+      const res = await fetch(`/api/workflows/${workflow.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(archived ? "Workflow archived. Find it under “Show archived”." : "Workflow restored");
+      fetchWorkflows();
+    } catch {
+      toast.error(archived ? "Failed to archive workflow" : "Failed to restore workflow");
     }
   }
 
@@ -277,6 +300,10 @@ export default function WorkflowDashboard() {
           <input type="checkbox" checked={groupByClient} onChange={(e) => setGroupByClient(e.target.checked)} />
           Group by client
         </label>
+        <label className="flex min-h-11 items-center gap-2 text-xs text-foreground/70 md:min-h-0">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          Show archived
+        </label>
       </div>
 
       {/* Content */}
@@ -367,6 +394,10 @@ export default function WorkflowDashboard() {
                         <LayoutTemplate className="w-4 h-4 mr-2" />
                         {savingTemplateId === w.id ? "Saving..." : "Save as template"}
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleArchive(w, !w.archivedAt)}>
+                        {w.archivedAt ? <ArchiveRestore className="w-4 h-4 mr-2" /> : <Archive className="w-4 h-4 mr-2" />}
+                        {w.archivedAt ? "Restore workflow" : "Archive workflow"}
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setDeleteTarget(w)}
@@ -395,6 +426,9 @@ export default function WorkflowDashboard() {
                   >
                     {statusCfg.label}
                   </span>
+                  {w.archivedAt && (
+                    <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Archived</span>
+                  )}
                   <span className="text-xs text-muted-foreground tabular-nums">{w.nodeCount} {w.nodeCount === 1 ? "node" : "nodes"}</span>
                   {(w.currentVersion ?? 0) > 0 && (
                     <span className="text-xs text-muted-foreground tabular-nums">· v{w.currentVersion}</span>
