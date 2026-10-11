@@ -31,6 +31,8 @@ export function omitInternalConfigForSlug<T extends Record<string, unknown>>(che
   delete publicChecklist.notificationState;
   // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
   delete publicChecklist.accountId;
+  // Whether staff archived it: staff bookkeeping. Archiving does not switch the client link off.
+  delete publicChecklist.archivedAt;
   // Named edit links (secret link text) and the edit history: staff only.
   delete publicChecklist.editLinks;
   delete publicChecklist.editEvents;
@@ -53,6 +55,8 @@ export function omitInternalConfigForToken<T extends Record<string, unknown>>(ch
   delete publicChecklist.notificationState;
   // Which internal company record this belongs to: staff bookkeeping, never for a client or editor link.
   delete publicChecklist.accountId;
+  // Whether staff archived it: staff bookkeeping. Archiving does not switch the editor link off.
+  delete publicChecklist.archivedAt;
   // Named edit links (secret link text) and the edit history: staff only.
   delete publicChecklist.editLinks;
   delete publicChecklist.editEvents;

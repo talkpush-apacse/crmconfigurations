@@ -16,6 +16,9 @@ model Checklist {
   viewToken   String?  @unique
   clientName  String
   ownerEmail  String?
+  // When staff archived this checklist. Empty = active. Archived checklists are only hidden from lists and from
+  // reminder emails; the checklist and every link to it keep working, and "Restore" clears this again.
+  archivedAt  DateTime?
   // Which company this checklist belongs to. Empty = not linked yet ("needs a company").
   // Internal: never sent to the client or editor links (see src/lib/checklist-public.ts).
   accountId   String?

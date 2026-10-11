@@ -564,15 +564,17 @@ export function registerChecklistTools(server: McpServer): void {
 
   server.tool(
     "list_checklists",
-    "List all CRM configuration checklists with client name, slug, and dates",
-    {},
-    async () => {
+    "List CRM configuration checklists with client name, slug, and dates. Archived checklists are left out unless include_archived is true.",
+    { include_archived: z.boolean().optional().describe("Also list archived checklists (each shows its archivedAt date). Default false.") },
+    async ({ include_archived }) => {
       const checklists = await prisma.checklist.findMany({
+        where: include_archived ? {} : { archivedAt: null },
         select: {
           clientName: true,
           slug: true,
           createdAt: true,
           updatedAt: true,
+          archivedAt: true,
         },
         orderBy: { updatedAt: "desc" },
         take: 50,
@@ -3522,6 +3524,7 @@ export function registerChecklistTools(server: McpServer): void {
     async ({ query }) => {
       const term = query.trim().toLowerCase();
       const checklists = await prisma.checklist.findMany({
+        where: { archivedAt: null },
         select: { clientName: true, slug: true, createdAt: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 100,

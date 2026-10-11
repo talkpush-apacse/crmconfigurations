@@ -123,7 +123,7 @@ function listWords(items: string[]): string {
  * tab. Do NOT use the checklist's updatedAt or version: the owner-notification job raises both by itself.
  */
 async function collectChecklists(w: Window): Promise<{ entries: DigestEntry[]; capped: boolean }> {
-  const rows = await prisma.checklist.findMany({ select: { id: true, clientName: true, createdAt: true, notificationState: true } });
+  const rows = await prisma.checklist.findMany({ where: { archivedAt: null }, select: { id: true, clientName: true, createdAt: true, notificationState: true } });
   const entries: DigestEntry[] = [];
   for (const row of rows) {
     const base = { area: "checklist" as const, groupId: row.id, groupTitle: row.clientName, groupPath: `/admin/checklists/${row.id}` };

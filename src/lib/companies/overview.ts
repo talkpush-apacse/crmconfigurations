@@ -44,7 +44,7 @@ export async function listCompanies(): Promise<{ companies: CompanyCardData[]; u
       where: { archived: false },
       select: { id: true, name: true, slug: true, notes: true, updatedAt: true, companyId: true, geo: true, geoCode: true, company: { select: { name: true } } },
     }),
-    prisma.checklist.groupBy({ by: ["accountId"], _count: { _all: true }, _max: { updatedAt: true } }),
+    prisma.checklist.groupBy({ by: ["accountId"], where: { archivedAt: null }, _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.workflowProject.groupBy({ by: ["accountId"], _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.trackerProject.groupBy({ by: ["accountId"], where: { archived: false }, _count: { _all: true }, _max: { updatedAt: true } }),
     prisma.workflowProject.findMany({ where: { accountId: { not: null } }, select: { id: true, accountId: true } }),
@@ -97,6 +97,8 @@ export interface CompanyChecklistItem {
   slug: string;
   clientName: string;
   updatedAt: string;
+  /** When staff archived it (empty = active). The company page lists archived ones apart, behind "Show archived". */
+  archivedAt: string | null;
   completionSummary: ChecklistProgressSummary;
 }
 
@@ -129,6 +131,7 @@ export async function getCompany(id: string) {
     slug: c.slug,
     clientName: c.clientName,
     updatedAt: c.updatedAt.toISOString(),
+    archivedAt: c.archivedAt ? c.archivedAt.toISOString() : null,
     completionSummary: getChecklistProgress(c as unknown as ChecklistData, { includeAdminTabs: true }),
   }));
   const workflows: CompanyWorkflowItem[] = workflowRows.map((w) => ({
@@ -146,7 +149,7 @@ export async function getCompany(id: string) {
 /** Everything not filed under a company yet, grouped by the client name typed on it. */
 export async function getUnassigned(): Promise<{ groups: UnassignedGroup[]; accounts: { id: string; name: string }[] }> {
   const [checklists, workflows, accounts] = await Promise.all([
-    prisma.checklist.findMany({ where: { accountId: null }, select: { id: true, clientName: true, slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.checklist.findMany({ where: { accountId: null, archivedAt: null }, select: { id: true, clientName: true, slug: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
     prisma.workflowProject.findMany({ where: { accountId: null }, select: { id: true, clientName: true, workflowName: true, status: true, updatedAt: true }, orderBy: { updatedAt: "desc" } }),
     prisma.trackerAccount.findMany({ where: { archived: false }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);

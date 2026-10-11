@@ -44,6 +44,8 @@ export async function sweepAndDispatch(baseUrlOverride?: string): Promise<{
     const checklists = await prisma.checklist.findMany({
       where: {
         ownerEmail: { not: null },
+        // An archived checklist is finished with: no reminder emails.
+        archivedAt: null,
       },
       select: {
         id: true,
