@@ -29,6 +29,18 @@ test("subject and headline say how many changes and since when (yesterday, or Fr
   assert.match(make([entry()], { slot: MON }).html, /since Friday at 8:00 am/);
 });
 
+test("catching up on missed days: the subject and headline say where it starts, and a note explains why", () => {
+  const THU = parseSlotDate("2026-10-08");
+  const e = make([entry()], { slot: THU, windowStart: new Date("2026-10-06T00:00:00Z") });
+  assert.equal(e.subject, "Hub activity: 1 change since Tuesday");
+  assert.match(e.html, /since Tuesday at 8:00 am/);
+  assert.match(e.text, /No digest went out on some earlier days, so this one starts from Tuesday at 8:00 am instead of yesterday\./);
+  // a normal window, given explicitly, reads exactly as before and has no note
+  const normal = make([entry()], { slot: THU, windowStart: new Date("2026-10-07T00:00:00Z") });
+  assert.equal(normal.subject, "Hub activity: 1 change since yesterday");
+  assert.doesNotMatch(normal.text, /No digest went out/);
+});
+
 test("the subject is built from counts only, never from anything a person typed", () => {
   const e = make([entry({ groupTitle: "<b>Evil</b>\r\nBcc: x@y.com", text: "did Subject: hacked" })]);
   assert.doesNotMatch(e.subject, /Evil|Bcc|hacked/);

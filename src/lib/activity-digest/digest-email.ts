@@ -1,5 +1,5 @@
 import { renderEmail, type EmailBlock, type RichText } from "../email-template";
-import { type SlotDate, sinceWord } from "./window";
+import { type SlotDate, isCatchUp, sinceLabel, sinceWord } from "./window";
 import type { DigestArea, DigestAreaSummary, DigestNote } from "./types";
 
 /** The daily digest email. Pure: counts, wording and layout are all decided here and tested. */
@@ -15,6 +15,8 @@ export interface DigestEmailInput {
   failedAreas: DigestArea[];
   notes: DigestNote[];
   slot: SlotDate;
+  /** Where the window starts. Left out for a normal day (the previous weekday's 8:00 am); set when catching up on missed days. */
+  windowStart?: Date;
   /** The Hub's staff address, for example https://crmconfig.talkpush.com. Empty means: no links and no button. */
   appBaseUrl: string;
 }
@@ -43,7 +45,8 @@ function preheaderFor(areas: DigestAreaSummary[], failed: DigestArea[]): string 
 export function buildActivityDigestEmail(input: DigestEmailInput): DigestEmail {
   const byArea = new Map(input.areas.map((a) => [a.area, a]));
   const total = AREA_ORDER.reduce((sum, a) => sum + (byArea.get(a)?.total ?? 0), 0);
-  const since = sinceWord(input.slot);
+  const since = input.windowStart ? sinceLabel(input.slot, input.windowStart) : sinceWord(input.slot);
+  const catchUp = input.windowStart ? isCatchUp(input.slot, input.windowStart) : false;
 
   const subject = total === 0 ? `Hub activity: no changes found since ${since}` : `Hub activity: ${changes(total)} since ${since}`;
   const headline =
@@ -59,6 +62,9 @@ export function buildActivityDigestEmail(input: DigestEmailInput): DigestEmail {
     },
   ];
 
+  if (catchUp) {
+    blocks.push({ type: "callout", tone: "info", text: `No digest went out on some earlier days, so this one starts from ${since} at 8:00 am instead of yesterday.` });
+  }
   for (const n of input.notes.filter((x) => x.tone === "note")) blocks.push({ type: "callout", tone: "note", text: n.text });
 
   for (const a of AREA_ORDER) {

@@ -80,3 +80,32 @@ export function windowFor(slot: SlotDate): { start: Date; end: Date } {
 export function sinceWord(slot: SlotDate): string {
   return dayOfWeek(slot) === 1 ? WEEKDAYS[dayOfWeek(previousSlot(slot))] : "yesterday";
 }
+
+export const MAX_CATCH_UP_DAYS = 7;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Where does this digest's window start? Normally at the previous weekday's 8:00 am. If digests were missed, it starts
+ * where the last one that really went out (or was skipped for a quiet day) ended, so nothing is lost, but never more than
+ * MAX_CATCH_UP_DAYS back, so one long gap cannot produce an enormous email.
+ */
+export function windowStartFor(slot: SlotDate, lastCompletedEnd: Date | null): Date {
+  const end = slotInstant(slot);
+  const normal = slotInstant(previousSlot(slot));
+  if (!lastCompletedEnd || lastCompletedEnd.getTime() >= normal.getTime()) return normal;
+  const earliest = new Date(end.getTime() - MAX_CATCH_UP_DAYS * DAY_MS);
+  return lastCompletedEnd.getTime() < earliest.getTime() ? earliest : lastCompletedEnd;
+}
+
+/** True when this window reaches further back than one normal day (a missed digest is being caught up). */
+export function isCatchUp(slot: SlotDate, start: Date): boolean {
+  return start.getTime() < slotInstant(previousSlot(slot)).getTime();
+}
+
+/** "yesterday" or "Friday" for a normal window; "Wednesday" or "2 Oct" when catching up. */
+export function sinceLabel(slot: SlotDate, start: Date): string {
+  if (!isCatchUp(slot, start)) return sinceWord(slot);
+  const gapDays = Math.round((slotInstant(slot).getTime() - start.getTime()) / DAY_MS);
+  if (gapDays <= 6) return WEEKDAYS[start.getUTCDay()];
+  return `${start.getUTCDate()} ${MONTHS[start.getUTCMonth()]}`;
+}
