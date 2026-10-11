@@ -9,7 +9,7 @@
       "Archived workflows are left out of account counts, the weekday digest and Claude's list_workflows (unless include_archived is true)",
       "Database change: one new optional column, WorkflowProject.archivedAt (apply the SQL before merging)"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-11"
   },
   {
     "version": "4.1",
@@ -20,7 +20,7 @@
       "Layout check and Review work as before",
       "No database change"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-11"
   },
   {
     "version": "4.0",
@@ -32,7 +32,7 @@
       "Claude's list_checklists and search skip archived checklists unless asked",
       "Database change: one new optional column, Checklist.archivedAt (apply the SQL before merging)"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-11"
   },
   {
     "version": "3.9",
@@ -43,7 +43,7 @@
       "A comment is always saved first; if the email cannot be sent, nothing changes for the person commenting",
       "No database change"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-09"
   },
   {
     "version": "3.8",
@@ -55,7 +55,7 @@
       "Share and Export XLS now look and size the same in the Modern look",
       "Needs a one-time database change (one new optional column); the original editor links, named links and client link are untouched"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-09"
   },
   {
     "version": "3.7",
@@ -68,7 +68,7 @@
       "When the company and the checklist have the same name, the header shows a back arrow instead of repeating the name",
       "No database change"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-09"
   },
   {
     "version": "3.6",
@@ -80,7 +80,7 @@
       "It only reports saved changes (it cannot tell who merely has the tab open) and never changes how saving works",
       "No database change"
     ],
-    "deployed_at": null
+    "deployed_at": "2026-10-08"
   },
   {
     "version": "3.5",
