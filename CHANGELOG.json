@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.4",
+    "name": "Version 4.4 - Claude can edit existing rows",
+    "changes": [
+      "New update_section_rows tool: Claude can now change fields on rows that already exist (sites, campaigns, users, pre-screening questions, messaging templates, sources, folders, attributes, documents, agency portal, labels) instead of adding duplicates",
+      "Only the fields Claude names change; if any row or field is wrong, nothing is saved and every problem is listed",
+      "Claude's changes show in the checklist's Edit history as Claude. The client's own sign-offs (approved, client comments, not applicable) are never changed by it",
+      "Read-only logins do not get the tool",
+      "No database change"
+    ]
+  },
+  {
     "version": "4.3",
     "name": "Version 4.3 - Full checklist menu on the account page",
     "changes": [
