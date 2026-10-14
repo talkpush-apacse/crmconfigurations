@@ -65,8 +65,16 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SettingsDialog } from "@/components/admin/SettingsDialog";
 import { EditLinksDialog } from "@/components/admin/EditLinksDialog";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
-import { getAllSelectableTabSlugs } from "@/lib/tab-config";
-import { defaultCommunicationChannels, defaultFeatureToggles } from "@/lib/template-data";
+import {
+  type ChecklistSettingsDraft,
+  deleteChecklist,
+  duplicateChecklist,
+  regenerateEditorToken,
+  saveChecklistSettings,
+  toSettingsDraft,
+  withChannelsChanged,
+  withTabsChanged,
+} from "@/lib/checklist-admin-actions";
 import type { ChecklistProgressSummary } from "@/lib/section-status";
 import type { CommunicationChannels, FeatureToggles, CustomFieldDef, CustomTab } from "@/lib/types";
 import changelog from "../../../CHANGELOG.json";
@@ -115,19 +123,6 @@ interface ChecklistSummary {
   customSchema?: CustomFieldDef[] | null;
   customTabs?: CustomTab[] | null;
   completionSummary?: ChecklistProgressSummary;
-}
-
-interface EditingState {
-  id: string;
-  clientName: string;
-  ownerEmail: string;
-  tabs: string[];
-  channels: CommunicationChannels;
-  featureToggles: FeatureToggles;
-  version: number;
-  isCustom: boolean;
-  customSchema: CustomFieldDef[];
-  customTabs: CustomTab[];
 }
 
 interface PendingDelete {
@@ -222,7 +217,7 @@ export default function AdminDashboard() {
   const [operationError, setOperationError] = useState<string | null>(null);
   // Archived checklists are hidden unless this is on.
   const [showArchived, setShowArchived] = useState(false);
-  const [editing, setEditing] = useState<EditingState | null>(null);
+  const [editing, setEditing] = useState<ChecklistSettingsDraft | null>(null);
   const [saving, setSaving] = useState(false);
   // P1-01: Dialog-based delete — replaces inline deletingId pattern
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
@@ -293,11 +288,7 @@ export default function AdminDashboard() {
     setDeleteTarget(null);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/checklists/${c.id}`, { method: "DELETE" });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error((err as { error?: string }).error || "Delete failed");
-        }
+        await deleteChecklist(c.id);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to delete checklist";
         setOperationError(msg);
@@ -321,80 +312,9 @@ export default function AdminDashboard() {
 
   const handleCopy = async (id: string) => {
     try {
-      // 1. Fetch the full source checklist (auth-protected endpoint)
-      const res = await fetch(`/api/checklists/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch source checklist");
-      const original = await res.json() as Record<string, unknown>;
-
-      // 2. Create the new record (config skeleton)
-      const newName = `${original.clientName} (Copy)`;
-      const createBody: Record<string, unknown> = { clientName: newName };
-      createBody.ownerEmail = original.ownerEmail ?? null;
-      if (original.isCustom) {
-        createBody.isCustom = true;
-        createBody.customSchema = original.customSchema;
-      } else {
-        createBody.enabledTabs = original.enabledTabs;
-        createBody.communicationChannels = original.communicationChannels;
-        createBody.featureToggles = original.featureToggles;
-        if (original.customTabs) createBody.customTabs = original.customTabs;
-      }
-      const createRes = await fetch("/api/checklists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createBody),
-      });
-      if (!createRes.ok) {
-        const err = await createRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error || "Failed to create copy");
-      }
-      const created = await createRes.json() as { id: string; slug: string; version: number };
-
-      // 3. PUT all content data from original into the new record (whole-document path)
-      // Without this step every content section would be empty defaults.
-      const contentBody: Record<string, unknown> = {
-        version: created.version,
-        enabledTabs: original.enabledTabs,
-        tabOrder: original.tabOrder,
-        tabFilledBy: original.tabFilledBy,
-        communicationChannels: original.communicationChannels,
-        featureToggles: original.featureToggles,
-        companyInfo: original.companyInfo,
-        users: original.users,
-        campaigns: original.campaigns,
-        sites: original.sites,
-        prescreening: original.prescreening,
-        messaging: original.messaging,
-        sources: original.sources,
-        folders: original.folders,
-        documents: original.documents,
-        attributes: original.attributes,
-        fbWhatsapp: original.fbWhatsapp,
-        instagram: original.instagram,
-        aiCallFaqs: original.aiCallFaqs,
-        agencyPortal: original.agencyPortal,
-        agencyPortalUsers: original.agencyPortalUsers,
-        rejectionReasons: original.rejectionReasons,
-        labels: original.labels,
-        adminSettings: original.adminSettings,
-        atsIntegrations: original.atsIntegrations,
-        tabUploadMeta: original.tabUploadMeta,
-        customSchema: original.customSchema,
-        customData: original.customData,
-        customTabs: original.customTabs,
-      };
-      const putRes = await fetch(`/api/checklists/${created.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(contentBody),
-      });
-      if (!putRes.ok) {
-        const err = await putRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error || "Failed to copy content data");
-      }
-
+      const copy = await duplicateChecklist(id);
       fetchChecklists(currentPage);
-      setCopySuccess(`Checklist duplicated: ${created.slug || newName}`);
+      setCopySuccess(`Checklist duplicated: ${copy.slug || copy.name}`);
       setTimeout(() => setCopySuccess(null), 4000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to copy checklist";
@@ -404,76 +324,22 @@ export default function AdminDashboard() {
   };
 
   const handleEditSettings = (c: ChecklistSummary) => {
-    setEditing({
-      id: c.id,
-      clientName: c.clientName,
-      ownerEmail: c.ownerEmail ?? "",
-      tabs: c.enabledTabs || getAllSelectableTabSlugs(),
-      channels: (c.communicationChannels as CommunicationChannels) || defaultCommunicationChannels,
-      featureToggles: (c.featureToggles as FeatureToggles) || defaultFeatureToggles,
-      version: c.version,
-      isCustom: !!c.isCustom,
-      customSchema: (c.customSchema as CustomFieldDef[]) || [],
-      customTabs: (c.customTabs as CustomTab[]) || [],
-    });
+    setEditing(toSettingsDraft(c));
   };
 
   const handleEditChannelsChange = useCallback((newChannels: CommunicationChannels) => {
-    setEditing((prev) => {
-      if (!prev) return prev;
-      let newTabs = [...prev.tabs];
-      if (newChannels.aiCalls && !newTabs.includes("ai-call-faqs")) {
-        newTabs = [...newTabs, "ai-call-faqs"];
-      } else if (!newChannels.aiCalls && newTabs.includes("ai-call-faqs")) {
-        newTabs = newTabs.filter((t) => t !== "ai-call-faqs");
-      }
-      return { ...prev, channels: newChannels, tabs: newTabs };
-    });
+    setEditing((prev) => (prev ? withChannelsChanged(prev, newChannels) : prev));
   }, []);
 
   const handleEditTabsChange = useCallback((newTabs: string[]) => {
-    setEditing((prev) => {
-      if (!prev) return prev;
-      const aiTabEnabled = newTabs.includes("ai-call-faqs");
-      const newChannels =
-        aiTabEnabled !== prev.channels.aiCalls
-          ? { ...prev.channels, aiCalls: aiTabEnabled }
-          : prev.channels;
-      return { ...prev, tabs: newTabs, channels: newChannels };
-    });
+    setEditing((prev) => (prev ? withTabsChanged(prev, newTabs) : prev));
   }, []);
 
   const handleSaveSettings = async () => {
     if (!editing) return;
     setSaving(true);
     try {
-      const body: Record<string, unknown> = {
-        version: editing.version,
-        ownerEmail: editing.ownerEmail.trim() || null,
-        changedFields: editing.isCustom
-          ? ["customSchema"]
-          : ["enabledTabs", "communicationChannels", "featureToggles", "customTabs"],
-      };
-      if (editing.isCustom) {
-        body.customSchema = editing.customSchema;
-      } else {
-        body.enabledTabs = editing.tabs;
-        body.communicationChannels = editing.channels;
-        body.featureToggles = editing.featureToggles;
-        body.customTabs = editing.customTabs;
-      }
-      const res = await fetch(`/api/checklists/${editing.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        const msg = (err as { error?: string }).error || "Failed to save settings";
-        setOperationError(msg);
-        setTimeout(() => setOperationError(null), 5000);
-        return;
-      }
+      await saveChecklistSettings(editing);
       setEditing(null);
       fetchChecklists(currentPage);
     } catch (err) {
@@ -532,8 +398,7 @@ export default function AdminDashboard() {
     const c = regenTarget;
     setRegenTarget(null);
     try {
-      const res = await fetch(`/api/checklists/${c.id}/regenerate-token`, { method: "POST" });
-      if (!res.ok) throw new Error("Token regeneration failed");
+      await regenerateEditorToken(c.id);
       fetchChecklists(currentPage);
       setCopySuccess(`Editor link regenerated for ${c.clientName}`);
       setTimeout(() => setCopySuccess(null), 4000);

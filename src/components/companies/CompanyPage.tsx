@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Users } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AccountDialog } from "@/components/tracker/AccountDialog";
@@ -13,7 +13,7 @@ import { ErrorBlock, LoadingBlock, PageHeader } from "@/components/tracker/PageH
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import NewWorkflowModal from "@/components/workflow/modals/NewWorkflowModal";
 import { statusStyle } from "@/components/workflow/status-style";
-import { WorkflowToaster } from "@/components/workflow/ui/toast";
+import { toast, WorkflowToaster } from "@/components/workflow/ui/toast";
 import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -23,6 +23,8 @@ import type { PortfolioProjectDTO } from "@/lib/tracker/client-types";
 import type { getCompany, CompanyChecklistItem, CompanyWorkflowItem } from "@/lib/companies/overview";
 import { describeAttention, attentionTotal } from "@/lib/companies/gallery";
 import { archiveChecklist, archiveWorkflow, linkItem, openItemHref, type LinkKind } from "@/lib/companies/client";
+import { deleteChecklist } from "@/lib/checklist-admin-actions";
+import { ChecklistRowMenu } from "./ChecklistRowMenu";
 import { LinkExistingDialog } from "./LinkExistingDialog";
 import { MoveToCompanyDialog } from "./MoveToCompanyDialog";
 
@@ -44,10 +46,38 @@ export function CompanyPage({ id }: { id: string }) {
   const [moving, setMoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
   const [archiving, setArchiving] = useState<{ kind: LinkKind; id: string; name: string } | null>(null);
+  // A deleted checklist is hidden at once and only really deleted after 5 seconds, so Undo can bring it back.
+  const [pendingDelete, setPendingDelete] = useState<{ item: CompanyChecklistItem; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingDelete) clearTimeout(pendingDelete.timer);
+    };
+  }, [pendingDelete]);
 
   const reload = () => {
     detail.reload();
     trackers.reload();
+  };
+
+  const startDelete = (item: CompanyChecklistItem) => {
+    const timer = setTimeout(async () => {
+      try {
+        await deleteChecklist(item.id);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to delete checklist");
+      } finally {
+        setPendingDelete(null);
+        reload();
+      }
+    }, 5000);
+    setPendingDelete({ item, timer });
+  };
+
+  const undoDelete = () => {
+    if (!pendingDelete) return;
+    clearTimeout(pendingDelete.timer);
+    setPendingDelete(null);
   };
 
   if (detail.error) return <ErrorBlock message={detail.error} onRetry={reload} />;
@@ -56,7 +86,7 @@ export function CompanyPage({ id }: { id: string }) {
   const { contacts } = detail.data;
   const workflows = detail.data.workflows.filter((w) => !w.archivedAt);
   const archivedWorkflows = detail.data.workflows.filter((w) => w.archivedAt);
-  const checklists = detail.data.checklists.filter((c) => !c.archivedAt);
+  const checklists = detail.data.checklists.filter((c) => !c.archivedAt && c.id !== pendingDelete?.item.id);
   const archivedChecklists = detail.data.checklists.filter((c) => c.archivedAt);
   const projects = trackers.data?.projects ?? [];
   const needAttention = workflows.filter((w) => attentionTotal(w.attention) > 0);
@@ -87,6 +117,20 @@ export function CompanyPage({ id }: { id: string }) {
           </>
         }
       />
+
+      {pendingDelete && (
+        <div role="status" className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Trash2 className="h-4 w-4 shrink-0 text-orange-600" aria-hidden="true" />
+            <p className="text-sm text-orange-700">
+              <strong>{pendingDelete.item.clientName}</strong>&apos;s checklist will be deleted in 5 seconds.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={undoDelete} className="min-h-11 shrink-0 md:min-h-0">
+            Undo
+          </Button>
+        </div>
+      )}
 
       {needAttention.length > 0 && (
         <section aria-labelledby="attention-heading" className="mb-8 rounded-xl border border-sky-200 bg-sky-50 p-4">
@@ -126,7 +170,18 @@ export function CompanyPage({ id }: { id: string }) {
             title={c.clientName}
             meta={<ChecklistProgress item={c} />}
             updated={c.updatedAt}
-            menu={canEdit ? <ItemMenu name={c.clientName} onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })} onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })} onArchive={() => setArchiving({ kind: "checklist", id: c.id, name: c.clientName })} /> : undefined}
+            menu={
+              <ChecklistRowMenu
+                item={c}
+                accountId={company.id}
+                canEdit={canEdit}
+                onChanged={reload}
+                onMove={() => setMoving({ kind: "checklist", id: c.id, name: c.clientName })}
+                onRemove={() => setRemoving({ kind: "checklist", id: c.id, name: c.clientName })}
+                onArchive={() => setArchiving({ kind: "checklist", id: c.id, name: c.clientName })}
+                onDelete={() => startDelete(c)}
+              />
+            }
           />
         ))}
       </Section>

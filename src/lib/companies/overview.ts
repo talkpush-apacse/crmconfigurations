@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getChecklistProgress, type ChecklistProgressSummary } from "@/lib/section-status";
-import type { ChecklistData } from "@/lib/types";
+import type { ChecklistData, CommunicationChannels, CustomFieldDef, CustomTab, FeatureToggles } from "@/lib/types";
 import { serializeAccount } from "@/lib/tracker/serialize";
 import { notFound } from "@/lib/tracker/errors";
 import { groupUnassigned, type UnassignedGroup } from "./unassigned";
@@ -100,6 +100,16 @@ export interface CompanyChecklistItem {
   /** When staff archived it (empty = active). The company page lists archived ones apart, behind "Show archived". */
   archivedAt: string | null;
   completionSummary: ChecklistProgressSummary;
+  /** What the row menu needs to copy the editor link and open the settings dialog, as the main checklist list does. */
+  editorToken: string;
+  ownerEmail: string | null;
+  version: number;
+  enabledTabs: string[] | null;
+  communicationChannels: CommunicationChannels | null;
+  featureToggles: FeatureToggles | null;
+  isCustom: boolean;
+  customSchema: CustomFieldDef[] | null;
+  customTabs: CustomTab[] | null;
 }
 
 export interface CompanyWorkflowItem {
@@ -136,6 +146,15 @@ export async function getCompany(id: string) {
     updatedAt: c.updatedAt.toISOString(),
     archivedAt: c.archivedAt ? c.archivedAt.toISOString() : null,
     completionSummary: getChecklistProgress(c as unknown as ChecklistData, { includeAdminTabs: true }),
+    editorToken: c.editorToken,
+    ownerEmail: c.ownerEmail,
+    version: c.version,
+    enabledTabs: c.enabledTabs as string[] | null,
+    communicationChannels: c.communicationChannels as CommunicationChannels | null,
+    featureToggles: c.featureToggles as FeatureToggles | null,
+    isCustom: c.isCustom,
+    customSchema: c.customSchema as CustomFieldDef[] | null,
+    customTabs: c.customTabs as CustomTab[] | null,
   }));
   const workflows: CompanyWorkflowItem[] = workflowRows.map((w) => ({
     id: w.id,

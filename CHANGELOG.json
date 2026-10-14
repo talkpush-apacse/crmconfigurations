@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.3",
+    "name": "Version 4.3 - Full checklist menu on the account page",
+    "changes": [
+      "The ... menu on a checklist in an account page now has the same actions as the main checklist list: Copy editor link, Export to XLS, Edit history, Configure settings, Duplicate checklist, Named edit links, Regenerate original editor link, Archive and Delete",
+      "Move to another account and Take out of this account are still there, in their own group",
+      "Duplicate keeps the copy in the same account. Delete can be undone for 5 seconds, as on the main list",
+      "Read-only logins still see Copy editor link, Export to XLS and Edit history",
+      "No database change"
+    ]
+  },
+  {
     "version": "4.2",
     "name": "Version 4.2 - Archive a workflow",
     "changes": [
