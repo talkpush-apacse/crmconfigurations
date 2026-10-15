@@ -15,7 +15,7 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react";
-import { ChevronLeft, ChevronRight, Eye, Footprints, Hash, ListTree, Loader2, Lock, MessageSquare, Pencil, PenLine, Users, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Footprints, Hash, ListTree, Loader2, MessageSquare, Pencil, PenLine, Users, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/workflow/ui/toast";
@@ -611,11 +611,34 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
           <header className="shrink-0 border-b border-border bg-card px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <Lock className="h-3 w-3" aria-hidden />
-                  {data.workflow.clientName}
-                </p>
-                <h1 className="truncate text-lg font-bold tracking-tight">{data.workflow.workflowName}</h1>
+                <p className="truncate text-xs text-muted-foreground">{data.workflow.clientName}</p>
+                <h1 className="truncate text-lg font-semibold tracking-tight">{data.workflow.workflowName}</h1>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{statusCfg?.label ?? data.workflow.status}</span>
+                  <span aria-hidden>·</span>
+                  {data.view.kind === "published" ? (
+                    <span>
+                      Version {data.view.versionNumber}
+                      {data.view.publishedAt ? `, published ${formatDateInManila(data.view.publishedAt, { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                      {data.view.publishedBy ? ` by ${data.view.publishedBy}` : ""}
+                    </span>
+                  ) : (
+                    <span>Updated {formatDateInManila(data.workflow.updatedAt, { month: "short", day: "numeric", year: "numeric" })}</span>
+                  )}
+                  <span aria-hidden>·</span>
+                  <span>
+                    {READABLE_ROLE[data.you.level] ?? data.you.level}
+                    {data.you.displayName ? ` as ${data.you.displayName}${data.you.verified ? "" : " (unverified)"}` : ""}
+                  </span>
+                  {editing && mode === "edit" && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span role="status" className={saveState === "failed" ? "font-medium text-destructive" : ""}>
+                        {saveState === "saving" ? "Saving…" : saveState === "failed" ? "Not saved. Retrying needs a refresh." : pending ? "Saving…" : "All changes saved"}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {others.length > 0 && (
@@ -624,11 +647,6 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                     {others.length === 1 ? `${others[0].name} is ${others[0].editing ? "editing" : "here"}` : `${others.length} people here`}
                   </span>
                 )}
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusCfg?.className ?? "bg-muted text-foreground"}`}>{statusCfg?.label ?? data.workflow.status}</span>
-                <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
-                  {READABLE_ROLE[data.you.level] ?? data.you.level}
-                  {data.you.displayName ? ` · ${data.you.displayName}${data.you.verified ? "" : " (unverified)"}` : ""}
-                </span>
                 {canModeSwitch && !api.readOnly && (
                   <div role="group" aria-label="Editing mode" className="flex overflow-hidden rounded-md border border-border text-xs">
                     {(["edit", "suggest"] as const).map((m) => (
@@ -649,43 +667,30 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                     ))}
                   </div>
                 )}
-                <Button variant="outline" size="sm" onClick={startWalk} className="min-h-8"><Footprints className="h-3.5 w-3.5" />Walk me through</Button>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShowNumbers((v) => !v)}
                   aria-pressed={showNumbers}
-                  className="flex min-h-8 items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+                  aria-label={showNumbers ? "Hide step numbers" : "Show step numbers"}
+                  title={showNumbers ? "Hide step numbers" : "Show step numbers"}
+                  className={cn("text-muted-foreground", showNumbers && "bg-accent text-foreground")}
                 >
-                  <Hash className="h-3 w-3" />
-                  {showNumbers ? "Hide numbers" : "Show numbers"}
-                </button>
+                  <Hash className="h-4 w-4" />
+                </Button>
                 {headerExtras?.({ pages: workingPages, activePageId: activePage?.id ?? null, workflow: data.workflow, view: data.view })}
+                <Button size="sm" onClick={startWalk} className="min-h-8 text-xs"><Footprints className="h-3.5 w-3.5" />Walk me through</Button>
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {data.view.kind === "published" ? (
-                <span>
-                  Version {data.view.versionNumber} · published {data.view.publishedAt ? formatDateInManila(data.view.publishedAt, { month: "short", day: "numeric", year: "numeric" }) : ""}
-                  {data.view.publishedBy ? ` by ${data.view.publishedBy}` : ""}
-                </span>
-              ) : (
-                <span>Live draft · updated {formatDateInManila(data.workflow.updatedAt, { month: "short", day: "numeric", year: "numeric" })}</span>
-              )}
-              {editing && mode === "edit" && (
-                <span role="status" className={saveState === "failed" ? "font-medium text-destructive" : ""}>
-                  {saveState === "saving" ? "Saving…" : saveState === "failed" ? "Not saved. Retrying needs a refresh." : pending ? "Saving…" : "All changes saved"}
-                </span>
-              )}
-              {mode === "suggest" && draftOps.length > 0 && (
-                <span className="flex items-center gap-2">
-                  <strong className="text-foreground">{draftOps.length} change{draftOps.length === 1 ? "" : "s"} in your suggestion</strong>
-                  <Button size="xs" onClick={() => setSuggestOpen(true)}>Send suggestion</Button>
-                  <Button size="xs" variant="ghost" onClick={() => setDraftOps([])}>Discard</Button>
-                </span>
-              )}
-              {data.workflow.description && <span className="min-w-0 truncate">{data.workflow.description}</span>}
-            </div>
+            {mode === "suggest" && draftOps.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <strong>{draftOps.length} change{draftOps.length === 1 ? "" : "s"} in your suggestion</strong>
+                <Button size="xs" onClick={() => setSuggestOpen(true)}>Send suggestion</Button>
+                <Button size="xs" variant="ghost" onClick={() => setDraftOps([])}>Discard</Button>
+              </div>
+            )}
           </header>
 
           {(staleBanner || conflict) && (
