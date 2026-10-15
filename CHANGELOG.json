@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.5",
+    "name": "Version 4.5 - Claude can make client links",
+    "changes": [
+      "New create_checklist_link tool: Claude can give you the Can view or Can edit link for a checklist, for a tab you name, the same as the Share button. Nothing is emailed: you copy the link and send it yourself",
+      "Can edit: the checklist's original shared link, or a named edit link for one person (with an optional end date) so their changes show in the Edit history under their name",
+      "New list_checklist_links tool shows whether the view link is on and every named edit link with its status and last-opened time",
+      "New change_checklist_link tool turns the view link or a named edit link off, or gives it a new address; the old address stops working at once",
+      "Read-only logins do not get these tools. No database change"
+    ]
+  },
+  {
     "version": "4.4",
     "name": "Version 4.4 - Claude can edit existing rows",
     "changes": [
