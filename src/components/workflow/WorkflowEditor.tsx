@@ -1322,7 +1322,15 @@ function EditorInner({
         const nextNodes = applyNodeChanges(changes, currentNodes) as FlowNode[];
 
         if (shouldPersistNodes) {
-          pushHistory(nextNodes, edges);
+          if (changes.every((change) => change.type === "dimensions" && change.resizing === undefined)) {
+            // A step being measured (on load, or because its text changed its size; not dragging a resize handle) is not an edit: keep the newest
+            // snapshot current but do not add an undo step, or Undo would step through identical states.
+            if (historyIndexRef.current === historyRef.current.length - 1) {
+              historyRef.current[historyIndexRef.current] = { nodes: nextNodes, edges };
+            }
+          } else {
+            pushHistory(nextNodes, edges);
+          }
           triggerSave(nextNodes, edges, activePageIdRef.current);
         }
 
@@ -1694,7 +1702,7 @@ function EditorInner({
             }
           : node
       );
-      pushHistory(next, edges);
+      pushHistory(next, edges, `node:${id}`);
       triggerSave(next, edges, activePageIdRef.current);
       return next;
     });
@@ -2689,7 +2697,8 @@ function EditorInner({
             hasWarning: warnings.has(node.id),
             isOverflow: overflowNodes.has(node.id),
             isMerge: mergeNodes.has(node.id),
-            onLabelChange: handleInlineLabelChange,
+            // A locked canvas has no way to change a step's text, on the diagram or anywhere else.
+            onLabelChange: isCanvasLocked ? undefined : handleInlineLabelChange,
             onOpenSuggestion: handleOpenSuggestionFromNode,
             hideLabel: !showLabels,
           },
@@ -2698,7 +2707,7 @@ function EditorInner({
       return scene ? [...mapped, ...derivedProcessMapNodes(scene)] : mapped;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes, stepNumbers, warnings, overflowNodes, mergeNodes, showWorkflowNodes, showAnnotations, showLabels, scene]
+    [nodes, stepNumbers, warnings, overflowNodes, mergeNodes, showWorkflowNodes, showAnnotations, showLabels, scene, isCanvasLocked]
   );
 
   const renderEdges = useMemo(
@@ -2939,6 +2948,7 @@ function EditorInner({
               selectionMode={SelectionMode.Partial}
               panOnDrag={lassoMode ? [1, 2] : true}
               panActivationKeyCode="Space"
+              zoomOnDoubleClick={false} // double-click on a step edits its text instead of zooming the canvas
               minZoom={0.05}
               nodesDraggable={!isCanvasLocked}
               nodesConnectable={!isCanvasLocked}

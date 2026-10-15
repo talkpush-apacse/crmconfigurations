@@ -11,7 +11,7 @@ import { parseRich, serializeRich, type RichSegment } from "@/lib/workflow/rich-
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function toHtml(value: string): string {
+export function richToHtml(value: string): string {
   return parseRich(value)
     .map((s) => {
       let h = esc(s.text).replace(/\n/g, "<br>");
@@ -52,7 +52,8 @@ function fromDom(root: HTMLElement): RichSegment[] {
   return out;
 }
 
-const readValue = (el: HTMLElement) => serializeRich(fromDom(el));
+/** The stored text for what is currently typed in an editable box. */
+export const readRichValue = (el: HTMLElement) => serializeRich(fromDom(el));
 
 export function RichNotesField({
   value,
@@ -62,6 +63,7 @@ export function RichNotesField({
   maxLength,
   minRows = 3,
   label,
+  singleLine = false,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -70,21 +72,23 @@ export function RichNotesField({
   maxLength?: number;
   minRows?: number;
   label?: string;
+  /** One line only, like a text input: Enter does nothing and pasted line breaks become spaces. */
+  singleLine?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Only rewrite the box when the value changed from outside (another step selected, undo, suggestion): never while typing.
   useEffect(() => {
     const el = ref.current;
-    if (el && readValue(el) !== value) el.innerHTML = toHtml(value);
+    if (el && readRichValue(el) !== value) el.innerHTML = richToHtml(value);
   }, [value]);
 
   const emit = () => {
     const el = ref.current;
     if (!el) return;
-    const next = readValue(el);
+    const next = readRichValue(el);
     if (maxLength && next.length > maxLength) {
-      el.innerHTML = toHtml(value);
+      el.innerHTML = richToHtml(value);
       return;
     }
     onChange(next);
@@ -119,16 +123,17 @@ export function RichNotesField({
         onBlur={onBlur}
         onKeyDown={(e) => {
           // One kind of line break everywhere, instead of the <div> lines some browsers add.
-          if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+          if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && (singleLine || !e.shiftKey)) {
             e.preventDefault();
-            document.execCommand("insertLineBreak");
+            if (!singleLine) document.execCommand("insertLineBreak");
           }
         }}
         onPaste={(e) => {
           e.preventDefault();
-          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+          const pasted = e.clipboardData.getData("text/plain");
+          document.execCommand("insertText", false, singleLine ? pasted.replace(/\s*\r?\n\s*/g, " ") : pasted);
         }}
-        style={{ minHeight: `${minRows * 1.5 + 1}rem` }}
+        style={{ minHeight: `${(singleLine ? 1 : minRows) * 1.5 + 1}rem` }}
         className="w-full whitespace-pre-wrap break-words px-3 py-2 text-sm text-foreground outline-none empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
       />
     </div>

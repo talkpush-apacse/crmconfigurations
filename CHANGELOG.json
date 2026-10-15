@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.5",
+    "name": "Version 4.5 - Edit a workflow step by double-clicking it",
+    "changes": [
+      "On a Process Map, double-click a step to type its text right on the diagram. Enter or clicking away saves it; Esc cancels",
+      "Bold, italic and underline buttons appear above the step while you type (or use Cmd/Ctrl + B, I and U). The Label box in the right-hand panel has the same buttons",
+      "Formatting shows on the diagram, the client page and in exports; the outline, flow table and comments show the plain words. Labels already marked **bold** look the same as before",
+      "Double-clicking the empty canvas no longer zooms in. Undo now reverts a text edit in one click, and Undo/Redo no longer step through invisible size changes",
+      "A locked canvas and the client page cannot edit text. No database change"
+    ]
+  },
+  {
     "version": "4.4",
     "name": "Version 4.4 - Claude can edit existing rows",
     "changes": [
