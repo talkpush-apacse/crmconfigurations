@@ -2,7 +2,7 @@
  * MCP Server for CRM Config Checklist
  *
  * Exposes tools for managing checklists via Claude AI.
- * Most write tools are append-only; configuration tools merge partial updates.
+ * Most write tools are append-only; update_section_rows and the configuration tools change existing data.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -10,6 +10,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { CHECKLIST_READ_TOOLS } from "@/lib/mcp/checklist-read-tools";
 import { onlyTools } from "@/lib/mcp/toolkit";
+import {
+  applyRowPatches,
+  EDITABLE_SECTIONS,
+  MAX_ROWS_PER_CALL,
+  type EditableSection,
+  type PatchOutcome,
+  type RowPatch,
+} from "@/lib/mcp/section-row-update";
 import type { Prisma } from "@/generated/prisma/client";
 import { findChecklistByEditorToken } from "@/lib/edit-history/resolve";
 import { scheduleSaveRecord } from "@/lib/edit-history/record";
@@ -342,6 +350,86 @@ async function appendToSection<T extends { id: string }>(
   });
 
   return result;
+}
+
+/**
+ * Changes fields on rows that already exist in a section. Same lock + version bump as the append helper; the rows
+ * are patched by `applyRowPatches`, which throws (writing nothing) if any patch is invalid. Claude's change is
+ * recorded in the edit history once it has committed.
+ */
+async function updateSectionRows(
+  slug: string,
+  section: EditableSection,
+  patches: RowPatch[]
+): Promise<PatchOutcome & { totalCount: number; version: number }> {
+  return prisma
+    .$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<
+        Array<{ id: string; version: number; fieldVersions: Record<string, number> | null }>
+      >`SELECT id, version, "fieldVersions" FROM "Checklist" WHERE slug = ${slug} FOR UPDATE`;
+
+      const current = locked[0];
+      if (!current) {
+        throw new Error(`Checklist with slug "${slug}" not found`);
+      }
+
+      const checklist = await tx.checklist.findUnique({
+        where: { id: current.id },
+        select: { [section]: true } as Record<string, boolean>,
+      });
+
+      // A copy of what is saved now, taken before patching, for the edit history.
+      const existing = JSON.parse(
+        JSON.stringify((checklist as Record<string, unknown> | null)?.[section] ?? [])
+      ) as Array<Record<string, unknown>>;
+      const before = JSON.parse(JSON.stringify(existing)) as unknown;
+
+      const outcome = applyRowPatches(section, existing, patches);
+
+      // Everything sent already matched: nothing to write, no new version.
+      if (outcome.changes.every((c) => c.unchanged)) {
+        return { ...outcome, totalCount: outcome.rows.length, version: current.version, history: null };
+      }
+
+      const newVersion = current.version + 1;
+      const fieldVersions = { ...(current.fieldVersions ?? {}), [section]: newVersion };
+
+      await tx.checklist.update({
+        where: { id: current.id },
+        data: {
+          [section]: toPrismaJson(outcome.rows),
+          version: newVersion,
+          fieldVersions: toPrismaJson(fieldVersions),
+        },
+      });
+
+      return {
+        ...outcome,
+        totalCount: outcome.rows.length,
+        version: newVersion,
+        history: { checklistId: current.id, before, after: outcome.rows },
+      };
+    })
+    .then(({ history, ...rest }) => {
+      if (history) {
+        scheduleSaveRecord({
+          checklistId: history.checklistId,
+          actor: MCP_ACTOR,
+          version: rest.version,
+          before: { [section]: history.before },
+          after: { [section]: history.after },
+          fields: [section],
+        });
+      }
+      return rest;
+    });
+}
+
+/** A value shortened for the change report, so a pasted paragraph doesn't flood the reply. */
+function shortValue(value: unknown): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > 80 ? `${flat.slice(0, 77)}...` : flat || "(empty)";
 }
 
 /**
@@ -1445,6 +1533,67 @@ export function registerChecklistTools(server: McpServer): void {
           },
         ],
       };
+    }
+  );
+
+  // --- Change existing rows ---
+  server.tool(
+    "update_section_rows",
+    "Change fields on rows that ALREADY EXIST in a checklist section (sites, campaigns, users, pre-screening questions, " +
+      "messaging templates, sources, folders, attributes, documents, agency portal, labels). Use this instead of an add_* tool " +
+      "whenever the row is already there, so you never create duplicates. " +
+      "Workflow: call get_section for the section to get each row's `id` and current values, then send one entry per row with its `id` " +
+      "and ONLY the fields to change. Fields you leave out stay exactly as they are. " +
+      "All-or-nothing: if any row id or field name is wrong, nothing is saved and every problem is listed. " +
+      "Deleted rows cannot be edited. The reply lists each change as old value -> new value, and the change shows in the checklist's History as Claude. " +
+      "It does not change the client's own sign-off (pre-screening approved / clientComments, messaging notApplicable).",
+    {
+      slug: z.string().describe("The checklist URL slug"),
+      section: z
+        .enum(EDITABLE_SECTIONS)
+        .describe("Which section the rows are in, e.g. 'sites', 'campaigns', 'users', 'prescreening', 'messaging'"),
+      rows: z
+        .array(
+          z
+            .object({ id: z.string().describe("The row's id, from get_section") })
+            .catchall(z.unknown())
+            .describe("The row's `id` plus the fields to change, e.g. { id: '...', interviewHours: '9am-5pm' }")
+        )
+        .min(1)
+        .describe(`One entry per row to change (at most ${MAX_ROWS_PER_CALL}).`),
+    },
+    async ({ slug, section, rows }) => {
+      try {
+        const result = await updateSectionRows(slug, section, rows as RowPatch[]);
+        const changed = result.changes.filter((c) => !c.unchanged);
+        const same = result.changes.filter((c) => c.unchanged);
+
+        if (changed.length === 0) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Nothing to change: the ${same.length} row(s) you sent already have those values in "${section}" on ${slug}.`,
+              },
+            ],
+          };
+        }
+
+        const lines = [
+          `Updated ${changed.length} row(s) in "${section}" on ${slug}. Total rows: ${result.totalCount}. Version: ${result.version}`,
+          ``,
+          ...changed.flatMap((c) => [
+            `${c.label} (${c.id})`,
+            ...c.changes.map((f) => `  ${f.field}: ${shortValue(f.from)} -> ${shortValue(f.to)}`),
+          ]),
+          ...(same.length > 0
+            ? [``, `Already up to date (no change): ${same.map((c) => c.label).join(", ")}`]
+            : []),
+        ];
+        return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+      } catch (error) {
+        return mcpError(error);
+      }
     }
   );
 
