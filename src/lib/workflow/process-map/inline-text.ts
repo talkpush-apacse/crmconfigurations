@@ -1,7 +1,10 @@
+import { parseRich, stripRich } from "../rich-text";
+
 /**
- * Bold inside a step's text. A label can mark part of itself bold with **double asterisks**, for example
- * "Moves to **Expected to Show Up** Folder/Stage". The Process Map draws that part bold; every plain-text place
- * (flow table, CSV, outline, Mermaid, comparison) strips the markers so nobody sees stray asterisks.
+ * Bold, italic and underline inside a step's text. A label marks part of itself with the same light markers Notes use:
+ * **bold**, *italic* and __underline__, for example "Moves to **Expected to Show Up** Folder/Stage". The Process Map
+ * draws those parts styled; every plain-text place (flow table, CSV, outline, Mermaid, comparison) strips the markers
+ * so nobody sees stray asterisks. Old labels with only **bold** read exactly as before.
  */
 
 export interface RichWord {
@@ -11,13 +14,14 @@ export interface RichWord {
 
 const BOLD = /\*\*([^*]+)\*\*/g;
 
-/** The text with the bold markers removed. */
+/** The text with the formatting markers removed. */
 export function stripInline(text: string): string {
-  return String(text ?? "").replace(BOLD, "$1");
+  return stripRich(String(text ?? ""));
 }
 
+/** True when part of the text is bold, italic or underlined. */
 export function hasInline(text: string): boolean {
-  return /\*\*[^*]+\*\*/.test(String(text ?? ""));
+  return parseRich(String(text ?? "")).some((s) => s.bold || s.italic || s.underline);
 }
 
 /** Splits text into words, each remembering whether it sat inside ** **. A bold phrase of several words stays bold per word. */
