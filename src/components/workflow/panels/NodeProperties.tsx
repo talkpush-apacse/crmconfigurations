@@ -762,11 +762,18 @@ export default function NodeProperties({
           <label className="text-sm font-medium text-foreground/85 mb-1 block">
             Label <span className="text-destructive">*</span>
           </label>
-          <Input
-            value={data.label}
-            onChange={(e) => onChange(nodeId, { label: e.target.value })}
-            className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
-          />
+          {diagramStyle === "process_map" ? (
+            <>
+              <RichNotesField value={data.label} onChange={(next) => onChange(nodeId, { label: next })} label="Label" singleLine />
+              <p className="mt-1 text-xs text-muted-foreground">Tip: double-click a step on the diagram to edit its text right there.</p>
+            </>
+          ) : (
+            <Input
+              value={data.label}
+              onChange={(e) => onChange(nodeId, { label: e.target.value })}
+              className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
+            />
+          )}
         </div>
 
         {/* Actor */}

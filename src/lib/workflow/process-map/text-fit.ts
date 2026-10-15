@@ -1,7 +1,7 @@
 import { PM, circled } from "./tokens";
 import { actionTypeOf, personActs, roleBracket, shapeKindOf, tagOf, type ShapeKind } from "./model";
 import { channelWhen } from "./channel";
-import { hasInline, richWords, stripInline } from "./inline-text";
+import { hasInline, stripInline } from "./inline-text";
 import { wrapRich } from "../rich-text";
 
 /**
@@ -78,40 +78,13 @@ export function wrapText(text: string, max: number): string[] {
 }
 
 /**
- * Like wrapText, but keeps **bold** words bold. Text with no bold in it takes the plain path, so every existing diagram
- * wraps exactly as before. Words are placed with the same rule: as many per line as fit, long words hard-broken.
+ * Like wrapText, but keeps **bold**, *italic* and __underline__ text styled. Text with no markers in it takes the plain
+ * path, so every existing diagram wraps exactly as before. Styled text wraps with the same rule: as many words per line
+ * as fit, long words hard-broken.
  */
 export function wrapRuns(text: string, max: number, extra: Partial<Run> = {}): TextLine[] {
   if (!hasInline(text)) return wrapText(stripInline(text), max).map((t) => ({ runs: [{ text: t, ...extra }] }));
-  const lines: { text: string; bold: boolean }[][] = [];
-  let line: { text: string; bold: boolean }[] = [];
-  let len = 0;
-  const flush = () => {
-    if (line.length) lines.push(line);
-    line = [];
-    len = 0;
-  };
-  for (const w of richWords(text)) {
-    let word = w.text;
-    while (word.length > max) {
-      flush();
-      lines.push([{ text: word.slice(0, max), bold: w.bold }]);
-      word = word.slice(max);
-    }
-    if (len && len + 1 + word.length > max) flush();
-    line.push({ text: word, bold: w.bold });
-    len += (len ? 1 : 0) + word.length;
-  }
-  flush();
-  return lines.map((words) => {
-    const runs: Run[] = [];
-    for (const w of words) {
-      const last = runs[runs.length - 1];
-      if (last && !!last.bold === w.bold) last.text += ` ${w.text}`;
-      else runs.push({ text: last ? ` ${w.text}` : w.text, ...extra, ...(w.bold ? { bold: true } : {}) });
-    }
-    return { runs };
-  });
+  return wrapRich(text, max).map((runs) => ({ runs: runs.map(({ text: t, bold, italic, underline }) => ({ text: t, ...extra, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}), ...(underline ? { underline } : {}) })) }));
 }
 
 /** Notes can carry **bold**, *italic* and __underline__; each wrapped line keeps those styles. */
@@ -154,8 +127,8 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
 
   if (kind === "start" || kind === "end") {
     const width = S.terminatorW;
-    const text = wrapText(stripInline(label), charsPerLine(width));
-    for (const t of text) lines.push(plain(t, { bold: kind === "end" }));
+    const text = wrapRuns(label, charsPerLine(width), kind === "end" ? { bold: true } : {});
+    for (const t of text) lines.push(t);
     return { kind, width, height: Math.max(S.terminatorH, 24 + text.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }
 
@@ -167,7 +140,7 @@ export function boxFor(node: any, numbers: NodeNumbers = {}): BoxSpec {
   if (kind === "note") {
     const width = S.noteW;
     const max = charsPerLine(width);
-    if (label) for (const t of wrapText(stripInline(label), max)) lines.push(plain(t, { bold: true }));
+    if (label) for (const t of wrapRuns(label, max, { bold: true })) lines.push(t);
     if (notes) lines.push(...richLines(notes, max));
     return { kind, width, height: Math.max(56, 32 + lines.length * PM.type.lineH), lines, align: "center", badgeSpace: 0, badge: null, people: false };
   }

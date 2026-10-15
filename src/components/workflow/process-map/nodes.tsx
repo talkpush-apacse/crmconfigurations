@@ -1,15 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { stripInline } from "@/lib/workflow/process-map/inline-text";
 import { Handle, Position, type EdgeProps, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { fillFor, shapeKindOf } from "@/lib/workflow/process-map/model";
 import type { Scene, SceneShape } from "@/lib/workflow/process-map/scene";
 import { boxFor } from "@/lib/workflow/process-map/text-fit";
-import { withLook } from "@/lib/workflow/process-map/tokens";
+import { tokensFor, withLook } from "@/lib/workflow/process-map/tokens";
 import { pathFromPoints } from "@/lib/workflow/process-map/route";
 import { ArrowDefs, ContainerBody, EdgeBody, LegendBody, ShapeBody, TableBody, TitleBody } from "./shapes";
 import { useProcessMapScene } from "./context";
+import { InlineLabelEditor } from "./InlineLabelEditor";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const DOT = "!h-2.5 !w-2.5 !border-2 !border-white !bg-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:!bg-ring";
@@ -25,17 +27,37 @@ function shapeFor(scene: Scene | null, id: string, node: any): SceneShape {
   });
 }
 
-/** One step of a Process Map: drawn by the shared SVG shapes, with a connection dot on each side. */
+/** One step of a Process Map: drawn by the shared SVG shapes, with a connection dot on each side. Double-click edits its text. */
 export function ProcessMapNode({ id, type, data, selected }: NodeProps) {
   const scene = useProcessMapScene();
+  const [editing, setEditing] = useState(false);
   const shape = shapeFor(scene, id, { id, type, data });
   const { w, h } = shape.rect;
+  // Only the staff editor passes a way to save the text; the client page and read-only views do not, so they cannot edit.
+  const onLabelChange = (data as any)?.onLabelChange as ((id: string, label: string) => void) | undefined;
+  const canEdit = !!onLabelChange && ["process", "decision", "start", "end", "note"].includes(shape.kind);
+  const T = tokensFor(scene?.look);
+  const narrow = shape.kind === "decision" || shape.kind === "jump";
   return (
-    <div className="group relative" style={{ width: w, height: h }}>
+    <div className="group relative" style={{ width: w, height: h }} onDoubleClick={canEdit ? (e) => { e.stopPropagation(); setEditing(true); } : undefined}>
       <svg width={w} height={h} style={{ overflow: "visible", display: "block" }} aria-label={stripInline(String((data as any)?.label ?? "Step"))}>
         {selected && <rect x={-5} y={-5} width={w + 10} height={h + 10} rx={shape.kind === "start" || shape.kind === "end" ? (h + 10) / 2 : 6} fill="none" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 3" />}
         <ShapeBody shape={shape} look={scene?.look} />
       </svg>
+      {editing && onLabelChange && (
+        <InlineLabelEditor
+          value={String((data as any)?.label ?? "")}
+          width={narrow ? Math.round(w * 0.62) : w}
+          minHeight={narrow ? 40 : Math.min(h, 72)}
+          font={T.font}
+          fontSize={T.type.body}
+          onCommit={(next) => {
+            setEditing(false);
+            onLabelChange(id, next);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
       <Handle id="top" type="source" position={Position.Top} className={DOT} />
       <Handle id="right" type="source" position={Position.Right} className={DOT} />
       <Handle id="bottom" type="source" position={Position.Bottom} className={DOT} />
