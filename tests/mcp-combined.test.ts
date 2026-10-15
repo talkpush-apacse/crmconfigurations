@@ -41,6 +41,10 @@ test("combined connector serves exactly the tools of the checklist, tracker and 
     ...(await namesOf(m.createTrackerMcpServer())),
     ...(await namesOf(m.createWorkflowMcpServer(ORIGIN))),
     "get_config_plan", // the Configuration Plan area is served on the combined URL only
+    // The client-link tools need the address Claude was connected through, so they are on the combined URL only.
+    "create_checklist_link",
+    "list_checklist_links",
+    "change_checklist_link",
   ].sort();
   assert.equal(new Set(combined).size, combined.length, "no duplicate tool names");
   assert.deepEqual(combined, separate);
