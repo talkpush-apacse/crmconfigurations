@@ -47,6 +47,7 @@ export interface ToolbarVersion {
   versionNumber: number;
   status: string;
   createdAt: string;
+  label?: string | null;
   triggerDetail?: string | null;
 }
 
@@ -245,6 +246,7 @@ export default function EditorToolbar(p: EditorToolbarProps) {
                           {formatDistanceToNow(new Date(version.createdAt), { addSuffix: true })}
                         </span>
                       </div>
+                      {version.label && <p className="mt-0.5 break-words text-xs font-medium text-foreground">{version.label}</p>}
                       {version.triggerDetail && <p className="mt-0.5 text-[11px] text-muted-foreground">{version.triggerDetail}</p>}
                     </div>
                   );
