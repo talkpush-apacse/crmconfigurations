@@ -115,7 +115,7 @@ export interface WorkflowNodeData extends Record<string, unknown> {
   isMerge?: boolean;
   isEditingLabel?: boolean;
   customColor?: NodeCustomColor | null;
-  onLabelChange?: (nodeId: string, label: string) => void;
+  onLabelChange?: (nodeId: string, label: string, notes?: string) => void;
   onOpenSuggestion?: (request: NodeSuggestionOpenRequest) => void;
   data: {
     talkpushStage?: string;
