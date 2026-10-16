@@ -1,5 +1,15 @@
 [
   {
+    "version": "4.8",
+    "name": "Version 4.8 - Name any saved version of a workflow",
+    "changes": [
+      "Workflow Version History: every version now has an Add name link (or a pencil if it already has a name). Click it, type a name such as \"Before client call\", and press Enter. You can rename or clear a name any time, including versions Claude or the system saved for you",
+      "A version's name now shows in bold under its number, and also in the quick Recent versions list next to the v-number at the top, so the right one is easier to find",
+      "Names are up to 80 characters. Renaming only changes the name: it never touches the workflow itself or which version is shared with clients",
+      "No database change needed"
+    ]
+  },
+  {
     "version": "4.7",
     "name": "Version 4.7 - Several client links per workflow, and a closer walk-through",
     "changes": [

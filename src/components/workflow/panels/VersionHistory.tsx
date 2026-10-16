@@ -14,7 +14,7 @@ import {
   type Node,
   type NodeTypes,
 } from "@xyflow/react";
-import { Eye, Loader2, Plus, RotateCcw, X } from "lucide-react";
+import { Eye, Loader2, Pencil, Plus, RotateCcw, X } from "lucide-react";
 import { format } from "@/lib/workflow/dates";
 import { normalizeWorkflowEdgeData as normalizeEdgeData } from "@/lib/workflow/normalize";
 import { toast } from "@/components/workflow/ui/toast";
@@ -125,6 +125,54 @@ export default function VersionHistory({
   const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<VersionListItem | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+
+  function startRename(version: VersionListItem) {
+    setEditingId(version.id);
+    setEditValue(version.label ?? "");
+  }
+
+  function cancelRename() {
+    setEditingId(null);
+    setEditValue("");
+  }
+
+  async function saveRename(version: VersionListItem) {
+    if (renamingId) return;
+    const next = editValue.trim();
+    if (next === (version.label ?? "")) {
+      cancelRename();
+      return;
+    }
+
+    setRenamingId(version.id);
+
+    try {
+      const res = await fetch(
+        `/api/workflows/${workflowId}/versions/${version.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: next }),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to rename version");
+      }
+
+      cancelRename();
+      toast.success(next ? "Version renamed" : "Version name removed");
+      await onRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to rename version");
+    } finally {
+      setRenamingId(null);
+    }
+  }
 
   async function handleSaveCurrentVersion() {
     setSavingVersion(true);
@@ -238,7 +286,14 @@ export default function VersionHistory({
               <Input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
-                placeholder="Optional version label"
+                placeholder="Name this version (e.g. before client call)"
+                maxLength={80}
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !savingVersion) {
+                    handleSaveCurrentVersion();
+                  }
+                }}
                 className="border border-input bg-card focus:ring-2 focus:ring-ring focus:border-ring"
               />
               <div className="flex items-center justify-end gap-2">
@@ -322,6 +377,71 @@ export default function VersionHistory({
                               </span>
                             </div>
 
+                            {editingId === version.id ? (
+                              <div className="mt-2 space-y-1.5">
+                                <Input
+                                  value={editValue}
+                                  onChange={(event) => setEditValue(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") saveRename(version);
+                                    if (event.key === "Escape") cancelRename();
+                                  }}
+                                  placeholder="Name this version"
+                                  maxLength={80}
+                                  autoFocus
+                                  disabled={renamingId === version.id}
+                                  aria-label={`Name for v${version.versionNumber}`}
+                                  className="h-8 border border-input bg-card text-sm focus:ring-2 focus:ring-ring focus:border-ring"
+                                />
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={renamingId === version.id}
+                                    onClick={cancelRename}
+                                    className="h-7 px-2 text-xs"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={renamingId === version.id}
+                                    onClick={() => saveRename(version)}
+                                    className="h-7 px-2 text-xs text-foreground hover:bg-brand-lavender-lightest"
+                                  >
+                                    {renamingId === version.id && (
+                                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                    )}
+                                    Save name
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : version.label ? (
+                              <div className="mt-2 flex items-start gap-1">
+                                <p className="text-sm font-medium text-foreground break-words min-w-0">
+                                  {version.label}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => startRename(version)}
+                                  aria-label={`Rename v${version.versionNumber}`}
+                                  className="shrink-0 mt-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-brand-lavender-lightest"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startRename(version)}
+                                className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                Add name
+                              </button>
+                            )}
+
                             <p className="text-xs text-muted-foreground mt-2">
                               {format(new Date(version.createdAt), "MMM d, yyyy 'at' h:mm a")}
                             </p>
@@ -342,11 +462,6 @@ export default function VersionHistory({
                               {version.nodeCount} nodes · {version.edgeCount} edges
                             </p>
 
-                            {version.label && (
-                              <p className="text-xs italic text-muted-foreground mt-1">
-                                “{version.label}”
-                              </p>
-                            )}
                           </div>
 
                           <div className="flex flex-col items-end gap-1">

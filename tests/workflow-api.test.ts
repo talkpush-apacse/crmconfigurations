@@ -122,6 +122,24 @@ test("workflow API: create, save, version, share, public view, sign-off, revoke"
     assert.equal(vlist.status, 200);
     assert.ok(vlist.body.items.length >= 2, "status changes snapshot a version");
 
+    // rename a version by hand: set, clear, and reject bad input
+    const versionRoute = await import("../src/app/api/workflows/[id]/versions/[versionId]/route");
+    const versionId = vlist.body.items[0].id;
+    const rename = (body: unknown, auth?: boolean, vid = versionId) =>
+      call(versionRoute.PATCH as never, `/api/workflows/${id}/versions/${vid}`, {
+        method: "PATCH", params: { id, versionId: vid }, body, auth,
+      });
+    const named = await rename({ label: "  <b>Before</b> client call " });
+    assert.equal(named.status, 200, JSON.stringify(named.body));
+    assert.equal(named.body.label, "Before client call", "HTML is stripped and the name is trimmed");
+    const relisted = await call(versions.GET as never, `/api/workflows/${id}/versions`, { params: { id } });
+    assert.equal(relisted.body.items.find((v: Json) => v.id === versionId).label, "Before client call");
+    assert.equal((await rename({ label: "" })).body.label, null, "an empty name clears it");
+    assert.equal((await rename({ label: "x".repeat(81) })).status, 400, "too long is refused");
+    assert.equal((await rename({})).status, 400, "a label is required");
+    assert.equal((await rename({ label: "x" }, false)).status, 401, "needs a login");
+    assert.equal((await rename({ label: "x" }, true, "nope")).status, 404, "unknown version");
+
     // revoke
     const revoked = await call(shareRoute.DELETE as never, `/api/workflows/${id}/share`, { method: "DELETE", params: { id } });
     assert.equal(revoked.status, 200);
