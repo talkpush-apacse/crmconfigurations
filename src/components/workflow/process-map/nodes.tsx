@@ -34,10 +34,12 @@ export function ProcessMapNode({ id, type, data, selected }: NodeProps) {
   const shape = shapeFor(scene, id, { id, type, data });
   const { w, h } = shape.rect;
   // Only the staff editor passes a way to save the text; the client page and read-only views do not, so they cannot edit.
-  const onLabelChange = (data as any)?.onLabelChange as ((id: string, label: string) => void) | undefined;
+  const onLabelChange = (data as any)?.onLabelChange as ((id: string, label: string, notes?: string) => void) | undefined;
   const canEdit = !!onLabelChange && ["process", "decision", "start", "end", "note"].includes(shape.kind);
   const T = tokensFor(scene?.look);
   const narrow = shape.kind === "decision" || shape.kind === "jump";
+  // A note is drawn as a bold title with its notes underneath, so both can be edited here.
+  const isNote = shape.kind === "note";
   return (
     <div className="group relative" style={{ width: w, height: h }} onDoubleClick={canEdit ? (e) => { e.stopPropagation(); setEditing(true); } : undefined}>
       <svg width={w} height={h} style={{ overflow: "visible", display: "block" }} aria-label={stripInline(String((data as any)?.label ?? "Step"))}>
@@ -47,13 +49,15 @@ export function ProcessMapNode({ id, type, data, selected }: NodeProps) {
       {editing && onLabelChange && (
         <InlineLabelEditor
           value={String((data as any)?.label ?? "")}
+          notes={isNote ? String((data as any)?.notes ?? "") : undefined}
+          notesMinHeight={isNote ? Math.max(h - 44, 48) : undefined}
           width={narrow ? Math.round(w * 0.62) : w}
-          minHeight={narrow ? 40 : Math.min(h, 72)}
+          minHeight={isNote ? 32 : narrow ? 40 : Math.min(h, 72)}
           font={T.font}
           fontSize={T.type.body}
-          onCommit={(next) => {
+          onCommit={(next, nextNotes) => {
             setEditing(false);
-            onLabelChange(id, next);
+            onLabelChange(id, next, nextNotes);
           }}
           onCancel={() => setEditing(false)}
         />

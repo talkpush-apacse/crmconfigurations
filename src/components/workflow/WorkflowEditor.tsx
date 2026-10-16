@@ -1688,7 +1688,7 @@ function EditorInner({
     setNodeSuggestionState((current) => ({ ...current, open: false }));
   }
 
-  function handleInlineLabelChange(id: string, label: string) {
+  function handleInlineLabelChange(id: string, label: string, notes?: string) {
     setNodes((prev) => {
       const next = prev.map((node) =>
         node.id === id
@@ -1697,6 +1697,8 @@ function EditorInner({
               data: {
                 ...node.data,
                 label,
+                // Only a note box sends its notes along; for any other step the notes stay as they are.
+                ...(notes !== undefined ? { notes } : {}),
                 isEditingLabel: false,
               },
             }
