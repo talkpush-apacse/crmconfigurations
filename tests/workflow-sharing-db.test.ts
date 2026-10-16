@@ -74,7 +74,7 @@ async function makeWorkflow(prisma: any) {
   return row.id as string;
 }
 
-test("shared links: create, open client-safe, comment rules, guest names, turn off, replace", { skip }, async () => {
+test("shared links: create, open client-safe, comment rules, guest names, turn off, add another", { skip }, async () => {
   const t = await setup();
   let id = "";
   try {
@@ -130,7 +130,7 @@ test("shared links: create, open client-safe, comment rules, guest names, turn o
     const denied = await t.visit(comments.PATCH, cmtToken, "/x", { cookie: otherGuest.setCookie.split(";")[0], method: "PATCH", body: { status: "open" }, params: { cid: ok.body.id } });
     assert.equal(denied.status, 403, "only your own comments");
 
-    // turn the view link off, then replace the comment link: old addresses die
+    // turn the view link off; adding a second comment link does NOT break the first one
     const links = (await t.call(t.routes.access.GET, "/x", { staff: true, params: { id } })).body.links as Json[];
     const viewRow = links.find((l) => l.level === "view")!;
     assert.equal((await t.call(t.routes.link.DELETE, "/x", { staff: true, method: "DELETE", params: { id, linkId: viewRow.id } })).status, 200);
@@ -139,8 +139,8 @@ test("shared links: create, open client-safe, comment rules, guest names, turn o
     assert.equal(off.body.problem, "disabled");
     assert.equal(off.body.canRequestAccess, true);
     const cmt2 = await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment" });
-    assert.equal((await t.visit(t.routes.page.GET, cmtToken, "/x")).body.problem, "disabled", "replaced link is dead");
-    assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(cmt2.body.url), "/x")).status, 200, "the new one works");
+    assert.equal((await t.visit(t.routes.page.GET, cmtToken, "/x")).status, 200, "adding another link does not break the one already sent");
+    assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(cmt2.body.url), "/x")).status, 200, "the new one works too");
 
     // restricted: shared links stop working, named invites do not
     const member = await t.staffPost(t.routes.members.POST, "/x", id, { displayName: "Pat", level: "viewer" });
@@ -171,10 +171,53 @@ test("shared links: create, open client-safe, comment rules, guest names, turn o
     assert.equal(review.body.accessRequests[0].name, "Pat");
     assert.ok(review.body.comments.some((c: Json) => c.body === "Looks right"));
     const actions = (review.body.audit as Json[]).map((a) => a.action);
-    for (const a of ["link.created", "link.disabled", "link.rotated", "member.invited", "member.revoked", "comment.created", "guest.identified", "access.settings_changed"]) {
+    for (const a of ["link.created", "link.disabled", "member.invited", "member.revoked", "comment.created", "guest.identified", "access.settings_changed"]) {
       assert.ok(actions.includes(a), `audit has ${a}`);
     }
     assert.ok(!review.text.includes("wfl_") && !review.text.includes("wfm_"), "no secret link in the audit or review");
+  } finally {
+    if (id) await t.prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
+    await t.prisma.$disconnect();
+  }
+});
+
+test("several links per level: names, turning off one at a time, and a cap", { skip }, async () => {
+  const t = await setup();
+  let id = "";
+  try {
+    id = await makeWorkflow(t.prisma);
+    const a = await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment", name: "  Roxanne (B2B)  " });
+    const b = await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment", name: "Concentrix team" });
+    const c = await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment" });
+    assert.equal(a.status, 201, a.text);
+    assert.equal(a.body.name, "Roxanne (B2B)", "name is trimmed");
+    assert.equal(c.body.name, null, "name is optional");
+    for (const l of [a, b, c]) assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(l.body.url), "/x")).status, 200, "every issued link works");
+
+    const listed = (await t.call(t.routes.access.GET, "/x", { staff: true, params: { id } })).body.links as Json[];
+    assert.equal(listed.filter((l) => l.level === "comment").length, 3);
+    assert.deepEqual(listed.map((l) => l.name).sort(), [null, "Concentrix team", "Roxanne (B2B)"].sort());
+    assert.ok(!(await t.call(t.routes.access.GET, "/x", { staff: true, params: { id } })).text.includes("wfl_" + "x".repeat(10)), "no secret in the list");
+
+    // rename one, then turn off just that one: the others keep working
+    const rename = await t.call(t.routes.link.PATCH, "/x", { staff: true, method: "PATCH", body: { name: "Roxanne" }, params: { id, linkId: a.body.id } });
+    assert.equal(rename.status, 200, rename.text);
+    assert.ok((rename.body.links as Json[]).some((l) => l.id === a.body.id && l.name === "Roxanne"));
+    assert.equal((await t.call(t.routes.link.DELETE, "/x", { staff: true, method: "DELETE", params: { id, linkId: a.body.id } })).status, 200);
+    assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(a.body.url), "/x")).body.problem, "disabled");
+    assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(b.body.url), "/x")).status, 200, "the other links are untouched");
+    assert.equal((await t.visit(t.routes.page.GET, t.tokenOf(c.body.url), "/x")).status, 200);
+
+    // levels are independent, and the number of live links per level is capped
+    const view = await t.staffPost(t.routes.links.POST, "/x", id, { level: "view" });
+    assert.equal(view.status, 201);
+    for (let i = 0; i < 8; i++) assert.equal((await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment", name: `extra ${i}` })).status, 201);
+    const tooMany = await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment" });
+    assert.equal(tooMany.status, 400, "capped at ten live links per level");
+    assert.equal((await t.staffPost(t.routes.links.POST, "/x", id, { level: "view" })).status, 201, "other levels are not affected by the cap");
+    // turning one off frees a slot
+    assert.equal((await t.call(t.routes.link.DELETE, "/x", { staff: true, method: "DELETE", params: { id, linkId: b.body.id } })).status, 200);
+    assert.equal((await t.staffPost(t.routes.links.POST, "/x", id, { level: "comment" })).status, 201);
   } finally {
     if (id) await t.prisma.workflowProject.delete({ where: { id } }).catch(() => undefined);
     await t.prisma.$disconnect();

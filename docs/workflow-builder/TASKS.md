@@ -47,7 +47,7 @@ Applied to the local scratch database and, on 2026-10-04, to Supabase.
 - [x] Client page `/w/<link>` (server-rendered): outline + search, diagram, step details, comments, suggestions (dashed overlays), walk-through, approve / request changes, name prompt, passcode + friendly problem pages + request access, editing and suggesting modes with save state, conflict and refresh banners, presence chips, phone layout (outline-first, sticky sign-off).
 - [x] Staff: new Share dialog (people, general access, three links with passcode/expiry/mode, publish vs live, show feasibility, preview as), Review panel (comments, suggestions + accept all, decisions, access requests, activity), dashboard "Needs attention" + badges + group by client, "Preview as" page `/admin/workflows/[id]/preview/[mode]`.
 - [x] Tests: `workflow-sharing-db.test.ts` (5 flows incl. legacy), `workflow-client-logic.test.ts`; viewed in the browser pane (desktop + phone): outline, edit, name prompt, saved edit + audit line.
-- Honest limits: presence is in memory (per server instance); a secret link is shown once, "Get a new link" replaces it; legacy `WorkflowSharedView`/`SignOffButtons` components are now unused (delete in the Phase 5 cleanup).
+- Honest limits: presence is in memory (per server instance); a secret link is shown once (several live links per level, each with an optional name; "Add another link" never breaks one already sent); legacy `WorkflowSharedView`/`SignOffButtons` components are now unused (delete in the Phase 5 cleanup).
 
 ### Still to do from the spec's phase 2
 - [ ] Editor (staff) uses ops instead of whole-canvas saves, and the in-app inbox page across all workflows (the dashboard badges cover the first need).

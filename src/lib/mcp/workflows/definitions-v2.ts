@@ -134,14 +134,15 @@ export const v2Definitions: McpToolDefinition[] = [
     description: "Switch a Process Map between its two looks: \"original\" (how every map looked before) and \"readable\" (bigger text, calmer colour, accent main path, Inter). New maps are readable; existing maps stay original until switched. Every page is arranged again for the new look. A snapshot is taken first.",
     inputSchema: object({ workflowId, look: { type: "string", enum: ["original", "readable"] } }, ["workflowId", "look"]),
   },
-  { name: "list_access", description: "Who can open a workflow: shared links (level, expiry, passcode on/off), named people, and general access. Secret addresses are never listed.", inputSchema: object({ workflowId }, ["workflowId"]) },
+  { name: "list_access", description: "Who can open a workflow: shared links (level, expiry, passcode on/off), named people, and general access. Each link has an id, level, optional name, last-used time and expiry. Secret addresses are never listed.", inputSchema: object({ workflowId }, ["workflowId"]) },
   {
     name: "create_link",
-    description: "Create (or replace) the shared view, comment or edit link and return its address for the user to copy and send themselves; nothing is emailed. Edit links default to suggest-only with a 30 day expiry." + explicit,
+    description: "Add a shared view, comment or edit link and return its address for the user to copy and send themselves; nothing is emailed. Links already issued keep working (use disable_link to turn one off), so give each a name to tell them apart. Edit links default to suggest-only with a 30 day expiry." + explicit,
     inputSchema: object(
       {
         workflowId,
         level: { type: "string", enum: ["view", "comment", "edit"] },
+        name: { type: "string", description: "Optional label so links can be told apart, e.g. the person or team it is for. Staff only; clients never see it." },
         editMode: { type: "string", enum: ["direct", "suggest_only"] },
         canApprove: { type: "boolean" },
         passcode: { type: "string" },
@@ -150,7 +151,7 @@ export const v2Definitions: McpToolDefinition[] = [
       ["workflowId", "level"]
     ),
   },
-  { name: "disable_link", description: "Turn a shared link off; its address stops working at once." + explicit, inputSchema: object({ workflowId, linkId: { type: "string" } }, ["workflowId", "linkId"]) },
+  { name: "disable_link", description: "Turn ONE shared link off (by its id from list_access); its address stops working at once. Other links are not affected." + explicit, inputSchema: object({ workflowId, linkId: { type: "string" } }, ["workflowId", "linkId"]) },
   {
     name: "invite_person",
     description: "Invite one named person (viewer, commenter or editor) and return their personal address for the user to copy and send; nothing is emailed." + explicit,

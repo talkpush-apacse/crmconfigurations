@@ -1,5 +1,17 @@
 [
   {
+    "version": "4.7",
+    "name": "Version 4.7 - Several client links per workflow, and a closer walk-through",
+    "changes": [
+      "Workflow Share box: you can now have several View, Comment or Edit links at once. \"Get a new link\" is now \"Add another link\", and the links you already sent keep working. Before, getting a new link switched the old one off without telling anyone",
+      "Give each link a name (for example the person or team it is for), see when it was created and last used, and turn off just the one you mean to. Turning a link off asks first. Up to 10 live links per kind",
+      "Claude's create_link tool adds a link the same way and takes an optional name; disable_link turns off one link by its id",
+      "Client page: on a large screen the Walk me through card now opens at the top right, next to the button you pressed, instead of at the bottom. The button changes to Stop walk-through while it runs",
+      "On a phone, the step details sheet no longer covers the walk-through buttons",
+      "Needs one small database change before it goes live: an optional name column on workflow links. Existing links are untouched"
+    ]
+  },
+  {
     "version": "4.6",
     "name": "Version 4.6 - Claude can make client links",
     "changes": [

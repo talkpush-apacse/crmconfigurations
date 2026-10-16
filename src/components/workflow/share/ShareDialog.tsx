@@ -14,8 +14,8 @@ import type { AccessOverview, LinkSummary, MemberSummary } from "@/lib/workflow/
  * named people (a personal link each), the three shared links (view / comment / edit), what clients see
  * (published version or live), and "Preview as". Links are copied, never emailed.
  *
- * For safety a secret link is shown only at the moment it is created. To copy one again, get a new one;
- * the old address then stops working.
+ * For safety a secret link is shown only at the moment it is created. There can be several links of each kind
+ * (give each a name), so adding one never breaks a link already sent; staff turn off only the one they mean to.
  */
 
 type Level = "view" | "comment" | "edit";
@@ -66,8 +66,11 @@ export default function ShareDialog({
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [invite, setInvite] = useState({ name: "", email: "", level: "viewer" as "viewer" | "commenter" | "editor" });
   const [showInvite, setShowInvite] = useState(false);
-  const [passcodeFor, setPasscodeFor] = useState<Level | null>(null);
+  // Which link (by id) is having a passcode typed in, and which level has the "add a link" form open.
+  const [passcodeFor, setPasscodeFor] = useState<string | null>(null);
   const [passcode, setPasscode] = useState("");
+  const [addingFor, setAddingFor] = useState<Level | null>(null);
+  const [newName, setNewName] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -93,26 +96,32 @@ export default function ShareDialog({
     }
   }
 
-  const linkOf = (level: Level): LinkSummary | undefined => data?.links.find((l) => l.level === level);
+  const linksOf = (level: Level): LinkSummary[] => data?.links.filter((l) => l.level === level) ?? [];
 
+  /** Adds a link. Links already sent keep working. */
   async function createLink(level: Level, extra: Record<string, unknown> = {}) {
-    const created = await run(`link-${level}`, () => api<{ url: string }>(`/api/workflows/${workflowId}/links`, json("POST", { level, ...extra })));
+    const created = await run(`add-${level}`, () => api<{ id: string; url: string }>(`/api/workflows/${workflowId}/links`, json("POST", { level, ...extra })));
     if (!created) return;
-    setRevealed((r) => ({ ...r, [`link-${level}`]: created.url }));
+    setRevealed((r) => ({ ...r, [`link-${created.id}`]: created.url }));
+    setAddingFor(null);
+    setNewName("");
     await load();
     await copyText(created.url);
   }
 
   async function patchLink(link: LinkSummary, patch: Record<string, unknown>) {
-    await run(`link-${link.level}`, () => api(`/api/workflows/${workflowId}/links/${link.id}`, json("PATCH", patch)));
+    await run(`link-${link.id}`, () => api(`/api/workflows/${workflowId}/links/${link.id}`, json("PATCH", patch)));
     await load();
   }
 
   async function turnOffLink(link: LinkSummary) {
-    await run(`link-${link.level}`, () => api(`/api/workflows/${workflowId}/links/${link.id}`, json("DELETE")));
+    const label = link.name ? `"${link.name}"` : "this link";
+    const used = link.lastUsedAt ? ` It was last used ${formatDistanceToNow(link.lastUsedAt, { addSuffix: true })}.` : " It has not been used yet.";
+    if (!window.confirm(`Turn off ${label}?${used} Anyone who has it will see "This link has been turned off". Your other links are not affected.`)) return;
+    await run(`link-${link.id}`, () => api(`/api/workflows/${workflowId}/links/${link.id}`, json("DELETE")));
     setRevealed((r) => {
       const next = { ...r };
-      delete next[`link-${link.level}`];
+      delete next[`link-${link.id}`];
       return next;
     });
     await load();
@@ -262,61 +271,93 @@ export default function ShareDialog({
 
               <ul className={`mt-3 space-y-3 ${data.generalAccess === "anyone_with_link" ? "" : "opacity-60"}`}>
                 {LEVELS.map(({ level, title, caption }) => {
-                  const link = linkOf(level);
-                  const url = revealed[`link-${level}`];
+                  const links = linksOf(level);
+                  const adding = addingFor === level;
                   return (
                     <li key={level} className="rounded-lg border border-border p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">{title}{link ? <span className="ml-2 rounded-full bg-brand-sage/25 px-2 py-0.5 text-[11px] font-semibold text-foreground">On</span> : <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Off</span>}</p>
+                          <p className="font-medium">{title}{links.length > 0 ? <span className="ml-2 rounded-full bg-brand-sage/25 px-2 py-0.5 text-[11px] font-semibold text-foreground">{links.length === 1 ? "On" : `${links.length} links on`}</span> : <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Off</span>}</p>
                           <p className="text-xs text-muted-foreground">{caption}</p>
                         </div>
-                        {!link ? (
-                          <Button size="sm" disabled={busy === `link-${level}`} onClick={() => createLink(level)}><Link2 className="h-3.5 w-3.5" />Create link</Button>
-                        ) : (
-                          <>
-                            {url ? (
-                              <Button size="sm" onClick={() => copyText(url)}><Copy className="h-3.5 w-3.5" />Copy link</Button>
-                            ) : (
-                              <Button size="sm" variant="outline" disabled={busy === `link-${level}`} onClick={() => createLink(level, { editMode: link.editMode, canApprove: link.canApprove })} title="The old link stops working">Get a new link</Button>
-                            )}
-                            <Button size="sm" variant="ghost" onClick={() => turnOffLink(link)}>Turn off</Button>
-                          </>
+                        {!adding && (
+                          <Button size="sm" variant={links.length === 0 ? "default" : "outline"} disabled={busy === `add-${level}`} onClick={() => { setAddingFor(level); setNewName(""); }}>
+                            <Link2 className="h-3.5 w-3.5" />{links.length === 0 ? "Create link" : "Add another link"}
+                          </Button>
                         )}
                       </div>
-                      {link && (
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                          {level === "edit" && (
-                            <label className="flex items-center gap-1.5">Mode
-                              <select className="h-7 rounded-md border border-input bg-background px-1.5" value={link.editMode} onChange={(e) => patchLink(link, { editMode: e.target.value })}>
-                                <option value="suggest_only">Suggest-only</option>
-                                <option value="direct">Direct editing</option>
-                              </select>
-                            </label>
-                          )}
-                          <label className="flex items-center gap-1.5"><input type="checkbox" checked={link.canApprove} onChange={(e) => patchLink(link, { canApprove: e.target.checked })} />Can approve</label>
-                          <label className="flex items-center gap-1.5">Expires
-                            <input type="date" className="h-7 rounded-md border border-input bg-background px-1.5" value={expiryValue(link.expiresAt)} onChange={(e) => patchLink(link, { expiresAt: e.target.value ? new Date(`${e.target.value}T23:59:59`).toISOString() : null })} />
+
+                      {adding && (
+                        <form className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2" onSubmit={(e) => { e.preventDefault(); void createLink(level, newName.trim() ? { name: newName.trim() } : {}); }}>
+                          <label className="flex min-w-48 flex-1 items-center gap-2 text-xs">
+                            <span className="shrink-0">Who is it for?</span>
+                            <input className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm" placeholder="Optional, e.g. Roxanne (B2B)" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} autoFocus />
                           </label>
-                          {link.hasPasscode ? (
-                            <span className="flex items-center gap-2">Passcode on <button type="button" className="underline" onClick={() => patchLink(link, { passcode: null })}>remove</button></span>
-                          ) : passcodeFor === level ? (
-                            <form className="flex items-center gap-1.5" onSubmit={async (e) => { e.preventDefault(); await patchLink(link, { passcode }); setPasscodeFor(null); setPasscode(""); }}>
-                              <input className="h-7 w-32 rounded-md border border-input bg-background px-1.5" placeholder="4+ characters" value={passcode} onChange={(e) => setPasscode(e.target.value)} minLength={4} maxLength={64} aria-label="New passcode" autoFocus />
-                              <Button size="xs" type="submit" disabled={passcode.length < 4}>Set</Button>
-                            </form>
-                          ) : (
-                            <button type="button" className="underline" onClick={() => setPasscodeFor(level)}>Add a passcode</button>
-                          )}
-                          {link.lastUsedAt && <span className="text-muted-foreground">Last used {formatDistanceToNow(link.lastUsedAt, { addSuffix: true })}</span>}
-                        </div>
+                          <Button size="sm" type="submit" disabled={busy === `add-${level}`}>{busy === `add-${level}` && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Create and copy</Button>
+                          <Button size="sm" type="button" variant="ghost" onClick={() => setAddingFor(null)}>Cancel</Button>
+                          {links.length > 0 && <p className="basis-full text-xs text-muted-foreground">Your {links.length === 1 ? "existing link keeps" : "existing links keep"} working.</p>}
+                        </form>
                       )}
-                      {url && <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} aria-label={`${title} address`} className="mt-2 w-full rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs" />}
+
+                      {links.length > 0 && (
+                        <ul className="mt-2 space-y-2">
+                          {links.map((link) => {
+                            const url = revealed[`link-${link.id}`];
+                            return (
+                              <li key={link.id} className="rounded-md border border-border/70 p-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <input
+                                    key={`${link.id}-${link.name ?? ""}`}
+                                    defaultValue={link.name ?? ""}
+                                    placeholder="Add a name"
+                                    maxLength={60}
+                                    aria-label={`Name of this ${level} link`}
+                                    onBlur={(e) => { if (e.target.value.trim() !== (link.name ?? "")) void patchLink(link, { name: e.target.value.trim() || null }); }}
+                                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                    className="h-7 min-w-32 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-sm font-medium hover:border-input focus:border-input focus:bg-background"
+                                  />
+                                  <span className="font-mono text-[11px] text-muted-foreground" title="Only the start and end of the address are kept">{link.hint ?? "link"}</span>
+                                  {url && <Button size="sm" onClick={() => copyText(url)}><Copy className="h-3.5 w-3.5" />Copy link</Button>}
+                                  <Button size="sm" variant="ghost" disabled={busy === `link-${link.id}`} onClick={() => turnOffLink(link)}>Turn off</Button>
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                                  {level === "edit" && (
+                                    <label className="flex items-center gap-1.5">Mode
+                                      <select className="h-7 rounded-md border border-input bg-background px-1.5" value={link.editMode} onChange={(e) => patchLink(link, { editMode: e.target.value })}>
+                                        <option value="suggest_only">Suggest-only</option>
+                                        <option value="direct">Direct editing</option>
+                                      </select>
+                                    </label>
+                                  )}
+                                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={link.canApprove} onChange={(e) => patchLink(link, { canApprove: e.target.checked })} />Can approve</label>
+                                  <label className="flex items-center gap-1.5">Expires
+                                    <input type="date" className="h-7 rounded-md border border-input bg-background px-1.5" value={expiryValue(link.expiresAt)} onChange={(e) => patchLink(link, { expiresAt: e.target.value ? new Date(`${e.target.value}T23:59:59`).toISOString() : null })} />
+                                  </label>
+                                  {link.hasPasscode ? (
+                                    <span className="flex items-center gap-2">Passcode on <button type="button" className="underline" onClick={() => patchLink(link, { passcode: null })}>remove</button></span>
+                                  ) : passcodeFor === link.id ? (
+                                    <form className="flex items-center gap-1.5" onSubmit={async (e) => { e.preventDefault(); await patchLink(link, { passcode }); setPasscodeFor(null); setPasscode(""); }}>
+                                      <input className="h-7 w-32 rounded-md border border-input bg-background px-1.5" placeholder="4+ characters" value={passcode} onChange={(e) => setPasscode(e.target.value)} minLength={4} maxLength={64} aria-label="New passcode" autoFocus />
+                                      <Button size="xs" type="submit" disabled={passcode.length < 4}>Set</Button>
+                                    </form>
+                                  ) : (
+                                    <button type="button" className="underline" onClick={() => setPasscodeFor(link.id)}>Add a passcode</button>
+                                  )}
+                                  <span className="text-muted-foreground">
+                                    Created {formatDistanceToNow(link.createdAt, { addSuffix: true })} · {link.lastUsedAt ? `Last used ${formatDistanceToNow(link.lastUsedAt, { addSuffix: true })}` : "Not used yet"}
+                                  </span>
+                                </div>
+                                {url && <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} aria-label={`${title} address`} className="mt-2 w-full rounded-md border border-border bg-muted/40 px-2 py-1.5 font-mono text-xs" />}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </li>
                   );
                 })}
               </ul>
-              <p className="mt-2 text-xs text-muted-foreground">For safety a link is shown only when it is created. To copy one again, get a new one; the old one then stops working.</p>
+              <p className="mt-2 text-xs text-muted-foreground">For safety a link is shown only when it is created. Adding another link never breaks one you already sent. To stop a link working, turn off just that one.</p>
               {legacyLinkActive && (
                 <p className="mt-2 rounded-md bg-brand-amber/15 p-2 text-xs text-foreground">
                   This workflow also has an older single share link that still works for anyone who has it.{" "}
