@@ -6,9 +6,10 @@ import { defaultsForLevel } from "./permissions";
 import { generateToken, hashPasscode } from "./tokens";
 
 /**
- * Staff-only management of who can open a workflow: the three shared links (view, comment, edit) and named
- * invites. The secret link itself is returned ONCE, when it is created or replaced; after that only a short
- * hint is kept, because only a hash is stored. To get a link again, replace it ("Get a new link").
+ * Staff-only management of who can open a workflow: shared links (view, comment, edit) and named invites.
+ * The secret link itself is returned ONCE, when it is created; after that only a short hint is kept, because
+ * only a hash is stored. There can be several live links of each level at once (give each a name), so adding
+ * a link never breaks one already sent. A link stops working only when staff turn that link off.
  */
 
 const expiry = z
@@ -16,8 +17,20 @@ const expiry = z
   .optional()
   .transform((v) => (v ? new Date(v) : v === null ? null : undefined));
 
+/** A staff-only label for telling links apart. Empty text means "no name". */
+const linkName = z
+  .string()
+  .max(60)
+  .nullable()
+  .optional()
+  .transform((v) => (v === undefined ? undefined : (v?.trim() || null)));
+
+/** Most live links of one level at a time: plenty for real use, and a stop against runaway link creation. */
+export const MAX_LIVE_LINKS_PER_LEVEL = 10;
+
 export const linkCreateSchema = z.object({
   level: z.enum(["view", "comment", "edit"]),
+  name: linkName,
   editMode: z.enum(["direct", "suggest_only"]).optional(),
   canApprove: z.boolean().optional(),
   passcode: z.string().min(4).max(64).nullable().optional(),
@@ -26,6 +39,7 @@ export const linkCreateSchema = z.object({
 export type LinkCreateInput = z.infer<typeof linkCreateSchema>;
 
 export const linkUpdateSchema = z.object({
+  name: linkName,
   editMode: z.enum(["direct", "suggest_only"]).optional(),
   canApprove: z.boolean().optional(),
   passcode: z.string().min(4).max(64).nullable().optional(), // null removes the passcode
@@ -62,6 +76,7 @@ export interface AccessOverview {
 export interface LinkSummary {
   id: string;
   level: string;
+  name: string | null;
   editMode: string;
   canApprove: boolean;
   hasPasscode: boolean;
@@ -104,6 +119,7 @@ export async function getAccessOverview(workflowId: string): Promise<AccessOverv
     links: links.map((l) => ({
       id: l.id,
       level: l.level,
+      name: l.name,
       editMode: l.editMode,
       canApprove: l.canApprove,
       hasPasscode: Boolean(l.passcodeHash),
@@ -156,13 +172,17 @@ function applyEditDefaults(level: string, input: { editMode?: string; expiresAt?
   return { editMode, expiresAt };
 }
 
-/** Creates a shared link and switches general access to "anyone with the link" if it was off. Returns the secret once. */
+/**
+ * Adds a shared link and switches general access to "anyone with the link" if it was off. Returns the secret once.
+ * Links already issued for this level keep working; staff turn one off with disableLink when they mean to.
+ */
 export async function createLink(workflowId: string, adminId: string, input: LinkCreateInput) {
   const workflow = await prisma.workflowProject.findUnique({ where: { id: workflowId }, select: { id: true } });
   if (!workflow) throw notFound("Workflow");
-  // One live link per level: creating again replaces the old one (same as "Get a new link").
-  const existing = await prisma.workflowLink.findFirst({ where: { workflowId, level: input.level, disabledAt: null } });
-  if (existing) await prisma.workflowLink.update({ where: { id: existing.id }, data: { disabledAt: new Date() } });
+  const live = await prisma.workflowLink.count({ where: { workflowId, level: input.level, disabledAt: null } });
+  if (live >= MAX_LIVE_LINKS_PER_LEVEL) {
+    throw badRequest(`There are already ${MAX_LIVE_LINKS_PER_LEVEL} live ${input.level} links. Turn one off before adding another.`);
+  }
 
   const { editMode, expiresAt } = applyEditDefaults(input.level, input);
   const secret = generateToken("link");
@@ -170,6 +190,7 @@ export async function createLink(workflowId: string, adminId: string, input: Lin
     data: {
       workflowId,
       level: input.level,
+      name: input.name ?? null,
       editMode,
       canApprove: input.canApprove ?? false,
       tokenHash: secret.hash,
@@ -184,10 +205,10 @@ export async function createLink(workflowId: string, adminId: string, input: Lin
     workflowId,
     actorType: "admin",
     actorId: adminId,
-    action: existing ? "link.rotated" : "link.created",
-    detail: { linkId: row.id, level: input.level, editMode, expiresAt, passcode: Boolean(input.passcode) },
+    action: "link.created",
+    detail: { linkId: row.id, level: input.level, name: row.name, otherLiveLinks: live, editMode, expiresAt, passcode: Boolean(input.passcode) },
   });
-  return { id: row.id, token: secret.token, level: row.level, editMode: row.editMode, expiresAt: row.expiresAt };
+  return { id: row.id, token: secret.token, level: row.level, name: row.name, editMode: row.editMode, expiresAt: row.expiresAt };
 }
 
 export async function updateLink(workflowId: string, adminId: string, linkId: string, patch: z.infer<typeof linkUpdateSchema>) {
@@ -197,6 +218,7 @@ export async function updateLink(workflowId: string, adminId: string, linkId: st
   await prisma.workflowLink.update({
     where: { id: linkId },
     data: {
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.editMode ? { editMode: patch.editMode } : {}),
       ...(patch.canApprove !== undefined ? { canApprove: patch.canApprove } : {}),
       ...(patch.passcode !== undefined ? { passcodeHash: patch.passcode ? hashPasscode(patch.passcode) : null } : {}),
@@ -217,7 +239,7 @@ export async function disableLink(workflowId: string, adminId: string, linkId: s
   const link = await prisma.workflowLink.findFirst({ where: { id: linkId, workflowId, disabledAt: null } });
   if (!link) throw notFound("Link");
   await prisma.workflowLink.update({ where: { id: linkId }, data: { disabledAt: new Date() } });
-  await recordAudit({ workflowId, actorType: "admin", actorId: adminId, action: "link.disabled", detail: { linkId, level: link.level } });
+  await recordAudit({ workflowId, actorType: "admin", actorId: adminId, action: "link.disabled", detail: { linkId, level: link.level, name: link.name } });
 }
 
 /** Invites one named person. Returns their personal secret link once. */

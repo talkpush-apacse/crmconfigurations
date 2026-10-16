@@ -769,6 +769,8 @@ model WorkflowLink {
   canApprove       Boolean   @default(false)
   tokenHash        String    @unique
   tokenHint        String?
+  // A short label so staff can tell several links of the same level apart ("Roxanne - B2B"). Optional.
+  name             String?
   passcodeHash     String?
   expiresAt        DateTime?
   disabledAt       DateTime?

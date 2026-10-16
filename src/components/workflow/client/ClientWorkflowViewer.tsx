@@ -680,7 +680,11 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                   <Hash className="h-4 w-4" />
                 </Button>
                 {headerExtras?.({ pages: workingPages, activePageId: activePage?.id ?? null, workflow: data.workflow, view: data.view })}
-                <Button size="sm" onClick={startWalk} className="min-h-8 text-xs"><Footprints className="h-3.5 w-3.5" />Walk me through</Button>
+                {walk ? (
+                  <Button size="sm" variant="outline" onClick={() => setWalk(null)} className="min-h-8 text-xs"><X className="h-3.5 w-3.5" />Stop walk-through</Button>
+                ) : (
+                  <Button size="sm" onClick={startWalk} className="min-h-8 text-xs"><Footprints className="h-3.5 w-3.5" />Walk me through</Button>
+                )}
               </div>
             </div>
 
@@ -794,7 +798,9 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                 )}
 
                 {walk && walkNode && (
-                  <div className="absolute inset-x-3 bottom-3 z-10 mx-auto max-w-xl rounded-xl border border-border bg-card p-4 shadow-lg" role="dialog" aria-label="Walk-through">
+                  // Large screens: top-right of the diagram, right under the "Walk me through" button, so the next-step buttons
+                  // are where the eyes and cursor already are. Small screens keep the bottom card, which is where thumbs reach.
+                  <div className="absolute inset-x-3 bottom-3 z-10 mx-auto max-w-xl rounded-xl border border-border bg-card p-4 shadow-lg lg:inset-x-auto lg:bottom-auto lg:right-3 lg:top-3 lg:mx-0 lg:w-80 lg:max-w-[calc(100%-1.5rem)]" role="dialog" aria-label="Walk-through">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-muted-foreground">Step {numbering.stepNumbers.get(walkNode.id) ?? "•"} · walk-through</p>
@@ -807,7 +813,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                       <Button size="sm" variant="outline" onClick={walkBack} disabled={walk.history.length === 0}><ChevronLeft className="h-4 w-4" />Back</Button>
                       {choices.length === 0 && <span className="text-sm text-muted-foreground">This is where this path ends.</span>}
                       {choices.map((c) => (
-                        <Button key={c.edgeId} size="sm" variant={c.isMain ? "default" : "secondary"} onClick={() => walkTo(c.targetId)}>
+                        <Button key={c.edgeId} size="sm" variant={c.isMain ? "default" : "secondary"} onClick={() => walkTo(c.targetId)} className="h-auto min-h-8 whitespace-normal py-1.5 text-left">
                           {c.label ? `${c.label}: ` : ""}
                           {String(pageNodes.find((n) => n.id === c.targetId)?.data?.label ?? "Next")}
                           <ChevronRight className="h-4 w-4" />
@@ -820,7 +826,8 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
             </div>
 
             {/* step details: a side panel on large screens, a bottom sheet on small ones */}
-            {selectedNode && (
+            {/* While walking on a small screen the sheet would cover the walk-through buttons, so it waits until the walk ends. */}
+            {selectedNode && !(walk && !isDesktop) && (
               <>
                 <button type="button" aria-label="Close step details" className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setSelectedId(null)} />
                 <div className="fixed inset-x-0 bottom-0 z-40 max-h-[75dvh] rounded-t-2xl border-t border-border shadow-2xl lg:static lg:z-auto lg:max-h-none lg:w-96 lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none">

@@ -392,9 +392,9 @@ export async function callV2Tool(name: string, input: Args, context: V2Context, 
     }
     case "create_link": {
       const wf = await load(input.workflowId, Input);
-      const parsed = linkCreateSchema.parse({ level: input.level, editMode: input.editMode, canApprove: input.canApprove, passcode: input.passcode ?? undefined, expiresAt: input.expiresAt });
+      const parsed = linkCreateSchema.parse({ level: input.level, name: input.name, editMode: input.editMode, canApprove: input.canApprove, passcode: input.passcode ?? undefined, expiresAt: input.expiresAt });
       const link = await createLink(wf.id, "mcp", parsed);
-      return { level: link.level, editMode: link.editMode, expiresAt: link.expiresAt, url: `${context.origin}/w/${link.token}`, note: "Give this address to the person to copy and send themselves. It is shown once; a new call replaces it and the old address stops working." };
+      return { linkId: link.id, level: link.level, name: link.name, editMode: link.editMode, expiresAt: link.expiresAt, url: `${context.origin}/w/${link.token}`, note: "Give this address to the person to copy and send themselves. It is shown once. Links already sent keep working; use disable_link to turn one off." };
     }
     case "disable_link": {
       const wf = await load(input.workflowId, Input);
