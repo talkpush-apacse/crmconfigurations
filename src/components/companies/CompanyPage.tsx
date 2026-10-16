@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FolderKanban, GitBranch, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AccountDialog } from "@/components/tracker/AccountDialog";
@@ -363,15 +363,25 @@ function Section({
 
 function Row({ href, title, meta, updated, menu }: { href: string; title: string; meta: React.ReactNode; updated?: string; menu?: React.ReactNode }) {
   return (
-    <li className="flex items-center gap-2 px-4 py-3">
+    // The whole row opens the item: the link's ::after stretches over the row, and the ⋯ menu sits above it (z-10) so it still works on its own.
+    <li className="group relative flex items-center gap-2 px-4 py-3 transition-colors hover:bg-muted/60">
       <div className="min-w-0 flex-1">
-        <Link href={href} className="inline-flex min-h-11 items-center font-medium text-foreground underline-offset-4 hover:underline md:min-h-0">
+        <Link
+          href={href}
+          className="inline-flex min-h-11 items-center font-medium text-foreground underline-offset-4 outline-none after:absolute after:inset-0 group-hover:underline focus-visible:after:ring-[3px] focus-visible:after:ring-inset focus-visible:after:ring-ring/70 md:min-h-0"
+        >
           <span className="break-words">{title}</span>
         </Link>
         <div className="mt-0.5 text-sm text-muted-foreground">{meta}</div>
       </div>
       {updated && <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">Updated {formatDistanceToNow(updated, { addSuffix: true })}</span>}
-      {menu}
+      {menu && <div className="relative z-10 shrink-0">{menu}</div>}
+      <span
+        aria-hidden="true"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors group-hover:border-foreground group-hover:bg-foreground group-hover:text-background"
+      >
+        <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-px" />
+      </span>
     </li>
   );
 }
