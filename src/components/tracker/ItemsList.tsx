@@ -27,6 +27,7 @@ import {
   type SortKey,
   type SortState,
 } from "@/lib/tracker/list-controls";
+import { attentionItems } from "@/lib/tracker/attention";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
@@ -37,6 +38,7 @@ import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 const SEARCH_THRESHOLD = 8;
 const ALL = "__all";
 const REVIEW = "__review";
+const ATTENTION = "__attention";
 const OPEN = "__open";
 const UNASSIGNED = "__unassigned";
 
@@ -50,6 +52,8 @@ interface Props {
   onStatusChange: (item: ItemDTO, status: ItemStatus, blockerReason?: string) => Promise<string | null>;
   /** Told what is on screen (after filters, in order) so an export can match it. */
   onVisibleChange?: (visible: { items: ItemDTO[]; filterLabel: string }) => void;
+  /** Start with this status filter, e.g. "Needs attention" when arriving from the bell. */
+  initialStatus?: "attention";
 }
 
 function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status: ItemStatus) => void; readOnly?: boolean }) {
@@ -95,10 +99,11 @@ function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey
   );
 }
 
-export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange }: Props) {
+export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange, initialStatus }: Props) {
   const { canEdit } = useCurrentUser();
-  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [statusFilter, setStatusFilter] = useState(initialStatus === "attention" ? ATTENTION : ALL);
   const reviewCount = items.filter((i) => i.needsReview).length;
+  const attentionIds = useMemo(() => new Set(attentionItems(items, today).map((a) => a.item.id)), [items, today]);
   const [ownerFilter, setOwnerFilter] = useState(ALL);
   const [phaseFilter, setPhaseFilter] = useState(ALL);
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
@@ -116,6 +121,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     const filtered = items
       .filter((i) => {
         if (statusFilter === REVIEW) return i.needsReview;
+        if (statusFilter === ATTENTION) return attentionIds.has(i.id);
         if (statusFilter === OPEN) return (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status);
         if (statusFilter === ALL) return true;
         return i.status === statusFilter;
@@ -125,7 +131,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       .filter((i) => !q || i.title.toLowerCase().includes(q))
       .filter((i) => matchesDue(i, dueFilter, today));
     return sortRows(filtered, sort, phaseOrder);
-  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today, sort, phaseOrder]);
+  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today, sort, phaseOrder, attentionIds]);
 
   // Done and dropped items that the "Open items only" filter is hiding, counted against the owner, phase and search
   // filters so the number matches what "Show all" would reveal.
@@ -157,7 +163,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
     parts.push(
-      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
+      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : statusFilter === ATTENTION ? "Needs attention" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
     );
     if (ownerFilter !== ALL) parts.push(`Owner: ${ownerFilter === UNASSIGNED ? "Unassigned" : (people.find((p) => p.id === ownerFilter)?.name ?? "Unknown")}`);
     if (phaseFilter !== ALL) parts.push(`Phase: ${phaseFilter === NONE ? "No phase" : (phases.find((p) => p.id === phaseFilter)?.name ?? "Unknown")}`);
@@ -243,6 +249,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             <SelectItem value={OPEN}>Open items only</SelectItem>
             <SelectItem value={ALL}>All items</SelectItem>
             {(reviewCount > 0 || statusFilter === REVIEW) && <SelectItem value={REVIEW}>Needs review ({reviewCount})</SelectItem>}
+            {(attentionIds.size > 0 || statusFilter === ATTENTION) && <SelectItem value={ATTENTION}>Needs attention ({attentionIds.size})</SelectItem>}
             {ITEM_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {ITEM_STATUS_LABELS[s]}

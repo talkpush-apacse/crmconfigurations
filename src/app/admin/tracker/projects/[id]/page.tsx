@@ -3,17 +3,17 @@
 import { Suspense, useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Copy, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
+import { Copy, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
-import { BuildPlanDialog } from "@/components/tracker/BuildPlanDialog";
 import { MetricsView } from "@/components/tracker/MetricsView";
 import { ShareDialog } from "@/components/tracker/ShareDialog";
 import { SummaryView } from "@/components/tracker/SummaryView";
 import { TimelineView } from "@/components/tracker/TimelineView";
 import { BoardView } from "@/components/tracker/BoardView";
-import { HealthBadge, ProjectStatusBadge } from "@/components/tracker/badges";
+import { ProjectStatusBadge } from "@/components/tracker/badges";
+import { AttentionBell, HealthInline, ProjectStrip } from "@/components/tracker/ProjectStrip";
 import { ItemSheet } from "@/components/tracker/ItemSheet";
 import { ItemsList } from "@/components/tracker/ItemsList";
 import { ErrorBlock } from "@/components/tracker/PageHeader";
@@ -29,7 +29,7 @@ import { useApiResource } from "@/lib/tracker/use-api-resource";
 import { useDocumentTitle } from "@/lib/tracker/use-document-title";
 import type { ItemDTO, ProjectDetailDTO } from "@/lib/tracker/client-types";
 import type { ItemStatus } from "@/lib/tracker/constants";
-import { formatDate, plural } from "@/lib/tracker/format";
+import { plural } from "@/lib/tracker/format";
 import { exportName } from "@/lib/tracker/print-layout";
 
 export default function ProjectPage() {
@@ -57,7 +57,8 @@ function ProjectWorkspace() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const { canEdit } = useCurrentUser();
-  const [planOpen, setPlanOpen] = useState(false);
+  // Bumped by the bell's "Show in list" so the List tab starts over, filtered to the items that need attention.
+  const [attentionKey, setAttentionKey] = useState(0);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   useDocumentTitle(detail?.project.title);
   const [printing, setPrinting] = useState<{ view: PrintView; visible: VisibleItems | null } | null>(null);
@@ -86,6 +87,11 @@ function ProjectWorkspace() {
     } catch (err) {
       return errorMessage(err);
     }
+  };
+
+  const showAttentionInList = () => {
+    setAttentionKey((k) => k + 1);
+    setView("list");
   };
 
   const openItem = (item: ItemDTO) => {
@@ -199,90 +205,46 @@ function ProjectWorkspace() {
   if (error && !detail) return <ErrorBlock message={error} onRetry={load} />;
   if (!detail) return <ProjectPageSkeleton />;
 
-  const { project, summary, items, phases, people, today, checklist } = detail;
+  const { project, summary, items, phases, people, today } = detail;
   const health = summary.health;
 
   return (
     <>
-      <Link href="/admin/tracker" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm md:min-h-8 text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-4 w-4" />
-        Portfolio
-      </Link>
-
-      <header className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            <Link href={`/admin/companies/${project.accountId}`} className="inline-flex min-h-11 items-center hover:underline md:min-h-0 md:py-1">
+      <header className="mb-3 flex flex-col gap-2">
+        {/* Below md every action is a 44px touch target; desktop keeps the denser buttons. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 max-md:[&_button]:min-h-11">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Link href="/admin/tracker" className="inline-flex min-h-11 items-center hover:text-foreground hover:underline md:min-h-8">
+              Portfolio
+            </Link>
+            <span aria-hidden="true">/</span>
+            <Link href={`/admin/companies/${project.accountId}`} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline md:min-h-8">
               {project.accountName}
             </Link>
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">{project.title}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <HealthBadge level={health.level} overridden={health.overridden} />
-            <ProjectStatusBadge status={project.status} />
-          </div>
-          {health.overridden && health.overrideNote && <p className="mt-2 text-sm text-muted-foreground">Set by hand: {health.overrideNote}</p>}
-          {health.reasons.length > 0 && (
-            <ul className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-              {health.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
-          )}
-          {project.objective && <p className="mt-3 max-w-2xl text-sm text-foreground">{project.objective}</p>}
-          <p className="mt-3 text-sm tabular-nums text-muted-foreground">
-            Start {formatDate(project.startDate)}. Target {formatDate(project.targetDate)}
-            {project.rescheduleCount > 0 && project.originalTargetDate
-              ? ` (first planned for ${formatDate(project.originalTargetDate)}, moved ${plural(project.rescheduleCount, "time")})`
-              : ""}
-            .{project.goLiveDate ? ` Go-live ${formatDate(project.goLiveDate)}.` : ""}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Owner: {project.owner?.name ?? "not set"}. Sponsor: {project.sponsor?.name ?? "not set"}.
-          </p>
-          {checklist && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              CRM configuration: {checklist.completeCount} of {checklist.totalCount} sections complete.{" "}
-              <Link href={`/admin/checklists/${checklist.id}`} className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4">
-                Open checklist
-                <ExternalLink className="h-3 w-3" aria-hidden="true" />
-              </Link>
-            </p>
-          )}
-        </div>
-        {/* Below md every action is a 44px touch target; desktop keeps the denser 36px buttons. */}
-        <div className="flex shrink-0 flex-wrap gap-2 max-md:[&_button]:min-h-11">
+            <span aria-hidden="true">/</span>
+          </nav>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{project.title}</h1>
+          <HealthInline health={health} objective={project.objective} />
+          <ProjectStatusBadge status={project.status} />
+          <span className="flex-1" />
           {(view === "summary" || view === "list" || view === "board" || view === "timeline") && (
             <ExportMenu view={view} busy={printing !== null || exportingXlsx} onPdf={startPdf} onXlsx={() => void downloadXlsx()} onWorkbook={() => void downloadWorkbook()} />
           )}
           {canEdit && (
-            <Button variant="outline" onClick={() => setPlanOpen(true)}>
-              <ListChecks className="h-4 w-4" />
-              Build plan
+            <Button variant="ghost" size="icon" aria-label="Duplicate project" title="Duplicate project" className="text-muted-foreground max-md:size-11" onClick={() => setDuplicateOpen(true)}>
+              <Copy className="h-4 w-4" />
             </Button>
           )}
-          <Button asChild variant="outline" className="max-md:min-h-11">
-            <Link href={`/admin/tracker/projects/${project.id}/config-plan`}>
-              <FileText className="h-4 w-4" />
-              Config plan
-            </Link>
+          <Button variant="ghost" size="icon" aria-label={canEdit ? "Settings" : "Details"} title={canEdit ? "Settings" : "Details"} className="text-muted-foreground max-md:size-11" onClick={() => setSettingsOpen(true)}>
+            <Settings className="h-4 w-4" />
           </Button>
+          <AttentionBell items={items} today={today} onOpenItem={openItem} onShowInList={showAttentionInList} />
           {canEdit && (
             <Button variant="outline" onClick={() => setShareOpen(true)}>
               <Share2 className="h-4 w-4" />
               Share
             </Button>
           )}
-          {canEdit && (
-            <Button variant="outline" onClick={() => setDuplicateOpen(true)}>
-              <Copy className="h-4 w-4" />
-              Duplicate
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => setSettingsOpen(true)}>
-            <Settings className="h-4 w-4" />
-            {canEdit ? "Settings" : "Details"}
-          </Button>
           {canEdit && (
             <Button
               onClick={() => {
@@ -295,6 +257,7 @@ function ProjectWorkspace() {
             </Button>
           )}
         </div>
+        <ProjectStrip detail={detail} />
       </header>
 
       {exportError && (
@@ -335,7 +298,17 @@ function ProjectWorkspace() {
             <SummaryView projectId={project.id} refreshKey={project.updatedAt + items.length + summary.done + summary.open} />
           </TabsContent>
           <TabsContent value="list" tabIndex={-1}>
-            <ItemsList items={items} phases={phases} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onVisibleChange={rememberVisible} />
+            <ItemsList
+              key={attentionKey}
+              items={items}
+              phases={phases}
+              people={people}
+              today={today}
+              onOpen={openItem}
+              onStatusChange={changeStatus}
+              onVisibleChange={rememberVisible}
+              initialStatus={attentionKey > 0 ? "attention" : undefined}
+            />
           </TabsContent>
           <TabsContent value="board" tabIndex={-1}>
             <BoardView items={items} people={people} today={today} onOpen={openItem} onStatusChange={changeStatus} onReorder={reorder} onVisibleChange={rememberVisible} />
@@ -378,7 +351,6 @@ function ProjectWorkspace() {
       />
       {printing && <PrintReport view={printing.view} detail={detail} visible={printing.visible} onDone={printDone} onError={printFailed} />}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} onContactsChanged={load} />
-      <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
       <ConfirmDialog
         open={duplicateOpen}
         onOpenChange={setDuplicateOpen}
