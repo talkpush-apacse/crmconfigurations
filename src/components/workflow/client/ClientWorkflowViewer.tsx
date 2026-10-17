@@ -813,7 +813,7 @@ function Viewer({ initial, api, previewLabel, headerExtras }: Props) {
                       <Button size="sm" variant="outline" onClick={walkBack} disabled={walk.history.length === 0}><ChevronLeft className="h-4 w-4" />Back</Button>
                       {choices.length === 0 && <span className="text-sm text-muted-foreground">This is where this path ends.</span>}
                       {choices.map((c) => (
-                        <Button key={c.edgeId} size="sm" variant={c.isMain ? "default" : "secondary"} onClick={() => walkTo(c.targetId)} className="h-auto min-h-8 whitespace-normal py-1.5 text-left">
+                        <Button key={c.edgeId} size="sm" variant={c.isMain ? "default" : "secondary"} onClick={() => walkTo(c.targetId)} className="h-auto min-h-8 max-w-full shrink whitespace-normal py-1.5 text-left">
                           {c.label ? `${c.label}: ` : ""}
                           {String(pageNodes.find((n) => n.id === c.targetId)?.data?.label ?? "Next")}
                           <ChevronRight className="h-4 w-4" />
