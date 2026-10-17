@@ -278,7 +278,7 @@ const originalDefinitions: McpToolDefinition[] = [
   {
     name: "duplicate_workflow",
     description:
-      "Copy an existing workflow into a new project with fresh node and edge IDs.",
+      "Copy an existing workflow into a new private draft: every page, the Process Map style, numbering, look and company, with fresh step and connector IDs. Share links, invites, comments, version history and scoping notes are not copied. The copy is named '<name> (Copy)' unless you give a workflowName.",
     inputSchema: {
       type: "object",
       properties: {
