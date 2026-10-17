@@ -83,6 +83,8 @@ export async function saveChecklistSettings(editing: ChecklistSettingsDraft): Pr
   if (!res.ok) throw new Error(await failureMessage(res, "Failed to save settings"));
 }
 
+const MAX_COPY_NAME_ATTEMPTS = 20;
+
 /**
  * Copy a checklist with all its content, named "<client> (Copy)". Pass `accountId` to file the copy under
  * a company; leave it out for an unfiled copy.
@@ -93,9 +95,9 @@ export async function duplicateChecklist(id: string, accountId?: string): Promis
   if (!res.ok) throw new Error("Failed to fetch source checklist");
   const original = (await res.json()) as Record<string, unknown>;
 
-  // 2. Create the new record (config skeleton)
-  const name = `${original.clientName} (Copy)`;
-  const createBody: Record<string, unknown> = { clientName: name };
+  // 2. Create the new record (config skeleton). The checklist's web address comes from its name, so a second copy
+  // of the same checklist is called "(Copy 2)", then "(Copy 3)", instead of failing on a name that is already taken.
+  const createBody: Record<string, unknown> = {};
   createBody.ownerEmail = original.ownerEmail ?? null;
   if (accountId) createBody.accountId = accountId;
   if (original.isCustom) {
@@ -107,12 +109,18 @@ export async function duplicateChecklist(id: string, accountId?: string): Promis
     createBody.featureToggles = original.featureToggles;
     if (original.customTabs) createBody.customTabs = original.customTabs;
   }
-  const createRes = await fetch("/api/checklists", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(createBody),
-  });
-  if (!createRes.ok) throw new Error(await failureMessage(createRes, "Failed to create copy"));
+  let name = "";
+  let createRes: Response | null = null;
+  for (let attempt = 1; attempt <= MAX_COPY_NAME_ATTEMPTS; attempt++) {
+    name = `${original.clientName} (Copy${attempt === 1 ? "" : ` ${attempt}`})`;
+    createRes = await fetch("/api/checklists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...createBody, clientName: name }),
+    });
+    if (createRes.status !== 409) break;
+  }
+  if (!createRes?.ok) throw new Error(await failureMessage(createRes!, "Failed to create copy"));
   const created = (await createRes.json()) as { id: string; slug: string; version: number };
 
   // 3. PUT all content data from original into the new record (whole-document path)
@@ -143,6 +151,8 @@ export async function duplicateChecklist(id: string, accountId?: string): Promis
     labels: original.labels,
     adminSettings: original.adminSettings,
     atsIntegrations: original.atsIntegrations,
+    integrations: original.integrations,
+    autoflows: original.autoflows,
     tabUploadMeta: original.tabUploadMeta,
     customSchema: original.customSchema,
     customData: original.customData,

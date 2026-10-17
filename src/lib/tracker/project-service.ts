@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ChecklistData } from "@/lib/types";
@@ -16,6 +17,7 @@ import { buildSnapshot } from "./snapshot";
 import { summarizeProject } from "./summary";
 import {
   projectCreateSchema,
+  projectDuplicateSchema,
   projectUpdateSchema,
   phaseCreateSchema,
   phaseUpdateSchema,
@@ -161,6 +163,117 @@ export async function createProject(input: unknown, actor: Actor) {
       actor,
     });
     return project;
+  });
+  return serializeProjectBase(created);
+}
+
+/**
+ * Copies a project's plan into a brand-new project: its phases, its items (order, types, priorities,
+ * dependencies) and its success-metric definitions, so a proven plan can be reused for the next client.
+ * Everything that records what actually happened is left behind: item status goes back to Not started,
+ * dates, owners, blockers and Jira links are cleared, and remarks, activity, files, metric readings,
+ * share links and the checklist link do not come across. Archived items and metrics are skipped.
+ * The copy is built in one transaction, so it is all there or not there at all.
+ */
+export async function duplicateProject(sourceId: string, input: unknown, actor: Actor) {
+  const data = projectDuplicateSchema.parse(input ?? {});
+  const source = await prisma.trackerProject.findUnique({
+    where: { id: sourceId },
+    include: {
+      phases: { orderBy: { sortOrder: "asc" } },
+      items: { where: { archived: false }, orderBy: { sortOrder: "asc" } },
+      metrics: { where: { archived: false }, orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!source) throw notFound("Project");
+
+  const accountId = data.accountId ?? source.accountId;
+  const sameAccount = accountId === source.accountId;
+  if (!sameAccount) {
+    const account = await prisma.trackerAccount.findUnique({ where: { id: accountId }, select: { archived: true } });
+    if (!account) throw notFound("Account");
+    if (account.archived) throw badRequest("This account is archived.");
+  }
+
+  // Sponsor and owner come along only on the same account, and only while they are still active.
+  const keepPerson = async (personId: string | null) => {
+    if (!personId || !sameAccount) return null;
+    const person = await prisma.trackerPerson.findUnique({ where: { id: personId }, select: { archived: true } });
+    return person && !person.archived ? personId : null;
+  };
+  const [sponsorPersonId, ownerPersonId] = await Promise.all([keepPerson(source.sponsorPersonId), keepPerson(source.ownerPersonId)]);
+
+  const title = (data.title ?? `${source.title} (Copy)`).slice(0, 160);
+  const phaseIds = new Map(source.phases.map((p) => [p.id, randomUUID()]));
+  const itemIds = new Map(source.items.map((i) => [i.id, randomUUID()]));
+  const dependencies = await prisma.trackerItemDependency.findMany({
+    where: { itemId: { in: [...itemIds.keys()] }, blockedByItemId: { in: [...itemIds.keys()] } },
+    select: { itemId: true, blockedByItemId: true },
+  });
+
+  const projectId = randomUUID();
+  const created = await prisma.$transaction(async (tx) => {
+    await tx.trackerProject.create({
+      data: {
+        id: projectId,
+        accountId,
+        title,
+        objective: source.objective,
+        sponsorPersonId,
+        ownerPersonId,
+      },
+    });
+    await tx.trackerPhase.createMany({
+      data: source.phases.map((p) => ({
+        id: phaseIds.get(p.id)!,
+        projectId,
+        name: p.name,
+        sortOrder: p.sortOrder,
+        exitCriteria: p.exitCriteria,
+      })),
+    });
+    await tx.trackerItem.createMany({
+      data: source.items.map((i) => ({
+        id: itemIds.get(i.id)!,
+        projectId,
+        phaseId: i.phaseId ? (phaseIds.get(i.phaseId) ?? null) : null,
+        title: i.title,
+        description: i.description,
+        type: i.type,
+        priority: i.priority,
+        visibility: i.visibility,
+        isMilestone: i.isMilestone,
+        externalDependency: i.externalDependency,
+        checklistTabSlug: i.checklistTabSlug,
+        templateItemKey: i.templateItemKey,
+        sortOrder: i.sortOrder,
+        createdVia: actor.via,
+      })),
+    });
+    await tx.trackerItemDependency.createMany({
+      data: dependencies.map((d) => ({ itemId: itemIds.get(d.itemId)!, blockedByItemId: itemIds.get(d.blockedByItemId)! })),
+    });
+    await tx.trackerMetric.createMany({
+      data: source.metrics.map((m) => ({
+        projectId,
+        name: m.name,
+        unit: m.unit,
+        direction: m.direction,
+        targetValue: m.targetValue,
+        source: m.source,
+        visibility: m.visibility,
+        sortOrder: m.sortOrder,
+      })),
+    });
+    await logActivity(tx, {
+      projectId,
+      entityType: "project",
+      entityId: projectId,
+      action: "project.created",
+      after: { title, copiedFrom: source.title, phases: source.phases.length, items: source.items.length, metrics: source.metrics.length },
+      actor,
+    });
+    return tx.trackerProject.findUniqueOrThrow({ where: { id: projectId }, include: PROJECT_INCLUDE });
   });
   return serializeProjectBase(created);
 }

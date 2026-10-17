@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
+import { ChevronLeft, Copy, ExternalLink, FileText, ListChecks, Plus, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityView } from "@/components/tracker/ActivityView";
@@ -18,6 +18,7 @@ import { ItemSheet } from "@/components/tracker/ItemSheet";
 import { ItemsList } from "@/components/tracker/ItemsList";
 import { ErrorBlock } from "@/components/tracker/PageHeader";
 import { ProjectPageSkeleton } from "@/components/tracker/SummarySkeleton";
+import { ConfirmDialog } from "@/components/tracker/ConfirmDialog";
 import { ProjectDialog } from "@/components/tracker/ProjectDialog";
 import { ExportMenu } from "@/components/tracker/ExportMenu";
 import { PrintReport, type PrintView, type VisibleItems } from "@/components/tracker/print/PrintReport";
@@ -57,6 +58,7 @@ function ProjectWorkspace() {
   const [shareOpen, setShareOpen] = useState(false);
   const { canEdit } = useCurrentUser();
   const [planOpen, setPlanOpen] = useState(false);
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
   useDocumentTitle(detail?.project.title);
   const [printing, setPrinting] = useState<{ view: PrintView; visible: VisibleItems | null } | null>(null);
   const [exportingXlsx, setExportingXlsx] = useState(false);
@@ -89,6 +91,15 @@ function ProjectWorkspace() {
   const openItem = (item: ItemDTO) => {
     setEditingItem(item);
     setSheetOpen(true);
+  };
+
+  const duplicate = async () => {
+    try {
+      const copy = await api<{ id: string }>(`/api/tracker/projects/${id}/duplicate`, { method: "POST" });
+      router.push(`/admin/tracker/projects/${copy.id}`);
+    } catch (err) {
+      setExportError(errorMessage(err));
+    }
   };
 
   const markAllReviewed = async () => {
@@ -262,6 +273,12 @@ function ProjectWorkspace() {
               Share
             </Button>
           )}
+          {canEdit && (
+            <Button variant="outline" onClick={() => setDuplicateOpen(true)}>
+              <Copy className="h-4 w-4" />
+              Duplicate
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
             {canEdit ? "Settings" : "Details"}
@@ -362,6 +379,14 @@ function ProjectWorkspace() {
       {printing && <PrintReport view={printing.view} detail={detail} visible={printing.visible} onDone={printDone} onError={printFailed} />}
       <ShareDialog open={shareOpen} onOpenChange={setShareOpen} projectId={project.id} contacts={people.filter((p) => p.side === "client")} onContactsChanged={load} />
       <BuildPlanDialog open={planOpen} onOpenChange={setPlanOpen} projectId={project.id} onApplied={load} />
+      <ConfirmDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        title="Duplicate this project?"
+        description="Makes a new project with the same phases, items and success metrics. Items start as Not started, with no dates, owners or Jira links. Remarks, activity, files, readings, client links and the checklist link are not copied."
+        confirmLabel="Duplicate project"
+        onConfirm={duplicate}
+      />
       <ProjectDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

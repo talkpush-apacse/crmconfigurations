@@ -84,6 +84,11 @@ export const projectCreateSchema = z.object({
   ownerPersonId: id.nullish().transform((v) => v ?? null),
   checklistId: id.nullish().transform((v) => v ?? null),
 });
+/** Both optional: the copy is named "<title> (Copy)" and stays on the same account unless told otherwise. */
+export const projectDuplicateSchema = z.object({
+  title: text(160).optional(),
+  accountId: id.optional(),
+});
 export const projectUpdateSchema = z.object({
   title: text(160).optional(),
   objective: optionalText(2000),

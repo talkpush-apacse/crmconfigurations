@@ -160,41 +160,15 @@ export default function WorkflowDashboard() {
 
   async function handleDuplicate(workflow: WorkflowItem) {
     try {
-      const [res, originalRes] = await Promise.all([
-        fetch("/api/workflows", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientName: workflow.clientName,
-            // A copy stays under the same company.
-            accountId: workflow.accountId ?? undefined,
-            workflowName: `${workflow.workflowName} (Copy)`,
-            description: workflow.description,
-          }),
-        }),
-        fetch(`/api/workflows/${workflow.id}`),
-      ]);
-
-      if (res.ok && originalRes.ok) {
-        const [{ id }, original] = await Promise.all([
-          res.json(),
-          originalRes.json(),
-        ]);
-
-        const copyRes = await fetch(`/api/workflows/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nodes: original.nodes,
-            edges: original.edges,
-          }),
-        });
-        if (!copyRes.ok) throw new Error();
-        toast.success("Workflow duplicated");
-        fetchWorkflows();
-      } else {
-        toast.error("Failed to duplicate workflow");
-      }
+      // The server makes the copy, so every page, the Process Map style and the company come across with it.
+      const res = await fetch(`/api/workflows/${workflow.id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflowName: `${workflow.workflowName} (Copy)` }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Workflow duplicated");
+      fetchWorkflows();
     } catch {
       toast.error("Failed to duplicate workflow");
     }

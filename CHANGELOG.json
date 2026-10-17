@@ -1,5 +1,16 @@
 [
   {
+    "version": "4.9",
+    "name": "Version 4.9 - Duplicate a project, and fuller copies of workflows and checklists",
+    "changes": [
+      "Project Tracker: new Duplicate button on a project. It makes a new project with the same phases, items (order, types, priorities and dependencies) and success metrics, so a plan that worked can be reused for the next client. Every item starts as Not started with no dates, owners, blockers or Jira links. Remarks, activity, files, readings, client links and the checklist link are not copied",
+      "Workflows: Duplicate now copies every page and keeps the Process Map style, numbering, look and company. Before, only the first page came across and the copy lost its style. Links that jump to another step now point at the copied step. Share links, invites, comments and version history are not copied; the copy starts as a private draft",
+      "Checklists: Duplicate now also copies integrations and autoflows, which were left empty before. Copying the same checklist again now makes \"(Copy 2)\", \"(Copy 3)\" instead of failing because the name was taken",
+      "Claude: new duplicate_project tool for tracker projects; duplicate_workflow now copies every page too",
+      "No database change needed"
+    ]
+  },
+  {
     "version": "4.8",
     "name": "Version 4.8 - Name any saved version of a workflow",
     "changes": [

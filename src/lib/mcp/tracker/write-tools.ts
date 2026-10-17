@@ -12,7 +12,7 @@ import { addRemark, createItem, updateItem } from "@/lib/tracker/item-service";
 import { MAX_JIRA_LINKS } from "@/lib/tracker/jira";
 import { matchByName } from "@/lib/tracker/match";
 import { createMetric, listMetrics, recordReading } from "@/lib/tracker/metric-service";
-import { createPhases, createProject, updatePhase, updateProject } from "@/lib/tracker/project-service";
+import { createPhases, createProject, duplicateProject, updatePhase, updateProject } from "@/lib/tracker/project-service";
 import {
   HEALTH_LEVELS,
   ITEM_STATUSES,
@@ -107,6 +107,24 @@ export const createProjectTool = defineTool({
       ctx.actor
     );
   },
+});
+
+export const duplicateProjectTool = defineTool({
+  name: "duplicate_project",
+  description:
+    "Copy a project's plan into a new project, for example to reuse a proven plan for the next client. The copy has the same phases, items (with their order, types, priorities and dependencies) and success-metric definitions. Every item starts as not_started with no dates, owners, blockers or Jira links; the project has no dates; baselines and current metric values are cleared. Remarks, activity, files, metric readings, client links and the linked checklist are NOT copied. The copy is named '<title> (Copy)' on the same account unless you give a title or another account. Sponsor and owner are kept only on the same account.",
+  access: "write",
+  input: {
+    ...projectRef,
+    title: z.string().optional().describe("Name for the copy. Defaults to '<original title> (Copy)'."),
+    to_account: z.string().optional().describe("Account name or id to put the copy on. Defaults to the original's account."),
+  },
+  handler: async ({ title, to_account, ...ref }, ctx) =>
+    duplicateProject(
+      await resolveProjectId(ref),
+      { title, accountId: to_account ? await resolveAccountId(to_account) : undefined },
+      ctx.actor
+    ),
 });
 
 export const updateProjectTool = defineTool({
@@ -472,6 +490,7 @@ export const trackerWriteTools = [
   createAccountTool,
   createPersonTool,
   createProjectTool,
+  duplicateProjectTool,
   updateProjectTool,
   updatePhaseTool,
   addPhasesTool,

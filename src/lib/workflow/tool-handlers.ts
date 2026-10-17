@@ -3,6 +3,7 @@ import { describeAccountProblem, matchAccountRef } from "@/lib/accounts/account-
 import { callV2Tool } from "@/lib/workflow/tool-handlers-v2";
 import { recordAudit } from "@/lib/workflow/access/audit";
 import { nanoid } from "@/lib/workflow/ids";
+import { cloneGraphWithFreshIds, duplicateWorkflowProject } from "@/lib/workflow/duplicate";
 import type { Prisma } from "@/generated/prisma/client";
 import { getLayoutedElements } from "@/lib/workflow/layout";
 import { computeStepNumbers } from "@/lib/workflow/numbering";
@@ -731,47 +732,19 @@ async function listWorkflows(args: ToolArguments, context: ToolContext) {
 
 async function duplicateWorkflow(args: ToolArguments, context: ToolContext) {
   const workflowId = requiredString(args, "workflowId");
-  const source = await prisma.workflowProject.findUnique({
-    where: { id: workflowId },
+  const copy = await duplicateWorkflowProject(workflowId, {
+    workflowName: cleanString(args.workflowName) ?? undefined,
+    clientName: cleanString(args.clientName) ?? undefined,
+    description: cleanString(args.description) ?? undefined,
   });
-  if (!source) throw new McpToolInputError("Workflow not found");
-
-  const { nodes, edges } = getCanvas(source);
-  const cloned = cloneGraphWithFreshIds(nodes, edges);
-  const workflowName =
-    cleanString(args.workflowName) ?? `${source.workflowName} Copy`;
-  const clientName = cleanString(args.clientName) ?? source.clientName;
-  const description =
-    cleanString(args.description) ?? source.description ?? undefined;
-  const initialPage = {
-    id: `page_${nanoid(8)}`,
-    name: "Page 1",
-    nodes: cloned.nodes,
-    edges: cloned.edges,
-    viewport: { x: 0, y: 0, zoom: 1 },
-  };
-
-  const duplicate = await prisma.workflowProject.create({
-    data: {
-      clientName,
-      workflowName,
-      description: description ?? null,
-      templateId: source.templateId,
-      // A copy looks like the map it was copied from, and stays under the same company.
-      look: source.look,
-      accountId: source.accountId,
-      nodes: toJson(cloned.nodes),
-      edges: toJson(cloned.edges),
-      pages: toJson([initialPage]),
-    },
-    select: { id: true },
-  });
+  if (!copy) throw new McpToolInputError("Workflow not found");
 
   return {
-    workflowId: duplicate.id,
-    editUrl: workflowEditUrl(context, duplicate.id),
-    nodeIdMap: cloned.nodeIdMap,
-    edgeIdMap: cloned.edgeIdMap,
+    workflowId: copy.id,
+    editUrl: workflowEditUrl(context, copy.id),
+    pages: copy.pageCount,
+    nodeIdMap: copy.nodeIdMap,
+    edgeIdMap: copy.edgeIdMap,
   };
 }
 
@@ -1616,47 +1589,3 @@ async function clearCampaignStructure(
   };
 }
 
-function cloneGraphWithFreshIds(
-  sourceNodes: FlowNode[],
-  sourceEdges: FlowEdge[]
-) {
-  const idMap = new Map<string, string>();
-  const edgeIdMap: Record<string, string> = {};
-
-  const nodes = sourceNodes.map((node) => {
-    const nextId = `node_${nanoid(8)}`;
-    idMap.set(node.id, nextId);
-    return {
-      ...jsonClone(node),
-      id: nextId,
-      selected: false,
-      data: jsonClone(node.data) as WorkflowNodeData,
-    } satisfies FlowNode;
-  });
-
-  const edges = sourceEdges.flatMap((edge) => {
-    const source = idMap.get(edge.source);
-    const target = idMap.get(edge.target);
-    if (!source || !target) return [];
-    const nextId = `edge_${nanoid(8)}`;
-    edgeIdMap[edge.id] = nextId;
-    return [
-      {
-        ...jsonClone(edge),
-        id: nextId,
-        source,
-        target,
-        selected: false,
-        type: "custom",
-        data: normalizeEdgeData(edge.data),
-      } satisfies FlowEdge,
-    ];
-  });
-
-  return {
-    nodes,
-    edges,
-    nodeIdMap: Object.fromEntries(idMap),
-    edgeIdMap,
-  };
-}
