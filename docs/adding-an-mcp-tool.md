@@ -14,6 +14,7 @@ toolkit (`src/lib/mcp/toolkit.ts`).
 | Project Tracker tools | `src/lib/mcp/tracker/read-tools.ts` (reads), `write-tools.ts` (changes data), `helpers.ts` (name lookups) |
 | CRM Config Checklist tools (46, not yet moved to the toolkit) | `src/lib/mcp-server.ts`, in `registerChecklistTools` |
 | Checklist client-link tools (`create_checklist_link`, `list_checklist_links`, `change_checklist_link`; combined connector only, hidden from read-only logins) | `src/lib/mcp/checklist-share-tools.ts`, listed in `src/lib/mcp/modules.ts` |
+| Start a client checklist (`create_checklist`; combined connector only, hidden from read-only logins). The creation itself is shared with the website form | `src/lib/mcp/checklist-create-tool.ts` (the tool) and `src/lib/checklists/create-checklist.ts` (the shared function, also used by `POST /api/checklists`) |
 | The generated tool list for the tracker | `.claude/skills/project-tracker-mcp/references/tools.md` (do not edit by hand) |
 
 ## One URL for everything: the combined connector

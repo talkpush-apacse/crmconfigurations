@@ -1,5 +1,15 @@
 [
   {
+    "version": "4.10",
+    "name": "Version 4.10 - Claude can start a client's checklist",
+    "changes": [
+      "New create_checklist tool: Claude can create a new, empty checklist for a client, the same as Create New Checklist on the website. Give the client name and, if you know it, the account to file it under; the web address comes from the name (\"TaskUs PH\" becomes taskus-ph) unless you name one",
+      "Safe to repeat: if the checklist is already there, Claude is told so and nothing is created or changed. If it is archived, Claude stops and asks you whether to restore it; it never restores it silently",
+      "It does not fill in the configurator items, make any client link or send anything. The new checklist starts private",
+      "Read-only logins do not get this tool. No database change"
+    ]
+  },
+  {
     "version": "4.9",
     "name": "Version 4.9 - Duplicate a project, and fuller copies of workflows and checklists",
     "changes": [
