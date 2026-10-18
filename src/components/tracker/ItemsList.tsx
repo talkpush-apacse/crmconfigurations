@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Flag, Lock, Search } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Flag, Lock, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,7 @@ import {
   type SortState,
 } from "@/lib/tracker/list-controls";
 import { attentionItems } from "@/lib/tracker/attention";
+import { closedLabel, groupByPhase, shouldFold, type PhaseGroup } from "@/lib/tracker/list-groups";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
@@ -99,6 +100,43 @@ function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey
   );
 }
 
+/** A phase's name, how many of its items are done, and a small bar. Click to collapse the phase. */
+function PhaseHeader({ group, collapsed, onToggle }: { group: PhaseGroup<ItemDTO>; collapsed: boolean; onToggle: () => void }) {
+  const pct = group.total === 0 ? 0 : Math.round((group.done / group.total) * 100);
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      className="flex min-h-11 w-full items-center gap-2 px-4 py-2 text-left outline-none hover:bg-secondary/60 focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/70 md:min-h-9"
+    >
+      <ChevronRight className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !collapsed && "rotate-90")} aria-hidden="true" />
+      <span className="text-sm font-semibold">{group.name}</span>
+      <span className="text-xs tabular-nums text-muted-foreground" aria-label={`${group.done} of ${group.total} done`}>
+        {group.done}/{group.total}
+      </span>
+      <span className="ml-1 h-1.5 w-16 overflow-hidden rounded-full bg-border" aria-hidden="true">
+        <span className="block h-full rounded-full bg-foreground" style={{ width: `${pct}%` }} />
+      </span>
+    </button>
+  );
+}
+
+/** "3 done" at the bottom of a phase. Click to show or hide those items. */
+function ClosedLine({ closed, expanded, onToggle }: { closed: ItemDTO[]; expanded: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="flex min-h-11 w-full items-center gap-2 px-4 py-1.5 pl-10 text-left text-xs font-semibold text-muted-foreground outline-none hover:bg-secondary/60 focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/70 md:min-h-8"
+    >
+      <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 transition-transform", expanded && "rotate-90")} aria-hidden="true" />
+      {closedLabel(closed)}
+    </button>
+  );
+}
+
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange, initialStatus }: Props) {
   const { canEdit } = useCurrentUser();
   const [statusFilter, setStatusFilter] = useState(ALL);
@@ -112,6 +150,16 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
   const [query, setQuery] = useState("");
   const [pendingBlock, setPendingBlock] = useState<ItemDTO | null>(null);
   const [rowError, setRowError] = useState("");
+
+  // Phases the person has collapsed, and phases whose "n done" line they have opened. Both reset on reload.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [closedOpen, setClosedOpen] = useState<Set<string>>(new Set());
+  const toggle = (set: Set<string>, key: string) => {
+    const next = new Set(set);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
+  };
 
   const phaseOrder = useMemo(() => new Map(phases.map((p, i) => [p.id, i])), [phases]);
   const statusById = useMemo(() => new Map(items.map((i) => [i.id, i.status])), [items]);
@@ -150,6 +198,12 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     }
     return counts;
   }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, attentionOnly, query, today]);
+
+  // Phase groups only in the default order. Sorting by a column gives one flat list, as before.
+  const groups = useMemo(
+    () => (sort === null ? groupByPhase(visible, { phases, allItems: items, today, fold: shouldFold({ statusFilter, query }) }) : null),
+    [sort, visible, phases, items, today, statusFilter, query]
+  );
 
   const filtersActive = attentionOnly || statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any" || query.trim() !== "";
   const clearFilters = () => {
@@ -299,6 +353,45 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     </>
   );
 
+  const tableRow = (item: ItemDTO) => (
+    <TableRow key={item.id} className="cursor-pointer" onClick={() => onOpen(item)}>
+      <TableCell className="max-w-md whitespace-normal py-3">
+        <button type="button" className="min-h-6 py-0.5 text-left outline-none focus-visible:underline" onClick={() => onOpen(item)}>
+          {titleCell(item)}
+        </button>
+        <JiraLinkChips links={jiraLinksOf(item.links)} />
+      </TableCell>
+      <TableCell>
+        <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
+      </TableCell>
+      <TableCell>{ownerCell(item)}</TableCell>
+      <TableCell>{item.phaseName ?? <span className="text-muted-foreground">No phase</span>}</TableCell>
+      <TableCell>{dueCell(item)}</TableCell>
+    </TableRow>
+  );
+
+  const cardRow = (item: ItemDTO) => (
+    <li key={item.id} className={cn("rounded-lg border border-border bg-card p-4")}>
+      <button type="button" className="block min-h-11 w-full text-left" onClick={() => onOpen(item)}>
+        {titleCell(item)}
+      </button>
+      <JiraLinkChips links={jiraLinksOf(item.links)} />
+      <div className="mt-2">
+        <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <dt className="text-xs uppercase tracking-wider text-muted-foreground">Owner</dt>
+          <dd>{ownerCell(item)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wider text-muted-foreground">Due</dt>
+          <dd>{dueCell(item)}</dd>
+        </div>
+      </dl>
+    </li>
+  );
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
@@ -375,48 +468,51 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visible.map((item) => (
-                  <TableRow key={item.id} className="cursor-pointer" onClick={() => onOpen(item)}>
-                    <TableCell className="max-w-md whitespace-normal py-3">
-                      <button type="button" className="min-h-6 py-0.5 text-left outline-none focus-visible:underline" onClick={() => onOpen(item)}>
-                        {titleCell(item)}
-                      </button>
-                      <JiraLinkChips links={jiraLinksOf(item.links)} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
-                    </TableCell>
-                    <TableCell>{ownerCell(item)}</TableCell>
-                    <TableCell>{item.phaseName ?? <span className="text-muted-foreground">No phase</span>}</TableCell>
-                    <TableCell>{dueCell(item)}</TableCell>
-                  </TableRow>
-                ))}
+                {groups
+                  ? groups.map((g) => (
+                      <Fragment key={g.key}>
+                        <TableRow className="bg-secondary/40 hover:bg-secondary/40">
+                          <TableCell colSpan={5} className="p-0">
+                            <PhaseHeader group={g} collapsed={collapsed.has(g.key)} onToggle={() => setCollapsed(toggle(collapsed, g.key))} />
+                          </TableCell>
+                        </TableRow>
+                        {!collapsed.has(g.key) && g.open.map(tableRow)}
+                        {!collapsed.has(g.key) && g.closed.length > 0 && (
+                          <>
+                            <TableRow className="hover:bg-transparent">
+                              <TableCell colSpan={5} className="p-0">
+                                <ClosedLine closed={g.closed} expanded={closedOpen.has(g.key)} onToggle={() => setClosedOpen(toggle(closedOpen, g.key))} />
+                              </TableCell>
+                            </TableRow>
+                            {closedOpen.has(g.key) && g.closed.map(tableRow)}
+                          </>
+                        )}
+                      </Fragment>
+                    ))
+                  : visible.map(tableRow)}
               </TableBody>
             </Table>
           </div>
 
           <ul className="space-y-3 md:hidden">
-            {visible.map((item) => (
-              <li key={item.id} className={cn("rounded-lg border border-border bg-card p-4")}>
-                <button type="button" className="block min-h-11 w-full text-left" onClick={() => onOpen(item)}>
-                  {titleCell(item)}
-                </button>
-                <JiraLinkChips links={jiraLinksOf(item.links)} />
-                <div className="mt-2">
-                  <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">Owner</dt>
-                    <dd>{ownerCell(item)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">Due</dt>
-                    <dd>{dueCell(item)}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
+            {groups
+              ? groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <li className="overflow-hidden rounded-lg border border-border bg-secondary/40">
+                      <PhaseHeader group={g} collapsed={collapsed.has(g.key)} onToggle={() => setCollapsed(toggle(collapsed, g.key))} />
+                    </li>
+                    {!collapsed.has(g.key) && g.open.map(cardRow)}
+                    {!collapsed.has(g.key) && g.closed.length > 0 && (
+                      <>
+                        <li className="overflow-hidden rounded-lg border border-border bg-card">
+                          <ClosedLine closed={g.closed} expanded={closedOpen.has(g.key)} onToggle={() => setClosedOpen(toggle(closedOpen, g.key))} />
+                        </li>
+                        {closedOpen.has(g.key) && g.closed.map(cardRow)}
+                      </>
+                    )}
+                  </Fragment>
+                ))
+              : visible.map(cardRow)}
           </ul>
         </>
       )}
