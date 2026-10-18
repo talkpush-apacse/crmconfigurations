@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Flag, Lock, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Flag, Lock, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,8 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { ItemDTO, PersonDTO, PhaseDTO } from "@/lib/tracker/client-types";
 import { ITEM_STATUSES, ITEM_STATUS_LABELS, OPEN_ITEM_STATUSES, type ItemStatus } from "@/lib/tracker/constants";
 import { unmetDependencies } from "@/lib/tracker/dependencies";
-import { describeDue, overdueDays } from "@/lib/tracker/dates";
-import { formatShortDate } from "@/lib/tracker/format";
 import {
   DUE_FILTERS,
   DUE_FILTER_LABELS,
@@ -34,7 +32,7 @@ import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
 import { NONE } from "./Field";
-import { ItemStatusBadge } from "./badges";
+import { DuePill, OwnerChip, StatusFace, StatusIcon } from "./RowParts";
 import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 
 const SEARCH_THRESHOLD = 8;
@@ -57,24 +55,32 @@ interface Props {
   initialStatus?: "attention";
 }
 
-function StatusMenu({ item, onPick, readOnly }: { item: ItemDTO; onPick: (status: ItemStatus) => void; readOnly?: boolean }) {
-  if (readOnly) return <ItemStatusBadge status={item.status} />;
+function StatusMenu({ item, onPick, readOnly, full }: { item: ItemDTO; onPick: (status: ItemStatus) => void; readOnly?: boolean; full?: boolean }) {
+  const label = ITEM_STATUS_LABELS[item.status as ItemStatus] ?? item.status;
+  if (readOnly) {
+    return (
+      <span role="img" aria-label={`Status: ${label}`} title={label}>
+        <StatusFace status={item.status} full={full} />
+      </span>
+    );
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           aria-label={`Change status of ${item.title}. Currently ${ITEM_STATUS_LABELS[item.status as ItemStatus] ?? item.status}`}
-          className="inline-flex min-h-11 items-center gap-1 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
+          title={label}
+          className="inline-flex min-h-11 min-w-8 items-center justify-center rounded px-1.5 outline-none hover:bg-foreground/[0.07] focus-visible:ring-[3px] focus-visible:ring-ring/70 md:min-h-8"
           onClick={(e) => e.stopPropagation()}
         >
-          <ItemStatusBadge status={item.status} />
-          <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          <StatusFace status={item.status} full={full} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
         {ITEM_STATUSES.map((s) => (
           <DropdownMenuItem key={s} disabled={s === item.status} onSelect={() => onPick(s)} className="cursor-pointer">
+            <StatusIcon status={s} />
             {ITEM_STATUS_LABELS[s]}
           </DropdownMenuItem>
         ))}
@@ -314,32 +320,15 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     return err;
   };
 
-  const dueCell = (item: ItemDTO) => {
-    if (!item.dueDate) return <span className="text-muted-foreground">No due date</span>;
-    const late = (OPEN_ITEM_STATUSES as readonly string[]).includes(item.status) && overdueDays(item.dueDate, today) > 0;
-    return (
-      <>
-        <span className="tabular-nums">{formatShortDate(item.dueDate, today)}</span>
-        {late && <span className="block text-xs font-medium text-destructive">{describeDue(item.dueDate, today)}</span>}
-      </>
-    );
-  };
+  const dueCell = (item: ItemDTO) => <DuePill item={item} today={today} />;
 
-  const ownerCell = (item: ItemDTO) =>
-    item.ownerName ? (
-      <>
-        {item.ownerName}
-        <span className="block text-xs capitalize text-muted-foreground">{item.ownerSide}</span>
-      </>
-    ) : (
-      <span className="text-muted-foreground">Unassigned</span>
-    );
+  const ownerCell = (item: ItemDTO) => <OwnerChip name={item.ownerName} side={item.ownerSide} muted={item.status === "done" || item.status === "dropped"} />;
 
   const unmet = (item: ItemDTO) => unmetDependencies(item.id, edges, statusById).length;
 
   const titleCell = (item: ItemDTO) => (
     <>
-      <span className="inline-flex items-center gap-1.5 font-medium">
+      <span className={cn("inline-flex items-center gap-1.5", item.status === "done" || item.status === "dropped" ? "text-muted-foreground" : "font-medium")}>
         {item.isMilestone && <Flag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Milestone" />}
         {item.visibility === "internal" && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Team only" />}
         <span>{item.title}</span>
@@ -377,10 +366,10 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       </button>
       <JiraLinkChips links={jiraLinksOf(item.links)} />
       <div className="mt-2">
-        <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
+        <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} full />
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs uppercase tracking-wider text-muted-foreground">Owner</dt>
           <dd>{ownerCell(item)}</dd>
         </div>
