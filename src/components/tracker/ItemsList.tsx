@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Flag, Lock, Search } from
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterChips, ListFilterMenu, type FilterCategory, type FilterToggle } from "./ListFilterMenu";
 import { Tag } from "./PlanParts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ItemDTO, PersonDTO, PhaseDTO } from "@/lib/tracker/client-types";
@@ -38,7 +39,6 @@ import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 const SEARCH_THRESHOLD = 8;
 const ALL = "__all";
 const REVIEW = "__review";
-const ATTENTION = "__attention";
 const OPEN = "__open";
 const UNASSIGNED = "__unassigned";
 
@@ -101,7 +101,8 @@ function SortableHead({ label, sortKey, sort, onSort }: { label: string; sortKey
 
 export function ItemsList({ items, phases, people, today, onOpen, onStatusChange, onVisibleChange, initialStatus }: Props) {
   const { canEdit } = useCurrentUser();
-  const [statusFilter, setStatusFilter] = useState(initialStatus === "attention" ? ATTENTION : ALL);
+  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [attentionOnly, setAttentionOnly] = useState(initialStatus === "attention");
   const reviewCount = items.filter((i) => i.needsReview).length;
   const attentionIds = useMemo(() => new Set(attentionItems(items, today).map((a) => a.item.id)), [items, today]);
   const [ownerFilter, setOwnerFilter] = useState(ALL);
@@ -121,23 +122,23 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     const filtered = items
       .filter((i) => {
         if (statusFilter === REVIEW) return i.needsReview;
-        if (statusFilter === ATTENTION) return attentionIds.has(i.id);
         if (statusFilter === OPEN) return (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status);
         if (statusFilter === ALL) return true;
         return i.status === statusFilter;
       })
+      .filter((i) => !attentionOnly || attentionIds.has(i.id))
       .filter((i) => (ownerFilter === ALL ? true : ownerFilter === UNASSIGNED ? !i.ownerPersonId : i.ownerPersonId === ownerFilter))
       .filter((i) => (phaseFilter === ALL ? true : phaseFilter === NONE ? !i.phaseId : i.phaseId === phaseFilter))
       .filter((i) => !q || i.title.toLowerCase().includes(q))
       .filter((i) => matchesDue(i, dueFilter, today));
     return sortRows(filtered, sort, phaseOrder);
-  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today, sort, phaseOrder, attentionIds]);
+  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, attentionOnly, query, today, sort, phaseOrder, attentionIds]);
 
   // Done and dropped items that the "Open items only" filter is hiding, counted against the owner, phase and search
   // filters so the number matches what "Show all" would reveal.
   const hiddenClosed = useMemo(() => {
     const counts = { done: 0, dropped: 0 };
-    if (statusFilter !== OPEN) return counts;
+    if (statusFilter !== OPEN || attentionOnly) return counts;
     const q = query.trim().toLowerCase();
     for (const i of items) {
       if (i.status !== "done" && i.status !== "dropped") continue;
@@ -148,29 +149,95 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
       counts[i.status] += 1;
     }
     return counts;
-  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, query, today]);
+  }, [items, statusFilter, ownerFilter, phaseFilter, dueFilter, attentionOnly, query, today]);
 
-  const filtersActive = statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any" || query.trim() !== "";
+  const filtersActive = attentionOnly || statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any" || query.trim() !== "";
   const clearFilters = () => {
     setStatusFilter(ALL);
     setOwnerFilter(ALL);
     setPhaseFilter(ALL);
     setDueFilter("any");
+    setAttentionOnly(false);
     setQuery("");
   };
+  const clearFilterMenu = () => {
+    setStatusFilter(ALL);
+    setOwnerFilter(ALL);
+    setPhaseFilter(ALL);
+    setDueFilter("any");
+    setAttentionOnly(false);
+  };
+
+  const filterCategories = useMemo<FilterCategory[]>(() => {
+    const byStatus = (st: string) => items.filter((i) => i.status === st).length;
+    const owned = (id: string) => items.filter((i) => i.ownerPersonId === id).length;
+    const inPhase = (id: string) => items.filter((i) => i.phaseId === id).length;
+    return [
+      {
+        key: "status",
+        label: "Status",
+        value: statusFilter,
+        defaultValue: ALL,
+        onChange: setStatusFilter,
+        options: [
+          { value: ALL, label: "All items", count: items.length },
+          { value: OPEN, label: "Open items only", count: items.filter((i) => (OPEN_ITEM_STATUSES as readonly string[]).includes(i.status)).length },
+          ...(reviewCount > 0 || statusFilter === REVIEW ? [{ value: REVIEW, label: "Needs review", count: reviewCount }] : []),
+          ...ITEM_STATUSES.map((st) => ({ value: st, label: ITEM_STATUS_LABELS[st], count: byStatus(st) })),
+        ],
+      },
+      {
+        key: "owner",
+        label: "Owner",
+        value: ownerFilter,
+        defaultValue: ALL,
+        onChange: setOwnerFilter,
+        options: [
+          { value: ALL, label: "All owners" },
+          { value: UNASSIGNED, label: "Unassigned", count: items.filter((i) => !i.ownerPersonId).length },
+          ...people.map((p) => ({ value: p.id, label: p.name, count: owned(p.id) })),
+        ],
+      },
+      {
+        key: "phase",
+        label: "Phase",
+        value: phaseFilter,
+        defaultValue: ALL,
+        onChange: setPhaseFilter,
+        options: [
+          { value: ALL, label: "All phases" },
+          { value: NONE, label: "No phase", count: items.filter((i) => !i.phaseId).length },
+          ...phases.map((p) => ({ value: p.id, label: p.name, count: inPhase(p.id) })),
+        ],
+      },
+      {
+        key: "due",
+        label: "Due",
+        value: dueFilter,
+        defaultValue: "any",
+        onChange: (v: string) => setDueFilter(v as DueFilter),
+        options: DUE_FILTERS.map((d) => ({ value: d, label: DUE_FILTER_LABELS[d], count: d === "any" ? undefined : items.filter((i) => matchesDue(i, d, today)).length })),
+      },
+    ];
+  }, [items, people, phases, statusFilter, ownerFilter, phaseFilter, dueFilter, reviewCount, today]);
+  const filterToggles = useMemo<FilterToggle[]>(
+    () => [{ key: "attention", label: "Needs attention", on: attentionOnly, count: attentionIds.size, onChange: setAttentionOnly }],
+    [attentionOnly, attentionIds]
+  );
 
   // Plain-language description of the filters, for the header of an exported file.
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
     parts.push(
-      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : statusFilter === ATTENTION ? "Needs attention" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
+      statusFilter === OPEN ? "Open items" : statusFilter === ALL ? "All items" : statusFilter === REVIEW ? "Needs review" : `Status: ${ITEM_STATUS_LABELS[statusFilter as ItemStatus] ?? statusFilter}`
     );
     if (ownerFilter !== ALL) parts.push(`Owner: ${ownerFilter === UNASSIGNED ? "Unassigned" : (people.find((p) => p.id === ownerFilter)?.name ?? "Unknown")}`);
     if (phaseFilter !== ALL) parts.push(`Phase: ${phaseFilter === NONE ? "No phase" : (phases.find((p) => p.id === phaseFilter)?.name ?? "Unknown")}`);
     if (dueFilter !== "any") parts.push(`Due: ${DUE_FILTER_LABELS[dueFilter]}`);
+    if (attentionOnly) parts.push("Needs attention");
     if (query.trim()) parts.push(`Search: "${query.trim()}"`);
     return `${parts.join(". ")}.`;
-  }, [statusFilter, ownerFilter, phaseFilter, dueFilter, query, people, phases]);
+  }, [statusFilter, ownerFilter, phaseFilter, dueFilter, attentionOnly, query, people, phases]);
 
   useEffect(() => {
     onVisibleChange?.({ items: visible, filterLabel });
@@ -234,71 +301,16 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
 
   return (
     <div>
-      <div className="mb-4 grid grid-cols-2 gap-2 md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
         {items.length >= SEARCH_THRESHOLD && (
-          <div className="relative col-span-2 md:col-span-1 md:max-w-xs md:flex-1">
+          <div className="relative w-full md:max-w-xs md:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input aria-label="Search items" placeholder="Search items" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
           </div>
         )}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger aria-label="Filter by status" className="w-full md:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={OPEN}>Open items only</SelectItem>
-            <SelectItem value={ALL}>All items</SelectItem>
-            {(reviewCount > 0 || statusFilter === REVIEW) && <SelectItem value={REVIEW}>Needs review ({reviewCount})</SelectItem>}
-            {(attentionIds.size > 0 || statusFilter === ATTENTION) && <SelectItem value={ATTENTION}>Needs attention ({attentionIds.size})</SelectItem>}
-            {ITEM_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {ITEM_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger aria-label="Filter by owner" className="w-full md:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All owners</SelectItem>
-            <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-            {people.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-          <SelectTrigger aria-label="Filter by phase" className="w-full md:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All phases</SelectItem>
-            <SelectItem value={NONE}>No phase</SelectItem>
-            {phases.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={dueFilter} onValueChange={(v) => setDueFilter(v as DueFilter)}>
-          <SelectTrigger aria-label="Filter by due date" className="w-full md:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DUE_FILTERS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {DUE_FILTER_LABELS[f]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ListFilterMenu categories={filterCategories} toggles={filterToggles} onClearAll={clearFilterMenu} />
         <Select value={sortToValue(sort)} onValueChange={(v) => setSort(sortFromValue(v))}>
-          <SelectTrigger aria-label="Sort by" className="col-span-2 w-full md:hidden">
+          <SelectTrigger aria-label="Sort by" className="w-44 md:hidden">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -309,6 +321,12 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             ))}
           </SelectContent>
         </Select>
+        <FilterChips categories={filterCategories} toggles={filterToggles} />
+        {filtersActive && (
+          <span className="text-xs tabular-nums text-muted-foreground md:ml-auto" role="status">
+            {visible.length} of {items.length} items
+          </span>
+        )}
       </div>
 
       {rowError && (
