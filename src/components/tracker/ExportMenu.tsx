@@ -15,15 +15,14 @@ interface Props {
   onWorkbook: () => void;
 }
 
-/** "Export" in the project header: a PDF of the tab you are on and, on the List tab, an Excel file too. */
+/** An Export icon button in the project header: a PDF of the tab you are on and, on the List tab, an Excel file too. */
 export function ExportMenu({ view, busy, onPdf, onXlsx, onWorkbook }: Props) {
   const label = PRINT_VIEW_LABEL[view];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={busy}>
+        <Button variant="ghost" size="icon" disabled={busy} aria-label={busy ? "Preparing the export" : "Export"} title={busy ? "Preparing the export" : "Export"} className="text-muted-foreground max-md:size-11">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-          {busy ? "Preparing" : "Export"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
