@@ -19,6 +19,8 @@ import {
   Tags,
   ThumbsDown,
   PlugZap,
+  Shield,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -40,6 +42,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Tags,
   ThumbsDown,
   PlugZap,
+  Shield,
+  Zap,
 };
 
 interface TabSelectorProps {
