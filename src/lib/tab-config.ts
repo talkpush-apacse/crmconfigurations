@@ -54,9 +54,15 @@ export function getTabBySlug(slug: string): TabConfig | undefined {
 // `welcome` was also here once; see scripts/backfill-checklists.ts.
 export const ALWAYS_ENABLED_SLUGS: string[] = [];
 
-// Tabs that can be toggled by admin (excludes always-enabled and admin-only tabs)
+// Tabs that can be toggled by admin (everything except always-enabled tabs).
+//
+// Admin-only tabs (Admin Settings, Autoflows, Integrations) are toggleable too:
+// `adminOnly` controls who can SEE a tab once it is on (never the client or a
+// non-admin editor), not whether it can be switched off. scripts/
+// backfill-admin-tabs.ts added them once to every checklist that stores an
+// explicit `enabledTabs` list, so existing checklists did not lose them.
 export const SELECTABLE_TABS = TAB_CONFIG.filter(
-  (tab) => !ALWAYS_ENABLED_SLUGS.includes(tab.slug) && !tab.adminOnly
+  (tab) => !ALWAYS_ENABLED_SLUGS.includes(tab.slug)
 );
 
 // Get all selectable tab slugs (for default "all selected")
@@ -87,7 +93,8 @@ export function getCustomTabBySlug(
   return customTabs.find((ct) => ct.slug === tabSlug);
 }
 
-// Filter TAB_CONFIG to only enabled tabs (excludes admin-only tabs by default)
+// Filter TAB_CONFIG to only enabled tabs. Admin-only tabs are dropped unless
+// includeAdminTabs is set, and (like every other tab) must also be enabled.
 // When tabOrder is provided, reorder the result to match.
 // When customTabs is provided, append them after standard tabs.
 // When tabFilledByOverrides is provided, each tab's filledBy is overridden per-slug.
@@ -104,8 +111,7 @@ export function getEnabledTabs(
   }
   if (enabledTabSlugs) {
     const enabledSet = new Set([...ALWAYS_ENABLED_SLUGS, ...enabledTabSlugs]);
-    // Admin-only tabs are always included when includeAdminTabs is true (not controlled by enabledTabs)
-    tabs = tabs.filter((tab) => tab.adminOnly || enabledSet.has(tab.slug));
+    tabs = tabs.filter((tab) => enabledSet.has(tab.slug));
   }
 
   // Append custom tabs

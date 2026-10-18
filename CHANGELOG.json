@@ -1,5 +1,14 @@
 [
   {
+    "version": "4.11",
+    "name": "Version 4.11 - Turn Admin Settings, Autoflows and Integrations on or off",
+    "changes": [
+      "Checklist settings: Admin Settings, Autoflows and Integrations now have on/off boxes under Talkpush fills out, the same as the other pages. Turn one off and it disappears from that checklist's menu; turn it back on and it returns with everything that was typed in",
+      "They stay internal: clients and read-only editors never see them, whether on or off",
+      "New checklists start with all three on. Existing checklists keep all three on until someone turns them off. No change to what is stored in checklists"
+    ]
+  },
+  {
     "version": "4.10",
     "name": "Version 4.10 - Claude can start a client's checklist",
     "changes": [
