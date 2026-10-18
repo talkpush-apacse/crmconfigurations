@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Flag, Lock, Search } fro
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ListViewOptions } from "./ListViewOptions";
 import { FilterChips, ListFilterMenu, type FilterCategory, type FilterToggle } from "./ListFilterMenu";
 import { Tag } from "./PlanParts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,12 +28,14 @@ import {
   type SortState,
 } from "@/lib/tracker/list-controls";
 import { attentionItems } from "@/lib/tracker/attention";
+import { loadPrefs, savePrefs, type ListPrefs } from "@/lib/tracker/list-prefs";
 import { closedLabel, groupByPhase, shouldFold, type PhaseGroup } from "@/lib/tracker/list-groups";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { cn } from "@/lib/utils";
 import { BlockReasonDialog } from "./BlockReasonDialog";
 import { NONE } from "./Field";
 import { DuePill, OwnerChip, StatusFace, StatusIcon } from "./RowParts";
+import { PERSON_SIDE_LABELS, type PersonSide } from "@/lib/tracker/constants";
 import { JiraLinkChips, jiraLinksOf } from "./JiraLinks";
 
 const SEARCH_THRESHOLD = 8;
@@ -158,6 +161,12 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
   const [rowError, setRowError] = useState("");
 
   // Phases the person has collapsed, and phases whose "n done" line they have opened. Both reset on reload.
+  // Row density and optional columns: this browser's own choice, kept in localStorage.
+  const [prefs, setPrefs] = useState<ListPrefs>(loadPrefs);
+  const changePrefs = (next: ListPrefs) => {
+    setPrefs(next);
+    savePrefs(next);
+  };
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [closedOpen, setClosedOpen] = useState<Set<string>>(new Set());
   const toggle = (set: Set<string>, key: string) => {
@@ -210,6 +219,11 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
     () => (sort === null ? groupByPhase(visible, { phases, allItems: items, today, fold: shouldFold({ statusFilter, query }) }) : null),
     [sort, visible, phases, items, today, statusFilter, query]
   );
+
+  const flat = groups === null;
+  const show = { ...prefs.columns, phase: prefs.columns.phase || flat };
+  const columnCount = 1 + Object.values(show).filter(Boolean).length;
+  const compact = prefs.density === "compact";
 
   const filtersActive = attentionOnly || statusFilter !== ALL || ownerFilter !== ALL || phaseFilter !== ALL || dueFilter !== "any" || query.trim() !== "";
   const clearFilters = () => {
@@ -343,19 +357,22 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
   );
 
   const tableRow = (item: ItemDTO) => (
-    <TableRow key={item.id} className="cursor-pointer" onClick={() => onOpen(item)}>
-      <TableCell className="max-w-md whitespace-normal py-3">
+    <TableRow key={item.id} className={cn("cursor-pointer", compact ? "[&>td]:py-1.5" : "[&>td]:py-3.5 text-[15px]")} onClick={() => onOpen(item)}>
+      <TableCell className="max-w-md whitespace-normal">
         <button type="button" className="min-h-6 py-0.5 text-left outline-none focus-visible:underline" onClick={() => onOpen(item)}>
           {titleCell(item)}
         </button>
         <JiraLinkChips links={jiraLinksOf(item.links)} />
       </TableCell>
-      <TableCell>
-        <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
-      </TableCell>
-      <TableCell>{ownerCell(item)}</TableCell>
-      <TableCell>{item.phaseName ?? <span className="text-muted-foreground">No phase</span>}</TableCell>
-      <TableCell>{dueCell(item)}</TableCell>
+      {show.status && (
+        <TableCell>
+          <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} />
+        </TableCell>
+      )}
+      {show.owner && <TableCell>{ownerCell(item)}</TableCell>}
+      {show.side && <TableCell>{item.ownerSide ? (PERSON_SIDE_LABELS[item.ownerSide as PersonSide] ?? item.ownerSide) : <span className="text-muted-foreground">-</span>}</TableCell>}
+      {show.phase && <TableCell>{item.phaseName ?? <span className="text-muted-foreground">No phase</span>}</TableCell>}
+      {show.due && <TableCell>{dueCell(item)}</TableCell>}
     </TableRow>
   );
 
@@ -365,6 +382,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
         {titleCell(item)}
       </button>
       <JiraLinkChips links={jiraLinksOf(item.links)} />
+      {flat && <p className="mt-1 text-xs text-muted-foreground">{item.phaseName ?? "No phase"}</p>}
       <div className="mt-2">
         <StatusMenu item={item} onPick={(s) => void pick(item, s)} readOnly={!canEdit} full />
       </div>
@@ -404,11 +422,14 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
           </SelectContent>
         </Select>
         <FilterChips categories={filterCategories} toggles={filterToggles} />
-        {filtersActive && (
-          <span className="text-xs tabular-nums text-muted-foreground md:ml-auto" role="status">
-            {visible.length} of {items.length} items
-          </span>
-        )}
+        <div className="flex items-center gap-3 md:ml-auto">
+          {filtersActive && (
+            <span className="text-xs tabular-nums text-muted-foreground" role="status">
+              {visible.length} of {items.length} items
+            </span>
+          )}
+          <ListViewOptions prefs={prefs} onChange={changePrefs} phaseForced={flat} />
+        </div>
       </div>
 
       {rowError && (
@@ -451,9 +472,13 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary hover:bg-secondary">
-                  {(["item", "status", "owner", "phase", "due"] as const).map((key) => (
-                    <SortableHead key={key} label={SORT_KEY_LABELS[key]} sortKey={key} sort={sort} onSort={(k) => setSort(nextSort(sort, k))} />
-                  ))}
+                  {(["item", "status", "owner", "side", "phase", "due"] as const).map((key) =>
+                    key === "side" ? (
+                      show.side && <TableHead key={key} className="text-xs font-semibold uppercase tracking-wider">Side</TableHead>
+                    ) : key === "item" || show[key] ? (
+                      <SortableHead key={key} label={SORT_KEY_LABELS[key]} sortKey={key} sort={sort} onSort={(k) => setSort(nextSort(sort, k))} />
+                    ) : null
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -461,7 +486,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                   ? groups.map((g) => (
                       <Fragment key={g.key}>
                         <TableRow className="bg-secondary/40 hover:bg-secondary/40">
-                          <TableCell colSpan={5} className="p-0">
+                          <TableCell colSpan={columnCount} className="p-0">
                             <PhaseHeader group={g} collapsed={collapsed.has(g.key)} onToggle={() => setCollapsed(toggle(collapsed, g.key))} />
                           </TableCell>
                         </TableRow>
@@ -469,7 +494,7 @@ export function ItemsList({ items, phases, people, today, onOpen, onStatusChange
                         {!collapsed.has(g.key) && g.closed.length > 0 && (
                           <>
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={5} className="p-0">
+                              <TableCell colSpan={columnCount} className="p-0">
                                 <ClosedLine closed={g.closed} expanded={closedOpen.has(g.key)} onToggle={() => setClosedOpen(toggle(closedOpen, g.key))} />
                               </TableCell>
                             </TableRow>
