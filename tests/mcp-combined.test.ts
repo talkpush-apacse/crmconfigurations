@@ -45,6 +45,8 @@ test("combined connector serves exactly the tools of the checklist, tracker and 
     "create_checklist_link",
     "list_checklist_links",
     "change_checklist_link",
+    // Starting a checklist is written with defineTool like the link tools, so it is on the combined URL too.
+    "create_checklist",
   ].sort();
   assert.equal(new Set(combined).size, combined.length, "no duplicate tool names");
   assert.deepEqual(combined, separate);

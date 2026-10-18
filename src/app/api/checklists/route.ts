@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
-import { normalizeOwnerEmail } from "@/lib/notifications";
-import { getDefaultChecklistData } from "@/lib/template-data";
 import { getChecklistProgress } from "@/lib/section-status";
 import type { ChecklistData } from "@/lib/types";
 import { omitInternalConfigForSlug } from "@/lib/checklist-public";
-import { findLinkableAccount } from "@/lib/accounts/company-link";
+import { createChecklist } from "@/lib/checklists/create-checklist";
 
 export async function GET(request: NextRequest) {
   try {
@@ -132,84 +130,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs, ownerEmail, accountId } = body;
 
-    if (!clientName) {
-      return NextResponse.json({ error: "Client name is required" }, { status: 400 });
-    }
+    // The checks, the web address and the default content live in createChecklist (shared with Claude's create_checklist tool).
+    const result = await createChecklist({ clientName, enabledTabs, communicationChannels, featureToggles, isCustom, customSchema, customTabs, ownerEmail, accountId });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-    const normalizedOwnerEmail = normalizeOwnerEmail(ownerEmail);
-    if (normalizedOwnerEmail.error) {
-      return NextResponse.json({ error: normalizedOwnerEmail.error }, { status: 400 });
-    }
-
-    // Optional: file the new checklist under a company straight away.
-    let linkedAccountId: string | null = null;
-    if (accountId !== undefined && accountId !== null) {
-      if (typeof accountId !== "string" || !accountId.trim()) {
-        return NextResponse.json({ error: "accountId must be a company id." }, { status: 400 });
-      }
-      const target = await findLinkableAccount(accountId.trim());
-      if (!target.ok) return NextResponse.json({ error: target.error }, { status: target.status });
-      linkedAccountId = target.account.id;
-    }
-
-    const slug = clientName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-
-    const existing = await prisma.checklist.findUnique({ where: { slug } });
-    if (existing) {
-      return NextResponse.json({ error: "A checklist with this name already exists" }, { status: 409 });
-    }
-
-    const defaults = getDefaultChecklistData();
-
-    // Custom checklists: no standard tabs, store custom schema
-    const createData: Record<string, unknown> = {
-      slug,
-      clientName,
-      isCustom: !!isCustom,
-      ownerEmail: normalizedOwnerEmail.value,
-      accountId: linkedAccountId,
-    };
-
-    if (isCustom) {
-      createData.enabledTabs = JSON.parse(JSON.stringify([]));
-      createData.customSchema = customSchema ? JSON.parse(JSON.stringify(customSchema)) : JSON.parse(JSON.stringify([]));
-      createData.customData = JSON.parse(JSON.stringify({}));
-    } else {
-      createData.enabledTabs = enabledTabs ? JSON.parse(JSON.stringify(enabledTabs)) : null;
-      createData.communicationChannels = communicationChannels ? JSON.parse(JSON.stringify(communicationChannels)) : null;
-      createData.featureToggles = featureToggles ? JSON.parse(JSON.stringify(featureToggles)) : null;
-      createData.companyInfo = JSON.parse(JSON.stringify(defaults.companyInfo));
-      createData.users = JSON.parse(JSON.stringify(defaults.users));
-      createData.campaigns = JSON.parse(JSON.stringify(defaults.campaigns));
-      createData.sites = JSON.parse(JSON.stringify(defaults.sites));
-      createData.prescreening = JSON.parse(JSON.stringify(defaults.prescreening));
-      createData.messaging = JSON.parse(JSON.stringify(defaults.messaging));
-      createData.sources = JSON.parse(JSON.stringify(defaults.sources));
-      createData.folders = JSON.parse(JSON.stringify(defaults.folders));
-      createData.documents = JSON.parse(JSON.stringify(defaults.documents));
-      createData.attributes = JSON.parse(JSON.stringify(defaults.attributes));
-      createData.fbWhatsapp = JSON.parse(JSON.stringify(defaults.fbWhatsapp));
-      createData.instagram = JSON.parse(JSON.stringify(defaults.instagram));
-      createData.aiCallFaqs = JSON.parse(JSON.stringify(defaults.aiCallFaqs));
-      createData.agencyPortal = JSON.parse(JSON.stringify(defaults.agencyPortal));
-      createData.labels = JSON.parse(JSON.stringify(defaults.labels));
-      createData.adminSettings = JSON.parse(JSON.stringify(defaults.adminSettings));
-      createData.atsIntegrations = JSON.parse(JSON.stringify(defaults.atsIntegrations));
-      createData.integrations = JSON.parse(JSON.stringify(defaults.integrations));
-      if (customTabs && Array.isArray(customTabs) && customTabs.length > 0) {
-        createData.customTabs = JSON.parse(JSON.stringify(customTabs));
-        createData.customData = JSON.parse(JSON.stringify({}));
-      }
-    }
-
-    const checklist = await prisma.checklist.create({
-      data: createData as Parameters<typeof prisma.checklist.create>[0]["data"],
-    });
-
-    return NextResponse.json(checklist, { status: 201 });
+    return NextResponse.json(result.checklist, { status: 201 });
   } catch (err) {
     console.error("POST /api/checklists error:", err);
     return NextResponse.json({ error: "Failed to create checklist. Check database connection." }, { status: 500 });
