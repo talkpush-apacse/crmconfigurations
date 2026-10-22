@@ -8,6 +8,7 @@ import { EditLinkError } from "@/lib/edit-history/links-service";
 import { registerChecklistTools } from "@/lib/mcp-server";
 import { CHECKLIST_READ_TOOLS } from "./checklist-read-tools";
 import { checklistCreateTools } from "./checklist-create-tool";
+import { checklistTabsTools } from "./checklist-tabs-tool";
 import { ChecklistToolError, checklistShareTools } from "./checklist-share-tools";
 import type { ToolModule } from "./toolkit";
 import { trackerModule } from "./tracker";
@@ -22,10 +23,11 @@ export const checklistModule: ToolModule = {
   name: "CRM Config Checklist",
   instructions:
     "To start a new client checklist use create_checklist: it is empty and private, and it makes no client link and no configurator items. " +
+    "It starts with every standard tab on; use update_checklist_tabs to show only the tabs the client needs (hiding a tab never deletes what is in it). " +
     "Client links for a checklist (create_checklist_link, list_checklist_links, change_checklist_link) are ONLY for when the user explicitly asks. " +
     "level view = read-only, level edit = can change the checklist (give a name to record one person's changes under their name). " +
     "Nothing is emailed: hand the user the address to copy and send themselves.",
-  tools: [...checklistShareTools, ...checklistCreateTools],
+  tools: [...checklistShareTools, ...checklistCreateTools, ...checklistTabsTools],
   legacy: registerChecklistTools,
   legacyReadTools: CHECKLIST_READ_TOOLS,
   isUserError: (err): err is Error => err instanceof ChecklistToolError || err instanceof EditLinkError,

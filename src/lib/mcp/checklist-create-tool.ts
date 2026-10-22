@@ -28,7 +28,7 @@ async function resolveAccount(ref: string | undefined): Promise<{ id: string; na
 export const createChecklistTool = defineTool({
   name: "create_checklist",
   description:
-    "Create a new, empty CRM Config Checklist for a client: the same as 'Create New Checklist' on the website (every standard tab on, default settings, no answers filled in). " +
+    "Create a new, empty CRM Config Checklist for a client: the same as 'Create New Checklist' on the website (every standard tab on to start with, default settings, no answers filled in). To show only some tabs, use update_checklist_tabs afterwards. " +
     "Give client_name. Optionally give account (the account to file it under, by name or id; use list_accounts) and slug (the checklist's web address name; without it, it is client_name in lowercase with hyphens, so 'TaskUs PH' becomes 'taskus-ph'). " +
     "Safe to repeat: if a checklist with that slug already exists, it is returned as already_existed and nothing is created or changed (its client name and account stay as they are, and a warning says if they differ from what you passed). " +
     "If the slug belongs to an ARCHIVED checklist the tool stops with a message and does not restore it. A wrong, unclear or archived account stops the tool and nothing is created. A slug that is not lowercase letters, numbers and single hyphens is refused with the reason. " +
@@ -126,7 +126,7 @@ function shape(result: "created" | "already_existed", row: Found, warnings: stri
     ...(warnings.length ? { warnings } : {}),
     note:
       result === "created"
-        ? "Created empty and private: no configurator items, no client link, nothing sent. Next, if asked: generate_configurator_checklist, add_custom_tab, or create_checklist_link."
+        ? "Created empty and private: no configurator items, no client link, nothing sent. Next, if asked: update_checklist_tabs (to show only some tabs), generate_configurator_checklist, add_custom_tab, or create_checklist_link."
         : "Already there, so nothing was created or changed.",
   };
 }

@@ -1,5 +1,15 @@
 [
   {
+    "version": "4.12",
+    "name": "Version 4.12 - Claude can choose which tabs a checklist shows",
+    "changes": [
+      "New update_checklist_tabs tool: Claude can turn a checklist's standard tabs on or off, so a checklist can show only what the client needs (for example just Welcome plus one custom tab). It can also set the order of the tabs and who fills each one in (the client or Talkpush), for standard and custom tabs",
+      "Turning a tab off only hides it. Everything typed into it is kept and comes back when the tab is turned on again. Custom tabs are never turned off by it",
+      "An unknown tab name is refused with the list of valid names. Calling it twice with the same settings changes nothing the second time. The change shows in the checklist's History as Claude",
+      "Existing client and edit links keep working and simply show the tabs that are on. Read-only logins do not get this tool. No database change"
+    ]
+  },
+  {
     "version": "4.11",
     "name": "Version 4.11 - Turn Admin Settings, Autoflows and Integrations on or off",
     "changes": [
