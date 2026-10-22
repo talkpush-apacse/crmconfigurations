@@ -47,6 +47,8 @@ test("combined connector serves exactly the tools of the checklist, tracker and 
     "change_checklist_link",
     // Starting a checklist is written with defineTool like the link tools, so it is on the combined URL too.
     "create_checklist",
+    // Choosing which tabs a checklist shows is written with defineTool too.
+    "update_checklist_tabs",
   ].sort();
   assert.equal(new Set(combined).size, combined.length, "no duplicate tool names");
   assert.deepEqual(combined, separate);
