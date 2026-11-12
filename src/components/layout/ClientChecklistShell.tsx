@@ -1,6 +1,7 @@
 "use client";
 
 import { TabActivityBanner } from "@/components/layout/TabActivityBanner";
+import { UnsavedBackupBanner } from "@/components/layout/UnsavedBackupBanner";
 import { useMemo } from "react";
 import { useChecklist } from "@/hooks/useChecklist";
 import { TopNav } from "@/components/layout/TopNav";
@@ -47,6 +48,7 @@ export function ClientChecklistShell({
     publishChanges,
     discardChanges,
     hasPendingChangesRef,
+    unsavedBackup,
   } = useChecklist(slug, "slug", initialData);
 
   // Hooks must run in the same order on every render, so this sits above the
@@ -177,6 +179,7 @@ export function ClientChecklistShell({
             )}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+                <UnsavedBackupBanner backup={unsavedBackup} />
                 <TabActivityBanner activityUrl={`/api/checklists/by-slug/${slug}/activity`} />
                 {children}
               </div>
