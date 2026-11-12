@@ -5,7 +5,15 @@ import type { ChecklistData } from "./types";
 
 interface ChecklistContextType {
   data: ChecklistData;
-  updateField: <K extends keyof ChecklistData>(field: K, value: ChecklistData[K]) => void;
+  /**
+   * Replaces a field. Pass a function to build the new value from the NEWEST copy of the field instead of the one
+   * from the last render: edits that land close together (a typed cell and a merged-in server change, two cells
+   * handed over in the same moment) then stack instead of the later one erasing the earlier.
+   */
+  updateField: <K extends keyof ChecklistData>(
+    field: K,
+    value: ChecklistData[K] | ((current: ChecklistData[K]) => ChecklistData[K])
+  ) => void;
   saveStatus: "saved" | "saving" | "error";
   saveError: string | null;
   hasPendingChanges: boolean;
