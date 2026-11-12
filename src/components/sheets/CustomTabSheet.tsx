@@ -86,7 +86,7 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteFileOpen, setDeleteFileOpen] = useState(false);
 
-  const rows = (customTab.rows ?? []) as CustomTabRow[];
+  const rows = useMemo(() => (customTab.rows ?? []) as CustomTabRow[], [customTab.rows]);
   // Memoised so the row handlers below keep stable identities across renders.
   const columns = useMemo(() => customTab.columns ?? [], [customTab.columns]);
   const columnDefs = useMemo(() => {
@@ -115,24 +115,34 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
   );
 
   // Helper: update this tab in the full customTabs array and persist
+  // Built from the newest copy of the tabs, not the last render's: a typed cell can be handed over a moment after
+  // a server change was merged in, and starting from the older copy would silently erase that change.
   const updateTab = useCallback(
     (updater: (tab: CustomTab) => CustomTab) => {
-      const allTabs = (data?.customTabs ?? []) as CustomTab[];
-      const updated = allTabs.map((t) => (t.id === customTab.id ? updater(t) : t));
-      updateField("customTabs", updated);
+      updateField("customTabs", (current) => {
+        const allTabs = (current ?? []) as CustomTab[];
+        return allTabs.map((t) => (t.id === customTab.id ? updater(t) : t));
+      });
     },
-    [data?.customTabs, customTab.id, updateField]
+    [customTab.id, updateField]
   );
 
+  // A cell edit is addressed by the row's id, not its position. The position can shift between the moment someone
+  // types and the moment the text is handed over (a row added or removed by a merge), and writing by position would
+  // put the answer into the wrong row. If the row is gone the edit is dropped rather than misplaced.
   const handleUpdate = useCallback(
     (index: number, field: string, value: string | boolean) => {
+      const rowId = rows[index]?.id;
       updateTab((tab) => {
-        const newRows = [...(tab.rows ?? [])];
-        newRows[index] = { ...newRows[index], [field]: value };
+        const current = tab.rows ?? [];
+        const at = rowId ? current.findIndex((r) => r.id === rowId) : index;
+        if (at < 0 || at >= current.length) return tab;
+        const newRows = [...current];
+        newRows[at] = { ...newRows[at], [field]: value };
         return { ...tab, rows: newRows };
       });
     },
-    [updateTab]
+    [updateTab, rows]
   );
 
   const handleAdd = useCallback(() => {
@@ -147,12 +157,15 @@ export function CustomTabSheet({ customTab }: CustomTabSheetProps) {
 
   const handleDelete = useCallback(
     (index: number) => {
+      const rowId = rows[index]?.id;
       updateTab((tab) => {
-        const newRows = (tab.rows ?? []).filter((_, i) => i !== index);
-        return { ...tab, rows: newRows };
+        const current = tab.rows ?? [];
+        const at = rowId ? current.findIndex((r) => r.id === rowId) : index;
+        if (at < 0 || at >= current.length) return tab;
+        return { ...tab, rows: current.filter((_, i) => i !== at) };
       });
     },
-    [updateTab]
+    [updateTab, rows]
   );
 
   const handleReorder = useCallback(

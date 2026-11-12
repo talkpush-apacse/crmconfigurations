@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useChecklistContext } from "@/lib/checklist-context";
+import { DraftCommitter } from "@/lib/draft-commit";
 import { parseClipboardGrid, useGridNav } from "./grid-nav";
 
 type ValidationType = "email" | "url" | "phone";
@@ -127,6 +128,31 @@ export function EditableCell({
   const committedValue = String(value ?? "");
   const currentValue = draftValue ?? committedValue;
 
+  // Typed text is handed to the page after a short pause, not only when the person leaves the cell (the reasons and
+  // the rules are in src/lib/draft-commit.ts). `sendValue` is always the newest one (it is re-registered with the
+  // committer after every render), so a timer started several renders ago never calls an old `onChange`.
+  // `lastSentRef` is the value the page was last given for this cell, so the same text is never sent twice.
+  // `focusValueRef` is what the cell held on entry, for Escape.
+  const lastSentRef = useRef(committedValue);
+  const focusValueRef = useRef(committedValue);
+  const committer = useMemo(() => new DraftCommitter({ commit: () => {} }), []);
+  const sendValue = useCallback(
+    (next: string) => {
+      if (next === lastSentRef.current) return;
+      lastSentRef.current = next;
+      onChange(next);
+    },
+    [onChange]
+  );
+  useEffect(() => {
+    lastSentRef.current = committedValue;
+  }, [committedValue]);
+  useEffect(() => {
+    committer.setCommit(sendValue);
+  }, [committer, sendValue]);
+  // The cell is going away (tab switch, row removed): hand over what was typed rather than lose it.
+  useEffect(() => () => committer.flush(), [committer]);
+
   const grid = useGridNav();
   // Spreadsheet behaviours (live input, empty-cell tint, compact textarea)
   // follow the table's mode. Keyboard navigation and paste additionally need
@@ -179,20 +205,35 @@ export function EditableCell({
   const errorMessage = requiredError ?? validationError;
 
   const commitDraftValue = useCallback(() => {
+    committer.cancel();
     const nextValue = draftValue ?? committedValue;
     setDraftValue(null);
-    if (nextValue !== committedValue) onChange(nextValue);
-  }, [draftValue, committedValue, onChange]);
+    sendValue(nextValue);
+  }, [draftValue, committedValue, committer, sendValue]);
+
+  /** Typing: keep the text in the cell, and let the committer hand it over after a pause. */
+  const handleDraftChange = useCallback(
+    (next: string) => {
+      setDraftValue(next);
+      committer.type(next);
+    },
+    [committer]
+  );
+
+  const handleFocus = useCallback(() => {
+    focusValueRef.current = lastSentRef.current;
+  }, []);
 
   /** Commits on blur, unless the edit was cancelled with Escape. */
   const handleBlur = useCallback(() => {
     if (cancelledRef.current) {
       cancelledRef.current = false;
+      committer.cancel();
       setDraftValue(null);
       return;
     }
     commitDraftValue();
-  }, [commitDraftValue]);
+  }, [commitDraftValue, committer]);
 
   /**
    * Spreadsheet key handling. Vertical arrows move between rows (they do
@@ -204,7 +245,10 @@ export function EditableCell({
     (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.key === "Escape") {
         cancelledRef.current = true;
+        committer.cancel();
         setDraftValue(null);
+        // Part of the draft may already have been handed over while typing: put back what the cell held on entry.
+        sendValue(focusValueRef.current);
         e.currentTarget.blur();
         return;
       }
@@ -231,7 +275,7 @@ export function EditableCell({
         move(e.shiftKey ? "up" : "down");
       }
     },
-    [inGrid, grid, gridRow, gridCol, commitDraftValue]
+    [inGrid, grid, gridRow, gridCol, commitDraftValue, committer, sendValue]
   );
 
   /**
@@ -247,11 +291,13 @@ export function EditableCell({
       if (!parsed) return;
       if (grid!.pasteGrid(gridRow!, gridCol!, parsed)) {
         e.preventDefault();
-        // Drop any in-flight draft — the batched edit is the source of truth.
+        // Drop any in-flight draft — the batched edit is the source of truth. The pause timer must go too, or it
+        // would later write the old draft over the pasted value.
+        committer.cancel();
         setDraftValue(null);
       }
     },
-    [inGrid, grid, gridRow, gridCol]
+    [inGrid, grid, gridRow, gridCol, committer]
   );
 
 
@@ -394,7 +440,10 @@ export function EditableCell({
     const textarea = wrapWithValidation(
       <Textarea
         value={currentValue}
-        onChange={(e) => setDraftValue(e.target.value)}
+        onChange={(e) => handleDraftChange(e.target.value)}
+        onFocus={handleFocus}
+        onCompositionStart={() => committer.compositionStart()}
+        onCompositionEnd={() => committer.compositionEnd()}
         onBlur={handleBlur}
         onKeyDown={handleGridKeyDown}
         onPaste={handleGridPaste}
@@ -476,7 +525,10 @@ export function EditableCell({
       <Input
         ref={inputRef as React.RefObject<HTMLInputElement>}
         value={currentValue}
-        onChange={(e) => setDraftValue(e.target.value)}
+        onChange={(e) => handleDraftChange(e.target.value)}
+        onFocus={handleFocus}
+        onCompositionStart={() => committer.compositionStart()}
+        onCompositionEnd={() => committer.compositionEnd()}
         onBlur={() => {
           setEditing(false);
           handleBlur();

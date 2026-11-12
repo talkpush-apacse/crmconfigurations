@@ -5,6 +5,7 @@ import type { ChecklistData } from "@/lib/types";
 import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { FIELD_LABELS, type ChecklistJsonField } from "@/lib/types";
 import { rebaseOntoServer } from "@/lib/save-conflict-merge";
+import { cancelAllDrafts, flushAllDrafts, hasPendingDrafts, subscribeDrafts } from "@/lib/draft-commit";
 
 /** Where the full checklist is read from, for the first load and for catching up after a rejected save. */
 function loadUrl(mode: "slug" | "token" | "id", slugOrToken: string) {
@@ -52,6 +53,11 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  // Text typed into a cell that has not been handed to the page yet (a few hundred ms at most). It counts as an
+  // unsaved change, so the Save button, the Discard button and the leave-page warning all know about it.
+  const [draftsPending, setDraftsPending] = useState(false);
+  // Saves currently in flight, so the "tab hidden" handler does not start a second one on top of a running save.
+  const savesInFlightRef = useRef(0);
   // When the last successful save landed, so the UI can say how long ago.
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const latestDataRef = useRef<ChecklistData | null>(null);
@@ -92,7 +98,12 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slugOrToken, mode]);
 
-  const save = useCallback(async (updatedData: ChecklistData) => {
+  useEffect(() => {
+    setDraftsPending(hasPendingDrafts());
+    return subscribeDrafts(() => setDraftsPending(hasPendingDrafts()));
+  }, []);
+
+  const saveOnce = useCallback(async (updatedData: ChecklistData) => {
     setSaveStatus("saving");
     setSaveError(null);
 
@@ -262,13 +273,35 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     setHasPendingChanges(true);
   }, [mode, slugOrToken]);
 
+  const save = useCallback(
+    async (updatedData: ChecklistData) => {
+      savesInFlightRef.current += 1;
+      try {
+        await saveOnce(updatedData);
+      } finally {
+        savesInFlightRef.current -= 1;
+      }
+    },
+    [saveOnce]
+  );
+
   const publishChanges = useCallback(() => {
-    if (latestDataRef.current && dirtyFieldsRef.current.size > 0) {
-      save(latestDataRef.current);
-    }
+    // Pressing Save while still typing: hand the typed text over first, then save once it has landed in the page.
+    // (The hand-over reaches the page's state a moment later, so the save itself waits one tick.)
+    const hadDrafts = hasPendingDrafts();
+    flushAllDrafts();
+    const run = () => {
+      if (latestDataRef.current && dirtyFieldsRef.current.size > 0) {
+        save(latestDataRef.current);
+      }
+    };
+    if (hadDrafts) setTimeout(run, 0);
+    else run();
   }, [save]);
 
   const discardChanges = useCallback(() => {
+    // Text still being typed is part of what is being discarded; left alone it would be handed over afterwards.
+    cancelAllDrafts();
     if (!lastSavedDataRef.current) return;
 
     const restoredData = cloneChecklistData(lastSavedDataRef.current);
@@ -288,16 +321,25 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   }, [save]);
 
   const updateField = useCallback(
-    <K extends keyof ChecklistData>(field: K, value: ChecklistData[K]) => {
+    <K extends keyof ChecklistData>(
+      field: K,
+      value: ChecklistData[K] | ((current: ChecklistData[K]) => ChecklistData[K])
+    ) => {
       setData((prev) => {
         if (!prev) return prev;
-        const updated = { ...prev, [field]: value };
+        // A function is applied to the newest copy of the field (see checklist-context.ts).
+        const next =
+          typeof value === "function"
+            ? (value as (current: ChecklistData[K]) => ChecklistData[K])(prev[field])
+            : value;
+        const updated = { ...prev, [field]: next };
         latestDataRef.current = updated;
         hasPendingChangesRef.current = true;
         setHasPendingChanges(true);
         dirtyFieldsRef.current.add(field as string);
-        setSaveStatus("saved");
-        setSaveError(null);
+        // Deliberately NOT resetting the save status here. A failed save must stay visible until a save succeeds:
+        // clearing it on every edit made a save that kept failing look healthy, and with edits now handed over
+        // while typing that would have happened constantly.
 
         return updated;
       });
@@ -328,8 +370,14 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasPendingChangesRef.current || saveStatus === "saving") {
+      // Text typed in a cell but not yet handed to the page counts too: check before handing it over, because the
+      // hand-over reaches the page's state a moment later than this check.
+      const typing = hasPendingDrafts();
+      flushAllDrafts();
+      if (typing || hasPendingChangesRef.current || saveStatus === "saving") {
         e.preventDefault();
+        // Some browsers only show the leave-page prompt when returnValue is set.
+        e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -338,13 +386,41 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     };
   }, [saveStatus]);
 
+  // Tab hidden, app switched, page being put away (a phone locking is the usual case): hand over what is being
+  // typed and send it at once instead of waiting for the autosave timer, which a hidden page may never run.
+  // This is a best effort: a page that is closed before the request completes still loses it, which is why the
+  // pause before hand-over is short.
+  useEffect(() => {
+    const handleHide = (event: Event) => {
+      // visibilitychange fires when the page is hidden AND when it comes back; only the first matters here.
+      // pagehide always means the page is being put away.
+      if (event.type === "visibilitychange" && document.visibilityState !== "hidden") return;
+      flushAllDrafts();
+      setTimeout(() => {
+        if (
+          latestDataRef.current &&
+          dirtyFieldsRef.current.size > 0 &&
+          savesInFlightRef.current === 0
+        ) {
+          save(latestDataRef.current);
+        }
+      }, 0);
+    };
+    document.addEventListener("visibilitychange", handleHide);
+    window.addEventListener("pagehide", handleHide);
+    return () => {
+      document.removeEventListener("visibilitychange", handleHide);
+      window.removeEventListener("pagehide", handleHide);
+    };
+  }, [save]);
+
   return {
     data,
     loading,
     error,
     saveStatus,
     saveError,
-    hasPendingChanges,
+    hasPendingChanges: hasPendingChanges || draftsPending,
     lastSavedAt,
     updateField,
     retrySave,
