@@ -9,6 +9,7 @@ import { ChecklistLookProvider, useChecklistLookState } from "@/components/layou
 import type { ChecklistLook } from "@/lib/checklist-look";
 import { ChecklistContext } from "@/lib/checklist-context";
 import { TabActivityBanner } from "@/components/layout/TabActivityBanner";
+import { UnsavedBackupBanner } from "@/components/layout/UnsavedBackupBanner";
 import { LINK_OFF_HELP, LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { getEnabledTabs } from "@/lib/tab-config";
 import { getSectionState, getCustomTabSectionState } from "@/lib/section-status";
@@ -57,6 +58,7 @@ export function EditorChecklistShell({
     publishChanges,
     discardChanges,
     hasPendingChangesRef,
+    unsavedBackup,
   } = useChecklist(token, "token", initialData);
 
   if (loading) {
@@ -192,6 +194,7 @@ export function EditorChecklistShell({
             )}
             <main className="flex-1 overflow-y-auto">
               <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+                <UnsavedBackupBanner backup={unsavedBackup} />
                 <TabActivityBanner activityUrl={`/api/checklists/by-token/${token}/activity`} />
                 {children}
               </div>
