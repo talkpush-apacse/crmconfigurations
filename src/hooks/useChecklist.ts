@@ -4,6 +4,19 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { ChecklistData } from "@/lib/types";
 import { LINK_OFF_MESSAGE } from "@/lib/edit-history/types";
 import { FIELD_LABELS, type ChecklistJsonField } from "@/lib/types";
+import { rebaseOntoServer } from "@/lib/save-conflict-merge";
+
+/** Where the full checklist is read from, for the first load and for catching up after a rejected save. */
+function loadUrl(mode: "slug" | "token" | "id", slugOrToken: string) {
+  return mode === "token"
+    ? `/api/checklists/by-token/${slugOrToken}`
+    : mode === "id"
+      ? `/api/checklists/${slugOrToken}`
+      : `/api/checklists?slug=${slugOrToken}`;
+}
+
+/** How many times one save may catch up with newer server changes before it gives up and asks for a reload. */
+const MAX_CONFLICT_MERGES = 3;
 
 function cloneChecklistData(data: ChecklistData): ChecklistData {
   return typeof structuredClone === "function"
@@ -56,12 +69,7 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     }
     async function fetchData() {
       try {
-        const url = mode === "token"
-          ? `/api/checklists/by-token/${slugOrToken}`
-          : mode === "id"
-            ? `/api/checklists/${slugOrToken}`
-            : `/api/checklists?slug=${slugOrToken}`;
-        const res = await fetch(url);
+        const res = await fetch(loadUrl(mode, slugOrToken));
         if (res.status === 410) throw new Error(LINK_OFF_MESSAGE); // a named link staff turned off
         if (!res.ok) throw new Error("Checklist not found");
         const json = await res.json();
@@ -91,12 +99,50 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
     // Snapshot dirty fields at save time — more may accumulate during retries
     const fieldsToSave = Array.from(dirtyFieldsRef.current);
 
+    /**
+     * Someone else saved the same part of the checklist since this page loaded, so the server refused. Instead of
+     * telling the person to reload (which throws their typing away), fetch the latest copy and replay their unsaved
+     * edits on top of it. "retry" means the page now holds the merged copy and the save should be sent again.
+     */
+    async function catchUpWithServer(conflictedFields: string[]): Promise<"retry" | "link_off" | "failed"> {
+      try {
+        const res = await fetch(loadUrl(mode, slugOrToken));
+        if (res.status === 410) return "link_off";
+        if (!res.ok) return "failed";
+        const theirs = (await res.json()) as ChecklistData;
+
+        // Read the screen state only now, after the wait, so anything typed in the meantime is included.
+        const mine = latestDataRef.current;
+        const base = lastSavedDataRef.current;
+        if (!mine || !base) return "failed";
+
+        const rebased = rebaseOntoServer({
+          base,
+          mine,
+          theirs,
+          dirtyFields: Array.from(dirtyFieldsRef.current),
+          conflictedFields,
+        });
+        if (!rebased.ok) return "failed";
+
+        lastSavedDataRef.current = cloneChecklistData(theirs);
+        latestDataRef.current = rebased.next;
+        setData(rebased.next);
+        return "retry";
+      } catch {
+        return "failed";
+      }
+    }
+
     // Retry up to 3 attempts with exponential backoff (0s, 1s, 2s delays)
     let lastError: Error | null = null;
+    let conflictMerges = 0;
+    let skipDelay = false;
     for (let attempt = 0; attempt <= 2; attempt++) {
-      if (attempt > 0) {
+      if (attempt > 0 && !skipDelay) {
         await new Promise<void>((resolve) => setTimeout(resolve, 1000 * attempt));
       }
+      skipDelay = false;
       try {
         // Always use the most recent data in case edits occurred during retry delay
         const dataToSave = latestDataRef.current ?? updatedData;
@@ -118,6 +164,24 @@ export function useChecklist(slugOrToken: string, mode: "slug" | "token" | "id" 
           // Conflict — parse richer response for field-level info
           const conflictBody = await res.json().catch(() => ({}));
           const conflictedFields = conflictBody.conflictedFields as string[] | undefined;
+
+          if (conflictedFields && conflictedFields.length > 0 && conflictMerges < MAX_CONFLICT_MERGES) {
+            conflictMerges += 1;
+            const outcome = await catchUpWithServer(conflictedFields);
+            if (outcome === "retry") {
+              attempt -= 1; // catching up is not a failed attempt, and needs no waiting
+              skipDelay = true;
+              continue;
+            }
+            if (outcome === "link_off") {
+              setSaveStatus("error");
+              setSaveError(LINK_OFF_MESSAGE);
+              hasPendingChangesRef.current = true;
+              setHasPendingChanges(true);
+              return;
+            }
+            // "failed": fall through to the reload message below, with the person's edits still on screen.
+          }
 
           let message: string;
           if (conflictedFields && conflictedFields.length > 0) {
